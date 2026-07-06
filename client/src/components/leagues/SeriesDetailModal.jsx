@@ -34,6 +34,112 @@ function splitTeamName(fullName) {
   return { city: words[0], name: words.slice(1).join(' ') }
 }
 
+function SingleGameFooter({ isLoading, singleGame, matchup, teamTop, isFootball }) {
+  const gameDate = singleGame
+    ? new Date(singleGame.starts_at).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+      })
+    : null
+
+  // Football single-game: pull passing / rushing / receiving / defensive
+  // leaders per team from game.top_scorers. Falls through to a plain
+  // date footer for any team where the box score didn't populate yet.
+  let performerRows = null
+  if (isFootball && singleGame?.top_scorers?.length) {
+    const stripAccents = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    const nHome = stripAccents(singleGame.home_team)
+    const nAway = stripAccents(singleGame.away_team)
+    const nTop = stripAccents(teamTop)
+    const topIsHome = nHome === nTop
+
+    const CATEGORY_ORDER = { passing: 0, rushing: 1, receiving: 2, defensive: 3 }
+    const CATEGORY_LABEL = {
+      passing: 'Passing', rushing: 'Rushing', receiving: 'Receiving', defensive: 'Tackles',
+    }
+    const sortScorers = (arr) => [...arr].sort((a, b) =>
+      (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99)
+    )
+    const homeScorers = sortScorers(
+      singleGame.top_scorers.filter((s) => stripAccents(s.team) === nHome && CATEGORY_ORDER[s.category] != null)
+    )
+    const awayScorers = sortScorers(
+      singleGame.top_scorers.filter((s) => stripAccents(s.team) === nAway && CATEGORY_ORDER[s.category] != null)
+    )
+    const scorersForTop = topIsHome ? homeScorers : awayScorers
+    const scorersForBottom = topIsHome ? awayScorers : homeScorers
+
+    // Merge by category so both sides always land on the same row.
+    const categories = Array.from(new Set([
+      ...scorersForTop.map((s) => s.category),
+      ...scorersForBottom.map((s) => s.category),
+    ])).sort((a, b) => (CATEGORY_ORDER[a] ?? 99) - (CATEGORY_ORDER[b] ?? 99))
+
+    if (categories.length) {
+      performerRows = (
+        <div className="px-4 pb-4 space-y-3">
+          <div className="border-t border-border" />
+          {categories.map((cat) => {
+            const topRow = scorersForTop.find((s) => s.category === cat)
+            const bottomRow = scorersForBottom.find((s) => s.category === cat)
+            return (
+              <div key={cat}>
+                <div className="text-[10px] uppercase tracking-wider text-text-muted text-center mb-1">
+                  {CATEGORY_LABEL[cat] || cat}
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    {topRow ? (
+                      <div className="flex items-center gap-2">
+                        {topRow.headshot_url && (
+                          <img src={topRow.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <div className="text-sm text-text-primary font-semibold truncate">{topRow.player_name}</div>
+                          <div className="text-xs text-text-primary truncate">{topRow.stat_line || `${topRow.points}`}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-text-muted">—</div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {bottomRow ? (
+                      <div className="flex items-center gap-2 justify-end">
+                        <div className="min-w-0 text-right">
+                          <div className="text-sm text-text-primary font-semibold truncate">{bottomRow.player_name}</div>
+                          <div className="text-xs text-text-primary truncate">{bottomRow.stat_line || `${bottomRow.points}`}</div>
+                        </div>
+                        {bottomRow.headshot_url && (
+                          <img src={bottomRow.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" />
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-text-muted text-right">—</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+  }
+
+  return (
+    <>
+      {performerRows}
+      <div className="px-5 pb-5 text-center text-xs text-text-muted">
+        {isLoading
+          ? 'Loading…'
+          : gameDate
+            ? gameDate
+            : (matchup.winner ? 'Result entered by admin' : 'Not yet played')}
+      </div>
+    </>
+  )
+}
+
 export default function SeriesDetailModal({ matchup, sportKey, leagueId, isSingleGame = false, onClose }) {
   const teamTop = matchup.team_top
   const teamBottom = matchup.team_bottom
@@ -44,6 +150,7 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, isSingl
 
   // Sports with no meaningful seeding — knockout-only tournaments.
   const hideSeed = sportKey === 'soccer_world_cup'
+  const isFootball = typeof sportKey === 'string' && sportKey.startsWith('americanfootball_')
 
   // For single-game brackets (World Cup, HR Derby), derive header score
   // from the actual game rather than series wins. Fall back to the
@@ -159,19 +266,19 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, isSingl
           </div>
         </div>
 
-        {/* Single-game brackets (World Cup, HR Derby): header already
-            carries the score + winner. Show a compact date footer and
-            skip the boxed game list entirely. */}
+        {/* Single-game brackets (World Cup, HR Derby, NFL / NCAAF / UFL
+            playoff rounds): header already carries the score + winner.
+            For football we still want the passing / rushing / receiving /
+            defensive leaders per team below. Everyone else gets a compact
+            date footer instead of the boxed game list. */}
         {isSingleGame ? (
-          <div className="px-5 pb-5 text-center text-xs text-text-muted">
-            {isLoading
-              ? 'Loading…'
-              : singleGame
-                ? new Date(singleGame.starts_at).toLocaleDateString('en-US', {
-                    month: 'short', day: 'numeric', year: 'numeric',
-                  })
-                : (matchup.winner ? 'Result entered by admin' : 'Not yet played')}
-          </div>
+          <SingleGameFooter
+            isLoading={isLoading}
+            singleGame={singleGame}
+            matchup={matchup}
+            teamTop={teamTop}
+            isFootball={isFootball}
+          />
         ) : (
           <>
         {/* Divider */}
