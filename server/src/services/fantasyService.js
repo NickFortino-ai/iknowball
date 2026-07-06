@@ -2858,6 +2858,15 @@ function applyNflPositionOverride(row, overrideMap) {
 }
 
 export async function searchAvailablePlayers(leagueId, query, position = null, sort = null) {
+  // Read league settings first — we need draft_status to decide whether to
+  // exclude drafted-but-not-yet-rostered players (only meaningful during a
+  // live draft).
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('scoring_format, roster_slots, draft_status, season, format, season_type, single_week')
+    .eq('league_id', leagueId)
+    .single()
+
   // Get all rostered player IDs
   const { data: rostered } = await supabase
     .from('fantasy_rosters')
@@ -2866,22 +2875,22 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
 
   const rosteredIds = (rostered || []).map((r) => r.player_id)
 
-  // Also exclude drafted players
-  const { data: drafted } = await supabase
-    .from('fantasy_draft_picks')
-    .select('player_id')
-    .eq('league_id', leagueId)
-    .not('player_id', 'is', null)
-
-  const draftedIds = (drafted || []).map((d) => d.player_id)
+  // Also exclude drafted players — but ONLY while the draft is in progress.
+  // fantasy_draft_picks rows persist forever with the picked player_id, so
+  // once the draft is complete this filter would hide any drafted player
+  // who's since been dropped (via free-agent swap, trade drop, or waivers),
+  // making them invisible in "available players". Post-draft, rosteredIds
+  // is the authoritative source.
+  let draftedIds = []
+  if (settings?.draft_status && settings.draft_status !== 'completed') {
+    const { data: drafted } = await supabase
+      .from('fantasy_draft_picks')
+      .select('player_id')
+      .eq('league_id', leagueId)
+      .not('player_id', 'is', null)
+    draftedIds = (drafted || []).map((d) => d.player_id)
+  }
   const excludeIds = [...new Set([...rosteredIds, ...draftedIds])]
-
-  // Read league settings so the ranking adapts to scoring + SuperFlex
-  const { data: settings } = await supabase
-    .from('fantasy_settings')
-    .select('scoring_format, roster_slots, draft_status, season, format, season_type, single_week')
-    .eq('league_id', leagueId)
-    .single()
   const scoringFormat = settings?.scoring_format || 'half_ppr'
   const rosterSlots = settings?.roster_slots || {}
   const isSuperflex = (rosterSlots.superflex || 0) > 0 || (rosterSlots.qb || 0) >= 2
@@ -5558,6 +5567,17 @@ async function _executeTrade(tradeId, trade, actorId, dropPlayerIds = []) {
   //   - inserted the drop transaction record regardless of whether the
   //     actual delete worked, masking the failure in the audit log
   if (dropPlayerIds.length > 0) {
+    // Snapshot acquired_at for each drop before the delete so addToWaiverPool
+    // can honor the just-added (<48h) rule the same way addDropPlayer does.
+    const { data: dropRows } = await supabase
+      .from('fantasy_rosters')
+      .select('player_id, acquired_at')
+      .eq('league_id', trade.league_id)
+      .eq('user_id', actorId)
+      .in('player_id', dropPlayerIds)
+    const acquiredAtByPlayer = {}
+    for (const r of dropRows || []) acquiredAtByPlayer[r.player_id] = r.acquired_at
+
     const { error: dropErr, count: deletedCount } = await supabase
       .from('fantasy_rosters')
       .delete({ count: 'exact' })
@@ -5575,6 +5595,11 @@ async function _executeTrade(tradeId, trade, actorId, dropPlayerIds = []) {
       err.status = 500
       throw err
     }
+
+    // Push the dropped players onto waivers, matching addDropPlayer's normal
+    // drop behavior. Trade-dropped players otherwise went straight to free
+    // agent and were immediately claimable — unfair to the rest of the league.
+    await addToWaiverPool(trade.league_id, dropPlayerIds, 'dropped', acquiredAtByPlayer)
 
     // Log drop transactions only AFTER successful delete so the audit log
     // doesn't accumulate phantom drops on failure.
