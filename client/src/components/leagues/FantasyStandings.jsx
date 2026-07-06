@@ -264,7 +264,7 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
                   </div>
                 </div>
                 {isExpanded && (
-                  <div className="sticky left-0 w-screen bg-bg-primary/40">
+                  <div className="sticky left-0 w-screen bg-bg-primary/40 pr-4">
                     <RosterList league={league} userId={s.userId} />
                   </div>
                 )}
