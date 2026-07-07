@@ -395,21 +395,21 @@ export default function ScoringRulesEditor({ value, onChange, defenseMode }) {
                     <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">{cat.label}</div>
                     <div className="space-y-1">
                       {(rules[cat.field] || []).map((tier, i) => (
-                        <div key={i} className="flex items-center gap-2 text-xs">
-                          <span className="text-text-muted w-12">≥</span>
+                        <div key={i} className="flex items-center gap-1.5 text-xs whitespace-nowrap">
+                          <span className="text-text-muted">≥</span>
                           <input
                             type="number"
                             value={tier.threshold}
                             onChange={(e) => updateBonusTier(cat.field, i, 'threshold', e.target.value)}
-                            className="w-20 bg-bg-input border border-border rounded px-2 py-1 text-text-primary focus:outline-none focus:border-accent"
+                            className="w-16 bg-bg-input border border-border rounded px-2 py-1 text-text-primary focus:outline-none focus:border-accent"
                           />
-                          <span className="text-text-muted">yds → +</span>
+                          <span className="text-text-muted">yds →</span>
                           <input
                             type="number"
                             step={0.5}
                             value={tier.points}
                             onChange={(e) => updateBonusTier(cat.field, i, 'points', e.target.value)}
-                            className="w-16 bg-bg-input border border-border rounded px-2 py-1 text-text-primary focus:outline-none focus:border-accent"
+                            className="w-12 bg-bg-input border border-border rounded px-2 py-1 text-text-primary focus:outline-none focus:border-accent"
                           />
                           <span className="text-text-muted">pts</span>
                         </div>
