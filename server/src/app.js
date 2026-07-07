@@ -24,7 +24,11 @@ import futuresRouter from './routes/futures.js'
 import recordsRouter from './routes/records.js'
 import hotTakesRouter from './routes/hotTakes.js'
 import dfsRouter from './routes/dfs.js'
-import nbaDfsRouter from './routes/nbaDfs.js'
+// Cross-sport player lookup / gamelog / salary router. File was named
+// nbaDfs.js when only NBA DFS existed; endpoints have since expanded to
+// cover NBA / WNBA / MLB / NFL. URL mount path stays /api/nba-dfs so we
+// don't break the client + mobile builds pointing at those hooks.
+import playersRouter from './routes/players.js'
 import wnbaDfsRouter from './routes/wnbaDfs.js'
 import mlbDfsRouter from './routes/mlbDfs.js'
 import hrDerbyRouter from './routes/hrDerby.js'
@@ -90,7 +94,7 @@ app.use('/api/image-proxy', imageProxyRouter)
 app.use('/api/messages', messagesRouter)
 app.use('/api/backdrops', backdropSubmissionsRouter)
 app.use('/api/dfs', dfsRouter)
-app.use('/api/nba-dfs', nbaDfsRouter)
+app.use('/api/nba-dfs', playersRouter)
 app.use('/api/wnba-dfs', wnbaDfsRouter)
 app.use('/api/mlb-dfs', mlbDfsRouter)
 app.use('/api/hr-derby', hrDerbyRouter)

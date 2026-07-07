@@ -1,3 +1,9 @@
+// Cross-sport player-lookup / gamelog / DFS-salary router.
+// Originally named nbaDfs.js when only NBA DFS lived here; endpoints
+// have since grown to cover NBA / WNBA / MLB / NFL. Mounted at
+// /api/nba-dfs (kept for backwards compat with client + mobile hooks).
+// Rename the URL prefix only via an intentional migration — many
+// client hooks reference /nba-dfs/... paths.
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../config/supabase.js'
