@@ -7,6 +7,7 @@ const SIZE_CLASSES = {
   lg: 'w-8 h-8 text-sm',
   xl: 'w-9 h-9 text-base',
   '2xl': 'w-14 h-14 text-2xl',
+  '3xl': 'w-24 h-24 text-4xl',
 }
 
 export default function Avatar({ user, size = 'md', className = '' }) {

@@ -37,10 +37,15 @@ const sportsInterests = [
   { emoji: '🏓', label: 'Ping Pong' },
 ]
 
-function Section({ label, children, defaultOpen = true }) {
+function Section({ label, children, defaultOpen = true, wide = false }) {
   const [open, setOpen] = useState(defaultOpen)
+  // When wide, the section breaks out past the page's max-w-2xl on
+  // desktop, letting content grids show more per row without shrinking
+  // individual tiles. Negative margins stay within the viewport at
+  // typical breakpoints (lg ≥1024px, xl ≥1280px).
+  const wideClasses = wide ? 'lg:-mx-32 xl:-mx-56' : ''
   return (
-    <div className="bg-bg-primary rounded-xl border border-text-primary/20 mb-4 overflow-hidden">
+    <div className={`bg-bg-primary rounded-xl border border-text-primary/20 mb-4 overflow-hidden ${wideClasses}`}>
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between p-4"
@@ -357,9 +362,10 @@ export default function SettingsPage() {
           is the secondary fallback. When a photo is set, the icon grid
           dims and unselects so users understand it's inactive. */}
       <Section label="Profile Picture">
-        {/* Photo upload — primary */}
-        <div className="flex items-center gap-4 mb-2">
-          <Avatar user={profile} size="2xl" />
+        {/* Photo upload — primary. Avatar centered, buttons stacked
+            below it, on both desktop and mobile. */}
+        <div className="flex flex-col items-center gap-3 mb-2">
+          <Avatar user={profile} size="3xl" />
           <div className="flex gap-2">
             <button
               onClick={() => photoFileRef.current?.click()}
@@ -395,7 +401,7 @@ export default function SettingsPage() {
             }}
           />
         </div>
-        <p className="text-xs text-text-muted mb-4">
+        <p className="text-xs text-text-muted mb-4 text-center">
           {profile.avatar_url
             ? 'Your photo is shown across the app.'
             : 'A real photo makes your profile stand out. JPG, PNG, or WebP.'}
@@ -435,7 +441,7 @@ export default function SettingsPage() {
       </Section>
 
       {/* Profile Backdrop */}
-      <Section label="Profile Backdrop" defaultOpen={true}>
+      <Section label="Profile Backdrop" defaultOpen={true} wide>
         <p className="text-xs text-text-muted mb-3">Shows on your profile card and profile modal.</p>
         {/* Sport filter */}
         <div className="flex gap-1.5 flex-wrap mb-3">
@@ -458,14 +464,16 @@ export default function SettingsPage() {
               key={s.key || 'all'}
               onClick={() => setBackdropSport(s.key)}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
-                backdropSport === s.key ? 'bg-accent text-white' : 'bg-bg-input text-text-secondary hover:bg-border'
+                backdropSport === s.key
+                  ? 'bg-accent text-white'
+                  : 'bg-bg-primary/40 backdrop-blur border border-text-primary/20 text-text-primary hover:bg-white/10'
               }`}
             >
               {s.label}
             </button>
           ))}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
           {/* Upload your own */}
           <button
             type="button"
