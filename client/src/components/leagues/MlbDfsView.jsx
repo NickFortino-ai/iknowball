@@ -352,6 +352,14 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
   }, [players, posFilter, search, usedPlayerIds, remainingSalary, isViewMode])
 
   function addPlayer(player) {
+    // Time-of-tap lock check. The picker filter already hides started
+    // games at RENDER time, but if the user leaves the picker open long
+    // enough for a game to kick off, the memoized list would still show
+    // that player as tappable. Re-check right when they tap.
+    if (player.game_starts_at && new Date(player.game_starts_at) <= new Date()) {
+      toast(`${player.player_name}'s game has already started`, 'error')
+      return
+    }
     for (const slot of SLOTS) {
       if (roster[slot.key]) continue
       if (slot.positions.includes(player.position)) {

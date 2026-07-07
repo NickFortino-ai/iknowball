@@ -61,6 +61,62 @@ router.post('/roster', async (req, res) => {
     return res.status(400).json({ error: 'This league has ended' })
   }
 
+  // Per-player locking: mirrors the NBA DFS pattern in routes/players.js:232.
+  // A player is locked once their game starts — they must stay in the same
+  // slot in the submitted roster (can't be removed/swapped) and new players
+  // whose games have already started can't be added.
+  const now = new Date()
+  const espnIds = (slots || []).map((s) => s.espn_player_id).filter(Boolean)
+
+  // Existing roster: pull locked-slot info so a re-save with locked players
+  // still on the roster doesn't false-positive on the "already started" check.
+  const existingRoster = await getMLBDFSRoster(league_id, req.user.id, date, parseInt(season || '2026'))
+  if (existingRoster?.mlb_dfs_roster_slots?.length) {
+    const existingIds = existingRoster.mlb_dfs_roster_slots
+      .map((s) => s.espn_player_id).filter(Boolean)
+    const { data: existingSalaries } = await supabase
+      .from('mlb_dfs_salaries')
+      .select('espn_player_id, game_starts_at')
+      .eq('game_date', date)
+      .in('espn_player_id', existingIds)
+
+    const gameTimeMap = {}
+    for (const s of existingSalaries || []) {
+      gameTimeMap[s.espn_player_id] = s.game_starts_at
+    }
+
+    for (const existingSlot of existingRoster.mlb_dfs_roster_slots) {
+      const gameTime = gameTimeMap[existingSlot.espn_player_id]
+      if (gameTime && new Date(gameTime) <= now) {
+        // Locked: must remain in the same slot with the same player.
+        const matchingNew = (slots || []).find((s) => s.roster_slot === existingSlot.roster_slot)
+        if (!matchingNew || matchingNew.espn_player_id !== existingSlot.espn_player_id) {
+          return res.status(400).json({ error: `${existingSlot.player_name}'s game has started — cannot swap` })
+        }
+      }
+    }
+  }
+
+  // Reject new players whose game has already started.
+  if (espnIds.length) {
+    const { data: newSalaries } = await supabase
+      .from('mlb_dfs_salaries')
+      .select('espn_player_id, player_name, game_starts_at')
+      .eq('game_date', date)
+      .in('espn_player_id', espnIds)
+
+    for (const sal of newSalaries || []) {
+      if (sal.game_starts_at && new Date(sal.game_starts_at) <= now) {
+        const wasExisting = existingRoster?.mlb_dfs_roster_slots?.some(
+          (s) => s.espn_player_id === sal.espn_player_id
+        )
+        if (!wasExisting) {
+          return res.status(400).json({ error: `${sal.player_name}'s game has already started` })
+        }
+      }
+    }
+  }
+
   // Verify salary cap
   const settings = await getFantasySettings(league_id)
   const cap = settings?.salary_cap || 40000
