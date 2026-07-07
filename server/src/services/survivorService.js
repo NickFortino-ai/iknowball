@@ -331,6 +331,8 @@ export async function deleteSurvivorPick(leagueId, userId, weekId) {
     .eq('id', pick.id)
 
   if (error) throw error
+  logger.warn({ site: 'deleteSurvivorPick', leagueId, userId, weekId, pickId: pick.id, priorStatus: pick.status },
+    'survivor_picks DELETE — user undo of pending pick')
 }
 
 async function getDisplayPeriodNumber(leagueId, rawWeekNumber) {
@@ -567,6 +569,17 @@ export async function regenerateSurvivorPeriods(leagueId) {
   // Delete the old periods (cascade would drop any pick still on them,
   // which by this point is only the "no match" cases we warned about).
   if (oldIds.size) {
+    // Snapshot which picks are about to cascade-delete so we can attribute
+    // any post-mortem to this call site. If picks show up here, they were
+    // orphaned (game.starts_at didn't match any new period).
+    const { data: cascadePicks } = await supabase
+      .from('survivor_picks')
+      .select('id, user_id, status, team_name')
+      .in('league_week_id', Array.from(oldIds))
+    if (cascadePicks?.length) {
+      logger.warn({ site: 'regenerateSurvivorPeriods', leagueId, cascadeCount: cascadePicks.length, cascadePicks },
+        'survivor_picks CASCADE DELETE — orphaned picks via league_weeks removal')
+    }
     await supabase
       .from('league_weeks')
       .delete()
@@ -925,12 +938,16 @@ export async function scoreSurvivorPicks(gameId, winner) {
       .eq('user_id', d.userId)
       .single()
     if (!check?.is_alive) {
-      await supabase
+      const { count } = await supabase
         .from('survivor_picks')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('league_id', d.leagueId)
         .eq('user_id', d.userId)
         .eq('status', 'pending')
+      if ((count ?? 0) > 0) {
+        logger.warn({ site: 'scoreSurvivorPicks.deferredPickDeletions', leagueId: d.leagueId, userId: d.userId, deleted: count },
+          'survivor_picks DELETE — pending picks cleaned after elimination')
+      }
     }
   }
 
@@ -1183,12 +1200,16 @@ export async function autoEliminateMissedPicks() {
             { leagueId: league.id })
 
           // Delete any pending future picks
-          await supabase
+          const { count: deletedPending } = await supabase
             .from('survivor_picks')
-            .delete()
+            .delete({ count: 'exact' })
             .eq('league_id', league.id)
             .eq('user_id', member.user_id)
             .eq('status', 'pending')
+          if ((deletedPending ?? 0) > 0) {
+            logger.warn({ site: 'autoEliminateMissedPicks', leagueId: league.id, userId: member.user_id, week: week.week_number, deleted: deletedPending },
+              'survivor_picks DELETE — pending picks cleaned after missed-pick elimination')
+          }
         } else {
           await supabase
             .from('league_members')
@@ -1407,16 +1428,17 @@ async function checkSurvivorWinner(leagueId) {
       .eq('id', leagueId)
 
     // Clean up any pending advance picks (league is over, these would never be scored)
-    const { error: cleanupErr } = await supabase
+    const { error: cleanupErr, count: cleanupCount } = await supabase
       .from('survivor_picks')
-      .delete()
+      .delete({ count: 'exact' })
       .eq('league_id', leagueId)
       .eq('status', 'pending')
 
     if (cleanupErr) {
       logger.error({ cleanupErr, leagueId }, 'Failed to clean up pending survivor picks')
     } else {
-      logger.info({ leagueId }, 'Cleaned up pending advance picks after survivor completion')
+      logger.warn({ site: 'checkSurvivorWinner', leagueId, deleted: cleanupCount ?? 0 },
+        'survivor_picks DELETE — pending picks cleaned after league completion')
     }
 
     // Check survivor streak record
