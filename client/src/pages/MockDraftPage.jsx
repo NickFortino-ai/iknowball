@@ -255,12 +255,22 @@ function clearLegacySaved() {
 // ────────────────────────────────────────────────────────────────────
 // Page
 
-export default function MockDraftPage({ embedded = false, defaultConfig }) {
+export default function MockDraftPage({ embedded = false, defaultConfig, onDraftStateChange }) {
   const [screen, setScreen] = useState('home') // home | setup | draft | review
   const [config, setConfig] = useState(null)
   const [recent, setRecent] = useState(loadRecent())
   const [reviewMock, setReviewMock] = useState(null)
   const queryClient = useQueryClient()
+
+  // Bubble "am I actively drafting?" up to the embedding page so the
+  // outer Draft Prep tab strip can dim its other tabs and reduce the
+  // chance of an accidental tap that yanks the user out mid-pick.
+  // Cleanup resets to false on unmount so the parent isn't left
+  // thinking a draft is in progress after the component tears down.
+  useEffect(() => {
+    onDraftStateChange?.(screen === 'draft')
+    return () => onDraftStateChange?.(false)
+  }, [screen, onDraftStateChange])
 
   // Saved mocks live on the server now — cross-device access
   const { data: savedRows } = useQuery({

@@ -53,6 +53,7 @@ export default function DraftPrepPage() {
   const [rosterSlots, setRosterSlots] = useState({ ...DEFAULT_ROSTER })
   const [showConfig, setShowConfig] = useState(false)
   const [introOpen, setIntroOpen] = useState(false)
+  const [mockDraftActive, setMockDraftActive] = useState(false)
 
   // Backdrop position (admin-tunable, public read)
   const { data: backdropSetting } = useQuery({
@@ -265,19 +266,25 @@ export default function DraftPrepPage() {
         )}
       </div>
 
-      {/* Sub-tabs */}
+      {/* Sub-tabs. When a mock draft is in progress, non-Mock tabs dim
+          so an accidental tap is less likely to yank the user out of
+          their pick. Tabs stay tappable — just visually de-emphasized. */}
       <div className="flex gap-1 mb-4 overflow-x-auto">
-        {TABS.map((tab, i) => (
-          <button
-            key={tab}
-            onClick={() => handleTabChange(i)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors backdrop-blur-md ${
-              activeTab === i
-                ? 'bg-accent text-white'
-                : 'bg-bg-primary/30 border border-text-primary/20 text-text-secondary hover:bg-white/10'
-            }`}
-          >{tab}</button>
-        ))}
+        {TABS.map((tab, i) => {
+          const isMockTab = tab === 'Mock Draft'
+          const dim = mockDraftActive && !isMockTab
+          return (
+            <button
+              key={tab}
+              onClick={() => handleTabChange(i)}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all backdrop-blur-md ${
+                activeTab === i
+                  ? 'bg-accent text-white'
+                  : 'bg-bg-primary/30 border border-text-primary/20 text-text-secondary hover:bg-white/10'
+              } ${dim ? 'opacity-30 hover:opacity-60' : ''}`}
+            >{tab}</button>
+          )
+        })}
       </div>
 
       {/* Tab content */}
@@ -296,7 +303,11 @@ export default function DraftPrepPage() {
         <DraftPrepAdp scoringFormat={scoringFormat} />
       )}
       {activeTab === 2 && (
-        <MockDraftPage embedded defaultConfig={{ scoringFormat, configHash }} />
+        <MockDraftPage
+          embedded
+          defaultConfig={{ scoringFormat, configHash }}
+          onDraftStateChange={setMockDraftActive}
+        />
       )}
       {activeTab === 3 && (
         <div className="space-y-4">
