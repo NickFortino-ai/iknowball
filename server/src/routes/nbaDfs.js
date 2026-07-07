@@ -590,30 +590,33 @@ router.get('/player/lookup', async (req, res) => {
   const { name, sport } = req.query
   if (!name) return res.status(400).json({ error: 'name required' })
 
-  // Normalize: strip periods (C.J. → CJ) for matching
-  const normalized = name.replace(/\./g, '')
+  // Names come in two shapes across our data pipelines:
+  //   "J.T. Ginn"   — most tables (ESPN roster feed uses initials-with-dots)
+  //   "JT Ginn"     — some prop sources strip the dots
+  // Build a small set of variants so an ilike search covers either shape:
+  //   original name, dots-stripped, and dots-inserted between run-together
+  //   leading capitals. Dedup to avoid pointless duplicate queries.
+  const normalized = name.replace(/\./g, '') // "J.T. Ginn" → "JT Ginn"
+  // Insert dots between leading run of capitals: "JT Ginn" → "J.T. Ginn"
+  const dotified = name.replace(/^([A-Z]{2,4})(\s)/, (_, caps, ws) =>
+    caps.split('').join('.') + '.' + ws
+  )
+  const nameVariants = [...new Set([name, normalized, dotified])]
 
   // NFL players live in nfl_players, not a DFS salaries table. When the
   // request is for NFL, look there first so the prop modal gets a real
   // espn_player_id and the recent-games gamelog can fire.
   if (sport === 'americanfootball_nfl') {
-    let { data } = await supabase
-      .from('nfl_players')
-      .select('espn_id, full_name, headshot_url, team, position')
-      .ilike('full_name', `%${name}%`)
-      .not('team', 'is', null)
-      .limit(1)
-      .maybeSingle()
-
-    if (!data && normalized !== name) {
+    let data = null
+    for (const variant of nameVariants) {
       const r = await supabase
         .from('nfl_players')
         .select('espn_id, full_name, headshot_url, team, position')
-        .ilike('full_name', `%${normalized}%`)
+        .ilike('full_name', `%${variant}%`)
         .not('team', 'is', null)
         .limit(1)
         .maybeSingle()
-      data = r.data
+      if (r.data) { data = r.data; break }
     }
 
     if (data) {
@@ -643,23 +646,16 @@ router.get('/player/lookup', async (req, res) => {
     : allTables
 
   for (const table of tableOrder) {
-    let { data } = await supabase
-      .from(table)
-      .select('espn_player_id, player_name, headshot_url, team, position')
-      .ilike('player_name', `%${name}%`)
-      .order('game_date', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (!data && normalized !== name) {
+    let data = null
+    for (const variant of nameVariants) {
       const r = await supabase
         .from(table)
         .select('espn_player_id, player_name, headshot_url, team, position')
-        .ilike('player_name', `%${normalized}%`)
+        .ilike('player_name', `%${variant}%`)
         .order('game_date', { ascending: false })
         .limit(1)
         .maybeSingle()
-      data = r.data
+      if (r.data) { data = r.data; break }
     }
 
     if (data) return res.json(data)
