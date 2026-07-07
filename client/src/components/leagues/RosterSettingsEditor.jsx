@@ -130,14 +130,14 @@ export default function RosterSettingsEditor({ value, onChange }) {
           <div className="flex items-center gap-2">
             <div className="flex gap-1.5">
               {[
-                { value: 'def', label: 'Team DEF' },
+                { value: 'def', label: 'DEF' },
                 { value: 'idp', label: 'IDP' },
               ].map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
                   onClick={() => setDefenseMode(opt.value)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-colors ${
                     defenseMode === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
                   }`}
                 >
