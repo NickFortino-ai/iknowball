@@ -861,27 +861,36 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
 
           {/* Inline remind input */}
           {showRemindInput && (
-            <div className="mt-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-              <input
-                type="text"
+            <div className="mt-2 flex items-start gap-2" onClick={(e) => e.stopPropagation()}>
+              <textarea
                 value={remindComment}
-                onChange={(e) => setRemindComment(e.target.value)}
+                onChange={(e) => {
+                  setRemindComment(e.target.value)
+                  e.target.style.height = 'auto'
+                  e.target.style.height = `${e.target.scrollHeight}px`
+                }}
                 placeholder="Add a comment (optional)"
                 maxLength={280}
-                className="flex-1 bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted outline-none focus:border-accent/40"
+                rows={1}
+                className="flex-1 min-w-0 bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted outline-none focus:border-accent/40 resize-none overflow-hidden"
                 autoFocus
-                onKeyDown={(e) => { if (e.key === 'Enter') handleRemindSubmit() }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleRemindSubmit()
+                  }
+                }}
               />
               <button
                 onClick={handleRemindSubmit}
                 disabled={remindHotTake.isPending}
-                className="bg-accent text-white text-xs font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50 transition-opacity"
+                className="shrink-0 bg-accent text-white text-xs font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50 transition-opacity"
               >
                 {remindHotTake.isPending ? '...' : 'Send'}
               </button>
               <button
                 onClick={() => { setShowRemindInput(false); setRemindComment('') }}
-                className="text-xs text-text-muted hover:text-text-secondary transition-colors"
+                className="shrink-0 text-xs text-text-muted hover:text-text-secondary transition-colors"
               >
                 Cancel
               </button>
