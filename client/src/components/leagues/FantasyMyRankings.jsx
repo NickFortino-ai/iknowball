@@ -111,12 +111,15 @@ export default function FantasyMyRankings({ league, draftPrepConfig }) {
   const isResetting = isDraftPrep ? prepResetRankings.isPending : leagueResetRankings.isPending
 
   // ── Move up/down (edit mode only) ────────────────────────────────
+  // Compute the swap INSIDE the setter so rapid clicks always work from
+  // the freshest state — computing idx from the outer closure could race
+  // with a pending update and leave the list wrong-swapped.
   function movePlayer(playerId, direction) {
-    const idx = working.findIndex((r) => r.player_id === playerId)
-    if (idx < 0) return
-    const swap = direction === 'up' ? idx - 1 : idx + 1
-    if (swap < 0 || swap >= working.length) return
     setWorking((prev) => {
+      const idx = prev.findIndex((r) => r.player_id === playerId)
+      if (idx < 0) return prev
+      const swap = direction === 'up' ? idx - 1 : idx + 1
+      if (swap < 0 || swap >= prev.length) return prev
       const next = [...prev]
       ;[next[idx], next[swap]] = [next[swap], next[idx]]
       return next
@@ -127,9 +130,17 @@ export default function FantasyMyRankings({ league, draftPrepConfig }) {
 
   // Compute rank from the FULL working list (drafted + undrafted) so each
   // player's rank stays fixed as players above them get drafted. Then
-  // filter for display.
+  // filter for display. De-dupe by player_id as a safety net — a stray
+  // duplicate in state (transient race, bad seed) would otherwise render
+  // twice and confuse React reconciliation (same key twice).
+  const seenPlayerIds = new Set()
   const visible = working
     .map((r, i) => ({ ...r, currentRank: i + 1 }))
+    .filter((r) => {
+      if (seenPlayerIds.has(r.player_id)) return false
+      seenPlayerIds.add(r.player_id)
+      return true
+    })
     .filter((r) => !draftedSet.has(r.player_id))
     .filter((r) => posFilter === 'All' || r.nfl_players?.position === posFilter)
     .filter((r) => !searchQuery || r.nfl_players?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()))
