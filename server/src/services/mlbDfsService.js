@@ -364,19 +364,46 @@ export async function generateMLBSalaries(date, season = 2026) {
   // Fetch defensive rankings (cached 6h)
   const defRankings = await fetchDefensiveRankings('baseball/mlb')
 
+  // Doubleheader guard: when a team plays twice on the same date (e.g.
+  // MIL @ STL first pitch 1 PM, second game 4:45 PM), we collapse into
+  // one salary row per player per date because of the
+  // (espn_player_id, game_date, season) unique key. Without a pre-scan
+  // for the EARLIEST game start per team, the last event processed
+  // wins — so the picker's game_starts_at reflected the SECOND game
+  // and treated players who had already pitched in game 1 as
+  // "upcoming". Fix: take the earliest game_starts_at across all of
+  // today's events per team, then use that value everywhere below so
+  // any doubleheader team locks as soon as game 1 begins.
+  const earliestByTeam = {}
+  for (const event of events) {
+    const competition = event.competitions?.[0]
+    if (!competition) continue
+    const eventStart = event.date
+    if (!eventStart) continue
+    for (const competitor of competition.competitors || []) {
+      const abbrev = competitor.team?.abbreviation
+      if (!abbrev) continue
+      const current = earliestByTeam[abbrev]
+      if (!current || new Date(eventStart) < new Date(current)) {
+        earliestByTeam[abbrev] = eventStart
+      }
+    }
+  }
+
   const salaries = []
 
   for (const event of events) {
     const competition = event.competitions?.[0]
     if (!competition) continue
 
-    const gameStartsAt = event.date || null
-
     for (const competitor of competition.competitors || []) {
       const teamAbbrev = competitor.team?.abbreviation || ''
       const isHome = competitor.homeAway === 'home'
       const opponent = competition.competitors?.find((c) => c.homeAway !== competitor.homeAway)
       const opponentAbbrev = opponent?.team?.abbreviation || ''
+      // Use the earliest same-day start for this team so the picker
+      // locks the second event's players as soon as event 1 begins.
+      const gameStartsAt = earliestByTeam[teamAbbrev] || event.date || null
 
       const teamId = competitor.team?.id
       if (!teamId) continue
