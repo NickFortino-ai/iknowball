@@ -16,11 +16,14 @@ import { useLeagueBackdrops } from '../hooks/useLeagues'
 import { getBackdropUrl } from '../lib/backdropUrl'
 import NotificationPreferences from '../components/settings/NotificationPreferences'
 
+// Trimmed list. Kept sport-focused options + a handful of high-signal
+// identity picks. Dropped the more random ones (slot machine, ice cube,
+// eight ball, joker, etc.) that felt like clutter. Users are steered
+// toward uploading a real photo first — icons are the fallback.
 const avatarEmojis = [
-  '🏀', '🏈', '⚾', '🏆', '🔥', '🎯',
-  '🦅', '🐐', '🦁', '⭐', '🐺', '🦈',
-  '💀', '👑', '💎', '⚡',
-  '💰', '🗡️', '👁️', '🎰', '🧊', '🦾', '🎱', '🃏',
+  '🏀', '🏈', '⚾', '🏆',
+  '🔥', '🐐', '👑', '💀',
+  '⭐', '⚡', '🎯', '💎',
 ]
 
 const sportsInterests = [
@@ -350,10 +353,12 @@ export default function SettingsPage() {
         <div className="text-right text-xs text-text-muted mt-1">{bio.length}/200</div>
       </Section>
 
-      {/* Avatar Emoji */}
+      {/* Avatar — photo upload is the primary action; the icon picker
+          is the secondary fallback. When a photo is set, the icon grid
+          dims and unselects so users understand it's inactive. */}
       <Section label="Profile Picture">
-        {/* Photo upload */}
-        <div className="flex items-center gap-4 mb-4 pb-4 border-b border-border">
+        {/* Photo upload — primary */}
+        <div className="flex items-center gap-4 mb-2">
           <Avatar user={profile} size="2xl" />
           <div className="flex gap-2">
             <button
@@ -361,7 +366,7 @@ export default function SettingsPage() {
               disabled={uploading}
               className="px-3 py-2 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
             >
-              {uploading ? 'Uploading...' : 'Upload Photo'}
+              {uploading ? 'Uploading...' : (profile.avatar_url ? 'Replace Photo' : 'Upload Photo')}
             </button>
             {profile.avatar_url && (
               <button
@@ -390,26 +395,42 @@ export default function SettingsPage() {
             }}
           />
         </div>
+        <p className="text-xs text-text-muted mb-4">
+          {profile.avatar_url
+            ? 'Your photo is shown across the app.'
+            : 'A real photo makes your profile stand out. JPG, PNG, or WebP.'}
+        </p>
 
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-          {avatarEmojis.map((emoji) => (
-            <button
-              key={emoji}
-              onClick={() => setAvatarEmoji(avatarEmoji === emoji ? '' : emoji)}
-              className={`w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all ${
-                avatarEmoji === emoji
-                  ? 'bg-accent/20 border-2 border-accent scale-110'
-                  : 'bg-bg-input border border-border hover:border-border-hover'
-              }`}
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-        {avatarEmoji && (
-          <p className="text-xs text-text-muted mt-2">
-            Selected: {avatarEmoji}
-          </p>
+        {/* Icon fallback — secondary. Dimmed + non-interactive when a
+            photo is set so it's clear the icon isn't in use. */}
+        {!profile.avatar_url && (
+          <>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-[10px] uppercase tracking-wider text-text-muted">Or pick an icon</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+            <div className="grid grid-cols-6 sm:grid-cols-6 gap-2">
+              {avatarEmojis.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => setAvatarEmoji(avatarEmoji === emoji ? '' : emoji)}
+                  className={`w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all ${
+                    avatarEmoji === emoji
+                      ? 'bg-accent/20 border-2 border-accent scale-110'
+                      : 'bg-bg-input border border-border hover:border-border-hover'
+                  }`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            {avatarEmoji && (
+              <p className="text-xs text-text-muted mt-2">
+                Selected: {avatarEmoji}
+              </p>
+            )}
+          </>
         )}
       </Section>
 
