@@ -1286,6 +1286,27 @@ export async function updateLeague(leagueId, userId, data) {
     await generateLeagueWeeks(updated)
   }
 
+  // If a survivor commissioner changed the lives-per-member setting before
+  // picks locked, propagate to the existing league_members rows. Otherwise
+  // the setting shows the new value everywhere the client renders it
+  // (join card, standings header) but existing members keep their old
+  // lives_remaining and see "1 life" while the league is nominally 2-life.
+  // The dangerous-settings guard blocks this after picks lock, so we can
+  // safely reset alive members to the new max without stepping on losses.
+  const oldLives = league.settings?.lives ?? 1
+  const newLives = updates.settings?.lives
+  if (
+    league.format === 'survivor' &&
+    newLives !== undefined &&
+    newLives !== oldLives
+  ) {
+    await supabase
+      .from('league_members')
+      .update({ lives_remaining: newLives })
+      .eq('league_id', leagueId)
+      .eq('is_alive', true)
+  }
+
   return updated
 }
 
