@@ -5050,8 +5050,19 @@ export async function processLeagueWaivers(leagueId) {
 
     if (!winner) continue
 
-    // Apply the winning claim: drop player if specified, then add new player
+    // Apply the winning claim: drop player if specified, then add new player.
+    // dropRosterRemoved / dropWaiverPoolAdded track how far the drop side of
+    // the swap got. If the drop committed but the add subsequently failed,
+    // we roll back the drop in the catch block so the user isn't left one
+    // player short of a completed transaction. addOk gates the rollback so
+    // a post-add failure (e.g. transactions log insert) can't accidentally
+    // undo a successful award.
     let addOk = false
+    let dropRosterRemoved = false
+    let dropWaiverPoolAdded = false
+    let dropAcquiredAtForRollback = null
+    let dropSlotForRollback = null
+    let dropAcquiredViaForRollback = null
     try {
       // Roster cap guard: if no drop is specified, verify the user actually
       // has room. Their roster may have filled between claim submission and
@@ -5071,16 +5082,20 @@ export async function processLeagueWaivers(leagueId) {
       }
       let dropAcquiredAt = null
       if (winner.drop_player_id) {
-        // Read the row's acquired_at BEFORE deleting so the pre-/just-added
-        // tenure rule in addToWaiverPool can be evaluated correctly.
+        // Read the row's prior state BEFORE deleting so we can (a) evaluate
+        // the pre-/just-added tenure rule in addToWaiverPool, and (b) restore
+        // the exact prior state if the add fails and we need to roll back.
         const { data: dropRow } = await supabase
           .from('fantasy_rosters')
-          .select('acquired_at')
+          .select('acquired_at, slot, acquired_via')
           .eq('league_id', leagueId)
           .eq('player_id', winner.drop_player_id)
           .eq('user_id', winner.user_id)
           .maybeSingle()
         dropAcquiredAt = dropRow?.acquired_at || null
+        dropAcquiredAtForRollback = dropRow?.acquired_at || null
+        dropSlotForRollback = dropRow?.slot || 'bench'
+        dropAcquiredViaForRollback = dropRow?.acquired_via || 'waiver'
 
         // Same hardening pattern as the trade-drop fix (ee46615d):
         // verify the delete actually removed the row before continuing.
@@ -5100,9 +5115,11 @@ export async function processLeagueWaivers(leagueId) {
           err.status = 400
           throw err
         }
+        dropRosterRemoved = true
         // Dropped player goes on waivers (or straight to FA per pre-season
         // / just-added rules baked into addToWaiverPool).
         await addToWaiverPool(leagueId, [winner.drop_player_id], 'dropped', { [winner.drop_player_id]: dropAcquiredAt })
+        dropWaiverPoolAdded = true
       }
       const { error: insertErr } = await supabase
         .from('fantasy_rosters')
@@ -5121,6 +5138,63 @@ export async function processLeagueWaivers(leagueId) {
       await supabase.from('fantasy_transactions').insert(wTxns)
     } catch (err) {
       logger.error({ err, claimId: winner.id }, 'Failed to apply waiver claim')
+
+      // Rollback: if the drop side of the swap committed but the add
+      // never went through, restore the user's original roster + clear
+      // the waiver-pool entry we just created. Guarded on
+      //   dropRosterRemoved && !addOk
+      // so:
+      //   - roster-full guard, drop delete error, drop noop-count check
+      //     all throw BEFORE dropRosterRemoved flips → no rollback
+      //   - addToWaiverPool failure between the two flags → roster is
+      //     restored (waiver-pool delete is a no-op, safe)
+      //   - add-insert failure → both waiver-pool + roster are undone
+      //   - transactions-log failure after addOk=true → rollback SKIPPED
+      //     (the award is real, we don't want to undo it just because
+      //     the audit log write hiccuped)
+      // A concurrent race that already re-rostered the drop player on
+      // another user (rare cross-group race within a single batch) will
+      // hit the unique(league_id, player_id) constraint on re-insert;
+      // we log loudly rather than clobber the newer owner's roster.
+      if (dropRosterRemoved && !addOk && winner.drop_player_id) {
+        try {
+          if (dropWaiverPoolAdded) {
+            await supabase
+              .from('fantasy_waiver_pool')
+              .delete()
+              .eq('league_id', leagueId)
+              .eq('player_id', winner.drop_player_id)
+          }
+          const restoreRow = {
+            league_id: leagueId,
+            user_id: winner.user_id,
+            player_id: winner.drop_player_id,
+            slot: dropSlotForRollback || 'bench',
+            acquired_via: dropAcquiredViaForRollback || 'waiver',
+          }
+          if (dropAcquiredAtForRollback) restoreRow.acquired_at = dropAcquiredAtForRollback
+          const { error: restoreErr } = await supabase
+            .from('fantasy_rosters')
+            .insert(restoreRow)
+          if (restoreErr) {
+            logger.error(
+              { restoreErr, leagueId, userId: winner.user_id, playerId: winner.drop_player_id, claimId: winner.id },
+              'Waiver rollback re-insert failed — user may need manual roster intervention'
+            )
+          } else {
+            logger.info(
+              { leagueId, userId: winner.user_id, playerId: winner.drop_player_id, claimId: winner.id },
+              'Waiver rollback complete — original roster restored after add failure'
+            )
+          }
+        } catch (rollbackErr) {
+          logger.error(
+            { rollbackErr, leagueId, userId: winner.user_id, playerId: winner.drop_player_id, claimId: winner.id },
+            'Waiver rollback exception — user may need manual roster intervention'
+          )
+        }
+      }
+
       // Surface specific validation messages (roster cap, missing drop) to
       // the user. Generic DB errors stay opaque.
       const failReason = err.status === 400 ? err.message : 'Roster update failed'
