@@ -716,10 +716,20 @@ export async function syncWeeklyProjections(season, week) {
     .filter((proj) => {
       if (!proj.player_id || !proj.stats) return false
       if (!validIds.has(String(proj.player_id))) return false
-      // Must have at least one populated projection field worth pricing on
-      return proj.stats.pts_half_ppr != null
+      // Must have at least one populated projection field worth pricing on.
+      // Sleeper only ships pts_ppr / pts_half_ppr / pts_std for offense-scored
+      // players — IDP defenders come through with only idp_* stat projections.
+      // Accept either shape so IDP rows aren't silently dropped, which was
+      // leaving IDP defenders with NULL weekly_projection in the player list.
+      const hasOffensePts = proj.stats.pts_half_ppr != null
         || proj.stats.pts_ppr != null
         || proj.stats.pts_std != null
+      const hasIdpStats = (proj.stats.idp_tkl_solo || 0) > 0
+        || (proj.stats.idp_tkl_ast || 0) > 0
+        || (proj.stats.idp_sack || 0) > 0
+        || (proj.stats.idp_int || 0) > 0
+        || (proj.stats.idp_pass_def || 0) > 0
+      return hasOffensePts || hasIdpStats
     })
     .map((proj) => ({
       player_id: String(proj.player_id),
