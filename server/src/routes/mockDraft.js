@@ -27,7 +27,7 @@ router.get('/players', requireAuth, async (req, res) => {
       .in('position', ['QB', 'RB', 'WR', 'TE'])
       .not('team', 'is', null)
       .order('search_rank', { ascending: true, nullsFirst: false })
-      .limit(500),
+      .limit(800),
     supabase
       .from('nfl_players')
       .select(SELECT)
@@ -46,16 +46,15 @@ router.get('/players', requireAuth, async (req, res) => {
 
   // Composite ADP score: prefer adp_half_ppr → adp_ppr → search_rank
   // (lower is better in all three). Sort offensive skill players by ADP and
-  // take top 268, then ALWAYS append all kickers and DEFs regardless of
-  // their ADP. Without this guarantee, K/DEF (which typically default to
-  // _adp=9999) sink to the bottom of the sort and the slice cuts them out.
+  // take top 400 — enough to cover 20-team leagues with deep benches or
+  // superflex depth. K + DEF are always appended below regardless.
   const offensiveSorted = (offensiveResult.data || [])
     .map((p) => ({
       ...p,
       _adp: p.adp_half_ppr ?? p.adp_ppr ?? p.search_rank ?? 9999,
     }))
     .sort((a, b) => a._adp - b._adp)
-    .slice(0, 268)
+    .slice(0, 400)
 
   const kickers = (kickerResult.data || [])
     .map((p) => ({

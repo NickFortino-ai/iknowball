@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { effectiveAdp } from '../utils/effectiveAdp.js'
 import { buildRosterConfigHash } from '../utils/rosterConfigHash.js'
 
-const RANKINGS_SEED_SIZE = 220
+const RANKINGS_SEED_SIZE = 400
 
 const PLAYER_SELECT = 'player_id, rank, nfl_players(id, full_name, position, team, headshot_url, injury_status, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_std, search_rank)'
 
@@ -20,7 +20,7 @@ async function fetchPlayerPool() {
       .in('position', ['QB', 'RB', 'WR', 'TE'])
       .not('team', 'is', null)
       .order('search_rank', { ascending: true, nullsFirst: false })
-      .limit(500),
+      .limit(800),
     supabase
       .from('nfl_players')
       .select('id, position, search_rank, adp_ppr, adp_half_ppr')

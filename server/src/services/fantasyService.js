@@ -1392,10 +1392,10 @@ export async function getGlobalRank(leagueId, userId) {
 
 /**
  * Get a user's per-league custom rankings. If empty, lazily seeds with the
- * top 200 active players ordered by the league's scoring projection.
+ * top 400 active players ordered by the league's scoring projection.
  * Returns a flat ordered list with full player data joined.
  */
-const RANKINGS_SEED_SIZE = 200
+const RANKINGS_SEED_SIZE = 400
 const SCORING_PROJ_COL = {
   ppr: 'projected_pts_ppr',
   half_ppr: 'projected_pts_half_ppr',
@@ -1421,7 +1421,7 @@ async function seedUserRankings(leagueId, userId) {
       .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
       .not('team', 'is', null)
       .order('search_rank', { ascending: true, nullsFirst: false })
-      .limit(500),
+      .limit(800),
     supabase
       .from('nfl_players')
       .select('id, position, search_rank, adp_ppr, adp_half_ppr')
@@ -3163,7 +3163,8 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
 
   // Slice offense, K, and DEF separately so K and DEF are guaranteed in the
   // pool (their _adp typically defaults to 9999 and would sink past the
-  // offense cutoff). Top 268 QB/RB/WR/TE by sort key + every available K + DEF.
+  // offense cutoff). Top 400 QB/RB/WR/TE by sort key + every available K + DEF —
+  // 400 covers 20-team leagues with deep benches or superflex depth.
   const sortFn = (a, b) => {
     if (sortKey) {
       const av = a._stats[sortKey] || 0
@@ -3186,7 +3187,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   const offenseSlice = availableAll
     .filter((p) => isOffensePlayer(p.position) && !isIdpPlayer(p.position))
     .sort(sortFn)
-    .slice(0, 268)
+    .slice(0, 400)
   const kickerSlice = availableAll.filter((p) => p.position === 'K').sort(sortFn)
   const defSlice = hasIdp ? [] : availableAll.filter((p) => p.position === 'DEF').sort(sortFn)
   const idpSlice = hasIdp ? availableAll.filter((p) => isIdpPlayer(p.position)).sort(sortFn) : []
