@@ -611,7 +611,7 @@ router.get('/users/lookup', async (req, res) => {
 // Subscription Override
 // =====================================================================
 router.post('/users/subscription', async (req, res) => {
-  const { user_id, subscription_status, subscription_plan, subscription_expires_at, is_paid, payment_source } = req.body
+  const { user_id, subscription_status, subscription_plan, subscription_expires_at, is_paid, is_lifetime, payment_source } = req.body
   if (!user_id) return res.status(400).json({ error: 'user_id required' })
 
   const update = {}
@@ -619,6 +619,7 @@ router.post('/users/subscription', async (req, res) => {
   if (subscription_plan !== undefined) update.subscription_plan = subscription_plan
   if (subscription_expires_at !== undefined) update.subscription_expires_at = subscription_expires_at
   if (is_paid !== undefined) update.is_paid = is_paid
+  if (is_lifetime !== undefined) update.is_lifetime = is_lifetime
   if (payment_source !== undefined) update.payment_source = payment_source
 
   if (!Object.keys(update).length) return res.status(400).json({ error: 'No fields to update' })

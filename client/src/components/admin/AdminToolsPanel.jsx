@@ -7,8 +7,8 @@ import { CATEGORIES, CATEGORY_CARDS, FORMAT_BY_VALUE } from '../../pages/CreateL
 import Avatar from '../ui/Avatar'
 import { toast } from '../ui/Toast'
 
-const SUB_STATUSES = ['active', 'expired', 'cancelled', 'past_due', 'trialing']
-const PAYMENT_SOURCES = ['stripe', 'apple_iap', 'promo_code']
+const SUB_STATUSES = ['active', 'lifetime', 'expired', 'cancelled', 'past_due', 'trialing']
+const PAYMENT_SOURCES = ['stripe', 'apple_iap', 'google_iap', 'promo_code']
 
 export default function AdminToolsPanel() {
   const [activeTab, setActiveTab] = useState('user') // user | games | formats
@@ -185,6 +185,7 @@ function UserLookup() {
       subscription_plan: u?.subscription_plan || '',
       subscription_expires_at: u?.subscription_expires_at ? u.subscription_expires_at.split('T')[0] : '',
       is_paid: u?.is_paid ?? false,
+      is_lifetime: u?.is_lifetime ?? false,
       payment_source: u?.payment_source || '',
     })
     setEditingSub(true)
@@ -198,6 +199,7 @@ function UserLookup() {
         subscription_plan: subForm.subscription_plan || null,
         subscription_expires_at: subForm.subscription_expires_at ? new Date(subForm.subscription_expires_at).toISOString() : null,
         is_paid: subForm.is_paid,
+        is_lifetime: subForm.is_lifetime,
         payment_source: subForm.payment_source || null,
       })
       toast('Subscription updated', 'success')
@@ -304,6 +306,10 @@ function UserLookup() {
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={subForm.is_paid} onChange={(e) => setSubForm(f => ({ ...f, is_paid: e.target.checked }))} />
                   <span className="text-text-primary">is_paid</span>
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={subForm.is_lifetime} onChange={(e) => setSubForm(f => ({ ...f, is_lifetime: e.target.checked }))} />
+                  <span className="text-text-primary">is_lifetime</span>
                 </label>
                 <div className="flex gap-2">
                   <button onClick={saveSub} disabled={subOverride.isPending}
