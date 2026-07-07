@@ -2880,10 +2880,12 @@ function applyNflPositionOverride(row, overrideMap) {
 export async function searchAvailablePlayers(leagueId, query, position = null, sort = null) {
   // Read league settings first — we need draft_status to decide whether to
   // exclude drafted-but-not-yet-rostered players (only meaningful during a
-  // live draft).
+  // live draft). scoring_rules included so the PTS column in the available-
+  // players browser reflects THIS league's actual scoring (custom rules or
+  // preset), not Sleeper's stock pts_ppr/half/std total.
   const { data: settings } = await supabase
     .from('fantasy_settings')
-    .select('scoring_format, roster_slots, draft_status, season, format, season_type, single_week')
+    .select('scoring_format, scoring_rules, roster_slots, draft_status, season, format, season_type, single_week')
     .eq('league_id', leagueId)
     .single()
 
@@ -3037,11 +3039,17 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   const season = settings?.season || new Date().getUTCFullYear()
   const draftDone = settings?.draft_status === 'completed' || settings?.draft_status === 'in_progress'
   const statSeason = draftDone ? season : season - 1
-  const pointsCol = scoringFormat === 'ppr' ? 'pts_ppr' : scoringFormat === 'standard' ? 'pts_std' : 'pts_half_ppr'
+  // Score season stats against THIS league's rules (custom or preset) so
+  // the PTS column in the available-players browser reflects what these
+  // players would have earned FOR YOU, not Sleeper's stock scoring. Pull
+  // every field applyScoringRules reads — the offense-and-defense fields
+  // it multiplies against rules PLUS pass_att / rush_att / rec_tgt (used
+  // for 2-pt-type inference and the DEF PA bracket guard).
+  const leagueScoringRules = settings?.scoring_rules || buildScoringRulesFromPreset(scoringFormat)
   const statRows = await fetchAll(
     supabase
       .from('nfl_player_stats')
-      .select(`player_id, ${pointsCol}, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, fgm, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_ff, idp_fum_rec, idp_qb_hit`)
+      .select(`player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_ff, idp_fum_rec, idp_qb_hit`)
       .eq('season', statSeason)
   )
   // statsByPlayer[id] = { pts, pass_yd, pass_td, ... }
@@ -3054,7 +3062,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
       idp_tkl_solo: 0, idp_tkl_ast: 0, idp_tkl_loss: 0, idp_sack: 0, idp_int: 0,
       idp_pass_def: 0, idp_ff: 0, idp_fum_rec: 0, idp_qb_hit: 0,
     }
-    acc.pts += Number(r[pointsCol]) || 0
+    acc.pts += applyScoringRules(r, leagueScoringRules)
     acc.pass_yd += Number(r.pass_yd) || 0
     acc.pass_td += Number(r.pass_td) || 0
     acc.pass_int += Number(r.pass_int) || 0
