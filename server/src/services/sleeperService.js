@@ -14,6 +14,14 @@ const SYNCED_POSITIONS = new Set([
   'DE', 'DT', 'NT', 'DL', 'LB', 'ILB', 'OLB', 'MLB', 'CB', 'S', 'FS', 'SS', 'DB',
 ])
 
+// Players Sleeper stubbornly keeps in its active roster with a team populated
+// (usually years after they retired). Nulling team + marking retired after
+// every sync keeps them out of ADP, mock drafts, and draft-prep boards.
+// Match on lowercase full_name — Sleeper IDs can shift, names don't.
+const MANUAL_RETIRED_NAMES = new Set([
+  'ben roethlisberger',
+])
+
 /**
  * Sync all NFL players from Sleeper's player database.
  * This is a large payload (~5MB) — should be cached and run at most once daily.
@@ -139,6 +147,25 @@ export async function syncPlayers() {
       if (!error) retired += ids.length
     }
     logger.info({ retired }, 'Retired stale NFL players')
+  }
+
+  // Manual-retired sweep: always null team + mark retired for names in
+  // MANUAL_RETIRED_NAMES, regardless of what Sleeper reports. This is the
+  // durable fix for stragglers like Ben Roethlisberger that Sleeper keeps
+  // reincluding with a team populated.
+  if (MANUAL_RETIRED_NAMES.size > 0) {
+    let manualRetired = 0
+    for (const name of MANUAL_RETIRED_NAMES) {
+      const { data: rows } = await supabase
+        .from('nfl_players')
+        .update({ team: null, status: 'retired' })
+        .ilike('full_name', name)
+        .select('id')
+      manualRetired += rows?.length || 0
+    }
+    if (manualRetired > 0) {
+      logger.info({ manualRetired }, 'Manual-retired sweep applied')
+    }
   }
 
   logger.info({ upserted, total: players.length }, 'NFL player sync complete')

@@ -22,7 +22,7 @@ const SCORING_OPTIONS = [
   { value: 'standard', label: 'Standard' },
 ]
 
-const DEFAULT_ROSTER = { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, sflex: 0, k: 1, def: 1 }
+const DEFAULT_ROSTER = { qb: 1, rb: 2, wr: 3, te: 1, flex: 1, sflex: 0, k: 1, def: 1 }
 
 const SLOT_LABELS = [
   { key: 'qb', label: 'QB' },
@@ -194,6 +194,7 @@ export default function DraftPrepPage() {
         {introOpen && (
           <ul className="space-y-1.5 text-sm text-text-primary/80 mt-3">
             <li className="flex gap-2"><span className="text-accent">•</span><span>Rank every player your way — reorder, search, and filter your own board</span></li>
+            <li className="flex gap-2"><span className="text-accent">•</span><span>Bring your board to your in-person draft — mark picks live and see who's still on the board</span></li>
             <li className="flex gap-2"><span className="text-accent">•</span><span>Tune it for your scoring (PPR / Half-PPR / Standard) and roster shape</span></li>
             <li className="flex gap-2"><span className="text-accent">•</span><span>Compare your rankings against ADP and projections side-by-side</span></li>
             <li className="flex gap-2"><span className="text-accent">•</span><span>Sync your rankings to any of your fantasy leagues — edits flow both ways</span></li>
