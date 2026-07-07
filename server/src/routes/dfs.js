@@ -57,6 +57,106 @@ router.post('/roster', async (req, res) => {
   const settings = await getFantasySettings(league_id)
   const salaryCap = settings.salary_cap || 60000
 
+  // Per-player kickoff lock, mirroring the NBA + MLB patterns. NFL DFS
+  // shipped without an active server-side lock — the vestigial
+  // dfs_roster_slots.is_locked column was never written to, so a client
+  // could freely swap in players whose games had already kicked off.
+  // The games table carries authoritative kickoff timestamps (much
+  // more precise than nfl_schedule.game_date, which is date-only).
+  try {
+    const weekInt = parseInt(week, 10)
+    const seasonInt = parseInt(season, 10)
+    const incomingSlots = slots || []
+    const incomingPlayerIds = incomingSlots.map((s) => s.player_id).filter(Boolean)
+
+    // Existing roster to preserve locked positions and to allow re-save
+    // of a locked player at the same slot without false-positive rejection.
+    const { getDFSRoster } = await import('../services/dfsService.js')
+    const existingRoster = await getDFSRoster(league_id, req.user.id, weekInt, seasonInt)
+    const existingSlots = existingRoster?.dfs_roster_slots || []
+    const existingPlayerIds = existingSlots.map((s) => s.player_id).filter(Boolean)
+
+    const allPlayerIds = [...new Set([...incomingPlayerIds, ...existingPlayerIds])]
+    if (allPlayerIds.length) {
+      // Player team lookup
+      const { data: playerRows } = await supabase
+        .from('nfl_players')
+        .select('id, full_name, team')
+        .in('id', allPlayerIds)
+      const infoById = {}
+      for (const p of playerRows || []) infoById[p.id] = { team: p.team, name: p.full_name }
+
+      // Week's NFL kickoffs — take the earliest game per team so a
+      // team playing (rare) doubleheader-adjacent circumstances still
+      // locks correctly at first kickoff.
+      const { data: weekSchedule } = await supabase
+        .from('nfl_schedule')
+        .select('game_date')
+        .eq('season', seasonInt)
+        .eq('week', weekInt)
+        .not('game_date', 'is', null)
+        .order('game_date', { ascending: true })
+      if (weekSchedule?.length) {
+        const rangeStart = weekSchedule[0].game_date
+        const rangeEnd = weekSchedule[weekSchedule.length - 1].game_date
+        const { data: nflGames } = await supabase
+          .from('games')
+          .select('starts_at, home_team, away_team, sports!inner(key)')
+          .eq('sports.key', 'americanfootball_nfl')
+          .gte('starts_at', `${rangeStart}T00:00:00Z`)
+          .lte('starts_at', `${rangeEnd}T23:59:59Z`)
+
+        const kickoffByTeam = {}
+        for (const g of nflGames || []) {
+          const kt = new Date(g.starts_at).getTime()
+          for (const team of [g.home_team, g.away_team]) {
+            if (!team) continue
+            const cur = kickoffByTeam[team]
+            if (!cur || kt < cur) kickoffByTeam[team] = kt
+          }
+        }
+
+        const now = Date.now()
+
+        // Existing locked slots must remain in the same slot with the
+        // same player.
+        for (const s of existingSlots) {
+          const info = infoById[s.player_id]
+          if (!info?.team) continue
+          const ko = kickoffByTeam[info.team]
+          if (ko && ko <= now) {
+            const preserved = incomingSlots.find(
+              (n) => n.roster_slot === s.roster_slot && n.player_id === s.player_id
+            )
+            if (!preserved) {
+              return res.status(400).json({ error: `${info.name}'s game has started — cannot swap` })
+            }
+          }
+        }
+
+        // Reject newly-added players whose kickoff has passed.
+        for (const s of incomingSlots) {
+          const info = infoById[s.player_id]
+          if (!info?.team) continue
+          const ko = kickoffByTeam[info.team]
+          if (ko && ko <= now) {
+            const wasExisting = existingSlots.some((es) => es.player_id === s.player_id)
+            if (!wasExisting) {
+              return res.status(400).json({ error: `${info.name}'s game has already started` })
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    // Never let a lock-check error swallow a legitimate save. Log and
+    // continue — the salary cap + slot validation in saveDFSRoster
+    // stays authoritative for other failure modes.
+    if (err.status === 400) return res.status(400).json({ error: err.message })
+    // fall through to save — better to accept a save than to break the
+    // format on a transient DB blip while games aren't even running.
+  }
+
   const data = await saveDFSRoster(league_id, req.user.id, week, season, slots || [], salaryCap)
   res.json(data)
 })
