@@ -1381,87 +1381,72 @@ export default function CreateLeaguePage() {
           </div>
         </div>}
 
-        {/* Duration (not for fantasy/DFS/squares/bracket — bracket runs from picks lock to championship game) */}
+        {/* League Length. Styled to match the NFL single-stat contest picker
+            (Sacks / Ints / Tackles / Receptions / TD Pass) so pickem — the
+            only format still using this section — reads consistently with
+            those formats. Not shown for fantasy / DFS / contests / bracket /
+            survivor / squares — those have their own format-specific
+            settings blocks. */}
         {!['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'squares', 'bracket', 'td_pass', 'survivor'].includes(format) && <>
         <div>
-          <label className="block text-sm font-semibold text-text-secondary mb-2">Duration</label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {DURATION_OPTIONS.map((opt) => {
-              // Auto-relabel "Full Season" to "Remainder of Regular Season"
-              // once the sport's season is underway, so a mid-season league
-              // create reads accurately.
-              const label = opt.value === 'full_season' && isSeasonUnderway(sport)
-                ? 'Remainder of Regular Season'
-                : opt.label
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setDuration(opt.value)}
-                  className={`px-3 py-2.5 rounded-lg border text-xs sm:text-sm font-semibold transition-colors ${
-                    duration === opt.value
-                      ? 'bg-accent text-white border-accent'
-                      : 'border-text-primary/20 text-text-primary hover:border-text-primary/40'
-                  }`}
-                >
-                  {label}
-                </button>
-              )
-            })}
+          <label className="text-xs text-text-muted block mb-1">League Length</label>
+          <div className="flex gap-2 flex-wrap">
+            {[
+              {
+                value: 'full_season',
+                label: isSeasonUnderway(sport) ? 'Remainder of Regular Season' : 'Full Season',
+              },
+              { value: 'this_week', label: 'This Week Only' },
+              { value: 'custom_range', label: 'Select Date' },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setDuration(opt.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  duration === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
-        </div>
-
-        {/* Custom date range */}
-        {duration === 'custom_range' && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-text-secondary mb-2">Start Date</label>
-              <input
-                type="date"
-                value={startsAt}
-                onChange={(e) => setStartsAt(e.target.value)}
-                className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-text-secondary mb-2">End Date</label>
-              <div className="flex gap-2 mb-2">
-                <button
-                  type="button"
-                  onClick={() => setEndsAt('end_of_season')}
-                  className={`flex-1 py-2.5 rounded-lg text-xs font-semibold transition-colors ${
-                    endsAt === 'end_of_season' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
-                  }`}
-                >
-                  {isSeasonUnderway(sport) ? 'Remainder of Regular Season' : 'Full Season'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEndsAt('')}
-                  className={`flex-1 py-2.5 rounded-lg text-xs font-semibold transition-colors ${
-                    endsAt !== 'end_of_season' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
-                  }`}
-                >
-                  Custom Date
-                </button>
+          {duration === 'custom_range' && (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-text-muted block mb-1">Starts</label>
+                <input
+                  type="date"
+                  value={startsAt}
+                  onChange={(e) => setStartsAt(e.target.value)}
+                  className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
+                />
               </div>
-              {endsAt !== 'end_of_season' && (
-                <>
-                  <input
-                    type="date"
-                    value={endsAt}
-                    max={sport && sport !== 'all' ? getSeasonEndDate(sport) : undefined}
-                    onChange={(e) => setEndsAt(e.target.value)}
-                    className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
-                  />
-                  {sport && sport !== 'all' && (
-                    <p className="text-xs text-text-muted mt-1">Capped at the {sport.split('_').pop().toUpperCase()} regular-season end ({new Date(getSeasonEndDate(sport)).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}).</p>
-                  )}
-                </>
-              )}
+              <div>
+                <label className="text-[10px] text-text-muted block mb-1">Ends</label>
+                <input
+                  type="date"
+                  value={endsAt === 'end_of_season' ? '' : endsAt}
+                  min={startsAt || undefined}
+                  max={sport && sport !== 'all' ? getSeasonEndDate(sport) : undefined}
+                  onChange={(e) => setEndsAt(e.target.value)}
+                  className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
+                />
+              </div>
             </div>
-          </div>
-        )}
+          )}
+          <p className="text-xs text-text-muted mt-1.5">
+            {duration === 'full_season'
+              ? (sport && sport !== 'all'
+                  ? `Runs through end of ${sport.split('_').pop().toUpperCase()} regular season.`
+                  : 'Runs through the end of the current season.')
+              : duration === 'this_week'
+                ? 'One week only.'
+                : duration === 'custom_range'
+                  ? 'Pick the dates your league starts and wraps up.'
+                  : 'Pick how long the league runs.'}
+          </p>
+        </div>
 
         {/* Start date for non-custom durations (this_week, full_season, playoffs_only) */}
         {duration && duration !== 'custom_range' && (
