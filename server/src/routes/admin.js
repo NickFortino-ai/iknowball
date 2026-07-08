@@ -1940,7 +1940,17 @@ router.post('/season-dates', requireAuth, requireAdmin, async (req, res) => {
   // swept up by stale season_dates rows.
   const clampTarget = playoff_ends_at || regular_season_ends_at
   const isPlayoffClamp = !!playoff_ends_at
-  const EXCLUDED_FORMATS = ['fantasy', 'squares', 'bracket', 'survivor']
+  const EXCLUDED_FORMATS = ['squares', 'bracket', 'survivor']
+  // Formats that only run through the regular season. Even when the admin
+  // sets playoff_ends_at, these should stay clamped to regular_season_ends_at
+  // — they prorate winner bonuses over regular-season length and don't score
+  // playoff games in any coherent way. Kept in sync with the same set in
+  // completeLeagues.js. Fantasy is handled separately (salary cap only).
+  const REGULAR_SEASON_ONLY_FORMATS = new Set([
+    'sacks', 'ints', 'tackles', 'receptions', 'td_pass',
+    'nba_dfs', 'mlb_dfs', 'wnba_dfs',
+    'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point',
+  ])
   let leagueQuery = supabase
     .from('leagues')
     .select('id, format, ends_at')
@@ -1957,7 +1967,9 @@ router.post('/season-dates', requireAuth, requireAdmin, async (req, res) => {
     let clamped = 0
     for (const league of leagues) {
       if (EXCLUDED_FORMATS.includes(league.format)) continue
-      // Traditional fantasy with playoffs — skip
+      let leagueClampTarget = clampTarget
+      // Traditional fantasy with playoffs — skip. Salary cap fantasy is a
+      // regular-season contest — clamp to regular_season_ends_at.
       if (league.format === 'fantasy') {
         const { data: settings } = await supabase
           .from('fantasy_settings')
@@ -1965,14 +1977,51 @@ router.post('/season-dates', requireAuth, requireAdmin, async (req, res) => {
           .eq('league_id', league.id)
           .single()
         if (settings?.format !== 'salary_cap') continue
+        leagueClampTarget = regular_season_ends_at
+      } else if (REGULAR_SEASON_ONLY_FORMATS.has(league.format)) {
+        leagueClampTarget = regular_season_ends_at
       }
       await supabase
         .from('leagues')
-        .update({ ends_at: clampTarget, updated_at: new Date().toISOString() })
+        .update({ ends_at: leagueClampTarget, updated_at: new Date().toISOString() })
         .eq('id', league.id)
       clamped++
     }
     logger.info({ sportKey: sport_key, seasonYear: season_year, clamped, total: leagues.length, clampTarget, mode: playoff_ends_at ? 'playoff' : 'regular' }, 'Clamped full_season league end dates')
+  }
+
+  // Coverage gap: leagues sitting between regular_season_ends_at and
+  // playoff_ends_at slip through the main clamp filter (ends_at < clampTarget
+  // when clampTarget = playoff_ends_at), but regular-season-only leagues in
+  // that band should still be snapped to regular_season_ends_at.
+  if (isPlayoffClamp) {
+    const gapFormats = ['fantasy', ...REGULAR_SEASON_ONLY_FORMATS]
+    const { data: gapLeagues } = await supabase
+      .from('leagues')
+      .select('id, format')
+      .eq('sport', sport_key)
+      .in('format', gapFormats)
+      .neq('status', 'completed')
+      .gt('ends_at', regular_season_ends_at)
+      .lte('ends_at', playoff_ends_at)
+      .lte('starts_at', regular_season_ends_at)
+    if (gapLeagues?.length) {
+      for (const league of gapLeagues) {
+        if (league.format === 'fantasy') {
+          const { data: settings } = await supabase
+            .from('fantasy_settings')
+            .select('format')
+            .eq('league_id', league.id)
+            .single()
+          if (settings?.format !== 'salary_cap') continue
+        }
+        await supabase
+          .from('leagues')
+          .update({ ends_at: regular_season_ends_at, updated_at: new Date().toISOString() })
+          .eq('id', league.id)
+      }
+      logger.info({ sportKey: sport_key, seasonYear: season_year, count: gapLeagues.length }, 'Clamped gap-band regular-season-only leagues to regular season end')
+    }
   }
 
   // Background-trigger completeLeagues so freshly-clamped leagues finalize
