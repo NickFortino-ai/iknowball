@@ -218,19 +218,43 @@ router.get('/open', requireAuth, async (req, res) => {
   // game has passed, but joining is gated by joins_locked_at + ends_at, not
   // by status. Showing both 'open' and 'active' lets late joiners discover
   // leagues that are already running but haven't locked picks yet.
-  // Also hide leagues whose starts_at is already in the past — even if the
-  // commissioner left a grace window via joins_locked_at, a league that has
-  // already started reads as stale on the "Join an Open League" rail.
-  const { data: leagues, error } = await supabase
+  //
+  // For most formats (fantasy / survivor / pick'em / bracket / squares) we
+  // ALSO hide leagues whose starts_at has passed — even if the commissioner
+  // left a grace window via joins_locked_at, a league that already started
+  // reads as stale on the "Join an Open League" rail.
+  //
+  // Exception: DFS-style daily contests (nba_dfs / wnba_dfs / mlb_dfs /
+  // hr_derby / three_point / wnba_three_point / strikeouts / sacks / ints /
+  // tackles / receptions / td_pass). Their starts_at marks the scoring
+  // window opening (usually early morning), while joins_locked_at marks
+  // the actual first-game kickoff (early evening). Users legitimately
+  // join between those two times — using starts_at as an exclusion gate
+  // would hide "Trey Day"-style contests before their games have even
+  // begun. Fetch the wider set first, then filter these post-query by
+  // joins_locked_at + ends_at only.
+  const DFS_STYLE_FORMATS = new Set([
+    'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'three_point',
+    'wnba_three_point', 'strikeouts', 'sacks', 'ints', 'tackles',
+    'receptions', 'td_pass',
+  ])
+  const { data: rawLeagues, error } = await supabase
     .from('leagues')
     .select('id, name, format, sport, status, max_members, commissioner_id, starts_at, ends_at, joins_locked_at, duration, settings, backdrop_image, backdrop_y, created_at, users!leagues_commissioner_id_fkey(display_name, username)')
     .eq('visibility', 'open')
     .in('status', ['open', 'active'])
-    .or(`starts_at.is.null,starts_at.gt.${now}`)
     .or(`joins_locked_at.is.null,joins_locked_at.gt.${now}`)
     .or(`ends_at.is.null,ends_at.gt.${now}`)
     .order('created_at', { ascending: false })
-    .limit(50)
+    .limit(100)
+
+  const leagues = (rawLeagues || []).filter((l) => {
+    // Non-DFS formats: keep the starts_at-in-future guard.
+    if (!DFS_STYLE_FORMATS.has(l.format)) {
+      if (l.starts_at && l.starts_at <= now) return false
+    }
+    return true
+  }).slice(0, 50)
 
   if (error) throw error
 
