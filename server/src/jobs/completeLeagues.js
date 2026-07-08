@@ -1016,6 +1016,13 @@ export async function completeLeagues() {
 
   if (seasonDates?.length) {
     const CLAMP_EXCLUDED = ['squares', 'bracket', 'survivor']
+    // NFL single-stat contests score only regular-season weeks (weeksPlayed/18
+    // proration). Clamp them to regular_season_ends_at even when the admin
+    // sets playoff_ends_at, otherwise ends_at drifts into the playoff window
+    // and the completion check waits on games these formats never score.
+    const NFL_REGULAR_SEASON_ONLY_FORMATS = new Set([
+      'sacks', 'ints', 'tackles', 'receptions', 'td_pass',
+    ])
     for (const sd of seasonDates) {
       // See admin.js POST /season-dates for the design notes — same logic.
       // playoff_ends_at SET → sweep all formats. NOT set → only full_season.
@@ -1037,8 +1044,12 @@ export async function completeLeagues() {
       if (!overdue?.length) continue
       for (const league of overdue) {
         if (CLAMP_EXCLUDED.includes(league.format)) continue
-        // Traditional fantasy with playoffs — skip
+        // Formats that only run through the regular season — dfs_weekly_results
+        // and *_picks tables never score playoff games, so pushing ends_at into
+        // the playoff window would leave them sitting unfinished.
+        const isNflRegularSeasonOnly = NFL_REGULAR_SEASON_ONLY_FORMATS.has(league.format)
         let leagueClampTarget = clampTarget
+        // Traditional fantasy with playoffs — skip
         if (league.format === 'fantasy') {
           const { data: settings } = await supabase
             .from('fantasy_settings')
@@ -1046,10 +1057,8 @@ export async function completeLeagues() {
             .eq('league_id', league.id)
             .single()
           if (settings?.format !== 'salary_cap') continue
-          // Salary cap is a regular-season contest. Even when the admin has
-          // set playoff_ends_at, keep salary cap clamped to regular season end
-          // so it doesn't sit unfinished waiting on NFL playoff games that
-          // dfs_weekly_results never scores.
+          leagueClampTarget = sd.regular_season_ends_at
+        } else if (isNflRegularSeasonOnly) {
           leagueClampTarget = sd.regular_season_ends_at
         }
         await supabase
@@ -1062,32 +1071,35 @@ export async function completeLeagues() {
 
     // Coverage gap safety net: the main clamp above uses `ends_at > clampTarget`
     // to identify overdue leagues, where clampTarget = playoff_ends_at when
-    // playoffs are configured. Salary cap fantasy leagues sitting between
+    // playoffs are configured. Regular-season-only leagues sitting between
     // regular_season_ends_at and playoff_ends_at slip through that filter,
     // but should still be clamped to regular season end.
     for (const sd of seasonDates) {
       if (!sd.regular_season_ends_at) continue
-      const { data: overdueSalaryCap } = await supabase
+      const gapFormats = ['fantasy', ...NFL_REGULAR_SEASON_ONLY_FORMATS]
+      const { data: overdueGap } = await supabase
         .from('leagues')
         .select('id, format')
         .eq('sport', sd.sport_key)
-        .eq('format', 'fantasy')
+        .in('format', gapFormats)
         .neq('status', 'completed')
         .gt('ends_at', sd.regular_season_ends_at)
         .lte('starts_at', sd.regular_season_ends_at)
-      if (!overdueSalaryCap?.length) continue
-      for (const league of overdueSalaryCap) {
-        const { data: settings } = await supabase
-          .from('fantasy_settings')
-          .select('format')
-          .eq('league_id', league.id)
-          .single()
-        if (settings?.format !== 'salary_cap') continue
+      if (!overdueGap?.length) continue
+      for (const league of overdueGap) {
+        if (league.format === 'fantasy') {
+          const { data: settings } = await supabase
+            .from('fantasy_settings')
+            .select('format')
+            .eq('league_id', league.id)
+            .single()
+          if (settings?.format !== 'salary_cap') continue
+        }
         await supabase
           .from('leagues')
           .update({ ends_at: sd.regular_season_ends_at, updated_at: new Date().toISOString() })
           .eq('id', league.id)
-        logger.info({ leagueId: league.id, sportKey: sd.sport_key, endsAt: sd.regular_season_ends_at }, 'Clamped salary cap end date to regular season end (gap sweep)')
+        logger.info({ leagueId: league.id, sportKey: sd.sport_key, endsAt: sd.regular_season_ends_at, format: league.format }, 'Clamped regular-season-only league end date (gap sweep)')
       }
     }
   }
