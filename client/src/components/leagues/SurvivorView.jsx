@@ -54,11 +54,13 @@ export default function SurvivorView({ league }) {
   // Optimistic removal: the game_id of a pick the user just toggled off, so
   // the highlight clears immediately before the board refetch lands.
   const [localRemovedGameId, setLocalRemovedGameId] = useState(null)
-  // Explicit opt-in to pre-pick tomorrow's game. When false and the user
-  // has already settled today's pick, we show a completion state instead of
-  // silently auto-advancing to tomorrow's pick form (which felt premature —
-  // it's still today from the user's perspective). When true, the pick form
-  // renders using board.pick_week (which the server already advanced).
+  // Explicit opt-in to pre-pick the next period. When false and the user
+  // has already settled the current-period pick, we show a completion
+  // state instead of silently auto-advancing to the next period's pick
+  // form (which felt premature — from the user's perspective the current
+  // day/week hasn't ended yet). When true, the pick form renders using
+  // board.pick_week (which the server already advanced). Applies to both
+  // daily and weekly frequencies; only the labels differ.
   const [showPreNextDay, setShowPreNextDay] = useState(false)
   // Collapsed sport sub-sections for All-Sports survivor. Stored as
   // "${dateKey}|${sportKey}" so collapsing one sport on Mar 5 doesn't
@@ -268,15 +270,16 @@ export default function SurvivorView({ league }) {
         </div>
       )}
 
-      {/* Today's-pick completion state. Shown when the user has settled their
-          pick for the actual current day AND the server has auto-advanced
-          pickWeek to tomorrow AND the user hasn't opted into pre-picking yet.
-          Replaces the pick form until the user either clicks the pre-pick
-          button or the calendar day naturally advances. */}
+      {/* Current-period completion state. Shown when the user has settled
+          their pick for the actual current period (day or week) AND the
+          server has auto-advanced pickWeek to the next period AND the
+          user hasn't opted into pre-picking yet. Replaces the pick form
+          until the user either clicks the pre-pick button or the period
+          naturally advances. */}
       {showTodayCompletion && !leagueCompleted && userIsAlive && (
         <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center relative z-10">
           <p className="text-sm text-text-primary font-semibold mb-1">
-            You've picked today ✓
+            You've picked {isDaily ? 'today' : 'this week'} ✓
           </p>
           <p className="text-xs text-text-secondary mb-3">
             {todayPick?.team_name}
@@ -288,7 +291,7 @@ export default function SurvivorView({ league }) {
             onClick={() => { setShowPreNextDay(true); setShowPickForm(true) }}
             className="px-6 py-2 rounded-xl font-display text-sm bg-accent/10 backdrop-blur-sm text-text-primary hover:bg-accent/20 border border-accent transition-colors"
           >
-            Pre-pick tomorrow →
+            Pre-pick {isDaily ? 'tomorrow' : 'next week'} →
           </button>
         </div>
       )}
