@@ -1115,7 +1115,13 @@ export default function CreateLeaguePage() {
   }
 
   const autoSportFormats = ['nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'td_pass']
-  const noDurationFormats = ['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'squares', 'bracket', 'td_pass', 'survivor']
+  // Formats whose length is governed by seasonType / cadence rather than
+  // the shared "Duration" pill (This Week / Custom Range / Full Season).
+  // Must stay in sync with the render gate below at line ~1379 — mismatched
+  // lists were the tackles + receptions bug: duration UI hidden, submit
+  // still demanded a duration, user got "Pick a duration above" with no
+  // way to comply.
+  const noDurationFormats = ['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'squares', 'bracket', 'td_pass', 'survivor']
   const canSubmit = name && format && (sport || autoSportFormats.includes(format)) && (noDurationFormats.includes(format) || duration)
     && (format !== 'bracket' || (templateId && locksAt))
     && (format !== 'squares' || gameId)
