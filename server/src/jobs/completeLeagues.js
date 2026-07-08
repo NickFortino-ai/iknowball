@@ -1016,12 +1016,20 @@ export async function completeLeagues() {
 
   if (seasonDates?.length) {
     const CLAMP_EXCLUDED = ['squares', 'bracket', 'survivor']
-    // NFL single-stat contests score only regular-season weeks (weeksPlayed/18
-    // proration). Clamp them to regular_season_ends_at even when the admin
-    // sets playoff_ends_at, otherwise ends_at drifts into the playoff window
-    // and the completion check waits on games these formats never score.
-    const NFL_REGULAR_SEASON_ONLY_FORMATS = new Set([
+    // Formats that only apply to the regular season — every one of these
+    // prorates its winner bonus over regular-season length (NFL 18 wks, NBA/MLB
+    // 180 nights, WNBA 120 nights). Clamp them to regular_season_ends_at even
+    // when admin sets playoff_ends_at, otherwise ends_at drifts into the
+    // playoff window and either the completion check waits on games these
+    // formats don't score, or (for the DFS scorers that do run any date)
+    // playoff nights extend the contest beyond its intended shape.
+    const REGULAR_SEASON_ONLY_FORMATS = new Set([
+      // NFL single-stat contests
       'sacks', 'ints', 'tackles', 'receptions', 'td_pass',
+      // Sport DFS
+      'nba_dfs', 'mlb_dfs', 'wnba_dfs',
+      // MLB / NBA / WNBA prop-of-the-night full-season contests
+      'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point',
     ])
     for (const sd of seasonDates) {
       // See admin.js POST /season-dates for the design notes — same logic.
@@ -1047,7 +1055,7 @@ export async function completeLeagues() {
         // Formats that only run through the regular season — dfs_weekly_results
         // and *_picks tables never score playoff games, so pushing ends_at into
         // the playoff window would leave them sitting unfinished.
-        const isNflRegularSeasonOnly = NFL_REGULAR_SEASON_ONLY_FORMATS.has(league.format)
+        const isNflRegularSeasonOnly = REGULAR_SEASON_ONLY_FORMATS.has(league.format)
         let leagueClampTarget = clampTarget
         // Traditional fantasy with playoffs — skip
         if (league.format === 'fantasy') {
@@ -1076,7 +1084,7 @@ export async function completeLeagues() {
     // but should still be clamped to regular season end.
     for (const sd of seasonDates) {
       if (!sd.regular_season_ends_at) continue
-      const gapFormats = ['fantasy', ...NFL_REGULAR_SEASON_ONLY_FORMATS]
+      const gapFormats = ['fantasy', ...REGULAR_SEASON_ONLY_FORMATS]
       const { data: overdueGap } = await supabase
         .from('leagues')
         .select('id, format')
