@@ -1769,7 +1769,12 @@ router.post('/:id/fantasy/trades/:tradeId/approve', requireAuth, async (req, res
     const result = await approveTrade(req.params.tradeId, req.user.id)
     res.json(result)
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message })
+    res.status(err.status || 500).json({
+      error: err.message,
+      roster_over_cap: err.roster_over_cap,
+      target_user_name: err.target_user_name,
+      drops_needed: err.drops_needed,
+    })
   }
 })
 

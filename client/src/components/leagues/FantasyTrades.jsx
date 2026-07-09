@@ -597,6 +597,10 @@ export default function FantasyTrades({ league, fantasySettings }) {
   const [counterTrade, setCounterTrade] = useState(null)
   const [dropModal, setDropModal] = useState(null) // { tradeId, dropsNeeded }
   const [vetoModal, setVetoModal] = useState(null) // { tradeId }
+  // Persistent modal (not a toast) shown to the commissioner when approve
+  // fails because one side of the trade would go over the roster cap. The
+  // affected user needs to drop players before the commish can retry.
+  const [rosterOverCapModal, setRosterOverCapModal] = useState(null) // { targetUserName, dropsNeeded }
   // Player detail modal opened from a tap on a transaction-row headshot.
   // ctx mirrors PlayerDetailModal's playerContext values — for now we use
   // 'free_agent' on drop transactions (showing the Add button) and null
@@ -628,6 +632,12 @@ export default function FantasyTrades({ league, fantasySettings }) {
       const body = err?.response || err
       if (body?.requires_drop && action === 'accept') {
         setDropModal({ tradeId, dropsNeeded: body.drops_needed || 1 })
+      } else if (body?.roster_over_cap && action === 'approve') {
+        // Persistent modal, not a toast — commissioner needs to read + act.
+        setRosterOverCapModal({
+          targetUserName: body.target_user_name || 'That manager',
+          dropsNeeded: body.drops_needed || 1,
+        })
       } else {
         toast(err.message || `Failed to ${action} trade`, 'error')
       }
@@ -757,6 +767,14 @@ export default function FantasyTrades({ league, fantasySettings }) {
         />
       )}
 
+      {rosterOverCapModal && (
+        <RosterOverCapModal
+          targetUserName={rosterOverCapModal.targetUserName}
+          dropsNeeded={rosterOverCapModal.dropsNeeded}
+          onClose={() => setRosterOverCapModal(null)}
+        />
+      )}
+
       {detailPlayer && (
         <PlayerDetailModal
           leagueId={league.id}
@@ -818,6 +836,47 @@ function VetoTradeModal({ onConfirm, onCancel, isPending }) {
             className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-incorrect text-white disabled:opacity-50"
           >{isPending ? 'Vetoing…' : 'Veto Trade'}</button>
         </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
+// Persistent modal (not a toast) shown to the commissioner when approve
+// fails because one side of the trade would go over the roster cap. Names
+// the affected user and how many players they need to drop so the commish
+// can pass the message along.
+function RosterOverCapModal({ targetUserName, dropsNeeded, onClose }) {
+  return createPortal(
+    <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-bg-primary border border-text-primary/20 rounded-2xl w-full max-w-md p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 rounded-full bg-yellow-500/15 border border-yellow-500/40 flex items-center justify-center shrink-0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </div>
+          <h3 className="font-display text-lg">Trade can't be approved yet</h3>
+        </div>
+        <div className="rounded-xl border border-text-primary/20 bg-text-primary/5 p-3">
+          <p className="text-sm text-text-primary leading-relaxed">
+            <span className="font-semibold">{targetUserName}</span> is over the roster cap by <span className="font-semibold">{dropsNeeded}</span> player{dropsNeeded > 1 ? 's' : ''}.
+          </p>
+          <p className="text-sm text-text-primary/80 leading-relaxed mt-2">
+            Their roster changed after this trade was set up. Ask them to drop {dropsNeeded === 1 ? 'a player' : `${dropsNeeded} players`} from the Players tab, then come back and approve.
+          </p>
+          <p className="text-xs text-text-muted leading-relaxed mt-3">
+            Alternatively, veto this trade if you don't want to wait for the drop.
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          className="w-full py-2.5 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+        >
+          OK, got it
+        </button>
       </div>
     </div>,
     document.body

@@ -5420,10 +5420,13 @@ export async function proposeTrade(leagueId, proposerUserId, receiverUserId, pro
     throw err
   }
 
-  // Check trade deadline
+  // Check trade deadline + pull roster_slots for the cap check below.
+  // The cap check via computeRosterCap reads settings.roster_slots — omitting
+  // it here silently defaults to rosterCap=16, letting a real 15-slot fantasy
+  // roster propose a 1-for-2 without a drop prompt.
   const { data: settings } = await supabase
     .from('fantasy_settings')
-    .select('trade_deadline')
+    .select('trade_deadline, roster_slots')
     .eq('league_id', leagueId)
     .maybeSingle()
   if (settings?.trade_deadline) {
@@ -5788,6 +5791,9 @@ async function _executeTrade(tradeId, trade, actorId, options = {}) {
         `${name}'s roster changed after this trade was set up — they need to drop ${overBy} more player${overBy > 1 ? 's' : ''} before you can approve. Ask them to drop from their Players tab, or veto this trade.`
       )
       err.status = 400
+      err.roster_over_cap = true
+      err.target_user_name = name
+      err.drops_needed = overBy
       throw err
     }
   }
