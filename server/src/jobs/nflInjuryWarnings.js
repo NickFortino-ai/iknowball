@@ -33,6 +33,15 @@ export async function sendNflInjuryWarnings() {
     logger.debug('No Out/IR NFL players to warn about')
     return
   }
+
+  // Build team → earliest kickoff (ms) map for this week. Once a team's
+  // game has started, a "swap him out" warning is either useless (user
+  // missed the pre-game window) or confusing (player got hurt in-game,
+  // was healthy at kickoff). Skip those. On bye weeks or when schedule
+  // data is missing, kickoffByTeam is null and we fall through to today's
+  // behavior (warn regardless).
+  const kickoffByTeam = await buildNflKickoffByTeam(season, week)
+  const nowMs = Date.now()
   const outIds = outPlayers.map((p) => p.id)
   const playerById = {}
   for (const p of outPlayers) playerById[p.id] = p
@@ -104,13 +113,24 @@ export async function sendNflInjuryWarnings() {
 
   // 6. Send warnings
   let sent = 0
+  let skippedPostKickoff = 0
   for (let i = 0; i < warnings.length; i++) {
     const w = warnings[i]
     const key = dedupKeys[i]
     if (sentSet.has(key)) continue
-    sentSet.add(key) // prevent dupes within this batch
 
     const player = playerById[w.player_id]
+    // Skip if the player's team has already kicked off — see comment above
+    // buildNflKickoffByTeam call.
+    if (kickoffByTeam && player?.team) {
+      const teamKickoff = kickoffByTeam[player.team]
+      if (teamKickoff != null && teamKickoff <= nowMs) {
+        skippedPostKickoff++
+        continue
+      }
+    }
+    sentSet.add(key) // prevent dupes within this batch
+
     const status = player?.injury_status || 'Out'
     const body = `${player?.full_name || 'A player'} (${status}) is on your ${w.league_name} starting lineup. Swap him out before kickoff!`
     try {
@@ -128,5 +148,39 @@ export async function sendNflInjuryWarnings() {
     }
   }
 
-  logger.info({ candidates: warnings.length, sent, week, season }, 'NFL injury warnings sent')
+  logger.info({ candidates: warnings.length, sent, skippedPostKickoff, week, season }, 'NFL injury warnings sent')
+}
+
+// Earliest kickoff time per team for a given NFL week. Returns null if the
+// nfl_schedule / games tables don't have data for the week (bye, pre-sync,
+// offseason edge cases), signaling callers to fall through to unfiltered
+// behavior.
+async function buildNflKickoffByTeam(season, week) {
+  const { data: schedule } = await supabase
+    .from('nfl_schedule')
+    .select('game_date')
+    .eq('season', season)
+    .eq('week', week)
+    .not('game_date', 'is', null)
+    .order('game_date', { ascending: true })
+  if (!schedule?.length) return null
+  const rangeStart = schedule[0].game_date
+  const rangeEnd = schedule[schedule.length - 1].game_date
+  const { data: games } = await supabase
+    .from('games')
+    .select('starts_at, home_team, away_team, sports!inner(key)')
+    .eq('sports.key', 'americanfootball_nfl')
+    .gte('starts_at', `${rangeStart}T00:00:00Z`)
+    .lte('starts_at', `${rangeEnd}T23:59:59Z`)
+  if (!games?.length) return null
+  const map = {}
+  for (const g of games) {
+    const kt = new Date(g.starts_at).getTime()
+    for (const team of [g.home_team, g.away_team]) {
+      if (!team) continue
+      const cur = map[team]
+      if (!cur || kt < cur) map[team] = kt
+    }
+  }
+  return map
 }

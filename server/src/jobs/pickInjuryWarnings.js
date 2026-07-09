@@ -308,14 +308,14 @@ async function runWeeklyNflFormat({ table, playerKey, label, sportKey, season, w
   // Find Out NFL players
   const { data: outPlayers } = await supabase
     .from('nfl_players')
-    .select('id, full_name, injury_status')
+    .select('id, full_name, team, injury_status')
     .in('injury_status', ['Out', 'IR'])
     .not('team', 'is', null)
 
   if (!outPlayers?.length) return 0
   const outIds = outPlayers.map((p) => p.id)
-  const nameById = {}
-  for (const p of outPlayers) nameById[p.id] = { name: p.full_name, status: p.injury_status }
+  const infoById = {}
+  for (const p of outPlayers) infoById[p.id] = { name: p.full_name, status: p.injury_status, team: p.team }
 
   const { data: picks } = await supabase
     .from(table)
@@ -326,6 +326,12 @@ async function runWeeklyNflFormat({ table, playerKey, label, sportKey, season, w
 
   if (!picks?.length) return 0
 
+  // Team → earliest kickoff (ms) for this week — skip warnings for players
+  // whose team's game has already started. Same rationale as
+  // nflInjuryWarnings.js.
+  const kickoffByTeam = await buildNflKickoffByTeam(season, week)
+  const nowMs = Date.now()
+
   let sent = 0
   for (const p of picks) {
     const playerId = p[playerKey]
@@ -333,9 +339,14 @@ async function runWeeklyNflFormat({ table, playerKey, label, sportKey, season, w
     const dedupPlayerKey = `nfl:${playerId}`
     const dedupKey = `${p.user_id}|${dedupPlayerKey}|${p.league_id}|${periodKey}`
     if (sentSet.has(dedupKey)) continue
+
+    const meta = infoById[playerId] || { name: 'A player', status: 'Out', team: null }
+    if (kickoffByTeam && meta.team) {
+      const teamKickoff = kickoffByTeam[meta.team]
+      if (teamKickoff != null && teamKickoff <= nowMs) continue
+    }
     sentSet.add(dedupKey)
 
-    const meta = nameById[playerId] || { name: 'A player', status: 'Out' }
     const leagueName = p.leagues?.name || `your ${label}`
     const body = `${meta.name} (${meta.status}) is on your ${leagueName} pick this week. Swap ${pron.object} out before kickoff.`
     try {
@@ -351,6 +362,37 @@ async function runWeeklyNflFormat({ table, playerKey, label, sportKey, season, w
     }
   }
   return sent
+}
+
+// Kept in sync with the identical helper in nflInjuryWarnings.js.
+async function buildNflKickoffByTeam(season, week) {
+  const { data: schedule } = await supabase
+    .from('nfl_schedule')
+    .select('game_date')
+    .eq('season', season)
+    .eq('week', week)
+    .not('game_date', 'is', null)
+    .order('game_date', { ascending: true })
+  if (!schedule?.length) return null
+  const rangeStart = schedule[0].game_date
+  const rangeEnd = schedule[schedule.length - 1].game_date
+  const { data: games } = await supabase
+    .from('games')
+    .select('starts_at, home_team, away_team, sports!inner(key)')
+    .eq('sports.key', 'americanfootball_nfl')
+    .gte('starts_at', `${rangeStart}T00:00:00Z`)
+    .lte('starts_at', `${rangeEnd}T23:59:59Z`)
+  if (!games?.length) return null
+  const map = {}
+  for (const g of games) {
+    const kt = new Date(g.starts_at).getTime()
+    for (const team of [g.home_team, g.away_team]) {
+      if (!team) continue
+      const cur = map[team]
+      if (!cur || kt < cur) map[team] = kt
+    }
+  }
+  return map
 }
 
 /**
