@@ -2,6 +2,8 @@ import { useState } from 'react'
 import Avatar from '../ui/Avatar'
 import ForceLineupModal from './ForceLineupModal'
 import CommissionerAddDropModal from './CommissionerAddDropModal'
+import ReportProblemSection from './ReportProblemSection'
+import { useMyReports } from '../../hooks/useLeagues'
 
 /**
  * Full-tab Commissioner Tools page. Rendered when the "Commish" tab is
@@ -16,11 +18,16 @@ import CommissionerAddDropModal from './CommissionerAddDropModal'
  *  - Transfer team ownership (TODO)
  */
 export default function CommissionerToolsPage({ league }) {
-  const [openTool, setOpenTool] = useState(null) // 'force_lineup' | 'add_drop' | null
+  const [openTool, setOpenTool] = useState(null) // 'force_lineup' | 'add_drop' | 'report_problem' | null
   const [forceLineupTarget, setForceLineupTarget] = useState(null) // { userId, name } | null
   const [addDropTarget, setAddDropTarget] = useState(null) // { userId, name } | null
 
   const members = (league.members || []).filter((m) => m.user_id !== league.commissioner_id)
+
+  // Surface how many admin replies are waiting on the tool card so the
+  // commissioner sees the signal without having to enter the tool.
+  const { data: myReports } = useMyReports(league.id)
+  const unreadReplies = (myReports || []).filter((r) => r.status === 'replied').length
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-6">
@@ -31,7 +38,23 @@ export default function CommissionerToolsPage({ league }) {
         </p>
       </div>
 
-      {openTool === 'force_lineup' || openTool === 'add_drop' ? (
+      {openTool === 'report_problem' ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 px-1">
+            <button
+              onClick={() => setOpenTool(null)}
+              className="text-text-muted hover:text-text-primary p-1 -ml-1"
+              aria-label="Back"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+            <span className="text-xs uppercase text-text-muted tracking-wider">Report a Problem to admin</span>
+          </div>
+          <ReportProblemSection league={league} embedded={true} onEmbeddedBack={() => setOpenTool(null)} />
+        </div>
+      ) : openTool === 'force_lineup' || openTool === 'add_drop' ? (
         <ManagerPicker
           members={members}
           promptText={openTool === 'force_lineup' ? 'Pick a manager to force' : 'Pick a manager to add/drop for'}
@@ -73,6 +96,13 @@ export default function CommissionerToolsPage({ league }) {
             title="Transfer team ownership"
             description="Hand a team over to a new user. Coming soon."
             disabled
+          />
+          <ToolCard
+            icon="📨"
+            title="Report a Problem to admin"
+            description="Message the IKB admin about anything wrong with this league. They'll reply here."
+            badge={unreadReplies > 0 ? `${unreadReplies} new` : null}
+            onClick={() => setOpenTool('report_problem')}
           />
         </div>
       )}
@@ -142,7 +172,7 @@ function ManagerPicker({ members, promptText, onBack, onPick }) {
   )
 }
 
-function ToolCard({ icon, title, description, onClick, disabled }) {
+function ToolCard({ icon, title, description, onClick, disabled, badge }) {
   return (
     <button
       onClick={disabled ? undefined : onClick}
@@ -155,7 +185,14 @@ function ToolCard({ icon, title, description, onClick, disabled }) {
     >
       <span className="text-2xl leading-none pt-0.5">{icon}</span>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold text-text-primary">{title}</div>
+        <div className="text-sm font-semibold text-text-primary flex items-center gap-2">
+          <span>{title}</span>
+          {badge && (
+            <span className="px-1.5 py-0.5 rounded-full bg-accent text-white text-[10px] font-bold">
+              {badge}
+            </span>
+          )}
+        </div>
         <div className="text-xs text-text-muted mt-0.5">{description}</div>
       </div>
       {!disabled && <span className="text-text-muted text-lg leading-none">›</span>}

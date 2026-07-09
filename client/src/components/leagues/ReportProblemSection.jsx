@@ -16,8 +16,10 @@ const STATUS_COPY = {
  * commissioner sees prior threads, the current back-and-forth, and can
  * kick off new reports without navigating away.
  */
-export default function ReportProblemSection({ league }) {
-  const [expanded, setExpanded] = useState(false)
+export default function ReportProblemSection({ league, embedded = false, onEmbeddedBack }) {
+  // embedded=true skips the standalone collapsible header — used when this
+  // panel is the primary content of a page (e.g. the Commish tab).
+  const [expanded, setExpanded] = useState(embedded)
   const [openThreadId, setOpenThreadId] = useState(null)
   const [composing, setComposing] = useState(false)
   const [newMessage, setNewMessage] = useState('')
@@ -62,9 +64,42 @@ export default function ReportProblemSection({ league }) {
     setComposing(false)
   }
 
+  const body = (
+    <div className={embedded ? 'rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden' : 'mt-3 rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden'}>
+      {activeReport ? (
+        <ThreadPane
+          report={activeReport}
+          replyMessage={replyMessage}
+          setReplyMessage={setReplyMessage}
+          onSend={handleReply}
+          onBack={() => setOpenThreadId(null)}
+          isPending={reply.isPending}
+        />
+      ) : composing ? (
+        <ComposePane
+          league={league}
+          message={newMessage}
+          setMessage={setNewMessage}
+          onSend={handleCreate}
+          onCancel={() => { setComposing(false); setNewMessage('') }}
+          isPending={createReport.isPending}
+        />
+      ) : (
+        <ListPane
+          reports={reports || []}
+          onOpen={(id) => setOpenThreadId(id)}
+          onNew={() => setComposing(true)}
+          onCollapse={embedded ? onEmbeddedBack : collapse}
+          collapseLabel={embedded ? 'Back' : 'Close'}
+        />
+      )}
+    </div>
+  )
+
+  if (embedded) return body
+
   return (
     <div className="mt-6 pt-4 border-t border-border">
-      {/* Collapsed header — always visible */}
       <button
         onClick={() => setExpanded((v) => !v)}
         className="w-full py-2.5 rounded-xl bg-text-primary/5 border border-text-primary/20 text-text-primary hover:bg-text-primary/10 transition-colors flex items-center justify-between px-3"
@@ -101,42 +136,12 @@ export default function ReportProblemSection({ league }) {
         </p>
       )}
 
-      {/* Expanded body */}
-      {expanded && (
-        <div className="mt-3 rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden">
-          {activeReport ? (
-            <ThreadPane
-              report={activeReport}
-              replyMessage={replyMessage}
-              setReplyMessage={setReplyMessage}
-              onSend={handleReply}
-              onBack={() => setOpenThreadId(null)}
-              isPending={reply.isPending}
-            />
-          ) : composing ? (
-            <ComposePane
-              league={league}
-              message={newMessage}
-              setMessage={setNewMessage}
-              onSend={handleCreate}
-              onCancel={() => { setComposing(false); setNewMessage('') }}
-              isPending={createReport.isPending}
-            />
-          ) : (
-            <ListPane
-              reports={reports || []}
-              onOpen={(id) => setOpenThreadId(id)}
-              onNew={() => setComposing(true)}
-              onCollapse={collapse}
-            />
-          )}
-        </div>
-      )}
+      {expanded && body}
     </div>
   )
 }
 
-function ListPane({ reports, onOpen, onNew, onCollapse }) {
+function ListPane({ reports, onOpen, onNew, onCollapse, collapseLabel = 'Close' }) {
   return (
     <div>
       <div className="p-3 space-y-2 max-h-64 overflow-y-auto">
@@ -177,7 +182,7 @@ function ListPane({ reports, onOpen, onNew, onCollapse }) {
           onClick={onCollapse}
           className="flex-1 py-2 rounded-lg text-xs font-semibold bg-text-primary/5 text-text-secondary border border-text-primary/20"
         >
-          Close
+          {collapseLabel}
         </button>
         <button
           onClick={onNew}

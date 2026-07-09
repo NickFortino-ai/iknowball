@@ -38,7 +38,6 @@ import TdPassView from '../components/leagues/TdPassView'
 import LeagueReport from '../components/leagues/LeagueReport'
 import FantasyUnderfillBanner from '../components/leagues/FantasyUnderfillBanner'
 import FantasyDraftLiveBanner from '../components/leagues/FantasyDraftLiveBanner'
-import ReportProblemSection from '../components/leagues/ReportProblemSection'
 import CommissionerToolsPage from '../components/leagues/CommissionerToolsPage'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
@@ -2845,7 +2844,6 @@ export default function LeagueDetailPage() {
               </div>
             )}
 
-            {isCommissioner && <ReportProblemSection league={league} />}
 
             {isCommissioner && (
               <div className="mt-10 pt-4 border-t border-border text-center">
