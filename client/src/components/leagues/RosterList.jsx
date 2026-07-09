@@ -129,10 +129,10 @@ export default function RosterList({ league, userId }) {
           <div className="flex items-center gap-1.5">
             <span className="text-sm font-semibold text-text-primary truncate">{p.full_name || 'Empty'}</span>
             <BlurbDot playerId={p.id} blurbIds={blurbIds} />
+            <InjuryBadge status={p.injury_status} />
           </div>
           <div className="text-[10px] text-text-muted">{p.position} · {p.team || 'FA'}</div>
         </div>
-        <InjuryBadge status={p.injury_status} />
         {showTradeIcon && !isMe && p.id && (
           <button
             onClick={(e) => { e.stopPropagation(); setTradePlayerId(p.id) }}
