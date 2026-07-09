@@ -887,7 +887,13 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                 // a bracket aren't actually competing.
                 const isBracketLocked = bracketTournament?.locks_at && new Date(bracketTournament.locks_at) <= new Date()
                 const submittedBrackets = Array.isArray(bracketEntries) ? bracketEntries.length : 0
-                const tableMemberCount = f === 'fantasy'
+                // Traditional fantasy is a fixed-size draft league — num_teams
+                // is the source of truth. Salary cap has no fixed size (the
+                // server stores num_teams=10 as a DB-NOT-NULL fallback, not
+                // an intended value), so use the live member count like every
+                // other daily / DFS format so the table grows as people join.
+                const isTraditionalDraftLeague = f === 'fantasy' && fFormat !== 'salary_cap'
+                const tableMemberCount = isTraditionalDraftLeague
                   ? (fantasySettings?.num_teams || liveMemberCount)
                   : f === 'bracket' && isBracketLocked && submittedBrackets >= 2
                     ? submittedBrackets
