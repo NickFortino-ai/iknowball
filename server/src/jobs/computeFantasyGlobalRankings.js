@@ -48,10 +48,16 @@ function buildFormatLabel(numTeams, scoringFormat, rosterSlots) {
 export async function computeFantasyGlobalRankings() {
   const start = Date.now()
 
-  // Pull all fantasy leagues with their settings
+  // Pull all traditional fantasy leagues with their settings. Salary cap
+  // is stored with format='salary_cap' + a NOT-NULL fallback of num_teams=10
+  // — it has no fantasy_matchups rows, so including it would silently
+  // inflate group.league_count with zero-contributing leagues and label
+  // groups misleadingly (e.g. "10-team Half-PPR" for a salary cap contest
+  // that doesn't have a fixed team count).
   const { data: settings, error: settingsErr } = await supabase
     .from('fantasy_settings')
-    .select('league_id, num_teams, scoring_format, roster_slots, scoring_rules, leagues!inner(id, format)')
+    .select('league_id, num_teams, format, scoring_format, roster_slots, scoring_rules, leagues!inner(id, format)')
+    .eq('format', 'traditional')
   if (settingsErr) {
     logger.error({ err: settingsErr }, 'Failed to fetch fantasy settings')
     return
