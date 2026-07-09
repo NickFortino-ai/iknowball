@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useLeagueThread, useSendThreadMessage, useRealtimeLeagueThread, useMarkThreadRead } from '../../hooks/useLeagues'
 import { useSearchUsers } from '../../hooks/useInvitations'
+import { useHotTakeImageUpload } from '../../hooks/useHotTakes'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -57,6 +58,8 @@ export default function LeagueThread({ league }) {
   const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useLeagueThread(league.id)
   const sendMessage = useSendThreadMessage()
   const markRead = useMarkThreadRead()
+  const { uploading, previewUrls, selectImage, removeImage, uploadImage, hasImage, imageCount } = useHotTakeImageUpload()
+  const fileInputRef = useRef(null)
   useRealtimeLeagueThread(league.id)
 
   // Mark thread as read when opened
@@ -149,30 +152,48 @@ export default function LeagueThread({ league }) {
 
   async function handleSend() {
     const trimmed = input.trim()
-    if (!trimmed || sendMessage.isPending) return
+    if ((!trimmed && !hasImage) || sendMessage.isPending || uploading) return
 
     // Extract user_tag IDs from tagged users that are still mentioned in the text
     const userTagIds = taggedUsers
       .filter((u) => trimmed.includes(`@${u.username}`))
       .map((u) => u.id)
 
+    // Upload images first (if any). If upload fails we bail before touching the
+    // input state so the user's compose buffer stays intact.
+    let imageUrls
+    if (hasImage) {
+      const urls = await uploadImage()
+      if (!urls) return // upload failed — toast already fired
+      imageUrls = urls
+    }
+
     // Clear input immediately so the user sees instant feedback
     setInput('')
     setIsMultiline(false)
     setTaggedUsers([])
     setAutoScroll(true)
+    if (hasImage) removeImage()
 
     try {
       await sendMessage.mutateAsync({
         leagueId: league.id,
         content: trimmed,
         user_tags: userTagIds.length > 0 ? userTagIds : undefined,
+        image_urls: imageUrls,
       })
     } catch (err) {
       // Restore input on failure so they can retry
       setInput(trimmed)
       toast(err.message || 'Failed to send message', 'error')
     }
+  }
+
+  function handleFileChange(e) {
+    const files = Array.from(e.target.files || [])
+    for (const f of files) selectImage(f)
+    // Reset so selecting the same file again re-triggers change
+    e.target.value = ''
   }
 
   function handleKeyDown(e) {
@@ -240,7 +261,7 @@ export default function LeagueThread({ league }) {
                   )}
                   <div className="flex items-baseline gap-2">
                     <div className="text-sm text-text-primary leading-relaxed flex-1 min-w-0">
-                      {renderContent(msg.content, msg.tagged_users)}
+                      {msg.content && renderContent(msg.content, msg.tagged_users)}
                     </div>
                     {crossesDay && (
                       <span className="text-[10px] text-text-muted/70 shrink-0">
@@ -248,6 +269,26 @@ export default function LeagueThread({ league }) {
                       </span>
                     )}
                   </div>
+                  {(msg.image_urls?.length || msg.image_url) && (
+                    <div className={`mt-1.5 grid gap-1 ${(msg.image_urls?.length || 1) > 1 ? 'grid-cols-2' : 'grid-cols-1'} max-w-xs`}>
+                      {(msg.image_urls?.length ? msg.image_urls : [msg.image_url]).map((url, imgIdx) => (
+                        <a
+                          key={imgIdx}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block rounded-lg overflow-hidden border border-text-primary/10"
+                        >
+                          <img
+                            src={url}
+                            alt=""
+                            className="w-full h-auto max-h-64 object-cover"
+                            loading="lazy"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -279,7 +320,45 @@ export default function LeagueThread({ league }) {
               ))}
             </div>
           )}
+          {previewUrls.length > 0 && (
+            <div className="flex gap-1.5 pb-1.5 flex-wrap">
+              {previewUrls.map((url, idx) => (
+                <div key={idx} className="relative">
+                  <img src={url} alt="" className="w-16 h-16 rounded-lg object-cover border border-text-primary/15" />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(idx)}
+                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-black/70 text-white text-xs flex items-center justify-center"
+                    aria-label="Remove image"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className={`flex-1 flex items-end border border-text-primary/25 bg-text-primary/5 transition-all ${isMultiline ? 'rounded-2xl' : 'rounded-full'}`}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={imageCount >= 4 || uploading}
+              className="w-8 h-8 flex items-center justify-center shrink-0 m-0.5 text-text-muted hover:text-text-primary disabled:opacity-40 transition-colors"
+              aria-label="Attach image"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+            </button>
             <textarea
               ref={inputRef}
               value={input}
@@ -294,18 +373,22 @@ export default function LeagueThread({ league }) {
               onFocus={handleInputFocus}
               placeholder="Message"
               rows={1}
-              className="flex-1 bg-transparent pl-4 pr-1 py-2 text-[16px] text-text-primary placeholder-text-muted resize-none focus:outline-none max-h-24 overflow-y-auto"
+              className="flex-1 bg-transparent pl-1 pr-1 py-2 text-[16px] text-text-primary placeholder-text-muted resize-none focus:outline-none max-h-24 overflow-y-auto"
               style={{ minHeight: '2.25rem' }}
             />
             <button
               onClick={handleSend}
               onMouseDown={(e) => e.preventDefault()}
-              disabled={!input.trim() || sendMessage.isPending}
+              disabled={(!input.trim() && !hasImage) || sendMessage.isPending || uploading}
               className="w-8 h-8 rounded-full bg-accent flex items-center justify-center shrink-0 disabled:opacity-0 transition-opacity m-0.5"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="none">
-                <path d="M3.4 20.4L20.85 12.92a1 1 0 000-1.84L3.4 3.6a.993.993 0 00-1.39.91L2 9.12c0 .5.37.93.87.99L17 12 2.87 13.88c-.5.07-.87.5-.87 1l.01 4.61c0 .71.73 1.2 1.39.91z" />
-              </svg>
+              {uploading ? (
+                <span className="text-white text-[10px]">…</span>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="none">
+                  <path d="M3.4 20.4L20.85 12.92a1 1 0 000-1.84L3.4 3.6a.993.993 0 00-1.39.91L2 9.12c0 .5.37.93.87.99L17 12 2.87 13.88c-.5.07-.87.5-.87 1l.01 4.61c0 .71.73 1.2 1.39.91z" />
+                </svg>
+              )}
             </button>
           </div>
         </div>

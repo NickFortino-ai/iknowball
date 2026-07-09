@@ -1082,8 +1082,11 @@ router.post('/:id/bracket/entry', requireAuth, validate(submitBracketSchema), as
 import { getThreadMessages, postThreadMessage, markThreadRead, hasUnreadMessages } from '../services/leagueThreadService.js'
 
 const threadMessageSchema = z.object({
-  content: z.string().min(1).max(2000),
+  // Text is optional when at least one image is attached; the service
+  // enforces "must have text or image" so we can't reject empty text here.
+  content: z.string().max(2000).optional().default(''),
   user_tags: z.array(z.string().uuid()).max(10).optional(),
+  image_urls: z.array(z.string().url()).max(4).optional(),
 })
 
 router.get('/:id/thread', requireAuth, async (req, res) => {
@@ -1097,7 +1100,8 @@ router.post('/:id/thread', requireAuth, validate(threadMessageSchema), async (re
     req.params.id,
     req.user.id,
     req.validated.content,
-    req.validated.user_tags || []
+    req.validated.user_tags || [],
+    req.validated.image_urls || []
   )
   res.status(201).json(message)
 })

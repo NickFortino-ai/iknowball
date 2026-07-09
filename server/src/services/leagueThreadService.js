@@ -22,7 +22,7 @@ export async function getThreadMessages(leagueId, userId, before = null) {
 
   let query = supabase
     .from('league_messages')
-    .select('id, league_id, user_id, content, user_tags, created_at')
+    .select('id, league_id, user_id, content, user_tags, image_url, image_urls, created_at')
     .eq('league_id', leagueId)
     .order('created_at', { ascending: false })
     .limit(PAGE_SIZE + 1)
@@ -64,18 +64,31 @@ export async function getThreadMessages(leagueId, userId, before = null) {
   return { messages: enriched, nextCursor }
 }
 
-export async function postThreadMessage(leagueId, userId, content, userTags = []) {
+export async function postThreadMessage(leagueId, userId, content, userTags = [], imageUrls = []) {
   if (await checkUserMuted(userId)) {
     const err = new Error('Your messaging privileges have been suspended')
     err.status = 403
     throw err
   }
 
-  const filterResult = await checkContent(content)
-  if (filterResult.blocked) {
-    const err = new Error('Your message contains inappropriate language. Please revise and try again.')
+  const resolvedImageUrls = (imageUrls || []).filter(Boolean)
+  const hasImages = resolvedImageUrls.length > 0
+  const hasText = typeof content === 'string' && content.trim().length > 0
+
+  if (!hasText && !hasImages) {
+    const err = new Error('Message must have text or an image')
     err.status = 400
     throw err
+  }
+
+  // Skip content filter when there's no text (image-only post)
+  if (hasText) {
+    const filterResult = await checkContent(content)
+    if (filterResult.blocked) {
+      const err = new Error('Your message contains inappropriate language. Please revise and try again.')
+      err.status = 400
+      throw err
+    }
   }
 
   // Verify membership
@@ -108,22 +121,23 @@ export async function postThreadMessage(leagueId, userId, content, userTags = []
     }
   }
 
-  // Dedupe: reject identical message from same user within 30 seconds
+  // Dedupe: reject identical text-only message from same user within 30 seconds.
+  // Skipped for image-only posts where "identical content" is meaningless.
   const thirtySecsAgo = new Date(Date.now() - 30_000).toISOString()
-  const { data: recent } = await supabase
+  const { data: recent } = hasText && !hasImages ? await supabase
     .from('league_messages')
     .select('id')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
     .eq('content', content)
     .gte('created_at', thirtySecsAgo)
-    .limit(1)
+    .limit(1) : { data: null }
 
   if (recent?.length) {
     // Silently return the existing message instead of inserting a duplicate
     const { data: existing } = await supabase
       .from('league_messages')
-      .select('id, league_id, user_id, content, user_tags, created_at')
+      .select('id, league_id, user_id, content, user_tags, image_url, image_urls, created_at')
       .eq('id', recent[0].id)
       .single()
 
@@ -141,10 +155,12 @@ export async function postThreadMessage(leagueId, userId, content, userTags = []
     .insert({
       league_id: leagueId,
       user_id: userId,
-      content,
+      content: hasText ? content : '',
       user_tags: userTags.length > 0 ? userTags : null,
+      image_url: resolvedImageUrls[0] || null,
+      image_urls: hasImages ? resolvedImageUrls : null,
     })
-    .select('id, league_id, user_id, content, user_tags, created_at')
+    .select('id, league_id, user_id, content, user_tags, image_url, image_urls, created_at')
     .single()
 
   if (error) throw error

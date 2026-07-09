@@ -535,8 +535,8 @@ export function useLeagueThread(leagueId) {
 export function useSendThreadMessage() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ leagueId, content, user_tags }) =>
-      api.post(`/leagues/${leagueId}/thread`, { content, user_tags }),
+    mutationFn: ({ leagueId, content, user_tags, image_urls }) =>
+      api.post(`/leagues/${leagueId}/thread`, { content, user_tags, image_urls }),
     onSuccess: (_data, { leagueId }) => {
       queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'thread'] })
     },
