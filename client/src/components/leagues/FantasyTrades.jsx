@@ -258,6 +258,10 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
   const [myPlayerIds, setMyPlayerIds] = useState([])
   const [theirPlayerIds, setTheirPlayerIds] = useState(initialAcquirePlayerId ? [initialAcquirePlayerId] : [])
   const [message, setMessage] = useState('')
+  // Set when propose fails with requires_drop — opens the drop modal so
+  // the proposer can select conditional drops, then re-fires propose with
+  // proposer_drop_player_ids included.
+  const [proposeDropModal, setProposeDropModal] = useState(null) // { dropsNeeded } | null
 
   // Lock body scroll while the modal is open. `overflow:hidden` alone isn't
   // enough on iOS WebKit — momentum scrolling still leaks through. Pinning
@@ -295,15 +299,16 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
     else setter([...arr, id])
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(proposerDropPlayerIds) {
     if (!receiverId) { toast('Pick a trade partner', 'error'); return }
     if (myPlayerIds.length === 0 && theirPlayerIds.length === 0) { toast('Add at least one player', 'error'); return }
     try {
       // When countering, mark the original trade as countered first so it
       // doesn't sit alongside the new one as still-pending. Notification
       // is suppressed there; proposeTrade fires a single counter-aware
-      // notification instead.
-      if (counteringTradeId) {
+      // notification instead. Only fire this once — on a retry after the
+      // drop modal, the original is already countered.
+      if (counteringTradeId && !proposerDropPlayerIds) {
         await respond.mutateAsync({ tradeId: counteringTradeId, action: 'counter' })
       }
       await propose.mutateAsync({
@@ -312,10 +317,18 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
         receiver_player_ids: theirPlayerIds,
         message: message.trim() || undefined,
         counters_trade_id: counteringTradeId || undefined,
+        proposer_drop_player_ids: proposerDropPlayerIds || undefined,
       })
       toast(counteringTradeId ? 'Counter proposed' : 'Trade proposed', 'success')
       onClose()
     } catch (err) {
+      const body = err?.response || err
+      // Proposer would exceed roster cap — open the drop modal so they can
+      // pre-commit conditional drops that fire at approval time.
+      if (body?.requires_drop && body?.side === 'proposer') {
+        setProposeDropModal({ dropsNeeded: body.drops_needed || 1 })
+        return
+      }
       toast(err.message || 'Failed to propose trade', 'error')
     }
   }
@@ -424,13 +437,30 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
         <div className="shrink-0 bg-bg-primary border-t border-text-primary/10 p-4 rounded-b-2xl">
           <div className="flex gap-2">
             <button onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-bg-card text-text-secondary border border-border">Cancel</button>
-            <button onClick={handleSubmit} disabled={propose.isPending || respond.isPending || !receiverId}
+            <button onClick={() => handleSubmit()} disabled={propose.isPending || respond.isPending || !receiverId}
               className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-accent text-white disabled:opacity-50">
               {(propose.isPending || respond.isPending) ? 'Proposing…' : (counteringTradeId ? 'Propose Counter' : 'Propose Trade')}
             </button>
           </div>
         </div>
       </div>
+      {proposeDropModal && (
+        <TradeDropModal
+          roster={myRoster}
+          // Virtual trade — only the fantasy_trade_items array is used, to
+          // exclude players involved in this trade from the drop options.
+          trade={{ fantasy_trade_items: myPlayerIds.map((pid) => ({ player_id: pid })) }}
+          dropsNeeded={proposeDropModal.dropsNeeded}
+          onCancel={() => setProposeDropModal(null)}
+          isPending={propose.isPending}
+          title={`Drop ${proposeDropModal.dropsNeeded} Player${proposeDropModal.dropsNeeded > 1 ? 's' : ''} to Propose`}
+          description={`This trade would put you over the roster cap. Pick ${proposeDropModal.dropsNeeded} to drop — they'll only be dropped if this trade is accepted and approved.`}
+          onConfirm={(dropIds) => {
+            setProposeDropModal(null)
+            handleSubmit(dropIds)
+          }}
+        />
+      )}
     </div>,
     document.body
   )
@@ -440,7 +470,7 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
 // Drop Player Modal (shown when accepting a trade that would overflow roster)
 // =====================================================================
 
-function TradeDropModal({ roster, trade, dropsNeeded, onConfirm, onCancel, isPending }) {
+export function TradeDropModal({ roster, trade, dropsNeeded, onConfirm, onCancel, isPending, title, description }) {
   const [selected, setSelected] = useState([])
 
   // Players eligible to drop: user's roster minus players involved in the trade
@@ -459,9 +489,9 @@ function TradeDropModal({ roster, trade, dropsNeeded, onConfirm, onCancel, isPen
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4 pt-20 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:p-4" onClick={onCancel}>
       <div className="bg-bg-primary border border-text-primary/20 rounded-2xl w-full max-w-md max-h-full overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="p-4 border-b border-text-primary/10">
-          <h3 className="text-base font-bold text-text-primary">Drop {dropsNeeded} Player{dropsNeeded > 1 ? 's' : ''} to Accept</h3>
+          <h3 className="text-base font-bold text-text-primary">{title || `Drop ${dropsNeeded} Player${dropsNeeded > 1 ? 's' : ''} to Accept`}</h3>
           <p className="text-sm text-text-primary/70 mt-1">
-            This trade adds more players than it sends. Select {dropsNeeded} player{dropsNeeded > 1 ? 's' : ''} to drop.
+            {description || `This trade adds more players than it sends. Select ${dropsNeeded} player${dropsNeeded > 1 ? 's' : ''} to drop.`}
           </p>
         </div>
         <div className="flex-1 overflow-y-auto p-3 space-y-1">

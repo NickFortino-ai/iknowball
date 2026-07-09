@@ -5345,7 +5345,48 @@ export async function processAllPendingWaivers() {
  * Propose a trade. proposerItems = array of player_ids the proposer is sending,
  * receiverItems = array of player_ids the receiver is sending back.
  */
-export async function proposeTrade(leagueId, proposerUserId, receiverUserId, proposerPlayerIds, receiverPlayerIds, message, countersTradeId) {
+/**
+ * Compute the effective roster cap for a league from fantasy_settings.roster_slots.
+ * Excludes IR — IR players don't count against the roster cap the way active/bench
+ * players do. Falls back to 16 if roster_slots isn't set (early-league default).
+ */
+function computeRosterCap(settings) {
+  const slots = settings?.roster_slots
+  if (!slots) return 16
+  let cap = 0
+  for (const [k, v] of Object.entries(slots)) {
+    if (k === 'ir') continue
+    cap += Number(v) || 0
+  }
+  return cap
+}
+
+/**
+ * Validate a user's pre-committed drop list: every ID must be on their current
+ * active roster (not IR) and none may be part of the trade itself. Returns
+ * the actual roster count of valid drops (which may be fewer than requested
+ * if the roster shifted since the drops were captured).
+ */
+async function validateDropList(leagueId, userId, dropPlayerIds, tradePlayerIds) {
+  if (!dropPlayerIds?.length) return { validDropCount: 0 }
+  const tradeSet = new Set(tradePlayerIds)
+  for (const dpId of dropPlayerIds) {
+    if (tradeSet.has(dpId)) {
+      const err = new Error('Cannot drop a player involved in this trade')
+      err.status = 400
+      throw err
+    }
+  }
+  const { data: dropRows } = await supabase
+    .from('fantasy_rosters')
+    .select('player_id')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .in('player_id', dropPlayerIds)
+  return { validDropCount: (dropRows || []).length, validDropIds: (dropRows || []).map((r) => r.player_id) }
+}
+
+export async function proposeTrade(leagueId, proposerUserId, receiverUserId, proposerPlayerIds, receiverPlayerIds, message, countersTradeId, proposerDropPlayerIds = []) {
   if (proposerUserId === receiverUserId) {
     const err = new Error("Can't trade with yourself")
     err.status = 400
@@ -5420,6 +5461,39 @@ export async function proposeTrade(leagueId, proposerUserId, receiverUserId, pro
     }
   }
 
+  // Proposer-side roster cap check. A 1-for-2, 2-for-3, or any N-for-M trade
+  // where proposer receives more than they send would push the proposer's
+  // roster over the cap unless they pre-commit to drop the delta.
+  const proposerGets = (receiverPlayerIds || []).length
+  const proposerSends = (proposerPlayerIds || []).length
+  const proposerNetGain = proposerGets - proposerSends - (proposerDropPlayerIds?.length || 0)
+
+  if (proposerNetGain > 0) {
+    const { count: proposerRosterCount } = await supabase
+      .from('fantasy_rosters')
+      .select('id', { count: 'exact', head: true })
+      .eq('league_id', leagueId)
+      .eq('user_id', proposerUserId)
+      .neq('slot', 'ir')
+    const rosterCap = computeRosterCap(settings)
+    const afterTrade = (proposerRosterCount || 0) + proposerNetGain
+    if (afterTrade > rosterCap) {
+      const dropsNeeded = afterTrade - rosterCap
+      const err = new Error(`You need to drop ${dropsNeeded} player${dropsNeeded > 1 ? 's' : ''} to propose this trade`)
+      err.status = 400
+      err.requires_drop = true
+      err.drops_needed = dropsNeeded
+      err.side = 'proposer'
+      throw err
+    }
+  }
+
+  // Validate the proposer's pre-committed drops (belong to them, not part
+  // of the trade). We store the validated list so the approval path can
+  // replay them cleanly without re-authorizing.
+  const allTradePlayerIds = [...(proposerPlayerIds || []), ...(receiverPlayerIds || [])]
+  await validateDropList(leagueId, proposerUserId, proposerDropPlayerIds, allTradePlayerIds)
+
   // Insert trade
   const { data: trade, error: tradeErr } = await supabase
     .from('fantasy_trades')
@@ -5428,6 +5502,7 @@ export async function proposeTrade(leagueId, proposerUserId, receiverUserId, pro
       proposer_user_id: proposerUserId,
       receiver_user_id: receiverUserId,
       message: message || null,
+      proposer_drop_player_ids: proposerDropPlayerIds || [],
     })
     .select()
     .single()
@@ -5596,11 +5671,18 @@ export async function acceptTrade(tradeId, userId, dropPlayerIds = []) {
     }
   }
 
-  // Commissioner review: set to pending_review instead of executing immediately
+  // Commissioner review: set to pending_review instead of executing immediately.
+  // Persist receiver_drop_player_ids so the approval path can execute them
+  // — prior code silently discarded these, then _executeTrade's defensive
+  // cap re-check would fire at approval time with "refresh and retry".
   if (settings?.trade_review === 'commissioner') {
     await supabase
       .from('fantasy_trades')
-      .update({ status: 'pending_review', responded_at: new Date().toISOString() })
+      .update({
+        status: 'pending_review',
+        responded_at: new Date().toISOString(),
+        receiver_drop_player_ids: dropPlayerIds || [],
+      })
       .eq('id', tradeId)
 
     // Notify the commissioner
@@ -5630,14 +5712,30 @@ export async function acceptTrade(tradeId, userId, dropPlayerIds = []) {
   }
 
   // No review needed — execute immediately
-  return _executeTrade(tradeId, trade, userId, dropPlayerIds)
+  // Direct execute (no commissioner review): receiver's drops came fresh
+  // from the accept API call, proposer's drops were persisted at propose
+  // time. Pass the fresh receiver drops as an override.
+  return _executeTrade(tradeId, trade, userId, { overrideReceiverDrops: dropPlayerIds })
 }
 
 /**
  * Execute a trade: swap player ownership and log transactions.
  * Called by acceptTrade (when no review) or approveTrade (commissioner approval).
  */
-async function _executeTrade(tradeId, trade, actorId, dropPlayerIds = []) {
+async function _executeTrade(tradeId, trade, actorId, options = {}) {
+  // Drops come from two places depending on the call site:
+  //  - approveTrade (commissioner path): both proposer + receiver drops were
+  //    persisted onto the trade row at their respective propose/accept moments.
+  //  - acceptTrade (direct-execute path, no commissioner review): the receiver's
+  //    drops are fresh from the accept API call. Proposer's drops were still
+  //    persisted at propose time.
+  //
+  // options.overrideReceiverDrops lets acceptTrade inject the fresh drops
+  // without doing an extra trade-row update round-trip. If omitted, we use
+  // whatever's on the trade row.
+  const proposerDropPlayerIds = trade.proposer_drop_player_ids || []
+  const receiverDropPlayerIds = options.overrideReceiverDrops ?? (trade.receiver_drop_player_ids || [])
+
   // Defensive cap re-check at execution time. The client's drop-modal flow
   // is the user-facing safeguard, but if anything bypasses or misbehaves
   // (stale UI build, transient API error swallowed silently, commissioner
@@ -5650,24 +5748,29 @@ async function _executeTrade(tradeId, trade, actorId, dropPlayerIds = []) {
     .select('roster_slots')
     .eq('league_id', trade.league_id)
     .maybeSingle()
-  const slots = settings?.roster_slots
-  let rosterCap = 16
-  if (slots) {
-    rosterCap = 0
-    for (const [k, v] of Object.entries(slots)) {
-      if (k === 'ir') continue
-      rosterCap += Number(v) || 0
-    }
-  }
+  const rosterCap = computeRosterCap(settings)
   const items = trade.fantasy_trade_items || []
-  // Both sides could be affected — the receiver typically grows, but a
-  // swap could put either user over cap. We check both.
+  const usernameCache = {}
+  async function getUsername(uid) {
+    if (usernameCache[uid]) return usernameCache[uid]
+    const { data } = await supabase.from('users').select('username, display_name').eq('id', uid).single()
+    const name = data?.display_name || data?.username || 'that manager'
+    usernameCache[uid] = name
+    return name
+  }
+
+  // Per-user drops map for cap math + downstream apply loop.
+  const dropsByUser = {
+    [trade.proposer_user_id]: proposerDropPlayerIds,
+    [trade.receiver_user_id]: receiverDropPlayerIds,
+  }
+
+  // Both sides could be affected — the receiver typically grows in an
+  // N-for-M trade where M > N, but any swap could put either user over cap.
   for (const userId of [trade.proposer_user_id, trade.receiver_user_id]) {
     const gets = items.filter((i) => i.to_user_id === userId).length
     const sends = items.filter((i) => i.from_user_id === userId).length
-    // Only this actor's selected drops apply — proposer's drops aren't
-    // captured anywhere because they pre-committed at proposal time.
-    const userDrops = userId === actorId ? dropPlayerIds.length : 0
+    const userDrops = (dropsByUser[userId] || []).length
     const netGain = gets - sends - userDrops
     if (netGain <= 0) continue
     const { count: currentCount } = await supabase
@@ -5679,30 +5782,48 @@ async function _executeTrade(tradeId, trade, actorId, dropPlayerIds = []) {
     const afterTrade = (currentCount || 0) + netGain
     if (afterTrade > rosterCap) {
       logger.error({ tradeId, userId, currentCount, netGain, rosterCap, afterTrade }, 'Trade execution: user would exceed roster cap — aborting')
-      const err = new Error('Trade would put a roster over the cap — refresh and retry')
+      const overBy = afterTrade - rosterCap
+      const name = await getUsername(userId)
+      const err = new Error(
+        `${name}'s roster changed after this trade was set up — they need to drop ${overBy} more player${overBy > 1 ? 's' : ''} before you can approve. Ask them to drop from their Players tab, or veto this trade.`
+      )
       err.status = 400
       throw err
     }
   }
 
-  // Drop players if required to make room. Mossyou hit a real incident on
-  // 2026-06-20: trade swap succeeded but the drop silently no-op'd, leaving
-  // them with an extra player past the roster cap. The prior version:
-  //   - missed a user_id filter (could nuke another user's row with the
-  //     same player_id in this league, or no-op if RLS or another guard
-  //     blocked the unscoped delete)
-  //   - didn't await the error or count, so any silent failure was lost
-  //   - inserted the drop transaction record regardless of whether the
-  //     actual delete worked, masking the failure in the audit log
-  if (dropPlayerIds.length > 0) {
-    // Snapshot acquired_at for each drop before the delete so addToWaiverPool
-    // can honor the just-added (<48h) rule the same way addDropPlayer does.
+  // Re-validate every drop is still on the user's roster and not part of
+  // the trade. Between propose/accept and approval, the user could have
+  // waived the player themselves, or committed the same player to another
+  // trade. If invalid, surface a clear commissioner-facing message.
+  const tradePlayerIds = items.map((i) => i.player_id)
+  for (const [userId, drops] of Object.entries(dropsByUser)) {
+    if (!drops.length) continue
+    const { validDropCount } = await validateDropList(trade.league_id, userId, drops, tradePlayerIds)
+    if (validDropCount !== drops.length) {
+      const name = await getUsername(userId)
+      const err = new Error(
+        `${name}'s pre-committed drops are no longer on their roster — ask them to re-open the trade and update, or veto.`
+      )
+      err.status = 400
+      throw err
+    }
+  }
+
+  // Apply drops on both sides. Mossyou hit a real incident on 2026-06-20:
+  // trade swap succeeded but the drop silently no-op'd, leaving them with
+  // an extra player past the roster cap. Fixed by scoping the delete to
+  // (league_id, user_id, in player_id), awaiting the count, and inserting
+  // the transaction record only on confirmed success.
+  for (const [userId, drops] of Object.entries(dropsByUser)) {
+    if (!drops.length) continue
+    // Snapshot acquired_at so addToWaiverPool honors the just-added rule.
     const { data: dropRows } = await supabase
       .from('fantasy_rosters')
       .select('player_id, acquired_at')
       .eq('league_id', trade.league_id)
-      .eq('user_id', actorId)
-      .in('player_id', dropPlayerIds)
+      .eq('user_id', userId)
+      .in('player_id', drops)
     const acquiredAtByPlayer = {}
     for (const r of dropRows || []) acquiredAtByPlayer[r.player_id] = r.acquired_at
 
@@ -5710,30 +5831,25 @@ async function _executeTrade(tradeId, trade, actorId, dropPlayerIds = []) {
       .from('fantasy_rosters')
       .delete({ count: 'exact' })
       .eq('league_id', trade.league_id)
-      .eq('user_id', actorId)
-      .in('player_id', dropPlayerIds)
+      .eq('user_id', userId)
+      .in('player_id', drops)
 
     if (dropErr) {
-      logger.error({ err: dropErr, tradeId, actorId, dropPlayerIds }, 'Trade drop: delete failed')
+      logger.error({ err: dropErr, tradeId, userId, drops }, 'Trade drop: delete failed')
       throw dropErr
     }
-    if ((deletedCount ?? 0) !== dropPlayerIds.length) {
-      logger.error({ tradeId, actorId, dropPlayerIds, deletedCount }, 'Trade drop: deleted row count mismatch')
+    if ((deletedCount ?? 0) !== drops.length) {
+      logger.error({ tradeId, userId, drops, deletedCount }, 'Trade drop: deleted row count mismatch')
       const err = new Error('Failed to drop the selected player(s) — refresh and try again')
       err.status = 500
       throw err
     }
 
-    // Push the dropped players onto waivers, matching addDropPlayer's normal
-    // drop behavior. Trade-dropped players otherwise went straight to free
-    // agent and were immediately claimable — unfair to the rest of the league.
-    await addToWaiverPool(trade.league_id, dropPlayerIds, 'dropped', acquiredAtByPlayer)
+    await addToWaiverPool(trade.league_id, drops, 'dropped', acquiredAtByPlayer)
 
-    // Log drop transactions only AFTER successful delete so the audit log
-    // doesn't accumulate phantom drops on failure.
-    const dropTxns = dropPlayerIds.map((pid) => ({
+    const dropTxns = drops.map((pid) => ({
       league_id: trade.league_id,
-      user_id: actorId,
+      user_id: userId,
       type: 'drop',
       player_id: pid,
       trade_id: tradeId,

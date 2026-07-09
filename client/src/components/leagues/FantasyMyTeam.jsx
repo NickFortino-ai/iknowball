@@ -8,6 +8,7 @@ import PlayerDetailModal from './PlayerDetailModal'
 import FantasyGlobalRankModal from './FantasyGlobalRankModal'
 import { ProposeTradeModal } from './FantasyTrades'
 import BlurbDot, { markBlurbSeen } from './BlurbDot'
+import { TradeDropModal } from './FantasyTrades'
 
 // Explicit past-tense map — templating `${action}ed` gives "declineed" and
 // `${action}d` gives "canceld" / "vetod". Hand-mapping avoids both traps
@@ -334,6 +335,9 @@ export default function FantasyMyTeam({ league }) {
   const hasGlobalRank = globalRankData?.status === 'ok' && globalRankData?.format?.team_count > 1
   const [expandedTradeId, setExpandedTradeId] = useState(null)
   const [tradeAcceptedModal, setTradeAcceptedModal] = useState(false)
+  // { tradeId, trade, dropsNeeded } — opens the drop picker when the server
+  // says accepting this trade would put the receiver over the roster cap.
+  const [tradeDropModal, setTradeDropModal] = useState(null)
 
   // Reset edit state when navigating weeks
   useEffect(() => {
@@ -531,15 +535,29 @@ export default function FantasyMyTeam({ league }) {
     )
   }
 
-  async function handleTradeAction(tradeId, action) {
+  async function handleTradeAction(tradeId, action, dropPlayerIds) {
     try {
-      await respond.mutateAsync({ tradeId, action })
+      await respond.mutateAsync({ tradeId, action, drop_player_ids: dropPlayerIds })
       if (action === 'accept') {
         setTradeAcceptedModal(true)
+        setTradeDropModal(null)
       } else {
         toast(`Trade ${pastTense(action)}`, 'success')
       }
     } catch (err) {
+      const body = err?.response || err
+      // Accept would put the receiver over the roster cap — open the drop
+      // picker inline instead of surfacing a generic error toast. Prior code
+      // just toasted, leaving the user stuck without a clear path forward
+      // (which was the root of the "Trade canceld" screenshot chain — the
+      // trade went through anyway with drops silently dropped at review).
+      if (body?.requires_drop && action === 'accept') {
+        const trade = pendingTrades?.find((t) => t.id === tradeId)
+        if (trade) {
+          setTradeDropModal({ tradeId, trade, dropsNeeded: body.drops_needed || 1 })
+          return
+        }
+      }
       toast(err.message || `Failed to ${action} trade`, 'error')
     }
   }
@@ -888,6 +906,17 @@ export default function FantasyMyTeam({ league }) {
             </button>
           </div>
         </div>
+      )}
+
+      {tradeDropModal && (
+        <TradeDropModal
+          roster={roster}
+          trade={tradeDropModal.trade}
+          dropsNeeded={tradeDropModal.dropsNeeded}
+          onCancel={() => setTradeDropModal(null)}
+          isPending={respond.isPending}
+          onConfirm={(dropIds) => handleTradeAction(tradeDropModal.tradeId, 'accept', dropIds)}
+        />
       )}
 
       {showCounterTrade && (

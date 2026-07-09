@@ -1672,7 +1672,7 @@ router.get('/:id/fantasy/trades', requireAuth, async (req, res) => {
 
 router.post('/:id/fantasy/trades', requireAuth, async (req, res) => {
   try {
-    const { receiver_user_id, proposer_player_ids, receiver_player_ids, message, counters_trade_id } = req.body
+    const { receiver_user_id, proposer_player_ids, receiver_player_ids, message, counters_trade_id, proposer_drop_player_ids } = req.body
     const result = await proposeTrade(
       req.params.id,
       req.user.id,
@@ -1681,10 +1681,11 @@ router.post('/:id/fantasy/trades', requireAuth, async (req, res) => {
       receiver_player_ids || [],
       message,
       counters_trade_id,
+      proposer_drop_player_ids || [],
     )
     res.json(result)
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message })
+    res.status(err.status || 500).json({ error: err.message, requires_drop: err.requires_drop, drops_needed: err.drops_needed, side: err.side })
   }
 })
 
