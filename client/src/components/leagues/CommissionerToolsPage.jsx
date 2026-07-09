@@ -17,7 +17,7 @@ import { useMyReports } from '../../hooks/useLeagues'
  *  - Trade veto / reversal (TODO)
  *  - Transfer team ownership (TODO)
  */
-export default function CommissionerToolsPage({ league }) {
+export default function CommissionerToolsPage({ league, onOpenSettings }) {
   const [openTool, setOpenTool] = useState(null) // 'force_lineup' | 'add_drop' | 'report_problem' | null
   const [forceLineupTarget, setForceLineupTarget] = useState(null) // { userId, name } | null
   const [addDropTarget, setAddDropTarget] = useState(null) // { userId, name } | null
@@ -87,16 +87,10 @@ export default function CommissionerToolsPage({ league }) {
             onClick={() => setOpenTool('add_drop')}
           />
           <ToolCard
-            icon="📊"
-            title="Override matchup total"
-            description="Correct a matchup score after a scoring bug. Coming soon."
-            disabled
-          />
-          <ToolCard
-            icon="↩️"
-            title="Veto / reverse a trade"
-            description="Roll back a completed trade. Coming soon."
-            disabled
+            icon="⚙️"
+            title="League Settings"
+            description="Open the full league settings — dates, roster slots, playoff config, and more."
+            onClick={() => onOpenSettings && onOpenSettings()}
           />
           <ToolCard
             icon="👥"

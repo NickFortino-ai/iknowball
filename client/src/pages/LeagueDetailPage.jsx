@@ -2803,7 +2803,7 @@ export default function LeagueDetailPage() {
       )}
 
       {tabs[activeTab] === 'Commish' && isCommissioner && (
-        <div className="relative z-10 px-4"><CommissionerToolsPage league={league} /></div>
+        <div className="relative z-10 px-4"><CommissionerToolsPage league={league} onOpenSettings={() => setShowSettingsModal(true)} /></div>
       )}
 
       {/* Delete League */}
