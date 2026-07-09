@@ -3963,6 +3963,97 @@ export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId)
 }
 
 /**
+ * Commissioner override: execute an add/drop on another manager's roster.
+ * Composes on top of addDropPlayer — targetUserId flows through as the
+ * roster owner. Adds audit logging + notification.
+ */
+export async function addDropPlayerAsCommissioner(leagueId, commissionerUserId, targetUserId, addPlayerId, dropPlayerId) {
+  if (commissionerUserId === targetUserId) {
+    const err = new Error('Use the normal add/drop for your own roster')
+    err.status = 400
+    throw err
+  }
+
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('id, name, commissioner_id')
+    .eq('id', leagueId)
+    .single()
+  if (!league) {
+    const err = new Error('League not found')
+    err.status = 404
+    throw err
+  }
+  if (league.commissioner_id !== commissionerUserId) {
+    const err = new Error('Only the commissioner can add/drop for another manager')
+    err.status = 403
+    throw err
+  }
+
+  // Names snapshot for the audit log + notification body — cheaper to grab
+  // both here than to look them up again downstream.
+  const [{ data: addPlayer }, { data: dropPlayer }] = await Promise.all([
+    supabase.from('nfl_players').select('id, full_name, position, team').eq('id', addPlayerId).maybeSingle(),
+    dropPlayerId
+      ? supabase.from('nfl_players').select('id, full_name, position, team').eq('id', dropPlayerId).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
+
+  let result
+  try {
+    result = await addDropPlayer(leagueId, targetUserId, addPlayerId, dropPlayerId)
+  } catch (err) {
+    // Reword the you-are-eliminated error so it doesn't read as if the
+    // commissioner themselves is out. Everything else passes through.
+    if (typeof err.message === 'string' && err.message.startsWith('Your season is over')) {
+      const rewritten = new Error("That manager's season is over — their roster is locked for the rest of the league.")
+      rewritten.status = 400
+      throw rewritten
+    }
+    throw err
+  }
+
+  const addName = addPlayer?.full_name || 'a player'
+  const dropName = dropPlayer?.full_name || null
+
+  // Audit log
+  try {
+    await supabase.from('commissioner_audit_log').insert({
+      league_id: leagueId,
+      commissioner_id: commissionerUserId,
+      target_user_id: targetUserId,
+      action: 'add_drop',
+      details: {
+        added_player_id: addPlayerId,
+        added_player_name: addName,
+        dropped_player_id: dropPlayerId || null,
+        dropped_player_name: dropName,
+      },
+    })
+  } catch (err) {
+    logger.error({ err, leagueId, targetUserId }, 'commissioner_audit_log insert failed for add_drop')
+  }
+
+  // Notify affected manager
+  try {
+    const { createNotification } = await import('./notificationService.js')
+    const summary = dropName
+      ? `the commissioner added ${addName} to your roster and dropped ${dropName}`
+      : `the commissioner added ${addName} to your roster`
+    await createNotification(
+      targetUserId,
+      'commissioner_add_drop',
+      `${league.name}: ${summary}`,
+      { leagueId, action: 'add_drop', addPlayerId, dropPlayerId },
+    )
+  } catch (err) {
+    logger.error({ err, leagueId, targetUserId }, 'Failed to notify user of forced add/drop')
+  }
+
+  return result
+}
+
+/**
  * Drop a player from a user's roster without adding anyone in return.
  * Verifies ownership and game-start lock, deletes the roster row, and pushes
  * the player onto waivers until the next clearing.

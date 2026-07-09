@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Avatar from '../ui/Avatar'
 import ForceLineupModal from './ForceLineupModal'
+import CommissionerAddDropModal from './CommissionerAddDropModal'
 
 /**
  * Full-tab Commissioner Tools page. Rendered when the "Commish" tab is
@@ -15,8 +16,9 @@ import ForceLineupModal from './ForceLineupModal'
  *  - Transfer team ownership (TODO)
  */
 export default function CommissionerToolsPage({ league }) {
-  const [openTool, setOpenTool] = useState(null) // 'force_lineup' | null
+  const [openTool, setOpenTool] = useState(null) // 'force_lineup' | 'add_drop' | null
   const [forceLineupTarget, setForceLineupTarget] = useState(null) // { userId, name } | null
+  const [addDropTarget, setAddDropTarget] = useState(null) // { userId, name } | null
 
   const members = (league.members || []).filter((m) => m.user_id !== league.commissioner_id)
 
@@ -29,46 +31,17 @@ export default function CommissionerToolsPage({ league }) {
         </p>
       </div>
 
-      {openTool === 'force_lineup' ? (
-        <div className="rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden">
-          <div className="px-4 py-3 border-b border-text-primary/10 flex items-center gap-2">
-            <button
-              onClick={() => setOpenTool(null)}
-              className="text-text-muted hover:text-text-primary p-1 -ml-1"
-              aria-label="Back"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-            <span className="text-xs uppercase text-text-muted tracking-wider">Pick a manager to force</span>
-          </div>
-          <div className="p-2 space-y-1 max-h-[60vh] overflow-y-auto">
-            {members.length === 0 ? (
-              <div className="text-center py-6 text-xs text-text-muted">No other managers in this league.</div>
-            ) : (
-              members.map((m) => {
-                const name = m.users?.display_name || m.users?.username || 'Manager'
-                return (
-                  <button
-                    key={m.user_id}
-                    onClick={() => { setForceLineupTarget({ userId: m.user_id, name }); setOpenTool(null) }}
-                    className="w-full flex items-center gap-3 rounded-lg hover:bg-text-primary/5 p-3 transition-colors"
-                  >
-                    <Avatar user={m.users} size="sm" />
-                    <div className="flex-1 min-w-0 text-left">
-                      <div className="text-sm font-semibold text-text-primary truncate">{name}</div>
-                      {m.fantasy_team_name && (
-                        <div className="text-[10px] uppercase tracking-wider text-text-muted truncate">{m.fantasy_team_name}</div>
-                      )}
-                    </div>
-                    <span className="text-text-muted text-lg leading-none">›</span>
-                  </button>
-                )
-              })
-            )}
-          </div>
-        </div>
+      {openTool === 'force_lineup' || openTool === 'add_drop' ? (
+        <ManagerPicker
+          members={members}
+          promptText={openTool === 'force_lineup' ? 'Pick a manager to force' : 'Pick a manager to add/drop for'}
+          onBack={() => setOpenTool(null)}
+          onPick={(target) => {
+            if (openTool === 'force_lineup') setForceLineupTarget(target)
+            else if (openTool === 'add_drop') setAddDropTarget(target)
+            setOpenTool(null)
+          }}
+        />
       ) : (
         <div className="space-y-2">
           <ToolCard
@@ -86,8 +59,8 @@ export default function CommissionerToolsPage({ league }) {
           <ToolCard
             icon="➕"
             title="Add/drop for a manager"
-            description="Execute a roster move on someone's behalf. Coming soon."
-            disabled
+            description="Execute a roster move on someone's behalf — add a free agent, drop a rostered player."
+            onClick={() => setOpenTool('add_drop')}
           />
           <ToolCard
             icon="↩️"
@@ -112,6 +85,59 @@ export default function CommissionerToolsPage({ league }) {
           onClose={() => setForceLineupTarget(null)}
         />
       )}
+
+      {addDropTarget && (
+        <CommissionerAddDropModal
+          league={league}
+          targetUserId={addDropTarget.userId}
+          targetUserName={addDropTarget.name}
+          onClose={() => setAddDropTarget(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function ManagerPicker({ members, promptText, onBack, onPick }) {
+  return (
+    <div className="rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden">
+      <div className="px-4 py-3 border-b border-text-primary/10 flex items-center gap-2">
+        <button
+          onClick={onBack}
+          className="text-text-muted hover:text-text-primary p-1 -ml-1"
+          aria-label="Back"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+        <span className="text-xs uppercase text-text-muted tracking-wider">{promptText}</span>
+      </div>
+      <div className="p-2 space-y-1 max-h-[60vh] overflow-y-auto">
+        {members.length === 0 ? (
+          <div className="text-center py-6 text-xs text-text-muted">No other managers in this league.</div>
+        ) : (
+          members.map((m) => {
+            const name = m.users?.display_name || m.users?.username || 'Manager'
+            return (
+              <button
+                key={m.user_id}
+                onClick={() => onPick({ userId: m.user_id, name })}
+                className="w-full flex items-center gap-3 rounded-lg hover:bg-text-primary/5 p-3 transition-colors"
+              >
+                <Avatar user={m.users} size="sm" />
+                <div className="flex-1 min-w-0 text-left">
+                  <div className="text-sm font-semibold text-text-primary truncate">{name}</div>
+                  {m.fantasy_team_name && (
+                    <div className="text-[10px] uppercase tracking-wider text-text-muted truncate">{m.fantasy_team_name}</div>
+                  )}
+                </div>
+                <span className="text-text-muted text-lg leading-none">›</span>
+              </button>
+            )
+          })
+        )}
+      </div>
     </div>
   )
 }

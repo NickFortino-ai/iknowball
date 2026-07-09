@@ -105,6 +105,7 @@ function getNotificationIcon(n) {
     case 'league_report': return '\uD83D\uDCCB' // 📋
     case 'commissioner_report_reply': return '📨' // 📨
     case 'commissioner_lineup_forced': return '🔧' // 🔧
+    case 'commissioner_add_drop': return '➕' // ➕
     case 'league_win':
       if (n.metadata?.isWinner === false && n.metadata?.points != null) {
         return n.metadata.points < 0 ? '\uD83D\uDCC9' : '\uD83D\uDCCA' // 📉 / 📊
@@ -260,6 +261,11 @@ function getNotificationRoute(notification) {
 
     case 'commissioner_lineup_forced':
       // Target user opens My Team tab to see the corrected lineup.
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=My+Team` : null
+
+    case 'commissioner_add_drop':
+      // Target manager lands on Players so they can see the new addition and
+      // the transaction context.
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=My+Team` : null
 
     case 'fantasy_matchup_result':

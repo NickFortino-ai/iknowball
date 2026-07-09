@@ -1851,3 +1851,15 @@ export function useForceLineup(leagueId) {
     },
   })
 }
+
+export function useCommissionerAddDrop(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, add_player_id, drop_player_id }) =>
+      api.post(`/leagues/${leagueId}/fantasy/rosters/${userId}/add-drop`, { add_player_id, drop_player_id }),
+    onSuccess: (_data, { userId }) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'roster', userId] })
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy'] })
+    },
+  })
+}

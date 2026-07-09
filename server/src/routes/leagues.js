@@ -1189,6 +1189,7 @@ import {
   setFantasyLineup,
   setFantasyLineupAsCommissioner,
   addDropPlayer,
+  addDropPlayerAsCommissioner,
   dropRosterPlayer,
   proposeTrade,
   acceptTrade,
@@ -1576,6 +1577,26 @@ router.post('/:id/fantasy/rosters/:userId/lineup', requireAuth, async (req, res)
       return res.status(400).json({ error: 'slots array required: [{ player_id, slot }, ...]' })
     }
     const result = await setFantasyLineupAsCommissioner(req.params.id, req.user.id, req.params.userId, slots)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// Commissioner override: execute an add/drop on another manager's roster.
+router.post('/:id/fantasy/rosters/:userId/add-drop', requireAuth, async (req, res) => {
+  try {
+    const { add_player_id, drop_player_id } = req.body
+    if (!add_player_id) {
+      return res.status(400).json({ error: 'add_player_id required' })
+    }
+    const result = await addDropPlayerAsCommissioner(
+      req.params.id,
+      req.user.id,
+      req.params.userId,
+      add_player_id,
+      drop_player_id || null,
+    )
     res.json(result)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })
