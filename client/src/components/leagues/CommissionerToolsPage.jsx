@@ -50,7 +50,7 @@ export default function CommissionerToolsPage({ league }) {
                 <polyline points="15 18 9 12 15 6" />
               </svg>
             </button>
-            <span className="text-xs uppercase text-text-muted tracking-wider">Report a Problem to admin</span>
+            <span className="text-xs uppercase text-text-muted tracking-wider">Report a Problem to the IKB Admin</span>
           </div>
           <ReportProblemSection league={league} embedded={true} onEmbeddedBack={() => setOpenTool(null)} />
         </div>
@@ -69,7 +69,7 @@ export default function CommissionerToolsPage({ league }) {
         <div className="space-y-2">
           <ToolCard
             icon="📨"
-            title="Report a Problem to admin"
+            title="Report a Problem to the IKB Admin"
             description="Message the IKB admin about anything wrong with this league. They'll reply here."
             badge={unreadReplies > 0 ? `${unreadReplies} new` : null}
             onClick={() => setOpenTool('report_problem')}
