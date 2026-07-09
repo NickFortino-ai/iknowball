@@ -39,6 +39,7 @@ import LeagueReport from '../components/leagues/LeagueReport'
 import FantasyUnderfillBanner from '../components/leagues/FantasyUnderfillBanner'
 import FantasyDraftLiveBanner from '../components/leagues/FantasyDraftLiveBanner'
 import ReportProblemSection from '../components/leagues/ReportProblemSection'
+import CommissionerToolsSection from '../components/leagues/CommissionerToolsSection'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
@@ -2834,6 +2835,7 @@ export default function LeagueDetailPage() {
               </div>
             )}
 
+            {isCommissioner && <CommissionerToolsSection league={league} />}
             {isCommissioner && <ReportProblemSection league={league} />}
 
             {isCommissioner && (
