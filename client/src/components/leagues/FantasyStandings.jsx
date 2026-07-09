@@ -4,6 +4,7 @@ import RosterList from './RosterList'
 import FantasyGlobalRankModal from './FantasyGlobalRankModal'
 import StandingsRosterBanner from './StandingsRosterBanner'
 import UserProfileModal from '../profile/UserProfileModal'
+import ForceLineupModal from './ForceLineupModal'
 import { useFantasyStandings, useGlobalRank } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -15,6 +16,7 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
   const [expandedUserId, setExpandedUserId] = useState(null)
   const [profileUserId, setProfileUserId] = useState(null)
   const [showGlobalRank, setShowGlobalRank] = useState(false)
+  const [forceLineupTarget, setForceLineupTarget] = useState(null) // { userId, name } | null
   const [sortCol, setSortCol] = useState(null) // null = default (W-L), 'pf', 'pa'
   const [sortDir, setSortDir] = useState('desc')
   const { data: serverStandings } = useFantasyStandings(league.id)
@@ -182,6 +184,16 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
                   {isExpanded && (
                     <tr className="border-b border-text-primary/10 bg-bg-primary/40">
                       <td colSpan={desktopColCount} className="p-0">
+                        {league.commissioner_id === profile?.id && s.userId !== profile?.id && (
+                          <div className="px-4 pt-3 pb-1">
+                            <button
+                              onClick={() => setForceLineupTarget({ userId: s.userId, name: s.user?.display_name || s.user?.username || s.fantasyTeamName || 'Manager' })}
+                              className="text-xs font-semibold text-accent hover:text-accent-hover px-3 py-1.5 rounded-lg border border-accent/40 bg-accent/5 hover:bg-accent/10 transition-colors"
+                            >
+                              Force lineup
+                            </button>
+                          </div>
+                        )}
                         <RosterList league={league} userId={s.userId} />
                       </td>
                     </tr>
@@ -265,6 +277,16 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
                 </div>
                 {isExpanded && (
                   <div className="sticky left-0 w-screen bg-bg-primary/40 pr-4">
+                    {league.commissioner_id === profile?.id && s.userId !== profile?.id && (
+                      <div className="px-4 pt-3 pb-1">
+                        <button
+                          onClick={() => setForceLineupTarget({ userId: s.userId, name: s.user?.display_name || s.user?.username || s.fantasyTeamName || 'Manager' })}
+                          className="text-xs font-semibold text-accent hover:text-accent-hover px-3 py-1.5 rounded-lg border border-accent/40 bg-accent/5 hover:bg-accent/10 transition-colors"
+                        >
+                          Force lineup
+                        </button>
+                      </div>
+                    )}
                     <RosterList league={league} userId={s.userId} />
                   </div>
                 )}
@@ -307,6 +329,15 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
 
       {profileUserId && (
         <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
+      )}
+
+      {forceLineupTarget && (
+        <ForceLineupModal
+          league={league}
+          targetUserId={forceLineupTarget.userId}
+          targetUserName={forceLineupTarget.name}
+          onClose={() => setForceLineupTarget(null)}
+        />
       )}
     </div>
   )

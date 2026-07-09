@@ -3459,6 +3459,118 @@ export async function setFantasyLineup(leagueId, userId, slotAssignments) {
 }
 
 /**
+ * Commissioner override: set another user's current-week lineup on their behalf.
+ * Used when a manager is unresponsive / on vacation / made a mistake and their
+ * lineup needs correcting before the week's games play. Reuses setFantasyLineup's
+ * validation + persist logic — the only differences are the auth check (must be
+ * commissioner) and the audit/notify plumbing around it.
+ */
+export async function setFantasyLineupAsCommissioner(leagueId, commissionerUserId, targetUserId, slotAssignments) {
+  if (commissionerUserId === targetUserId) {
+    const err = new Error('Use the normal lineup editor for your own team')
+    err.status = 400
+    throw err
+  }
+
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('id, name, commissioner_id')
+    .eq('id', leagueId)
+    .single()
+  if (!league) {
+    const err = new Error('League not found')
+    err.status = 404
+    throw err
+  }
+  if (league.commissioner_id !== commissionerUserId) {
+    const err = new Error('Only the commissioner can force lineups')
+    err.status = 403
+    throw err
+  }
+
+  // Verify target has a roster in this league — otherwise setFantasyLineup would
+  // throw its "you do not have a roster" error which reads wrong when the
+  // commish is the caller.
+  const { data: targetRosterCheck } = await supabase
+    .from('fantasy_rosters')
+    .select('id')
+    .eq('league_id', leagueId)
+    .eq('user_id', targetUserId)
+    .limit(1)
+  if (!targetRosterCheck?.length) {
+    const err = new Error("That manager doesn't have a roster in this league")
+    err.status = 404
+    throw err
+  }
+
+  // Snapshot before state (player_id → slot) for the audit log.
+  const { data: beforeRoster } = await supabase
+    .from('fantasy_rosters')
+    .select('player_id, slot, nfl_players(full_name)')
+    .eq('league_id', leagueId)
+    .eq('user_id', targetUserId)
+  const beforeState = {}
+  const nameByPlayer = {}
+  for (const r of beforeRoster || []) {
+    beforeState[r.player_id] = r.slot
+    if (r.nfl_players?.full_name) nameByPlayer[r.player_id] = r.nfl_players.full_name
+  }
+
+  // Reuse the ordinary setter with targetUserId as the "userId" arg — its
+  // internals validate + persist against whatever user id is passed, so this
+  // is a clean composition rather than duplicating validation.
+  const result = await setFantasyLineup(leagueId, targetUserId, slotAssignments)
+
+  // Compute a plain-English change list for the audit log + notification.
+  // Only slots that actually changed contribute.
+  const afterState = {}
+  for (const a of slotAssignments) afterState[a.player_id] = a.slot
+  const changes = []
+  for (const [pid, newSlot] of Object.entries(afterState)) {
+    const oldSlot = beforeState[pid]
+    if (oldSlot && oldSlot !== newSlot) {
+      changes.push({ player_id: pid, name: nameByPlayer[pid] || 'A player', from: oldSlot, to: newSlot })
+    }
+  }
+
+  // Audit log — durable record of every commish-forced lineup.
+  try {
+    await supabase.from('commissioner_audit_log').insert({
+      league_id: leagueId,
+      commissioner_id: commissionerUserId,
+      target_user_id: targetUserId,
+      action: 'force_lineup',
+      details: { changes, changed_count: changes.length, week: 'current' },
+      before_state: beforeState,
+      after_state: afterState,
+    })
+  } catch (err) {
+    logger.error({ err, leagueId, targetUserId }, 'commissioner_audit_log insert failed for force_lineup')
+  }
+
+  // Notify the affected manager. Best-effort — the lineup change is already
+  // persisted, so a notification failure shouldn't roll back the action.
+  try {
+    const { createNotification } = await import('./notificationService.js')
+    const summary = changes.length === 0
+      ? "the commissioner reviewed your lineup but didn't change anything"
+      : changes.length === 1
+        ? `the commissioner moved ${changes[0].name} to ${changes[0].to.toUpperCase()}`
+        : `the commissioner adjusted ${changes.length} slots on your lineup`
+    await createNotification(
+      targetUserId,
+      'commissioner_lineup_forced',
+      `${league.name}: ${summary}`,
+      { leagueId, changed_count: changes.length, action: 'force_lineup' },
+    )
+  } catch (err) {
+    logger.error({ err, leagueId, targetUserId }, 'Failed to notify user of forced lineup')
+  }
+
+  return { ...result, changed_count: changes.length }
+}
+
+/**
  * Save a pre-set lineup for a future week.
  * The weekly lineup is stored separately from fantasy_rosters and will be
  * applied (promoted) when the week becomes current or used directly at scoring time.

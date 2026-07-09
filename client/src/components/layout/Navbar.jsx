@@ -104,6 +104,7 @@ function getNotificationIcon(n) {
     case 'survivor_win': return '\uD83D\uDC51' // 👑
     case 'league_report': return '\uD83D\uDCCB' // 📋
     case 'commissioner_report_reply': return '📨' // 📨
+    case 'commissioner_lineup_forced': return '🔧' // 🔧
     case 'league_win':
       if (n.metadata?.isWinner === false && n.metadata?.points != null) {
         return n.metadata.points < 0 ? '\uD83D\uDCC9' : '\uD83D\uDCCA' // 📉 / 📊
@@ -256,6 +257,10 @@ function getNotificationRoute(notification) {
       // see the reply in context. Deep link into the settings modal / support
       // ticket would be nicer down the line.
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
+
+    case 'commissioner_lineup_forced':
+      // Target user opens My Team tab to see the corrected lineup.
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=My+Team` : null
 
     case 'fantasy_matchup_result':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null

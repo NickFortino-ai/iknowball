@@ -1832,3 +1832,22 @@ export function useReplyToMyReport(leagueId) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'report-problem'] }),
   })
 }
+
+export function useFantasyRosterForUser(leagueId, userId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'roster', userId],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/roster/${userId}`),
+    enabled: !!leagueId && !!userId,
+  })
+}
+
+export function useForceLineup(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, slots }) => api.post(`/leagues/${leagueId}/fantasy/rosters/${userId}/lineup`, { slots }),
+    onSuccess: (_data, { userId }) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'roster', userId] })
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy'] })
+    },
+  })
+}

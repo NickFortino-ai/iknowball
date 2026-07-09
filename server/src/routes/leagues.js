@@ -1187,6 +1187,7 @@ import {
   generateMatchups,
   autoFillLineupsForLeague,
   setFantasyLineup,
+  setFantasyLineupAsCommissioner,
   addDropPlayer,
   dropRosterPlayer,
   proposeTrade,
@@ -1560,6 +1561,21 @@ router.post('/:id/fantasy/lineup', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'slots array required: [{ player_id, slot }, ...]' })
     }
     const result = await setFantasyLineup(req.params.id, req.user.id, slots)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// Commissioner override: force another user's current-week lineup.
+// Authorization is enforced inside the service against league.commissioner_id.
+router.post('/:id/fantasy/rosters/:userId/lineup', requireAuth, async (req, res) => {
+  try {
+    const { slots } = req.body
+    if (!Array.isArray(slots)) {
+      return res.status(400).json({ error: 'slots array required: [{ player_id, slot }, ...]' })
+    }
+    const result = await setFantasyLineupAsCommissioner(req.params.id, req.user.id, req.params.userId, slots)
     res.json(result)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })
