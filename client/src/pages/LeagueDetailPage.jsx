@@ -38,6 +38,7 @@ import TdPassView from '../components/leagues/TdPassView'
 import LeagueReport from '../components/leagues/LeagueReport'
 import FantasyUnderfillBanner from '../components/leagues/FantasyUnderfillBanner'
 import FantasyDraftLiveBanner from '../components/leagues/FantasyDraftLiveBanner'
+import ReportProblemModal from '../components/leagues/ReportProblemModal'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
@@ -1822,6 +1823,7 @@ export default function LeagueDetailPage() {
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showBackdropPicker, setShowBackdropPicker] = useState(false)
+  const [showReportProblem, setShowReportProblem] = useState(false)
   const [showMembersModal, setShowMembersModal] = useState(false)
   const updateLeague = useUpdateLeague()
   const deleteLeague = useDeleteLeague()
@@ -2834,6 +2836,23 @@ export default function LeagueDetailPage() {
             )}
 
             {isCommissioner && (
+              <div className="mt-6 pt-4 border-t border-border">
+                <button
+                  onClick={() => setShowReportProblem(true)}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold bg-text-primary/5 border border-text-primary/20 text-text-primary hover:bg-text-primary/10 transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  Report a Problem
+                </button>
+                <p className="text-[11px] text-text-muted mt-2 text-center">
+                  Something wrong with this league? Message the admin directly.
+                </p>
+              </div>
+            )}
+
+            {isCommissioner && (
               <div className="mt-10 pt-4 border-t border-border text-center">
                 <button
                   onClick={async () => {
@@ -2856,6 +2875,9 @@ export default function LeagueDetailPage() {
 
           </div>
         </div>
+      )}
+      {showReportProblem && (
+        <ReportProblemModal league={league} onClose={() => setShowReportProblem(false)} />
       )}
     </div>
     </div>

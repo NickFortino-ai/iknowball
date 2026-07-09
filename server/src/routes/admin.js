@@ -54,6 +54,11 @@ import {
   EXIT_QUESTIONS,
   sportLabel as surveySportLabel,
 } from '../services/surveyService.js'
+import {
+  listCommissionerReports,
+  replyToCommissionerReport,
+  resolveCommissionerReport,
+} from '../services/commissionerReportService.js'
 
 const router = Router()
 
@@ -2349,6 +2354,40 @@ router.post('/ogs/notify-welcome', async (req, res) => {
     }
   }
   res.json({ sent, skipped, total: ogs.length })
+})
+
+// ============================================
+// Commissioner "Report a Problem" support tickets
+// ============================================
+router.get('/commissioner-reports', async (req, res) => {
+  try {
+    const reports = await listCommissionerReports({ status: req.query.status })
+    res.json(reports)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+router.post('/commissioner-reports/:id/reply', async (req, res) => {
+  try {
+    const reply = req.body?.reply
+    if (!reply || typeof reply !== 'string' || !reply.trim()) {
+      return res.status(400).json({ error: 'Reply is required' })
+    }
+    const result = await replyToCommissionerReport(req.params.id, req.user.id, reply)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+router.post('/commissioner-reports/:id/resolve', async (req, res) => {
+  try {
+    const result = await resolveCommissionerReport(req.params.id, req.user.id)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
 })
 
 export default router

@@ -7,6 +7,7 @@ import PropSyncPanel from '../components/admin/PropSyncPanel'
 import BracketTemplateManager from '../components/admin/BracketTemplateManager'
 import FuturesAdminPanel from '../components/admin/FuturesAdminPanel'
 import ReportsPanel from '../components/admin/ReportsPanel'
+import SupportPanel from '../components/admin/SupportPanel'
 import ModerationPanel from '../components/admin/ModerationPanel'
 import PlayerPositionPanel from '../components/admin/PlayerPositionPanel'
 import BackdropSubmissionsPanel from '../components/admin/BackdropSubmissionsPanel'
@@ -264,6 +265,7 @@ export default function AdminPage() {
           { key: 'futures', label: 'Futures' },
           { key: 'email', label: 'Email' },
           { key: 'reports', label: 'Reports', badge: pendingCounts?.reports },
+          { key: 'support', label: 'Support', badge: pendingCounts?.support },
           { key: 'moderation', label: 'Moderation' },
           { key: 'backdrops', label: 'Backdrops', badge: pendingCounts?.backdrops },
           { key: 'positions', label: 'Positions' },
@@ -599,6 +601,7 @@ export default function AdminPage() {
       {adminSection === 'futures' && <FuturesAdminPanel />}
 
       {adminSection === 'reports' && <ReportsPanel />}
+      {adminSection === 'support' && <SupportPanel />}
 
       {adminSection === 'moderation' && <ModerationPanel />}
 

@@ -103,6 +103,7 @@ function getNotificationIcon(n) {
     case 'og_welcome': return '\u2B50' // ⭐
     case 'survivor_win': return '\uD83D\uDC51' // 👑
     case 'league_report': return '\uD83D\uDCCB' // 📋
+    case 'commissioner_report_reply': return '📨' // 📨
     case 'league_win':
       if (n.metadata?.isWinner === false && n.metadata?.points != null) {
         return n.metadata.points < 0 ? '\uD83D\uDCC9' : '\uD83D\uDCCA' // 📉 / 📊
@@ -249,6 +250,12 @@ function getNotificationRoute(notification) {
 
     case 'league_report':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=Report` : null
+
+    case 'commissioner_report_reply':
+      // Admin reply lands the commissioner back on their league so they can
+      // see the reply in context. Deep link into the settings modal / support
+      // ticket would be nicer down the line.
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
 
     case 'fantasy_matchup_result':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null

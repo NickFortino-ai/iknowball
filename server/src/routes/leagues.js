@@ -23,6 +23,7 @@ import {
   getLeagueInvitations,
 } from '../services/invitationService.js'
 import { sendLeagueInviteEmail } from '../services/emailService.js'
+import { createCommissionerReport } from '../services/commissionerReportService.js'
 import {
   submitSurvivorPick,
   submitTouchdownPick,
@@ -1114,6 +1115,21 @@ router.post('/:id/thread/read', requireAuth, async (req, res) => {
 router.get('/:id/thread/unread', requireAuth, async (req, res) => {
   const unread = await hasUnreadMessages(req.params.id, req.user.id)
   res.json({ unread })
+})
+
+// Commissioner "Report a Problem" — sends a support message from the
+// league commissioner directly to the admin. Admin sees these in the
+// support panel and can reply, which fires a notification back.
+const reportProblemSchema = z.object({
+  message: z.string().min(1).max(4000),
+})
+router.post('/:id/report-problem', requireAuth, validate(reportProblemSchema), async (req, res) => {
+  try {
+    const report = await createCommissionerReport(req.params.id, req.user.id, req.validated.message)
+    res.status(201).json(report)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
 })
 
 // ============================================

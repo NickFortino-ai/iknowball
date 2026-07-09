@@ -1807,3 +1807,9 @@ export function useSurveyStatus(leagueId) {
     staleTime: 60 * 1000,
   })
 }
+
+export function useReportProblem(leagueId) {
+  return useMutation({
+    mutationFn: ({ message }) => api.post(`/leagues/${leagueId}/report-problem`, { message }),
+  })
+}
