@@ -454,7 +454,9 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
           onCancel={() => setProposeDropModal(null)}
           isPending={propose.isPending}
           title={`Drop ${proposeDropModal.dropsNeeded} Player${proposeDropModal.dropsNeeded > 1 ? 's' : ''} to Propose`}
-          description={`This trade would put you over the roster cap. Pick ${proposeDropModal.dropsNeeded} to drop — they'll only be dropped if this trade is accepted and approved.`}
+          description={`This trade would put you over the roster cap. Pick ${proposeDropModal.dropsNeeded} to conditionally drop — they'll only be dropped if this trade is accepted and approved.`}
+          confirmLabel="Conditionally Drop & Propose"
+          pendingLabel="Proposing..."
           onConfirm={(dropIds) => {
             setProposeDropModal(null)
             handleSubmit(dropIds)
@@ -470,14 +472,16 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
 // Drop Player Modal (shown when accepting a trade that would overflow roster)
 // =====================================================================
 
-export function TradeDropModal({ roster, trade, dropsNeeded, onConfirm, onCancel, isPending, title, description }) {
+export function TradeDropModal({ roster, trade, dropsNeeded, onConfirm, onCancel, isPending, title, description, confirmLabel, pendingLabel }) {
   const [selected, setSelected] = useState([])
 
-  // Players eligible to drop: user's roster minus players involved in the trade
+  // Players eligible to drop: user's roster minus players involved in the trade,
+  // ordered the same way as the My Team tab (starter slot order → bench) so the
+  // list feels like their own roster instead of a random alphabet.
   const tradePlayerIds = new Set((trade.fantasy_trade_items || []).map((i) => i.player_id))
-  const droppable = (roster || [])
-    .filter((r) => !tradePlayerIds.has(r.player_id) && r.slot !== 'ir')
-    .sort((a, b) => (a.nfl_players?.full_name || '').localeCompare(b.nfl_players?.full_name || ''))
+  const droppable = sortRosterByLineup(
+    (roster || []).filter((r) => !tradePlayerIds.has(r.player_id) && r.slot !== 'ir')
+  )
 
   function toggle(pid) {
     setSelected((prev) =>
@@ -529,7 +533,7 @@ export function TradeDropModal({ roster, trade, dropsNeeded, onConfirm, onCancel
             disabled={selected.length !== dropsNeeded || isPending}
             className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-correct text-white disabled:opacity-50"
           >
-            {isPending ? 'Accepting...' : `Drop & Accept`}
+            {isPending ? (pendingLabel || 'Accepting...') : (confirmLabel || 'Drop & Accept')}
           </button>
         </div>
       </div>
