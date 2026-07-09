@@ -30,7 +30,7 @@ export default function CommissionerToolsPage({ league }) {
   const unreadReplies = (myReports || []).filter((r) => r.status === 'replied').length
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 pb-6">
+    <div className="max-w-2xl md:max-w-4xl mx-auto space-y-4 pb-6">
       <div className="pt-2">
         <h2 className="font-display text-2xl text-text-primary">Commissioner Tools</h2>
         <p className="text-sm text-text-muted mt-1">
@@ -68,22 +68,29 @@ export default function CommissionerToolsPage({ league }) {
       ) : (
         <div className="space-y-2">
           <ToolCard
+            icon="📨"
+            title="Report a Problem to admin"
+            description="Message the IKB admin about anything wrong with this league. They'll reply here."
+            badge={unreadReplies > 0 ? `${unreadReplies} new` : null}
+            onClick={() => setOpenTool('report_problem')}
+          />
+          <ToolCard
             icon="🔧"
             title="Force a manager's lineup"
             description="Set another manager's current-week starters. Use when someone is unresponsive or made a mistake."
             onClick={() => setOpenTool('force_lineup')}
           />
           <ToolCard
-            icon="📊"
-            title="Override matchup total"
-            description="Correct a matchup score after a scoring bug. Coming soon."
-            disabled
-          />
-          <ToolCard
             icon="➕"
             title="Add/drop for a manager"
             description="Execute a roster move on someone's behalf — add a free agent, drop a rostered player."
             onClick={() => setOpenTool('add_drop')}
+          />
+          <ToolCard
+            icon="📊"
+            title="Override matchup total"
+            description="Correct a matchup score after a scoring bug. Coming soon."
+            disabled
           />
           <ToolCard
             icon="↩️"
@@ -96,13 +103,6 @@ export default function CommissionerToolsPage({ league }) {
             title="Transfer team ownership"
             description="Hand a team over to a new user. Coming soon."
             disabled
-          />
-          <ToolCard
-            icon="📨"
-            title="Report a Problem to admin"
-            description="Message the IKB admin about anything wrong with this league. They'll reply here."
-            badge={unreadReplies > 0 ? `${unreadReplies} new` : null}
-            onClick={() => setOpenTool('report_problem')}
           />
         </div>
       )}
