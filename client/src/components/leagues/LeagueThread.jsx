@@ -5,6 +5,7 @@ import { useHotTakeImageUpload } from '../../hooks/useHotTakes'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import ImageLightbox from '../feed/ImageLightbox'
 import { toast } from '../ui/Toast'
 import { timeAgo } from '../../lib/time'
 
@@ -76,6 +77,7 @@ export default function LeagueThread({ league }) {
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const [autoScroll, setAutoScroll] = useState(true)
+  const [lightbox, setLightbox] = useState(null) // { images, initialIndex } | null
 
   const { data: searchResults } = useSearchUsers(mentionActive ? mentionQuery : '')
 
@@ -269,26 +271,28 @@ export default function LeagueThread({ league }) {
                       </span>
                     )}
                   </div>
-                  {(msg.image_urls?.length || msg.image_url) && (
-                    <div className={`mt-1.5 grid gap-1 ${(msg.image_urls?.length || 1) > 1 ? 'grid-cols-2' : 'grid-cols-1'} max-w-xs`}>
-                      {(msg.image_urls?.length ? msg.image_urls : [msg.image_url]).map((url, imgIdx) => (
-                        <a
-                          key={imgIdx}
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block rounded-lg overflow-hidden border border-text-primary/10"
-                        >
-                          <img
-                            src={url}
-                            alt=""
-                            className="w-full h-auto max-h-64 object-cover"
-                            loading="lazy"
-                          />
-                        </a>
-                      ))}
-                    </div>
-                  )}
+                  {(msg.image_urls?.length || msg.image_url) && (() => {
+                    const msgImages = msg.image_urls?.length ? msg.image_urls : [msg.image_url]
+                    return (
+                      <div className={`mt-1.5 grid gap-1 ${msgImages.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} max-w-xs`}>
+                        {msgImages.map((url, imgIdx) => (
+                          <button
+                            key={imgIdx}
+                            type="button"
+                            onClick={() => setLightbox({ images: msgImages, initialIndex: imgIdx })}
+                            className="block rounded-lg overflow-hidden border border-text-primary/10"
+                          >
+                            <img
+                              src={url}
+                              alt=""
+                              className="w-full h-auto max-h-64 object-cover"
+                              loading="lazy"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
             </div>
@@ -392,6 +396,13 @@ export default function LeagueThread({ league }) {
             </button>
           </div>
         </div>
+      )}
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.images}
+          initialIndex={lightbox.initialIndex}
+          onClose={() => setLightbox(null)}
+        />
       )}
     </div>
   )
