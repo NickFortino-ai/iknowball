@@ -1,5 +1,7 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { api } from '../../lib/api'
 import FeedCardWrapper from './FeedCardWrapper'
 import ImageLightbox from './ImageLightbox'
 import TeamAutocomplete from './TeamAutocomplete'
@@ -92,7 +94,32 @@ function FlexTargetCard({ hot_take }) {
   return null
 }
 
-function VideoProcessingPlaceholder() {
+function VideoProcessingPlaceholder({ streamUid }) {
+  const queryClient = useQueryClient()
+  // Client-driven readiness poll — fires every 8s while the placeholder is
+  // mounted, hitting the server which does a live Cloudflare lookup and
+  // flips stream_ready_at as soon as the asset is playable. Feed invalidates
+  // immediately so the placeholder swaps to the real video without waiting
+  // for the next feed refetch tick.
+  useEffect(() => {
+    if (!streamUid) return
+    let cancelled = false
+    async function tick() {
+      try {
+        const result = await api.post(`/stream/check-ready/${streamUid}`)
+        if (cancelled) return
+        if (result?.ready) {
+          queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
+        }
+      } catch { /* keep polling — cron is the fallback */ }
+    }
+    // First poll immediately so if Cloudflare already finished by the time
+    // this card mounts (rare but possible), the flag flips on the spot.
+    tick()
+    const id = setInterval(tick, 8_000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [streamUid, queryClient])
+
   return (
     <div className="relative mt-2 rounded-lg border border-text-primary/15 bg-text-primary/[0.04] p-6 flex items-center gap-3">
       <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
@@ -826,7 +853,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
               server hides pending posts from every viewer except the author,
               so only the uploader ever sees this state. */}
           {hot_take.stream_video_uid && !hot_take.stream_ready_at ? (
-            <VideoProcessingPlaceholder />
+            <VideoProcessingPlaceholder streamUid={hot_take.stream_video_uid} />
           ) : (
             hot_take.video_url && <FeedVideo url={hot_take.video_url} />
           )}
