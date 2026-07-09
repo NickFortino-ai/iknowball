@@ -10,6 +10,18 @@ import { SkeletonCard } from '../ui/Skeleton'
 import Avatar from '../ui/Avatar'
 import { toast } from '../ui/Toast'
 
+// Explicit past-tense map — templating `${action}ed` gives "declineed" and
+// `${action}d` gives "canceld" / "vetod". Kept in sync with the identical
+// helper in FantasyMyTeam.jsx.
+function pastTense(action) {
+  return {
+    accept: 'accepted',
+    decline: 'declined',
+    veto: 'vetoed',
+    cancel: 'canceled',
+  }[action] || `${action}d`
+}
+
 function PlayerChip({ player }) {
   return (
     <div className="flex flex-col items-center rounded-lg bg-bg-primary/60 border border-text-primary/10 px-2 py-3 text-center">
@@ -579,7 +591,7 @@ export default function FantasyTrades({ league, fantasySettings }) {
       // Negative outcomes (veto / decline) get the red error toast — they
       // succeeded technically but they're killing a trade, not approving one.
       const tone = action === 'veto' || action === 'decline' ? 'error' : 'success'
-      toast(`Trade ${action}ed`, tone)
+      toast(`Trade ${pastTense(action)}`, tone)
       setDropModal(null)
       setVetoModal(null)
     } catch (err) {

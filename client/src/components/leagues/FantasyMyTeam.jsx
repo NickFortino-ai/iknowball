@@ -9,6 +9,18 @@ import FantasyGlobalRankModal from './FantasyGlobalRankModal'
 import { ProposeTradeModal } from './FantasyTrades'
 import BlurbDot, { markBlurbSeen } from './BlurbDot'
 
+// Explicit past-tense map — templating `${action}ed` gives "declineed" and
+// `${action}d` gives "canceld" / "vetod". Hand-mapping avoids both traps
+// and keeps future action names honest.
+function pastTense(action) {
+  return {
+    accept: 'accepted',
+    decline: 'declined',
+    veto: 'vetoed',
+    cancel: 'canceled',
+  }[action] || `${action}d`
+}
+
 const INJURY_COLORS = {
   Out: 'text-incorrect',
   IR: 'text-incorrect',
@@ -525,7 +537,7 @@ export default function FantasyMyTeam({ league }) {
       if (action === 'accept') {
         setTradeAcceptedModal(true)
       } else {
-        toast(`Trade ${action}d`, 'success')
+        toast(`Trade ${pastTense(action)}`, 'success')
       }
     } catch (err) {
       toast(err.message || `Failed to ${action} trade`, 'error')
