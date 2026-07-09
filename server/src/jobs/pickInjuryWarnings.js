@@ -167,18 +167,40 @@ async function runDailyEspnFormat({ table, salaryTable, label, statName, sportKe
     .eq('game_date', today)
     .eq('injury_status', 'Out')
 
-  if (!outSalaries?.length) return 0
-  const outIds = outSalaries.map((s) => s.espn_player_id).filter(Boolean)
-  if (!outIds.length) return 0
-  const nameById = {}
-  for (const s of outSalaries) nameById[s.espn_player_id] = s.player_name
+  // playerId → { name, reason: 'out' | 'not_starting' }. Out is the stronger
+  // signal (definite scratch, not just a lineup-card decision), so we let
+  // Out win if a player somehow shows both statuses.
+  const flagged = new Map()
+  for (const s of outSalaries || []) {
+    if (s.espn_player_id) flagged.set(s.espn_player_id, { name: s.player_name, reason: 'out' })
+  }
+
+  // MLB adds a lineup_status column that flips to 'not_starting' when a
+  // pitcher isn't the day's probable or a hitter isn't in the batting order.
+  // For daily pick contests (Strikeouts, HR Derby, MLB DFS), a not-starting
+  // player scores 0 same as an Out player — warn about it too.
+  if (salaryTable === 'mlb_dfs_salaries') {
+    const { data: nsSalaries } = await supabase
+      .from(salaryTable)
+      .select('espn_player_id, player_name')
+      .eq('game_date', today)
+      .eq('lineup_status', 'not_starting')
+    for (const s of nsSalaries || []) {
+      if (s.espn_player_id && !flagged.has(s.espn_player_id)) {
+        flagged.set(s.espn_player_id, { name: s.player_name, reason: 'not_starting' })
+      }
+    }
+  }
+
+  if (!flagged.size) return 0
+  const flaggedIds = [...flagged.keys()]
 
   // Find picks of those players for today
   const { data: picks } = await supabase
     .from(table)
     .select('user_id, league_id, espn_player_id, leagues(name)')
     .eq('game_date', today)
-    .in('espn_player_id', outIds)
+    .in('espn_player_id', flaggedIds)
 
   if (!picks?.length) return 0
 
@@ -190,15 +212,17 @@ async function runDailyEspnFormat({ table, salaryTable, label, statName, sportKe
     if (sentSet.has(dedupKey)) continue
     sentSet.add(dedupKey)
 
-    const playerName = nameById[p.espn_player_id] || 'A player'
+    const meta = flagged.get(p.espn_player_id) || { name: 'A player', reason: 'out' }
     const leagueName = p.leagues?.name || `your ${label}`
-    const body = `${playerName} is Out tonight — ${pron.subjContraction} on your ${leagueName} lineup. Swap ${pron.object} out before the game starts to avoid a 0 ${statName} contribution.`
+    const statusPhrase = meta.reason === 'not_starting' ? 'not starting tonight' : 'Out tonight'
+    const body = `${meta.name} is ${statusPhrase} — ${pron.subjContraction} on your ${leagueName} lineup. Swap ${pron.object} out before the game starts to avoid a 0 ${statName} contribution.`
     try {
       await createNotification(p.user_id, NOTIF_TYPE, body, {
         player_key: playerKey,
         league_id: p.league_id,
         period_key: periodKey,
         format: label,
+        reason: meta.reason,
       })
       sent++
     } catch (err) {
@@ -217,17 +241,34 @@ async function runDfsRosterFormat({ rosterTable, slotTable, salaryTable, label, 
     .eq('game_date', today)
     .eq('injury_status', 'Out')
 
-  if (!outSalaries?.length) return 0
-  const outIds = outSalaries.map((s) => s.espn_player_id).filter(Boolean)
-  if (!outIds.length) return 0
-  const nameById = {}
-  for (const s of outSalaries) nameById[s.espn_player_id] = s.player_name
+  const flagged = new Map()
+  for (const s of outSalaries || []) {
+    if (s.espn_player_id) flagged.set(s.espn_player_id, { name: s.player_name, reason: 'out' })
+  }
+
+  // MLB salary tables carry lineup_status — same rationale as
+  // runDailyEspnFormat: not-starting = 0 points, warn about it.
+  if (salaryTable === 'mlb_dfs_salaries') {
+    const { data: nsSalaries } = await supabase
+      .from(salaryTable)
+      .select('espn_player_id, player_name')
+      .eq('game_date', today)
+      .eq('lineup_status', 'not_starting')
+    for (const s of nsSalaries || []) {
+      if (s.espn_player_id && !flagged.has(s.espn_player_id)) {
+        flagged.set(s.espn_player_id, { name: s.player_name, reason: 'not_starting' })
+      }
+    }
+  }
+
+  if (!flagged.size) return 0
+  const flaggedIds = [...flagged.keys()]
 
   // Find roster slots holding those players for today's rosters
   const { data: slots } = await supabase
     .from(slotTable)
     .select(`espn_player_id, ${rosterTable}!inner(league_id, user_id, game_date, leagues(name))`)
-    .in('espn_player_id', outIds)
+    .in('espn_player_id', flaggedIds)
     .eq(`${rosterTable}.game_date`, today)
 
   if (!slots?.length) return 0
@@ -242,15 +283,17 @@ async function runDfsRosterFormat({ rosterTable, slotTable, salaryTable, label, 
     if (sentSet.has(dedupKey)) continue
     sentSet.add(dedupKey)
 
-    const playerName = nameById[slot.espn_player_id] || 'A player'
+    const meta = flagged.get(slot.espn_player_id) || { name: 'A player', reason: 'out' }
     const leagueName = roster.leagues?.name || `your ${label}`
-    const body = `${playerName} is Out tonight — ${pron.subjContraction} on your ${leagueName} ${label} roster. Swap ${pron.object} out before the game starts.`
+    const statusPhrase = meta.reason === 'not_starting' ? 'not starting tonight' : 'Out tonight'
+    const body = `${meta.name} is ${statusPhrase} — ${pron.subjContraction} on your ${leagueName} ${label} roster. Swap ${pron.object} out before the game starts.`
     try {
       await createNotification(roster.user_id, NOTIF_TYPE, body, {
         player_key: playerKey,
         league_id: roster.league_id,
         period_key: periodKey,
         format: label,
+        reason: meta.reason,
       })
       sent++
     } catch (err) {
