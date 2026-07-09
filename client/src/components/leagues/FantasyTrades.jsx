@@ -496,7 +496,11 @@ export function TradeDropModal({ roster, trade, dropsNeeded, onConfirm, onCancel
         paddingTop: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-top) + 1rem))',
         paddingBottom: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-bottom) + 1rem))',
       }}
-      onClick={onCancel}
+      // When this modal is stacked over ProposeTradeModal, a backdrop click
+      // bubbles up through the DOM — without stopPropagation it would also
+      // trigger the propose modal's onClose, collapsing both modals from
+      // one tap. Stop the bubble so only the drop modal closes.
+      onClick={(e) => { e.stopPropagation(); onCancel() }}
     >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div className="relative bg-bg-primary border border-text-primary/20 rounded-2xl w-full max-w-md max-h-full overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
