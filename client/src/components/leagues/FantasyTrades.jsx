@@ -490,8 +490,16 @@ export function TradeDropModal({ roster, trade, dropsNeeded, onConfirm, onCancel
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4 pt-20 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:p-4" onClick={onCancel}>
-      <div className="bg-bg-primary border border-text-primary/20 rounded-2xl w-full max-w-md max-h-full overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center px-4"
+      style={{
+        paddingTop: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-top) + 1rem))',
+        paddingBottom: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-bottom) + 1rem))',
+      }}
+      onClick={onCancel}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="relative bg-bg-primary border border-text-primary/20 rounded-2xl w-full max-w-md max-h-full overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="p-4 border-b border-text-primary/10">
           <h3 className="text-base font-bold text-text-primary">{title || `Drop ${dropsNeeded} Player${dropsNeeded > 1 ? 's' : ''} to Accept`}</h3>
           <p className="text-sm text-text-primary/70 mt-1">
