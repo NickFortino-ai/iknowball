@@ -13,13 +13,21 @@ export default function FantasyGlobalRankModal({ leagueId, onClose }) {
   useEffect(() => { lockScroll(); return () => unlockScroll() }, [])
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{
+        paddingTop: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-top) + 1rem))',
+        paddingBottom: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-bottom) + 1rem))',
+      }}
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
-        className="bg-bg-secondary w-full md:max-w-xl rounded-t-2xl md:rounded-2xl max-h-[90vh] overflow-y-auto"
+        className="relative bg-bg-primary border border-text-primary/20 rounded-2xl w-full sm:max-w-xl max-h-full overflow-y-auto overscroll-contain"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-bg-secondary border-b border-text-primary/10 px-4 py-3 flex items-center justify-between z-10">
-          <h2 className="font-display text-base">Global Rank</h2>
+        <div className="sticky top-0 bg-bg-primary/95 backdrop-blur-sm border-b border-text-primary/20 px-4 py-3 flex items-center justify-between z-10">
+          <h2 className="font-display text-base text-text-primary">Global Rank</h2>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary p-1">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -109,7 +117,7 @@ function Body({ data, myUserId }) {
       </div>
 
       {/* Format definition */}
-      <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-3">
+      <div className="rounded-xl border border-text-primary/20 bg-text-primary/5 p-3">
         <div className="text-[10px] uppercase text-text-muted tracking-wider mb-1">Format</div>
         <div className="text-sm text-text-primary font-semibold">{format.label}</div>
         <div className="text-[11px] text-text-muted mt-1">
