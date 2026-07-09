@@ -39,7 +39,7 @@ import LeagueReport from '../components/leagues/LeagueReport'
 import FantasyUnderfillBanner from '../components/leagues/FantasyUnderfillBanner'
 import FantasyDraftLiveBanner from '../components/leagues/FantasyDraftLiveBanner'
 import ReportProblemSection from '../components/leagues/ReportProblemSection'
-import CommissionerToolsSection from '../components/leagues/CommissionerToolsSection'
+import CommissionerToolsPage from '../components/leagues/CommissionerToolsPage'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
@@ -51,11 +51,15 @@ import { formatStartDateShort, formatEndDateShort, formatEndDateLong, formatDraf
 
 const REPORT_FORMATS = ['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs']
 
-function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true, salaryCapLiveStarted = false) {
+function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true, salaryCapLiveStarted = false, isCommissioner = false) {
   const isOpen = league.status === 'open'
   const isCompleted = league.status === 'completed'
   const memberOrStandings = isOpen ? 'Members' : 'Standings'
   const reportTab = isCompleted && REPORT_FORMATS.includes(league.format) ? ['Report'] : []
+  // Only fantasy (traditional) has commish tools right now — force lineup is
+  // the first entry. Adding it here as an always-last tab keeps position
+  // stable so a commissioner deep-linking with ?tab=Commish always resolves.
+  const commishTab = isCommissioner && league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap' ? ['Commish'] : []
 
   // Non-member preview tabs — strip member-only surfaces (own-pick entry,
   // private chat, draft room, transactions). Standings/members/bracket/live
@@ -108,6 +112,7 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true
       tabs.splice(tabs.indexOf('Draft') + 1, 0, 'Mock Draft')
     }
     if (!isSalaryCap) tabs.push(...reportTab, 'Thread')
+    tabs.push(...commishTab)
     return tabs
   }
 
@@ -1839,7 +1844,8 @@ export default function LeagueDetailPage() {
     if (!league || tabInitialized) return
     const urlTab = searchParams.get('tab')
     if (urlTab) {
-      const tabs = getLeagueTabs(league, false)
+      const commish = league.commissioner_id === profile?.id
+      const tabs = getLeagueTabs(league, false, fantasySettings, true, false, commish)
       // Match case-insensitively + accept '+' / spaces interchangeably
       const normalize = (s) => s.toLowerCase().replace(/[+_-]/g, ' ').trim()
       const idx = tabs.findIndex((t) => normalize(t) === normalize(urlTab))
@@ -1849,7 +1855,7 @@ export default function LeagueDetailPage() {
         return
       }
     }
-  }, [league, searchParams, tabInitialized])
+  }, [league, searchParams, tabInitialized, profile?.id, fantasySettings])
 
   // Default tab selection
   useEffect(() => {
@@ -1910,7 +1916,7 @@ export default function LeagueDetailPage() {
   // Join CTA at the top.
   const isMember = league.is_member !== false
   const pendingInvitation = league.my_pending_invitation
-  const tabs = getLeagueTabs(league, isBracketLocked, fantasySettings, isMember, salaryCapLiveStarted)
+  const tabs = getLeagueTabs(league, isBracketLocked, fantasySettings, isMember, salaryCapLiveStarted, isCommissioner)
   // Bracket leagues don't auto-fallback to a default arena — they should be black
   // unless the commissioner explicitly picks a backdrop. The bracket centerpiece
   // image lives on the bracket itself, not as a page-wide backdrop.
@@ -2797,6 +2803,10 @@ export default function LeagueDetailPage() {
         <div className="relative z-10"><LeagueThread league={league} /></div>
       )}
 
+      {tabs[activeTab] === 'Commish' && isCommissioner && (
+        <div className="relative z-10 px-4"><CommissionerToolsPage league={league} /></div>
+      )}
+
       {/* Delete League */}
       {/* Settings Modal */}
       {showSettingsModal && (
@@ -2835,7 +2845,6 @@ export default function LeagueDetailPage() {
               </div>
             )}
 
-            {isCommissioner && <CommissionerToolsSection league={league} />}
             {isCommissioner && <ReportProblemSection league={league} />}
 
             {isCommissioner && (
