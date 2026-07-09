@@ -13,6 +13,7 @@ import RichContent from './RichContent'
 import PollDisplay from './PollDisplay'
 import LinkPreview from './LinkPreview'
 import { extractFirstUrl } from '../../lib/urlUtils'
+import { useHlsSource } from '../../lib/useHlsSource'
 
 // Convert a Supabase storage public URL to a resized thumbnail URL.
 // Only works for Supabase-hosted images; external URLs pass through unchanged.
@@ -97,6 +98,9 @@ function FeedVideo({ url }) {
   const userPausedRef = useRef(false)
   const [muted, setMuted] = useState(!feedUnmuted)
   const [showPlayIcon, setShowPlayIcon] = useState(false)
+  // HLS attach — no-op for legacy .mp4 URLs, wires up hls.js for Cloudflare
+  // Stream manifests on non-Safari browsers.
+  useHlsSource(videoRef, url)
 
   // Track mount count to reset feedUnmuted on navigation away
   useEffect(() => {
@@ -189,7 +193,6 @@ function FeedVideo({ url }) {
     <div ref={containerRef} className="relative mt-2 cursor-pointer" onClick={togglePlayPause}>
       <video
         ref={videoRef}
-        src={url}
         muted={muted}
         playsInline
         loop

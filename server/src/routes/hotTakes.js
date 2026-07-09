@@ -19,6 +19,7 @@ const hotTakeSchema = z.object({
   image_url: z.string().url().optional(),
   image_urls: z.array(z.string().url()).max(4).optional(),
   video_url: z.string().url().optional(),
+  stream_video_uid: z.string().max(128).optional(),
   user_tags: z.array(z.string().uuid()).max(3).optional(),
   post_type: z.enum(['post', 'prediction', 'poll']).optional(),
   poll_options: z.array(z.string().min(1).max(100)).min(2).max(10).optional(),
@@ -61,7 +62,7 @@ router.post('/', requireAuth, validate(hotTakeSchema), async (req, res) => {
     return res.status(400).json({ error: 'Your post contains inappropriate language. Please revise and try again.' })
   }
 
-  const hotTake = await createHotTake(req.user.id, req.validated.content, req.validated.team_tags, req.validated.sport_key, req.validated.image_url, req.validated.user_tags, req.validated.video_url, req.validated.image_urls, req.validated.post_type)
+  const hotTake = await createHotTake(req.user.id, req.validated.content, req.validated.team_tags, req.validated.sport_key, req.validated.image_url, req.validated.user_tags, req.validated.video_url, req.validated.image_urls, req.validated.post_type, req.validated.stream_video_uid)
 
   // Create poll options if poll type
   if (req.validated.post_type === 'poll' && req.validated.poll_options?.length) {

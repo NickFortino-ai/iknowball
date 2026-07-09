@@ -192,9 +192,18 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
     }
 
     let videoUrl = undefined
+    let streamVideoUid = undefined
     if (hasVideo) {
-      videoUrl = await uploadVideo()
-      if (!videoUrl && hasVideo) return // upload failed
+      const result = await uploadVideo()
+      if (!result && hasVideo) return // upload failed
+      // Cloudflare Stream direct-upload returns { hlsUrl, uid } — old
+      // Supabase-storage path returned a public URL string. Handle both.
+      if (typeof result === 'string') {
+        videoUrl = result
+      } else if (result && typeof result === 'object') {
+        videoUrl = result.hlsUrl
+        streamVideoUid = result.uid
+      }
     }
 
     const trimmedPollOptions = postType === 'poll' ? pollOptions.filter((o) => o.trim()).map((o) => o.trim()) : undefined
@@ -205,7 +214,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
       : content.trim()
 
     createHotTake.mutate(
-      { content: finalContent, team_tags: teamTags.length ? teamTags : undefined, sport_key: selectedSport || undefined, image_url: imageUrl, image_urls: imageUrls, video_url: videoUrl, user_tags: userTags.length ? userTags.map((u) => u.id) : undefined, post_type: postType, poll_options: trimmedPollOptions },
+      { content: finalContent, team_tags: teamTags.length ? teamTags : undefined, sport_key: selectedSport || undefined, image_url: imageUrl, image_urls: imageUrls, video_url: videoUrl, stream_video_uid: streamVideoUid, user_tags: userTags.length ? userTags.map((u) => u.id) : undefined, post_type: postType, poll_options: trimmedPollOptions },
       {
         onSuccess: () => {
           setContent('')

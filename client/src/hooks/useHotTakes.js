@@ -8,8 +8,8 @@ export function useCreateHotTake() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ content, team_tags, sport_key, image_url, image_urls, video_url, user_tags, post_type, poll_options }) =>
-      api.post('/hot-takes', { content, team_tags, sport_key, image_url, image_urls, video_url, user_tags, post_type, poll_options }),
+    mutationFn: ({ content, team_tags, sport_key, image_url, image_urls, video_url, stream_video_uid, user_tags, post_type, poll_options }) =>
+      api.post('/hot-takes', { content, team_tags, sport_key, image_url, image_urls, video_url, stream_video_uid, user_tags, post_type, poll_options }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
     },
@@ -312,11 +312,16 @@ export function useHotTakeVideoUpload() {
   function selectVideo(file) {
     if (!file) return
 
-    const validTypes = ['video/mp4', 'video/webm']
-    if (!validTypes.includes(file.type)) {
-      toast('Please convert your video to MP4 before uploading. Most video converter apps on iPhone can do this in seconds.', 'error')
+    // Cloudflare Stream transcodes any input container to HLS on the way
+    // out — we just need to gate on "this is actually a video." iPhone
+    // .mov, Android .mp4, WebM, MKV, all work.
+    if (!(file.type || '').startsWith('video/')) {
+      toast('That file doesn\'t look like a video. Try a video file.', 'error')
       return
     }
+    // Cloudflare Stream direct-upload accepts up to 200MB per file on our
+    // plan. Bigger uploads would need the resumable tus protocol — not
+    // worth the complexity for typical mobile-recorded clips.
     if (file.size > 200 * 1024 * 1024) {
       toast('Video must be under 200MB', 'error')
       return
@@ -332,27 +337,34 @@ export function useHotTakeVideoUpload() {
     setPreviewUrl(null)
   }
 
+  /**
+   * Cloudflare Stream direct-upload flow:
+   *   1. Ask our server for a one-time upload URL + UID
+   *   2. POST the file directly to Cloudflare's URL (bypasses our server)
+   *   3. Return { hlsUrl, uid } so the caller can pass both onto createHotTake
+   *
+   * Cloudflare transcodes in the background; there's a brief window (usually
+   * 5-30s depending on length) where the HLS manifest is 404. Callers
+   * shouldn't block on that — the feed will render the video-not-ready state
+   * for a moment then start streaming as soon as Cloudflare finishes.
+   */
   async function uploadVideo() {
     if (!videoFile) return null
     setUploading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const userId = session?.user?.id
-      if (!userId) throw new Error('Not authenticated')
+      const { uploadURL, uid, hlsUrl } = await api.post('/stream/direct-upload', { maxDurationSeconds: 90 })
+      if (!uploadURL || !uid) throw new Error('Video upload service is unavailable')
 
-      const ext = videoFile.type === 'video/webm' ? 'webm' : 'mp4'
-      const fileName = `${userId}/${Date.now()}.${ext}`
-      const { error: uploadError } = await supabase.storage
-        .from('hot-take-videos')
-        .upload(fileName, videoFile, { contentType: videoFile.type })
+      const form = new FormData()
+      form.append('file', videoFile)
 
-      if (uploadError) throw uploadError
+      const uploadRes = await fetch(uploadURL, { method: 'POST', body: form })
+      if (!uploadRes.ok) {
+        const body = await uploadRes.text().catch(() => '')
+        throw new Error(body || `Cloudflare upload failed (${uploadRes.status})`)
+      }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('hot-take-videos')
-        .getPublicUrl(fileName)
-
-      return publicUrl
+      return { hlsUrl, uid }
     } catch (err) {
       toast(err.message || 'Failed to upload video', 'error')
       return null

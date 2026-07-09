@@ -13,11 +13,13 @@ import { useFeedReactionsBatch } from '../../hooks/useSocial'
 import PickComments from '../social/PickComments'
 import { timeAgo } from '../../lib/time'
 import { extractFirstUrl } from '../../lib/urlUtils'
+import { useHlsSource } from '../../lib/useHlsSource'
 
 function DetailVideo({ url }) {
   const videoRef = useRef(null)
   const [muted, setMuted] = useState(true)
   const [paused, setPaused] = useState(false)
+  useHlsSource(videoRef, url)
 
   useEffect(() => {
     const video = videoRef.current
@@ -62,7 +64,6 @@ function DetailVideo({ url }) {
     <div className="relative mt-2 cursor-pointer" onClick={togglePlayPause}>
       <video
         ref={videoRef}
-        src={url}
         muted={muted}
         playsInline
         loop

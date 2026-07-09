@@ -23,6 +23,7 @@ import emailRouter from './routes/email.js'
 import futuresRouter from './routes/futures.js'
 import recordsRouter from './routes/records.js'
 import hotTakesRouter from './routes/hotTakes.js'
+import streamRouter from './routes/stream.js'
 import dfsRouter from './routes/dfs.js'
 // Cross-sport player lookup / gamelog / salary router. File was named
 // nbaDfs.js when only NBA DFS existed; endpoints have since expanded to
@@ -86,6 +87,7 @@ app.use('/api/email', emailRouter)
 app.use('/api/futures', futuresRouter)
 app.use('/api/records', recordsRouter)
 app.use('/api/hot-takes', hotTakesRouter)
+app.use('/api/stream', streamRouter)
 app.use('/api/reports', reportsRouter)
 app.use('/api/teams', teamsRouter)
 app.use('/api/injuries', injuriesRouter)

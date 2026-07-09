@@ -55,4 +55,13 @@ export const env = {
   // service account JSON (downloaded from Cloud Console → IAM → Service
   // Accounts → Keys → Add Key → JSON) goes here as one value.
   GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+
+  // Cloudflare Stream — server-side transcoding for hot take videos.
+  // Fixes the "iPhone .mov gets rejected" bug by pushing input through
+  // Cloudflare's transcoder, then serving HLS to every client.
+  CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID,
+  CLOUDFLARE_STREAM_API_TOKEN: process.env.CLOUDFLARE_STREAM_API_TOKEN,
+  // Customer subdomain used to build HLS manifest URLs, e.g.
+  // customer-xxxxx.cloudflarestream.com
+  CLOUDFLARE_STREAM_SUBDOMAIN: process.env.CLOUDFLARE_STREAM_SUBDOMAIN,
 }
