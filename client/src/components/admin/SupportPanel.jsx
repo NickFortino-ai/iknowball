@@ -113,14 +113,25 @@ export default function SupportPanel() {
                   </span>
                 </div>
 
-                <div className="text-sm text-text-primary whitespace-pre-wrap">{r.message}</div>
-
-                {r.admin_reply && (
-                  <div className="rounded-lg bg-text-primary/5 border border-text-primary/10 p-3 space-y-1">
-                    <div className="text-[10px] uppercase text-text-muted tracking-wider">Your reply · {timeAgo(r.admin_replied_at)}</div>
-                    <div className="text-sm text-text-primary whitespace-pre-wrap">{r.admin_reply}</div>
-                  </div>
-                )}
+                {/* Full hydrated message thread — includes initial commissioner
+                    message, first admin reply (if any), and every follow-up in
+                    commissioner_report_messages, ordered by created_at. */}
+                <div className="space-y-2">
+                  {(r.messages || []).map((m) => (
+                    <div key={m.id} className={`flex ${m.sender_role === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[85%] rounded-xl px-3 py-2 ${
+                        m.sender_role === 'admin'
+                          ? 'bg-accent/15 border border-accent/40'
+                          : 'bg-text-primary/5 border border-text-primary/10'
+                      }`}>
+                        <div className="text-[10px] uppercase text-text-muted tracking-wider mb-0.5">
+                          {m.sender_role === 'admin' ? 'Admin' : 'Commissioner'} · {timeAgo(m.created_at)}
+                        </div>
+                        <div className="text-sm text-text-primary whitespace-pre-wrap">{m.message}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
                 {r.status !== 'resolved' && (
                   <>
@@ -162,7 +173,7 @@ export default function SupportPanel() {
                           onClick={() => setExpandedId(r.id)}
                           className="px-3 py-2 rounded-lg text-xs font-semibold bg-accent text-white"
                         >
-                          {r.admin_reply ? 'Reply again' : 'Reply'}
+                          Reply
                         </button>
                         <button
                           onClick={() => handleResolve(r.id)}

@@ -23,7 +23,7 @@ import {
   getLeagueInvitations,
 } from '../services/invitationService.js'
 import { sendLeagueInviteEmail } from '../services/emailService.js'
-import { createCommissionerReport } from '../services/commissionerReportService.js'
+import { createCommissionerReport, listReportsForCommissioner, postReportMessage } from '../services/commissionerReportService.js'
 import {
   submitSurvivorPick,
   submitTouchdownPick,
@@ -1127,6 +1127,28 @@ router.post('/:id/report-problem', requireAuth, validate(reportProblemSchema), a
   try {
     const report = await createCommissionerReport(req.params.id, req.user.id, req.validated.message)
     res.status(201).json(report)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// Commissioner-side: list every report I've filed for this league (with
+// hydrated message threads). Used by the ReportProblemModal to show the
+// running back-and-forth with the admin.
+router.get('/:id/report-problem', requireAuth, async (req, res) => {
+  try {
+    const reports = await listReportsForCommissioner(req.params.id, req.user.id)
+    res.json(reports)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// Commissioner-side: post a follow-up message to an existing report thread.
+router.post('/:id/report-problem/:reportId/message', requireAuth, validate(reportProblemSchema), async (req, res) => {
+  try {
+    const msg = await postReportMessage(req.params.reportId, req.user.id, 'commissioner', req.validated.message)
+    res.status(201).json(msg)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })
   }

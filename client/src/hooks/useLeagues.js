@@ -1809,7 +1809,26 @@ export function useSurveyStatus(leagueId) {
 }
 
 export function useReportProblem(leagueId) {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ message }) => api.post(`/leagues/${leagueId}/report-problem`, { message }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'report-problem'] }),
+  })
+}
+
+export function useMyReports(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'report-problem'],
+    queryFn: () => api.get(`/leagues/${leagueId}/report-problem`),
+    enabled: !!leagueId,
+    refetchInterval: 30_000,
+  })
+}
+
+export function useReplyToMyReport(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ reportId, message }) => api.post(`/leagues/${leagueId}/report-problem/${reportId}/message`, { message }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'report-problem'] }),
   })
 }
