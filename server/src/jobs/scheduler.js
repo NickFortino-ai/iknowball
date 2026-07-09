@@ -19,6 +19,7 @@ import { settleStuckParlays } from './settleStuckParlays.js'
 import { syncInjuries } from './syncInjuries.js'
 import { sendFantasyByeWarnings } from './sendFantasyByeWarnings.js'
 import { cleanupExpiredVideos } from './cleanupExpiredVideos.js'
+import { checkStreamReadiness } from './checkStreamReadiness.js'
 import { scoreNBADFS } from './scoreNBADFS.js'
 import { scoreWNBADFS } from './scoreWNBADFS.js'
 import { scoreMLBDFS } from './scoreMLBDFS.js'
@@ -105,6 +106,16 @@ export function startScheduler() {
       try { await cleanupExpiredVideos() } catch (err) { logger.error({ err }, 'Video cleanup job failed') }
     }, { timezone: 'America/New_York' })
     logger.info('Video cleanup scheduled: daily at 4:15 AM EST')
+
+    // Cloudflare Stream readiness sweep — flips stream_ready_at on hot takes
+    // whose transcoding just finished so they become visible in the public
+    // feed. node-cron's minimum interval is 1 minute; for a tighter cadence
+    // during the first minute of upload, the client-side polling below picks
+    // up the slack when the uploader is watching their own post.
+    cron.schedule('* * * * *', async () => {
+      try { await checkStreamReadiness() } catch (err) { logger.error({ err }, 'Stream readiness job failed') }
+    })
+    logger.info('Stream readiness check scheduled: every minute')
   }
 
   // Solo-league at-risk warning + auto-cancel. Runs every 15 minutes.

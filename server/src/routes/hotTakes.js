@@ -105,11 +105,15 @@ router.get('/sport', requireAuth, async (req, res) => {
     .eq('blocker_id', req.user.id)
   const blockedIds = (blocks || []).map((b) => b.blocked_id)
 
-  // Match hot takes by sport_key (new) or by team name overlap (legacy, no sport_key)
+  // Match hot takes by sport_key (new) or by team name overlap (legacy, no sport_key).
+  // Also filter out posts whose Cloudflare Stream video is still transcoding
+  // — uploader sees their own pending posts, but this is the public team feed
+  // so nothing pending should leak in.
   let query = supabase
     .from('hot_takes')
-    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, post_type, created_at')
+    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, stream_video_uid, stream_ready_at, post_type, created_at')
     .or(`sport_key.eq.${sport},and(sport_key.is.null,team_tags.ov.{${teamList.map((t) => `"${t}"`).join(',')}})`)
+    .or(`stream_ready_at.not.is.null,user_id.eq.${req.user.id}`)
     .order('created_at', { ascending: false })
     .limit(20)
 
@@ -215,8 +219,9 @@ router.get('/team', requireAuth, async (req, res) => {
 
   let query = supabase
     .from('hot_takes')
-    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, post_type, created_at')
+    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, stream_video_uid, stream_ready_at, post_type, created_at')
     .contains('team_tags', [team])
+    .or(`stream_ready_at.not.is.null,user_id.eq.${req.user.id}`)
     .order('created_at', { ascending: false })
     .limit(20)
 
@@ -437,11 +442,16 @@ router.post('/ask/:userId', requireAuth, async (req, res) => {
 router.get('/:id', requireAuth, async (req, res) => {
   const { data: take, error } = await supabase
     .from('hot_takes')
-    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, post_type, created_at')
+    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, stream_video_uid, stream_ready_at, post_type, created_at')
     .eq('id', req.params.id)
     .single()
 
   if (error || !take) {
+    return res.status(404).json({ error: 'Post not found' })
+  }
+
+  // Non-author can't see a hot take whose video is still transcoding.
+  if (take.stream_video_uid && !take.stream_ready_at && take.user_id !== req.user.id) {
     return res.status(404).json({ error: 'Post not found' })
   }
 

@@ -37,6 +37,17 @@ export function useConnectionActivity(scope = 'squad', targetUserId = null) {
     },
     initialPageParam: null,
     getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
+    // When any of the current user's hot takes are still transcoding, poll
+    // every 8s so the "processing" placeholder flips to the real video
+    // shortly after Cloudflare finishes. Otherwise no polling — the feed is
+    // static until the user pulls-to-refresh or scrolls.
+    refetchInterval: (query) => {
+      const pages = query?.state?.data?.pages || []
+      const hasPending = pages.some((p) =>
+        (p?.items || []).some((item) => item?.hot_take?.stream_video_uid && !item?.hot_take?.stream_ready_at)
+      )
+      return hasPending ? 8_000 : false
+    },
   })
 }
 

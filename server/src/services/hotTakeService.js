@@ -5,9 +5,14 @@ import { createNotification } from './notificationService.js'
 export async function createHotTake(userId, content, teamTags, sportKey, imageUrl, userTags, videoUrl, imageUrls, postType = 'post', streamVideoUid = null) {
   // Support both single image_url and multi image_urls
   const resolvedImageUrls = imageUrls?.length ? imageUrls : imageUrl ? [imageUrl] : null
+  // Posts without a Cloudflare Stream video are immediately ready. Posts
+  // with a pending Stream UID stay ready=null until checkStreamReadiness
+  // sees Cloudflare report readyToStream=true — the feed filter hides them
+  // from public views in the meantime.
+  const streamReadyAt = streamVideoUid ? null : new Date().toISOString()
   const { data, error } = await supabase
     .from('hot_takes')
-    .insert({ user_id: userId, content, team_tags: teamTags?.length ? teamTags : null, sport_key: sportKey || null, image_url: resolvedImageUrls?.[0] || null, image_urls: resolvedImageUrls, user_tags: userTags?.length ? userTags : null, video_url: videoUrl || null, stream_video_uid: streamVideoUid || null, post_type: postType || 'post' })
+    .insert({ user_id: userId, content, team_tags: teamTags?.length ? teamTags : null, sport_key: sportKey || null, image_url: resolvedImageUrls?.[0] || null, image_urls: resolvedImageUrls, user_tags: userTags?.length ? userTags : null, video_url: videoUrl || null, stream_video_uid: streamVideoUid || null, stream_ready_at: streamReadyAt, post_type: postType || 'post' })
     .select()
     .single()
 

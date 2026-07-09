@@ -92,6 +92,20 @@ function FlexTargetCard({ hot_take }) {
   return null
 }
 
+function VideoProcessingPlaceholder() {
+  return (
+    <div className="relative mt-2 rounded-lg border border-text-primary/15 bg-text-primary/[0.04] p-6 flex items-center gap-3">
+      <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold text-text-primary">Video processing…</div>
+        <div className="text-xs text-text-primary/70 mt-0.5">
+          We'll publish this post to the feed once your video finishes transcoding. Usually just a few seconds.
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function FeedVideo({ url }) {
   const videoRef = useRef(null)
   const containerRef = useRef(null)
@@ -808,8 +822,14 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
             </div>
           )}
 
-          {/* Video */}
-          {hot_take.video_url && <FeedVideo url={hot_take.video_url} />}
+          {/* Video — placeholder while Cloudflare Stream transcodes. The
+              server hides pending posts from every viewer except the author,
+              so only the uploader ever sees this state. */}
+          {hot_take.stream_video_uid && !hot_take.stream_ready_at ? (
+            <VideoProcessingPlaceholder />
+          ) : (
+            hot_take.video_url && <FeedVideo url={hot_take.video_url} />
+          )}
 
           {/* Link preview */}
           {extractFirstUrl(hot_take.content) && (

@@ -518,9 +518,12 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .order('updated_at', { ascending: false })
       .limit(100),
 
-    // Source 9: Hot takes (posts, predictions, polls)
+    // Source 9: Hot takes (posts, predictions, polls). Filter out posts
+    // whose Cloudflare Stream video is still transcoding — the uploader
+    // sees their own pending posts (user_id.eq.${userId}) but nobody else
+    // does until stream_ready_at is set by the checkStreamReadiness job.
     (() => {
-      const htSelect = 'id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, post_type, created_at, flex_pick_id, flex_parlay_id, flex_prop_pick_id'
+      const htSelect = 'id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, stream_video_uid, stream_ready_at, post_type, created_at, flex_pick_id, flex_parlay_id, flex_prop_pick_id'
       let htQuery
       if (isPolls) {
         htQuery = supabase.from('hot_takes').select(htSelect).eq('post_type', 'poll')
@@ -535,6 +538,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       } else {
         htQuery = filterByUser(supabase.from('hot_takes').select(htSelect), 'user_id', allIds)
       }
+      htQuery = htQuery.or(`stream_ready_at.not.is.null,user_id.eq.${userId}`)
       return applyBefore(htQuery, 'created_at')
         .order('created_at', { ascending: false })
         .limit((isHotTakes || isUserHotTakes || isPolls || isPredictions || isPosts) ? 30 : 15)
