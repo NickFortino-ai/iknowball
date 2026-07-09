@@ -33,7 +33,7 @@ export default function CommissionerToolsPage({ league }) {
     <div className="max-w-2xl md:max-w-4xl mx-auto space-y-4 pb-6">
       <div className="pt-2">
         <h2 className="font-display text-2xl text-text-primary">Commissioner Tools</h2>
-        <p className="text-sm text-text-muted mt-1">
+        <p className="text-sm text-text-primary/80 mt-1">
           Actions you can take on behalf of managers. Every action is logged and the affected manager is notified.
         </p>
       </div>
@@ -50,7 +50,7 @@ export default function CommissionerToolsPage({ league }) {
                 <polyline points="15 18 9 12 15 6" />
               </svg>
             </button>
-            <span className="text-xs uppercase text-text-muted tracking-wider">Report a Problem to the IKB Admin</span>
+            <span className="text-xs uppercase text-text-primary/80 tracking-wider">Report a Problem to the IKB Admin</span>
           </div>
           <ReportProblemSection league={league} embedded={true} onEmbeddedBack={() => setOpenTool(null)} />
         </div>
@@ -141,11 +141,11 @@ function ManagerPicker({ members, promptText, onBack, onPick }) {
             <polyline points="15 18 9 12 15 6" />
           </svg>
         </button>
-        <span className="text-xs uppercase text-text-muted tracking-wider">{promptText}</span>
+        <span className="text-xs uppercase text-text-primary/80 tracking-wider">{promptText}</span>
       </div>
       <div className="p-2 space-y-1 max-h-[60vh] overflow-y-auto">
         {members.length === 0 ? (
-          <div className="text-center py-6 text-xs text-text-muted">No other managers in this league.</div>
+          <div className="text-center py-6 text-xs text-text-primary/70">No other managers in this league.</div>
         ) : (
           members.map((m) => {
             const name = m.users?.display_name || m.users?.username || 'Manager'
@@ -193,7 +193,7 @@ function ToolCard({ icon, title, description, onClick, disabled, badge }) {
             </span>
           )}
         </div>
-        <div className="text-xs text-text-muted mt-0.5">{description}</div>
+        <div className="text-xs text-text-primary/70 mt-0.5">{description}</div>
       </div>
       {!disabled && <span className="text-text-muted text-lg leading-none">›</span>}
     </button>

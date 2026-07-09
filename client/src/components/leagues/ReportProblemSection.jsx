@@ -146,7 +146,7 @@ function ListPane({ reports, onOpen, onNew, onCollapse, collapseLabel = 'Close' 
     <div>
       <div className="p-3 space-y-2 max-h-64 overflow-y-auto">
         {reports.length === 0 ? (
-          <div className="text-center py-6 text-sm text-text-muted">
+          <div className="text-center py-6 text-sm text-text-primary/80">
             No prior reports. Something wrong? Start a new one.
           </div>
         ) : (
