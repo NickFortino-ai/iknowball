@@ -7,7 +7,7 @@ import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 import UserProfileModal from '../profile/UserProfileModal'
-import { todaySportsDay, tomorrowSportsDay, leagueStartSportsDay, leagueEndSportsDay } from '../../lib/sportsDay'
+import { todaySportsDay, tomorrowSportsDay, addDaysSportsDay, leagueStartSportsDay, leagueEndSportsDay } from '../../lib/sportsDay'
 
 const SLOTS = [
   { key: 'SP', label: 'SP', positions: ['SP'] },
@@ -116,9 +116,7 @@ function MlbLiveView({ league, date: leagueDate }) {
   const canGoForward = viewDate < today
 
   function shiftDate(d, days) {
-    const dt = new Date(d + 'T12:00:00')
-    dt.setDate(dt.getDate() + days)
-    return dt.toLocaleDateString('en-CA')
+    return addDaysSportsDay(d, days)
   }
 
   if (isLoading) return <LoadingSpinner />

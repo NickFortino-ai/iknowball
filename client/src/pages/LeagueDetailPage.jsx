@@ -1768,7 +1768,7 @@ export default function LeagueDetailPage() {
   const [inviteRequested, setInviteRequested] = useState(false)
   const [activeTab, setActiveTab] = useState(0)
   const [tabInitialized, setTabInitialized] = useState(false)
-  const todayDate = new Date().toLocaleDateString('en-CA')
+  const todayDate = todaySportsDay()
   const isDfsFormat = ['nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'wnba_three_point'].includes(league?.format)
   const { data: nbaLiveData } = useNbaDfsLive(league?.format === 'nba_dfs' ? id : null, todayDate)
   const { data: wnbaLiveData } = useWnbaDfsLive(league?.format === 'wnba_dfs' ? id : null, todayDate)

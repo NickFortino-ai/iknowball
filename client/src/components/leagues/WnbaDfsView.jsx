@@ -6,7 +6,7 @@ import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 import UserProfileModal from '../profile/UserProfileModal'
-import { todaySportsDay, tomorrowSportsDay, leagueStartSportsDay, leagueEndSportsDay } from '../../lib/sportsDay'
+import { todaySportsDay, tomorrowSportsDay, addDaysSportsDay, leagueStartSportsDay, leagueEndSportsDay } from '../../lib/sportsDay'
 
 // WNBA roster: 9 slots (2 G, 2 F, 1 C, 4 UTIL). Per migration 214,
 // G-slots accept guards only, F-slots accept forwards only, C-slot
@@ -90,14 +90,12 @@ function todayLocal() {
 // ============================================
 
 function shiftDate(dateStr, days) {
-  const d = new Date(dateStr + 'T12:00:00')
-  d.setDate(d.getDate() + days)
-  return d.toLocaleDateString('en-CA')
+  return addDaysSportsDay(dateStr, days)
 }
 
 function formatDateNav(dateStr) {
-  const today = new Date().toLocaleDateString('en-CA')
-  const yesterday = shiftDate(today, -1)
+  const today = todaySportsDay()
+  const yesterday = addDaysSportsDay(today, -1)
   if (dateStr === today) return 'Today'
   if (dateStr === yesterday) return 'Yesterday'
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })

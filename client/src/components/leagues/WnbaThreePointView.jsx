@@ -7,7 +7,7 @@ import Avatar from '../ui/Avatar'
 import InjuryBadge from '../ui/InjuryBadge'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
 import UserProfileModal from '../profile/UserProfileModal'
-import { todaySportsDay, tomorrowSportsDay, leagueStartSportsDay, leagueEndSportsDay } from '../../lib/sportsDay'
+import { todaySportsDay, tomorrowSportsDay, addDaysSportsDay, leagueStartSportsDay, leagueEndSportsDay } from '../../lib/sportsDay'
 
 function todayLocal() {
   return todaySportsDay()
@@ -277,10 +277,9 @@ export default function WnbaThreePointView({ league, tab = 'picks' }) {
                   </div>
                   {isExpanded && (() => {
                     const todayPicks = (s.picks || []).filter((p) => p.game_date === today)
-                    // Past 7 days (excluding today), grouped by date, most recent first
-                    const weekAgo = new Date()
-                    weekAgo.setDate(weekAgo.getDate() - 7)
-                    const weekAgoStr = weekAgo.toLocaleDateString('en-CA')
+                    // Past 7 days (excluding today), grouped by date, most recent first.
+                    // Anchor to PT sports day to match server-stored game_date.
+                    const weekAgoStr = addDaysSportsDay(today, -7)
                     const recentByDate = {}
                     for (const p of (s.picks || [])) {
                       if (p.game_date >= today || p.game_date < weekAgoStr) continue
