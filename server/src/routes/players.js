@@ -751,9 +751,10 @@ const NFL_GAME_COLS = (statMap) => ({
   def_tackles_solo: parseInt(statMap['SOLO']) || 0,
   def_tackles_ast: parseInt(statMap['AST']) || 0,
   def_sack: parseFloat(statMap['SACK']) || 0,
-  // ESPN uses STF (stuffs) for tackles-for-loss, not TFL. Verified via
-  // /athletes/{id}/gamelog labels on 2024 defensive stats.
-  def_tfl: parseFloat(statMap['STF']) || 0,
+  // ESPN currently labels tackles-for-loss as 'STF' (Stuffs) in their
+  // gamelog schema, but accept 'TFL' too in case they normalize to the
+  // more common NFL-official label (used everywhere else in the industry).
+  def_tfl: parseFloat(statMap['TFL'] ?? statMap['STF']) || 0,
   def_pass_def: parseInt(statMap['PD']) || 0,
   def_ff: parseInt(statMap['FF']) || 0,
   def_fum_rec: parseInt(statMap['FR']) || 0,
@@ -927,11 +928,12 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
             pass_yds: get('PYDS'), pass_td: get('PTD'), int: get('INT'),
             rush_yds: get('RYDS'), rush_td: get('RTD'),
             rec: get('REC'), rec_yds: get('RECYDS'), rec_td: get('RECTD'),
-            // Defense (IDP). ESPN uses SOLO/AST/SACK/STF/PD/FF/FR labels on
-            // the 'defensive' category (stuffs, not tackles-for-loss). Verified
-            // live against ESPN's public API on 2024 season data.
+            // Defense (IDP). ESPN currently labels tackles-for-loss as 'STF'
+            // (Stuffs) — try 'TFL' first in case they normalize to the more
+            // common label, fall back to 'STF' for what's live today.
             def_tackles_solo: get('SOLO'), def_tackles_ast: get('AST'),
-            def_sack: get('SACK'), def_tfl: get('STF'),
+            def_sack: get('SACK'),
+            def_tfl: sLabels.includes('TFL') ? get('TFL') : get('STF'),
             def_pass_def: get('PD'), def_ff: get('FF'), def_fum_rec: get('FR'),
             def_int: get('INT'),
             gp: get('GP'),
