@@ -6,6 +6,43 @@ import { sendFcmToUser } from './fcmService.js'
 
 const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_result', 'squares_quarter_win', 'record_broken', 'survivor_result', 'survivor_win', 'survivor_pick_reminder', 'roster_reminder', 'league_win', 'league_invitation', 'direct_message', 'league_thread_mention', 'league_report', 'nfl_injury_warning', 'fantasy_trade_proposed', 'fantasy_trade_accepted', 'fantasy_trade_declined', 'fantasy_waiver_awarded', 'fantasy_stat_correction', 'fantasy_draft_starting_soon', 'poll_response_milestone', 'og_welcome', 'bracket_published']
 
+// Types that respect quiet hours (10 PM – 8 AM PT). The DB row is still
+// written so the user sees the notification in-app when they open the
+// app in the morning — only the push fanout is skipped.
+//
+// Included:
+// - survivor_result / survivor_win: both fire from real-time game-finish
+//   paths AND catch-up crons. Even the game-finish case can land at
+//   12–1 AM PT for late West Coast MLB. User sees result in-app.
+// - fantasy_waiver_awarded: waivers clear Wed 3 AM ET (= midnight PT Wed).
+//   User checks their team in the morning to see who they got.
+// - fantasy_stat_correction: rare batch update, no urgency.
+//
+// NOT included (deliberately deliver during quiet hours):
+// - direct_message, league_thread_mention, league_invitation,
+//   fantasy_trade_*: user-initiated by another human, should deliver
+//   whenever the other user acts.
+// - parlay_result, record_broken, streak_milestone, futures_result,
+//   nfl_injury_warning: rare or infrequent enough that late timing is
+//   accepted as timely.
+const QUIET_HOURS_TYPES = new Set([
+  'survivor_result',
+  'survivor_win',
+  'fantasy_waiver_awarded',
+  'fantasy_stat_correction',
+])
+
+function isCurrentlyQuietHoursPt() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    hour: 'numeric',
+    hour12: false,
+  }).formatToParts(new Date())
+  const hourStr = parts.find((p) => p.type === 'hour')?.value
+  const ptHour = hourStr === '24' ? 0 : Number(hourStr)
+  return ptHour >= 22 || ptHour < 8
+}
+
 export async function createNotification(userId, type, message, metadata = {}) {
   // Self-notification guard
   if (metadata.actorId === userId) return null
@@ -23,6 +60,12 @@ export async function createNotification(userId, type, message, metadata = {}) {
 
   // Send web push for eligible notification types
   if (PUSH_ELIGIBLE_TYPES.includes(type)) {
+    // Quiet-hours gate — skip push (not the DB row) for catch-up types
+    // during 10 PM – 8 AM PT. User sees the notification in-app when
+    // they open the app.
+    if (QUIET_HOURS_TYPES.has(type) && isCurrentlyQuietHoursPt()) {
+      return data
+    }
     try {
       const { data: user } = await supabase
         .from('users')

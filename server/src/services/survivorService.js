@@ -1011,24 +1011,11 @@ export async function backfillStuckSurvivorPicks() {
 }
 
 export async function autoEliminateMissedPicks() {
-  // Quiet-hours gate: skip the run between 10 PM and 8 AM PT so
-  // eliminations + winner announcements don't fire push notifications
-  // in the middle of the night. Daily survivor periods end at 3 AM PT
-  // (10 UTC), so without this gate the very next cron tick would blast
-  // "You were eliminated" pushes at 3:00 AM local time. Users open the
-  // app in the morning and see the result then — that's the intended
-  // moment for the push too. This applies to both missed-pick
-  // eliminations AND the checkSurvivorWinner safety net below.
-  const hourParts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Los_Angeles',
-    hour: 'numeric',
-    hour12: false,
-  }).formatToParts(new Date())
-  const hourStr = hourParts.find((p) => p.type === 'hour')?.value
-  const ptHour = hourStr === '24' ? 0 : Number(hourStr)
-  if (ptHour >= 22 || ptHour < 8) {
-    return
-  }
+  // Quiet-hours behavior is handled centrally in notificationService's
+  // QUIET_HOURS_TYPES gate — survivor_result / survivor_win push emissions
+  // during 10 PM – 8 AM PT skip fanout but still write the DB row. This
+  // fn is safe to run continuously; state updates and in-app
+  // notifications land immediately, phone pushes wait until morning.
 
   // Find active survivor leagues
   const { data: leagues } = await supabase
