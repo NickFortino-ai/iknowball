@@ -1,9 +1,21 @@
-// Shared formatters for league dates. All league displays should anchor
-// to PT (the canonical sports day timezone), not the user's local zone
-// and not ET — late West Coast games drift across day boundaries
-// otherwise. End dates additionally need a 12h shift back because they're
-// stored as "end of sports day PT" = next-day 10:00 UTC = next-day 3 AM PT;
-// without the shift, "end of June 19 PT" displays as "Jun 20".
+// Shared formatters for league dates — the CANONICAL date/time RENDERING
+// helper for the client. Complements lib/sportsDay.js (canonical anchor
+// math): sportsDay computes and compares, leagueDate renders.
+//
+// All league displays should anchor to PT (the canonical sports day
+// timezone), not the user's local zone and not ET — late West Coast games
+// drift across day boundaries otherwise. End dates additionally need a
+// 12h shift back because they're stored as "end of sports day PT" =
+// next-day 10:00 UTC = next-day 3 AM PT; without the shift, "end of June
+// 19 PT" displays as "Jun 20".
+//
+// Exception: draft start/game start times render in viewer-local
+// (formatDraftDateShort) — the user needs to know when the moment is on
+// their own clock, not the commissioner's. All other league dates
+// anchor PT so mid-month boundaries are TZ-invariant across the roster.
+//
+// See feedback_no_utc_date_math and project_timezone_debt_audit for
+// the 2026-07-09 audit that hardened this convention.
 
 const SHORT = { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' }
 const LONG = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Los_Angeles' }

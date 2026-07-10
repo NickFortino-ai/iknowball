@@ -1,4 +1,6 @@
-// Sports-day timezone anchor.
+// Sports-day timezone anchor — the CANONICAL date/anchor helper for the
+// server. All new code doing "what day is this slate for" math must route
+// through here.
 //
 // All US pro sports finish within the Pacific calendar day — the latest
 // regular start is a 10pm PT West Coast game ending ~1am PT. By
@@ -12,9 +14,15 @@
 // score scrapes, daily standings, and roster lock windows whenever
 // the late game runs long.
 //
-// Use these helpers instead of ad-hoc toLocaleDateString('en-CA',
-// { timeZone: 'America/New_York' }) calls in any new code dealing
-// with daily slates or game-day reasoning.
+// DO NOT introduce new ad-hoc `toLocaleDateString('en-CA', { timeZone:
+// 'America/New_York' })` calls. Existing America/New_York references in
+// server code are either (a) cron anchors matching NFL business hours,
+// (b) external-API calendar matches (ESPN/Sleeper key by ET date), or
+// (c) reminder-time-of-day business decisions. New code should almost
+// always use PT-anchored helpers here.
+//
+// See feedback_no_utc_date_math and project_timezone_debt_audit for
+// the rules and the 2026-07-09 audit that hardened this convention.
 
 export const SPORTS_TZ = 'America/Los_Angeles'
 
