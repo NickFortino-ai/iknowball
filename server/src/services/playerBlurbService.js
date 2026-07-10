@@ -5,9 +5,33 @@ import { fetchAll } from '../utils/fetchAll.js'
 
 /**
  * Get the top fantasy-relevant players by position, ranked by season points.
- * Returns { QB: [...], RB: [...], WR: [...], TE: [...], DEF: [...] }
+ * Returns { QB: [...], RB: [...], WR: [...], TE: [...], K: [...], DEF: [...],
+ * DL: [...], LB: [...], DB: [...], S: [...] } — IDP families collapse
+ * raw ESPN codes (DE/DT/NT → DL, ILB/OLB/MLB → LB, CB → DB, FS/SS → S).
  */
-const POSITION_LIMITS = { QB: 34, RB: 30, WR: 30, TE: 15, DEF: 10 }
+const POSITION_LIMITS = {
+  QB: 34, RB: 30, WR: 30, TE: 15, K: 32, DEF: 10,
+  DL: 60, LB: 60, DB: 60, S: 30,
+}
+
+// Collapse raw ESPN position codes into the family the admin filters by.
+// nfl_players.position is the raw code (e.g. OLB), but the blurb tool + draft
+// UI filter by family (LB). Offense positions are already normalized.
+function familyOf(rawPos) {
+  if (rawPos === 'DE' || rawPos === 'DT' || rawPos === 'NT' || rawPos === 'DL') return 'DL'
+  if (rawPos === 'ILB' || rawPos === 'OLB' || rawPos === 'MLB' || rawPos === 'LB') return 'LB'
+  if (rawPos === 'CB' || rawPos === 'DB') return 'DB'
+  if (rawPos === 'FS' || rawPos === 'SS' || rawPos === 'S') return 'S'
+  return rawPos // QB, RB, WR, TE, K, DEF
+}
+
+const BLURB_POSITIONS = [
+  'QB', 'RB', 'WR', 'TE', 'K', 'DEF',
+  'DE', 'DT', 'NT', 'DL', // → DL family
+  'ILB', 'OLB', 'MLB', 'LB', // → LB family
+  'CB', 'DB', // → DB family
+  'FS', 'SS', 'S', // → S family
+]
 
 export async function getTopPlayersByPosition(season, { unlimited = false } = {}) {
   const scoringCol = 'pts_half_ppr' // default ranking column
@@ -28,7 +52,7 @@ export async function getTopPlayersByPosition(season, { unlimited = false } = {}
       .from('nfl_players')
       .select('id, full_name, position, team, injury_status, injury_body_part')
       .not('team', 'is', null)
-      .in('position', ['QB', 'RB', 'WR', 'TE', 'DEF'])
+      .in('position', BLURB_POSITIONS)
   )
 
   // Fetch actual season point totals using the scoring column
@@ -53,11 +77,14 @@ export async function getTopPlayersByPosition(season, { unlimited = false } = {}
     gamesPlayed[s.player_id] = (gamesPlayed[s.player_id] || 0) + 1
   }
 
-  // Group by position and sort by season total
+  // Group by position family and sort by season total. Family collapses
+  // ESPN's raw IDP codes (DE/DT/NT → DL, etc.) so the admin filters by
+  // fantasy families, not raw ESPN codes.
   const byPosition = {}
   for (const p of players) {
-    if (!byPosition[p.position]) byPosition[p.position] = []
-    byPosition[p.position].push({
+    const family = familyOf(p.position)
+    if (!byPosition[family]) byPosition[family] = []
+    byPosition[family].push({
       ...p,
       seasonPoints: Math.round((seasonTotals[p.id] || 0) * 100) / 100,
       gamesPlayed: gamesPlayed[p.id] || 0,

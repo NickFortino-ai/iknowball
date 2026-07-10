@@ -77,6 +77,21 @@ function columnsFor(position, weeks) {
       { key: 'def_pts_allowed', label: 'PA' },
     ]
   }
+  // Individual defensive players — DL/LB/DB/S. Raw ESPN codes (DE/DT/NT,
+  // ILB/OLB/MLB, CB, FS/SS) all fall into this branch too.
+  if (['DL', 'LB', 'DB', 'S', 'DE', 'DT', 'NT', 'ILB', 'OLB', 'MLB', 'CB', 'FS', 'SS'].includes(position)) {
+    return [
+      { key: 'pts', label: 'Pts' },
+      { key: 'idp_tkl_solo', label: 'SOLO' },
+      { key: 'idp_tkl_ast', label: 'AST' },
+      { key: 'idp_sack', label: 'SK' },
+      { key: 'idp_tkl_loss', label: 'TFL' },
+      { key: 'idp_int', label: 'INT' },
+      { key: 'idp_pass_def', label: 'PD' },
+      { key: 'idp_ff', label: 'FF' },
+      { key: 'idp_fum_rec', label: 'FR' },
+    ]
+  }
   if (position === 'RB') {
     // Rushing first for RBs, then receiving since modern RBs catch a lot too
     return [
@@ -133,6 +148,15 @@ function CurrentWeekNarrative({ position, week }) {
     if (week.def_safety) items.push(`${week.def_safety} safety${week.def_safety !== 1 ? 's' : ''}`)
     if (items.length) parts.push(items.join(', '))
     if (week.def_pts_allowed != null) parts.push(`Allowed ${week.def_pts_allowed} points`)
+  } else if (['DL', 'LB', 'DB', 'S', 'DE', 'DT', 'NT', 'ILB', 'OLB', 'MLB', 'CB', 'FS', 'SS'].includes(position)) {
+    const tkl = (week.idp_tkl_solo || 0) + (week.idp_tkl_ast || 0)
+    if (tkl) parts.push(`${tkl} tackle${tkl !== 1 ? 's' : ''} (${week.idp_tkl_solo || 0} solo${week.idp_tkl_ast ? `, ${week.idp_tkl_ast} ast` : ''})`)
+    if (week.idp_sack) parts.push(`${week.idp_sack} sack${week.idp_sack !== 1 ? 's' : ''}`)
+    if (week.idp_tkl_loss) parts.push(`${week.idp_tkl_loss} TFL`)
+    if (week.idp_int) parts.push(`${week.idp_int} interception${week.idp_int !== 1 ? 's' : ''}`)
+    if (week.idp_pass_def) parts.push(`${week.idp_pass_def} pass${week.idp_pass_def !== 1 ? 'es' : ''} defended`)
+    if (week.idp_ff) parts.push(`${week.idp_ff} forced fumble${week.idp_ff !== 1 ? 's' : ''}`)
+    if (week.idp_fum_rec) parts.push(`${week.idp_fum_rec} fumble recovery${week.idp_fum_rec !== 1 ? 'ies' : ''}`)
   } else if (position === 'RB') {
     if (week.rush_att) parts.push(`${week.rush_yd || 0} rushing yards on ${week.rush_att} carries${week.rush_td ? `, ${week.rush_td} TD` : ''}`)
     if (week.rec) parts.push(`${week.rec} reception${week.rec !== 1 ? 's' : ''} for ${week.rec_yd || 0} yards${week.rec_td ? `, ${week.rec_td} TD` : ''}`)

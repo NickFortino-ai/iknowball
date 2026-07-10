@@ -734,6 +734,7 @@ const MLB_PITCHER_GAME_COLS = (statMap) => ({
 
 // NFL stat columns for game log
 const NFL_GAME_COLS = (statMap) => ({
+  // Offense
   pass_yds: parseInt(statMap['PYDS'] || statMap['Pass YDS']) || 0,
   pass_td: parseInt(statMap['PTD'] || statMap['Pass TD']) || 0,
   int: parseInt(statMap['INT']) || 0,
@@ -742,6 +743,18 @@ const NFL_GAME_COLS = (statMap) => ({
   rec: parseInt(statMap['REC']) || 0,
   rec_yds: parseInt(statMap['RECYDS'] || statMap['Rec YDS']) || 0,
   rec_td: parseInt(statMap['RECTD'] || statMap['Rec TD']) || 0,
+  // Defense (IDP). ESPN's gamelog labels use TOT/SOLO/AST for tackles, SACK
+  // for sacks, and INT/PD/FF/FR for turnovers. Reuse the offense `int`
+  // column (interceptions thrown for QBs, picked for DBs — separate stat
+  // types but same label). The client branches by position group so there's
+  // no ambiguity in display.
+  def_tackles_solo: parseInt(statMap['SOLO'] || statMap['Solo']) || 0,
+  def_tackles_ast: parseInt(statMap['AST'] || statMap['Ast']) || 0,
+  def_sack: parseFloat(statMap['SACK'] || statMap['Sacks']) || 0,
+  def_tfl: parseFloat(statMap['TFL'] || statMap['Tackles for Loss']) || 0,
+  def_pass_def: parseInt(statMap['PD'] || statMap['Passes Defensed']) || 0,
+  def_ff: parseInt(statMap['FF'] || statMap['Forced Fumbles']) || 0,
+  def_fum_rec: parseInt(statMap['FR'] || statMap['Fumble Recoveries']) || 0,
 })
 
 // Player game log — last 10 games (supports NBA, MLB, and NFL)
@@ -904,9 +917,16 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
           }
         } else if (isNFL) {
           averages = {
+            // Offense
             pass_yds: get('PYDS'), pass_td: get('PTD'), int: get('INT'),
             rush_yds: get('RYDS'), rush_td: get('RTD'),
             rec: get('REC'), rec_yds: get('RECYDS'), rec_td: get('RECTD'),
+            // Defense (IDP). ESPN uses SOLO/AST/SACK/TFL/PD/FF/FR labels
+            // on defensive players' averages endpoint.
+            def_tackles_solo: get('SOLO'), def_tackles_ast: get('AST'),
+            def_sack: get('SACK'), def_tfl: get('TFL'),
+            def_pass_def: get('PD'), def_ff: get('FF'), def_fum_rec: get('FR'),
+            def_int: get('INT'),
             gp: get('GP'),
           }
         } else {

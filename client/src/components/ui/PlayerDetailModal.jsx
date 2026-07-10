@@ -182,6 +182,10 @@ function getNFLPositionGroup(position) {
   if (pos === 'WR' || pos === 'TE') return 'rec'
   if (pos === 'K') return 'k'
   if (pos === 'DEF') return 'def'
+  // IDPs — group raw ESPN codes into a single 'idp' bucket for stat display.
+  if (['DL', 'DE', 'DT', 'NT'].includes(pos)) return 'idp'
+  if (['LB', 'ILB', 'OLB', 'MLB'].includes(pos)) return 'idp'
+  if (['DB', 'CB', 'S', 'FS', 'SS'].includes(pos)) return 'idp'
   return 'skill'
 }
 
@@ -215,6 +219,14 @@ const NFL_AVG_STATS = {
     { label: 'TD', key: 'rush_td' },
     { label: 'GP', key: 'gp' },
   ],
+  idp: [
+    { label: 'SOLO', key: 'def_tackles_solo' },
+    { label: 'AST', key: 'def_tackles_ast' },
+    { label: 'SACK', key: 'def_sack' },
+    { label: 'INT', key: 'def_int' },
+    { label: 'PD', key: 'def_pass_def' },
+    { label: 'GP', key: 'gp' },
+  ],
 }
 
 const NFL_LOG_COLS = {
@@ -222,6 +234,7 @@ const NFL_LOG_COLS = {
   rb: { cols: 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.5rem_2rem_2rem_2.5rem]', headers: ['RuYD', 'RTD', 'REC', 'ReYD'], fields: ['rush_yds', 'rush_td', 'rec', 'rec_yds'] },
   rec: { cols: 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2rem_2.5rem_2rem_2.5rem]', headers: ['REC', 'ReYD', 'RTD', 'RuYD'], fields: ['rec', 'rec_yds', 'rec_td', 'rush_yds'] },
   skill: { cols: 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.5rem_2.5rem_2rem_2rem]', headers: ['RuYD', 'ReYD', 'REC', 'TD'], fields: ['rush_yds', 'rec_yds', 'rec', 'rush_td'] },
+  idp: { cols: 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2rem_2rem_2.5rem_2rem]', headers: ['SOLO', 'AST', 'SACK', 'INT'], fields: ['def_tackles_solo', 'def_tackles_ast', 'def_sack', 'def_int'] },
 }
 
 function NFLaverages({ averages, position }) {

@@ -11,7 +11,7 @@ const SPORTS = [
 ]
 
 const POSITIONS_BY_SPORT = {
-  nfl: ['all', 'QB', 'RB', 'WR', 'TE', 'DEF'],
+  nfl: ['all', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DL', 'LB', 'DB', 'S'],
   nba: ['all', 'PG', 'SG', 'SF', 'PF', 'C', 'G', 'F'],
   wnba: ['all', 'G', 'F', 'C'],
   mlb: ['all', 'SP', 'RP', 'C', '1B', '2B', '3B', 'SS', 'OF', 'DH'],
