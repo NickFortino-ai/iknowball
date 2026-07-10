@@ -1814,6 +1814,20 @@ router.get('/blurbs/players', async (req, res) => {
     for (const p of players) {
       p.blurb = blurbMap[p.id] || null
     }
+    // Diagnostic: log what we found so we can chase the IDP-draft-not-appearing
+    // bug. Includes counts + any blurbs where the player_id isn't in the
+    // canonical map (would indicate an orphan not deduped).
+    const attached = players.filter((p) => p.blurb).length
+    const orphans = (blurbs || []).filter((b) => !idToCanonical.get(b.player_id))
+    logger.info({
+      sport,
+      position,
+      playerCount: players.length,
+      lookupIdCount: allBlurbLookupIds.length,
+      blurbsFound: (blurbs || []).length,
+      attached,
+      orphanBlurbs: orphans.map((b) => ({ player_id: b.player_id, status: b.status })),
+    }, 'admin blurbs attach diagnostic')
   }
 
   res.json(players)
