@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from './notificationService.js'
+import { SPORTS_TZ } from '../utils/sportsDay.js'
 
 // NFL division-winner futures keys carry the pattern `_(afc|nfc)_(east|west|
 // north|south)`. Division picks are quiet in the global feed — squad only.
@@ -1580,7 +1581,10 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
 
   // Daily digest: summarize yesterday's squad activity (first page, squad scope only)
   if (!before && !isAll && !isHighlights && !isHotTakes && !isUserHighlights && !isUserHotTakes) {
-    const tz = userTimezone || 'America/New_York'
+    // Default to the sports-day anchor (PT) when the user hasn't set a
+    // timezone. ET default would mark a 10 PM PT pick as "yesterday" for
+    // West Coast users who haven't set a zone.
+    const tz = userTimezone || SPORTS_TZ
     // Get today's and yesterday's date strings in the user's timezone
     const now = new Date()
     const todayStr = now.toLocaleDateString('en-CA', { timeZone: tz })

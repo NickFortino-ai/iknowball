@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js'
 import { fetchAll } from '../utils/fetchAll.js'
 import { ODDS_TO_ESPN, INJURY_SPORTS, BASKETBALL_SPORTS } from '../config/espnTeamMap.js'
 import { writeEspnBlurb } from '../services/playerBlurbService.js'
+import { todaySportsDay } from '../utils/sportsDay.js'
 
 const SEVERITY_ORDER = { Out: 0, Doubtful: 1, Questionable: 2, Probable: 3, 'Day-To-Day': 4 }
 const NOTABLE_STATUSES = new Set(['Out', 'Doubtful', 'Questionable'])
@@ -358,7 +359,10 @@ export async function syncInjuries() {
 
   // Update DFS salary tables with latest injury statuses
   try {
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    // DFS salary rows (nba_/mlb_/wnba_dfs_salaries) key game_date to the PT
+    // sports day (see scoreNBADFS/MLB DFS). Anchor the lookup the same way
+    // so late-night ET runs don't miss the still-current PT slate.
+    const today = todaySportsDay()
     const { data: allIntel } = await supabase
       .from('team_intel')
       .select('team_name, injuries, sport_key')

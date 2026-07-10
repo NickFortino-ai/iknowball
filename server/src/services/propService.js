@@ -8,6 +8,7 @@ import { fetchCompletedGameStats as fetchNbaStatsFromEspn } from '../jobs/scoreN
 import { fetchCompletedGameStats as fetchMlbStatsFromEspn } from '../jobs/scoreMLBDFS.js'
 import { fetchCompletedWNBAGameStats as fetchWnbaStatsFromEspn } from '../jobs/scoreWNBADFS.js'
 import { normalizeName } from '../utils/name.js'
+import { todaySportsDay, yesterdaySportsDay } from '../utils/sportsDay.js'
 
 export async function syncPropsForGame(gameId, markets) {
   // Get game details
@@ -541,11 +542,12 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
   }
 
   try {
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-    // Also include yesterday: games that start before midnight ET but finish
-    // after it save their stats under yesterday's game_date, so post-midnight
-    // requests would miss them otherwise.
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    // DFS salary rows (nba_/mlb_/wnba_dfs_salaries) key game_date to the PT
+    // sports day. Also include yesterday: games that start before midnight PT
+    // but finish after it save their stats under yesterday's game_date, so
+    // post-midnight requests would miss them otherwise.
+    const today = todaySportsDay()
+    const yesterday = yesterdaySportsDay()
     const lookupDates = [today, yesterday]
     const playerNames = [...new Set(lockedPicks.map((p) => p.player_props?.player_name).filter(Boolean))]
 
