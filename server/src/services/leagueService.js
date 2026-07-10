@@ -228,16 +228,32 @@ function generateInviteCode() {
   return code
 }
 
-function getWeekBounds(date) {
-  const d = new Date(date)
-  const day = d.getUTCDay()
-  const monday = new Date(d)
-  monday.setUTCDate(d.getUTCDate() - ((day + 6) % 7))
-  monday.setUTCHours(0, 0, 0, 0)
-  const sunday = new Date(monday)
-  sunday.setUTCDate(monday.getUTCDate() + 6)
-  sunday.setUTCHours(23, 59, 59, 999)
-  return { start: monday, end: sunday }
+// Returns { start, end } for the "this week" window containing `date`.
+// Sport-aware anchor day: football (NFL/NCAAF/UFL) weeks run Tue → Mon so
+// they align with MNF ending the week; everything else runs Mon → Sun.
+// Both anchors resolve to PT calendar day, not UTC — a user creating a
+// this_week league at 5 PM PT Sunday would previously land on UTC-Monday
+// and get NEXT week's window. Bounds land on 10:00 UTC (= 3 AM PT) of the
+// anchor day, matching the "end of sports day PT" storage convention used
+// by parseEndDate + generateLeagueWeeks: end - start is exactly 7 days,
+// so ends_at at 10 UTC next-anchor-day = end of prior day's PT sports day.
+function getWeekBounds(date, sport) {
+  const isFootball = sport === 'americanfootball_nfl'
+    || sport === 'americanfootball_ncaaf'
+    || sport === 'americanfootball_ufl'
+  const anchorDay = isFootball ? 2 : 1 // 0=Sun, 1=Mon, 2=Tue
+
+  const ptDateStr = new Date(date).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+  const [y, m, d] = ptDateStr.split('-').map(Number)
+  const probe = new Date(Date.UTC(y, m - 1, d, 12)) // noon UTC of the PT day (dodges DST)
+  const probeDay = probe.getUTCDay() // 0=Sun..6=Sat
+  const daysBackToAnchor = (probeDay - anchorDay + 7) % 7
+  probe.setUTCDate(probe.getUTCDate() - daysBackToAnchor)
+  const anchorPtDate = probe.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+
+  const start = new Date(`${anchorPtDate}T10:00:00.000Z`)
+  const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000)
+  return { start, end }
 }
 
 export async function createLeague(userId, data) {
@@ -278,7 +294,7 @@ export async function createLeague(userId, data) {
   let endsAt = data.ends_at ? parseEndDate(data.ends_at) : null
 
   if (data.duration === 'this_week') {
-    const bounds = getWeekBounds(new Date())
+    const bounds = getWeekBounds(new Date(), data.sport)
     // starts_at stays as now (not Monday), so league stays open for invites
     endsAt = bounds.end
   } else if (data.duration === 'full_season') {
@@ -1229,7 +1245,7 @@ export async function updateLeague(leagueId, userId, data) {
     let endsAt = null
 
     if (data.duration === 'this_week') {
-      const bounds = getWeekBounds(new Date())
+      const bounds = getWeekBounds(new Date(), league.sport)
       if (!hasLockedPicks) startsAt = bounds.start
       endsAt = bounds.end
     } else if (data.duration === 'full_season') {
