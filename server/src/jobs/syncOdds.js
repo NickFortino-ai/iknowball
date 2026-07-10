@@ -186,6 +186,7 @@ async function syncSport(sportKey, { force = false } = {}) {
       .eq('status', 'upcoming')
       .gte('starts_at', now.toISOString())
       .lte('starts_at', horizon.toISOString())
+      .order('id')
   )
 
   const orphans = candidates.filter((g) => !seenExternalIds.has(g.external_id))

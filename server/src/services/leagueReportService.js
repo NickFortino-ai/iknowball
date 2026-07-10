@@ -555,7 +555,7 @@ async function generateTraditionalFantasyReport(leagueId) {
     fetchAll(supabase.from('fantasy_matchups').select('*').eq('league_id', leagueId).eq('status', 'completed').order('week', { ascending: true })),
     fetchAll(supabase.from('fantasy_draft_picks').select('round, pick_number, user_id, player_id, is_auto_pick, nfl_players(id, full_name, position, headshot_url)').eq('league_id', leagueId).order('pick_number', { ascending: true })),
     supabase.from('fantasy_trades').select('id, proposer_user_id, receiver_user_id, status, responded_at, fantasy_trade_items(from_user_id, to_user_id, player_id, nfl_players(id, full_name, position, headshot_url))').eq('league_id', leagueId).eq('status', 'accepted'),
-    fetchAll(supabase.from('fantasy_waiver_claims').select('id, user_id, add_player_id, drop_player_id, bid_amount, status, created_at, processed_at, nfl_players:nfl_players!fantasy_waiver_claims_add_player_id_fkey(id, full_name, position, headshot_url)').eq('league_id', leagueId).eq('status', 'awarded')),
+    fetchAll(supabase.from('fantasy_waiver_claims').select('id, user_id, add_player_id, drop_player_id, bid_amount, status, created_at, processed_at, nfl_players:nfl_players!fantasy_waiver_claims_add_player_id_fkey(id, full_name, position, headshot_url)').eq('league_id', leagueId).eq('status', 'awarded').order('id')),
   ])
 
   const settings = settingsRes.data

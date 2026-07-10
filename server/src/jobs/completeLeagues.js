@@ -333,9 +333,10 @@ async function getFantasyLeagueStandings(league) {
   const matchups = await fetchAll(
     supabase
       .from('fantasy_matchups')
-      .select('home_user_id, away_user_id, home_points, away_points, status')
+      .select('id, home_user_id, away_user_id, home_points, away_points, status')
       .eq('league_id', league.id)
       .eq('status', 'completed')
+      .order('id')
   )
 
   if (!matchups.length) return []

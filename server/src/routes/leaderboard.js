@@ -47,12 +47,14 @@ router.get('/leagues', requireAuth, async (req, res) => {
         .from('bonus_points')
         .select('user_id, league_id, points, type, users(id, username, display_name, avatar_url, avatar_emoji, tier, total_points)')
         .in('type', ['league_win', 'bracket_finish', 'league_finish', 'survivor_win', 'league_pickem_earned'])
+        .order('id')
     ),
     fetchAll(
       supabase
         .from('league_members')
         .select('user_id, league_id, leagues!inner(status)')
         .eq('leagues.status', 'completed')
+        .order('id')
     ),
   ])
 

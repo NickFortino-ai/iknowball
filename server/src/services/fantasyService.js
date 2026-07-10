@@ -3051,6 +3051,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
       .from('nfl_player_stats')
       .select(`player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_ff, idp_fum_rec, idp_qb_hit`)
       .eq('season', statSeason)
+      .order('player_id')
   )
   // statsByPlayer[id] = { pts, pass_yd, pass_td, ... }
   const statsByPlayer = {}
@@ -7032,6 +7033,7 @@ export async function scoreFantasyMatchupsWeek(week, season) {
       .from('fantasy_matchups')
       .select('id, league_id, week, home_user_id, away_user_id')
       .eq('week', week)
+      .order('id')
   )
 
   if (!matchups.length) {

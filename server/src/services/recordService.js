@@ -119,6 +119,7 @@ async function calcLongestWinStreak(sportKey) {
       .select('id, user_id, is_correct, updated_at, games!inner(sport_id, starts_at)')
       .eq('status', 'settled')
       .not('is_correct', 'is', null)
+      .order('id')
   )
 
   if (!allPicks.length) return null
@@ -241,6 +242,7 @@ async function calcLongestPropStreak() {
       .select('id, user_id, is_correct, updated_at')
       .eq('status', 'settled')
       .not('is_correct', 'is', null)
+      .order('id')
   )
 
   if (!picks.length) return null
@@ -292,9 +294,10 @@ async function calcHighestPropPct() {
   const picks = await fetchAll(
     supabase
       .from('prop_picks')
-      .select('user_id, is_correct')
+      .select('id, user_id, is_correct')
       .eq('status', 'settled')
       .not('is_correct', 'is', null)
+      .order('id')
   )
 
   if (!picks.length) return null
@@ -332,8 +335,9 @@ async function calcLongestSurvivorStreak() {
   const picks = await fetchAll(
     supabase
       .from('survivor_picks')
-      .select('user_id, league_id, status, league_weeks(week_number), leagues!inner(settings)')
+      .select('id, user_id, league_id, status, league_weeks(week_number), leagues!inner(settings)')
       .in('status', ['survived', 'eliminated'])
+      .order('id')
   )
 
   if (!picks.length) return null
@@ -485,9 +489,10 @@ async function calcBiggestDogLover() {
   const picks = await fetchAll(
     supabase
       .from('picks')
-      .select('user_id, odds_at_pick')
+      .select('id, user_id, odds_at_pick')
       .eq('status', 'settled')
       .not('odds_at_pick', 'is', null)
+      .order('id')
   )
 
   if (!picks.length) return null
@@ -635,10 +640,10 @@ async function calcBestFuturesHit(sportKey) {
 async function calcHighestOverallWinPct() {
   // Gather all settled items
   const [picksAll, parlaysAll, propsAll, futuresAll] = await Promise.all([
-    fetchAll(supabase.from('picks').select('user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null)),
-    fetchAll(supabase.from('parlays').select('user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null)),
-    fetchAll(supabase.from('prop_picks').select('user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null)),
-    fetchAll(supabase.from('futures_picks').select('user_id, is_correct').eq('status', 'settled')),
+    fetchAll(supabase.from('picks').select('id, user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null).order('id')),
+    fetchAll(supabase.from('parlays').select('id, user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null).order('id')),
+    fetchAll(supabase.from('prop_picks').select('id, user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null).order('id')),
+    fetchAll(supabase.from('futures_picks').select('id, user_id, is_correct').eq('status', 'settled').order('id')),
   ])
 
   const stats = {}

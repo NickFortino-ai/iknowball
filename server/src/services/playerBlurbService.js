@@ -375,6 +375,7 @@ export async function generateBlurbs(playerIds, season, currentWeek) {
       .from('nfl_players')
       .select('id, full_name, position, team, injury_status, injury_body_part')
       .in('id', playerIds)
+      .order('id')
   )
 
   // Get season totals for ranking context
@@ -478,7 +479,7 @@ export async function publishBlurb(blurbId) {
 export async function publishAllDrafts() {
   // Get all draft blurbs with their player_ids + sport
   const drafts = await fetchAll(
-    supabase.from('player_blurbs').select('id, player_id, sport').eq('status', 'draft')
+    supabase.from('player_blurbs').select('id, player_id, sport').eq('status', 'draft').order('id')
   )
   if (!drafts.length) return { published: 0 }
 

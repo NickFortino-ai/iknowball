@@ -471,6 +471,7 @@ export async function syncInjuries() {
           .select('id, full_name, injury_status, injury_body_part')
           .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
           .not('team', 'is', null)
+          .order('id')
       )
 
       let updated = 0

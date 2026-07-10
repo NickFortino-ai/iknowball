@@ -22,6 +22,7 @@ export async function getLeaderboard(scope = 'global', sportKey) {
         .from('picks')
         .select('user_id, points_earned, is_correct, users!inner(id, username, display_name, avatar_url, avatar_emoji, tier)')
         .eq('status', 'settled')
+        .order('id')
     )
 
     const statsMap = {}
@@ -51,6 +52,7 @@ export async function getLeaderboard(scope = 'global', sportKey) {
         .from('prop_picks')
         .select('user_id, points_earned, is_correct, users!inner(id, username, display_name, avatar_url, avatar_emoji, tier)')
         .eq('status', 'settled')
+        .order('id')
     )
 
     const statsMap = {}
@@ -80,6 +82,7 @@ export async function getLeaderboard(scope = 'global', sportKey) {
         .from('parlays')
         .select('user_id, points_earned, is_correct, users!inner(id, username, display_name, avatar_url, avatar_emoji, tier)')
         .eq('status', 'settled')
+        .order('id')
     )
 
     const statsMap = {}
@@ -215,6 +218,7 @@ export async function getUserRankOnLeaderboard(userId, scope = 'global', sportKe
         .from(table)
         .select('user_id, points_earned, is_correct, users!inner(id, username, display_name, avatar_url, avatar_emoji, tier)')
         .eq('status', 'settled')
+        .order('id')
     )
     const statsMap = {}
     for (const p of data || []) {

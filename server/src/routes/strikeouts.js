@@ -37,6 +37,7 @@ async function getSeasonStrikeoutLeaders() {
         .select('espn_player_id, strikeouts')
         .eq('season', season)
         .eq('is_pitcher', true)
+        .order('espn_player_id')
     )
     const kMap = {}
     for (const r of rows) {
