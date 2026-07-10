@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from '../services/notificationService.js'
 import { calculateNBAFantasyPoints, generateNBASalaries, refreshNBAInjuries } from '../services/nbaDfsService.js'
-import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay } from '../utils/sportsDay.js'
+import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay, leagueStartSportsDay } from '../utils/sportsDay.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 
@@ -286,7 +286,7 @@ async function cleanupSingleNightNoRosters(date, season, allFinal) {
     const seasonType = league.fantasy_settings?.[0]?.season_type || league.fantasy_settings?.season_type
     if (seasonType !== 'single_week') continue
 
-    const leagueStart = league.starts_at ? new Date(league.starts_at).toISOString().split('T')[0] : null
+    const leagueStart = leagueStartSportsDay(league.starts_at)
     if (leagueStart !== date) continue
 
     // Get all members
@@ -350,7 +350,7 @@ async function tightenJoinLocks() {
 
   for (const league of leagues) {
     if (!league.starts_at) continue
-    const startDate = new Date(league.starts_at).toISOString().split('T')[0]
+    const startDate = leagueStartSportsDay(league.starts_at)
 
     // Get first game tip-off for that date
     const { data: firstGame } = await supabase

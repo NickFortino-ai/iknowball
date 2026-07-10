@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { generateMLBSalaries, isTwoWayPlayer, pitcherIdSuffix, refreshMLBInjuries } from '../services/mlbDfsService.js'
-import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay } from '../utils/sportsDay.js'
+import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay, leagueStartSportsDay } from '../utils/sportsDay.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 
@@ -429,7 +429,7 @@ async function tightenMLBJoinLocks() {
 
   for (const league of leagues) {
     if (!league.starts_at) continue
-    const startDate = new Date(league.starts_at).toISOString().split('T')[0]
+    const startDate = leagueStartSportsDay(league.starts_at)
 
     const { data: firstGame } = await supabase
       .from('mlb_dfs_salaries')

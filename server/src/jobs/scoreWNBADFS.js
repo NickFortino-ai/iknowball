@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from '../services/notificationService.js'
 import { calculateWNBAFantasyPoints, generateWNBASalaries, refreshWNBAInjuries } from '../services/wnbaDfsService.js'
-import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay } from '../utils/sportsDay.js'
+import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay, leagueStartSportsDay } from '../utils/sportsDay.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 
@@ -237,7 +237,7 @@ async function cleanupSingleNightNoRosters(date, season, allFinal) {
   for (const league of leagues) {
     if (league.duration !== 'custom_range') continue
 
-    const leagueStart = league.starts_at ? new Date(league.starts_at).toISOString().split('T')[0] : null
+    const leagueStart = leagueStartSportsDay(league.starts_at)
     if (leagueStart !== date) continue
 
     const { data: members } = await supabase
@@ -289,7 +289,7 @@ async function tightenJoinLocks() {
 
   for (const league of leagues) {
     if (!league.starts_at) continue
-    const startDate = new Date(league.starts_at).toISOString().split('T')[0]
+    const startDate = leagueStartSportsDay(league.starts_at)
 
     const { data: firstGame } = await supabase
       .from('wnba_dfs_salaries')
