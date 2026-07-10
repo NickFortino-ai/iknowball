@@ -1794,14 +1794,26 @@ router.get('/blurbs/players', async (req, res) => {
     }
   }
   if (allBlurbLookupIds.length) {
-    const { data: blurbs } = await supabase
-      .from('player_blurbs')
-      .select('player_id, status, id, content')
-      .eq('sport', sport)
-      .in('player_id', allBlurbLookupIds)
-      .in('status', ['draft', 'published'])
+    // Chunk .in('player_id', ...) so we don't exceed PostgREST's ~8KB URL
+    // limit — with 2500+ NFL players the "all" position filter was
+    // silently returning 0 blurbs (Postgrest rejects the request or
+    // truncates the filter, either way we got nothing back). Position-
+    // specific filters (WR ~400, DL ~500) stayed under the limit and
+    // worked fine; the "all" case was the silent leak.
+    const CHUNK = 400
+    const allBlurbs = []
+    for (let i = 0; i < allBlurbLookupIds.length; i += CHUNK) {
+      const chunk = allBlurbLookupIds.slice(i, i + CHUNK)
+      const { data: chunkBlurbs } = await supabase
+        .from('player_blurbs')
+        .select('player_id, status, id, content')
+        .eq('sport', sport)
+        .in('player_id', chunk)
+        .in('status', ['draft', 'published'])
+      if (chunkBlurbs) allBlurbs.push(...chunkBlurbs)
+    }
     const blurbMap = {}
-    for (const b of blurbs || []) {
+    for (const b of allBlurbs) {
       const canonical = idToCanonical.get(b.player_id) || b.player_id
       // Prefer the draft over the published one. The published blurb is
       // already live; the draft is what needs admin attention (publish
@@ -1814,17 +1826,17 @@ router.get('/blurbs/players', async (req, res) => {
     for (const p of players) {
       p.blurb = blurbMap[p.id] || null
     }
-    // Diagnostic: log what we found so we can chase the IDP-draft-not-appearing
-    // bug. Includes counts + any blurbs where the player_id isn't in the
-    // canonical map (would indicate an orphan not deduped).
+    // Diagnostic — leave in place until we've confirmed the chunked fix
+    // works across the "all" filter (2500+ lookup ids) and search flows.
     const attached = players.filter((p) => p.blurb).length
-    const orphans = (blurbs || []).filter((b) => !idToCanonical.get(b.player_id))
+    const orphans = allBlurbs.filter((b) => !idToCanonical.get(b.player_id))
     logger.info({
       sport,
       position,
       playerCount: players.length,
       lookupIdCount: allBlurbLookupIds.length,
-      blurbsFound: (blurbs || []).length,
+      chunkCount: Math.ceil(allBlurbLookupIds.length / CHUNK),
+      blurbsFound: allBlurbs.length,
       attached,
       orphanBlurbs: orphans.map((b) => ({ player_id: b.player_id, status: b.status })),
     }, 'admin blurbs attach diagnostic')
