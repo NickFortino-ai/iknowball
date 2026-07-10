@@ -1119,9 +1119,20 @@ export async function autoEliminateMissedPicks() {
         continue
       }
 
-      // If any game is NOT final, period is still in progress — skip
-      const allFinal = games.every((g) => g.status === 'final')
-      if (!allFinal) continue
+      // Fire missed-pick elimination as soon as ALL games in the period
+      // have started (user can no longer pick their way out). Previously
+      // waited for 'final', which pushed daily-survivor eliminations to
+      // 3 AM PT the next day for late West Coast games. Missed-pick
+      // elimination doesn't depend on game outcome (the user made no
+      // pick), so firing at the last-kickoff moment is safe and lands
+      // hours earlier:
+      //   Daily MLB: ~10 PM PT (last WC game start) instead of ~3 AM PT
+      //   Weekly NFL: ~5:15 PM PT Mon (MNF kickoff) instead of ~3 AM Tue
+      // Note: scoreSurvivorPicks continues to settle each pick's
+      // survived/eliminated state as its own game finishes, so picked
+      // users still get real-time results.
+      const allStarted = games.every((g) => g.status !== 'scheduled')
+      if (!allStarted) continue
 
       // Get alive members. We pull joined_at so we can skip any member who
       // joined after this period started — they couldn't have picked in time
