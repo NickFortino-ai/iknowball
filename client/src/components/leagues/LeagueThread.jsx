@@ -69,7 +69,6 @@ export default function LeagueThread({ league }) {
   }, [league.id])
 
   const [input, setInput] = useState('')
-  const [isMultiline, setIsMultiline] = useState(false)
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionActive, setMentionActive] = useState(false)
   const [taggedUsers, setTaggedUsers] = useState([])
@@ -172,8 +171,10 @@ export default function LeagueThread({ league }) {
 
     // Clear input immediately so the user sees instant feedback
     setInput('')
-    setIsMultiline(false)
     setTaggedUsers([])
+    // Reset the textarea's inline height (set by the growing onChange handler)
+    // so the empty compose box snaps back to one row after a multi-line send.
+    if (inputRef.current) inputRef.current.style.height = ''
     setAutoScroll(true)
     if (hasImage) removeImage()
 
@@ -341,7 +342,7 @@ export default function LeagueThread({ league }) {
               ))}
             </div>
           )}
-          <div className={`flex-1 flex items-end border border-text-primary/25 bg-text-primary/5 transition-all ${isMultiline ? 'rounded-2xl' : 'rounded-full'}`}>
+          <div className="flex items-end border border-text-primary/25 bg-text-primary/5 rounded-lg">
             <input
               ref={fileInputRef}
               type="file"
@@ -371,14 +372,12 @@ export default function LeagueThread({ league }) {
                 e.target.style.height = 'auto'
                 const h = Math.min(e.target.scrollHeight, 96)
                 e.target.style.height = h + 'px'
-                setIsMultiline(h > 44)
               }}
               onKeyDown={handleKeyDown}
               onFocus={handleInputFocus}
               placeholder="Message"
               rows={1}
-              className="flex-1 bg-transparent pl-1 pr-1 py-2 text-[16px] text-text-primary placeholder-text-muted resize-none focus:outline-none max-h-24 overflow-y-auto"
-              style={{ minHeight: '2.25rem' }}
+              className="flex-1 bg-transparent pl-1 pr-1 py-1.5 text-[16px] leading-5 text-text-primary placeholder-text-muted resize-none focus:outline-none max-h-24 overflow-y-auto"
             />
             <button
               onClick={handleSend}
