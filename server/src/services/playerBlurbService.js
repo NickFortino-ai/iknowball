@@ -77,11 +77,30 @@ export async function getTopPlayersByPosition(season, { unlimited = false } = {}
     gamesPlayed[s.player_id] = (gamesPlayed[s.player_id] || 0) + 1
   }
 
+  // Dedupe by (name|team) before grouping. Sleeper occasionally has multiple
+  // player_ids for the same person (rookie stub left behind after draft,
+  // position variant, etc.) and both get synced into nfl_players. Prefer the
+  // row with the most stats history so we don't drop the "real" entry.
+  const dedup = new Map()
+  for (const p of players) {
+    const key = `${(p.full_name || '').toLowerCase()}|${p.team || ''}`
+    const cur = dedup.get(key)
+    if (!cur) { dedup.set(key, p); continue }
+    const curGP = gamesPlayed[cur.id] || 0
+    const newGP = gamesPlayed[p.id] || 0
+    if (newGP > curGP) { dedup.set(key, p); continue }
+    if (newGP < curGP) continue
+    const curPts = seasonTotals[cur.id] || 0
+    const newPts = seasonTotals[p.id] || 0
+    if (newPts > curPts) dedup.set(key, p)
+  }
+  const uniquePlayers = Array.from(dedup.values())
+
   // Group by position family and sort by season total. Family collapses
   // ESPN's raw IDP codes (DE/DT/NT → DL, etc.) so the admin filters by
   // fantasy families, not raw ESPN codes.
   const byPosition = {}
-  for (const p of players) {
+  for (const p of uniquePlayers) {
     const family = familyOf(p.position)
     if (!byPosition[family]) byPosition[family] = []
     byPosition[family].push({
