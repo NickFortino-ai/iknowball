@@ -14,6 +14,10 @@ export default function ImageLightbox({ src, images, initialIndex = 0, onClose }
   const list = images?.length ? images : (src ? [src] : [])
   const [index, setIndex] = useState(initialIndex)
   const scrollerRef = useRef(null)
+  // Guards handleScroll from echoing intermediate scroll positions back to
+  // index during a programmatic smooth-scroll (fights the arrow-click / key
+  // handlers otherwise).
+  const isProgrammaticScroll = useRef(false)
 
   useEffect(() => {
     function handleKey(e) {
@@ -25,15 +29,22 @@ export default function ImageLightbox({ src, images, initialIndex = 0, onClose }
     return () => document.removeEventListener('keydown', handleKey)
   }, [onClose, list.length])
 
-  // When index changes via keyboard, sync the scroll position.
+  // When index changes via keyboard or arrow button, sync the scroll position.
   useEffect(() => {
     const el = scrollerRef.current
     if (!el) return
+    isProgrammaticScroll.current = true
     el.scrollTo({ left: index * el.clientWidth, behavior: 'smooth' })
+    // Smooth-scroll animation typically lands within ~400ms.
+    const t = setTimeout(() => { isProgrammaticScroll.current = false }, 500)
+    return () => clearTimeout(t)
   }, [index])
 
-  // When user swipes/scrolls, derive the active index from scroll position.
+  // When user swipes/scrolls manually, derive the active index from scroll
+  // position. Ignore scroll events during a programmatic scrollTo so the
+  // in-flight smooth-scroll doesn't fight the arrow-click state update.
   function handleScroll() {
+    if (isProgrammaticScroll.current) return
     const el = scrollerRef.current
     if (!el) return
     const i = Math.round(el.scrollLeft / el.clientWidth)
@@ -49,7 +60,9 @@ export default function ImageLightbox({ src, images, initialIndex = 0, onClose }
     >
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 text-white/80 hover:text-white text-2xl z-20 w-10 h-10 flex items-center justify-center"
+        aria-label="Close"
+        className="absolute right-3 text-white/90 hover:text-white text-3xl z-20 w-12 h-12 flex items-center justify-center rounded-full bg-black/40 active:bg-black/60"
+        style={{ top: 'max(0.75rem, calc(env(safe-area-inset-top) + 0.5rem))' }}
       >
         ×
       </button>
