@@ -1,12 +1,22 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useReorderDraft, useStartDraft, useStartOfflineDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick, useUndoDraftPick, useMyRankings, useSetAutoDraft, useCancelAutoDraft, useUpdateFantasySettings } from '../../hooks/useLeagues'
+import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useReorderDraft, useStartDraft, useStartOfflineDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick, useUndoDraftPick, useMyRankings, useSetAutoDraft, useCancelAutoDraft, useUpdateFantasySettings, useFantasySettings } from '../../hooks/useLeagues'
 import DraftPlayerPreview from './DraftPlayerPreview'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
 
-const POSITION_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+// Settings-aware position chip list. If the commissioner configured any
+// IDP slots (DL/LB/DB/S), drop DEF and add IDP filters; otherwise show DEF.
+// Mirrors FantasyPlayerBrowser.buildPositionFilters and the server-side
+// pool selection in fantasyService.searchAvailablePlayers.
+function buildDraftPositionFilters(rosterSlots) {
+  const idpCount = (rosterSlots?.dl || 0) + (rosterSlots?.lb || 0)
+    + (rosterSlots?.db || 0) + (rosterSlots?.s || 0)
+  const isIdp = idpCount > 0
+  const base = ['All', 'QB', 'RB', 'WR', 'TE', 'K']
+  return isIdp ? [...base, 'DL', 'LB', 'DB', 'S'] : [...base, 'DEF']
+}
 
 const INJURY_COLORS = {
   Out: 'text-incorrect',
@@ -665,7 +675,7 @@ export default function FantasyDraftRoom({ league }) {
               />
             </div>
             <div className="flex gap-1.5 flex-wrap">
-              {POSITION_FILTERS.map((pos) => (
+              {buildDraftPositionFilters(settings?.roster_slots).map((pos) => (
                 <button
                   key={pos}
                   onClick={() => setPosFilter(pos)}
@@ -867,7 +877,7 @@ export default function FantasyDraftRoom({ league }) {
               className="w-full bg-bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
             />
             <div className="flex gap-1 mt-2 overflow-x-auto">
-              {POSITION_FILTERS.map((pos) => (
+              {buildDraftPositionFilters(settings?.roster_slots).map((pos) => (
                 <button
                   key={pos}
                   onClick={() => setPosFilter(pos)}
@@ -1353,6 +1363,7 @@ function PreDraftBrowser({ leagueId }) {
   const [posFilter, setPosFilter] = useState('All')
   const [detailPlayerId, setDetailPlayerId] = useState(null)
 
+  const { data: settings } = useFantasySettings(leagueId)
   const { data: availablePlayers } = useAvailablePlayers(
     leagueId,
     searchQuery || undefined,
@@ -1423,7 +1434,7 @@ function PreDraftBrowser({ leagueId }) {
             className="w-full bg-bg-card border border-text-primary/15 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
           />
           <div className="flex gap-1 mt-2 overflow-x-auto scrollbar-hide">
-            {POSITION_FILTERS.map((pos) => (
+            {buildDraftPositionFilters(settings?.roster_slots).map((pos) => (
               <button
                 key={pos}
                 onClick={() => setPosFilter(pos)}
