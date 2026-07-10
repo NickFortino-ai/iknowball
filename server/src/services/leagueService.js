@@ -552,17 +552,20 @@ export async function generateLeagueWeeks(league) {
   const startsAtMs = new Date(league.starts_at).getTime()
 
   if (isDaily) {
-    // Daily mode: one entry per ET calendar day. Period boundaries are
-    // 10:00 UTC → 09:59 UTC the next day (= 6 AM ET → 5:59 AM ET) so US
-    // evening games attach to the correct calendar date.
+    // Daily mode: one entry per PT calendar day. Period boundaries are
+    // 10:00 UTC → 09:59 UTC the next day (= 3 AM PT → 2:59 AM PT, summer;
+    // 2 AM PT → 1:59 AM PT, winter) so US evening games (including 10 PM
+    // PT starts on the West Coast) attach to the correct calendar date.
     //
-    // ET-DATE anchor: previously we did `current.setUTCHours(10, 0, 0, 0)`,
-    // which on a starts_at like 2026-05-18T00:00Z (= May 17 8 PM ET) jumped
-    // forward to May 18 6 AM ET, skipping the entire May 17 ET sports day.
-    // Anchor day 1 instead to the ET calendar date of starts_at so a
-    // commissioner who picks "May 17" gets May 17 games on day 1.
-    const startEtDate = new Date(league.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-    current.setTime(new Date(`${startEtDate}T10:00:00.000Z`).getTime())
+    // PT-DATE anchor: for a starts_at that lands 4-7 AM UTC (= 9-11 PM PT
+    // the previous evening = 12-3 AM ET the same day), PT and ET disagree
+    // on which calendar day is "day 1". Anchor to PT so late-evening West
+    // Coast starts_at values snap to the intended PT day, not one day
+    // forward. Also anchors day 1 to the calendar day of starts_at so a
+    // commissioner who picks "May 17" gets May 17 games on day 1 — same
+    // behavior as before for noon-UTC picks (the common case).
+    const startPtDate = new Date(league.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+    current.setTime(new Date(`${startPtDate}T10:00:00.000Z`).getTime())
 
     while (current < end) {
       const dayEnd = new Date(current)
@@ -588,22 +591,23 @@ export async function generateLeagueWeeks(league) {
     //     wrong week and survivor/pickem settle picks against the wrong
     //     period.
     //   Everything else → Mon-Sun calendar week.
-    // Periods always run anchorDay 6 AM ET → next anchorDay 5:59 AM ET.
-    // Anchor Week 1 to the anchorDay of the ET week containing
-    // starts_at, not "next anchorDay UTC", so a starts_at like Sun May
-    // 17 8 PM ET stays in the ET week ending on that Sunday.
+    // Periods always run anchorDay 10 UTC → next anchorDay 09:59 UTC
+    // (= 3 AM PT → 2:59 AM PT summer, safely past all US game finishes).
+    // Anchor Week 1 to the anchorDay of the PT week containing
+    // starts_at so a starts_at like Sun May 17 8 PM PT stays in the
+    // PT week ending on that Sunday.
     const isFootball = league.sport === 'americanfootball_nfl'
       || league.sport === 'americanfootball_ncaaf'
       || league.sport === 'americanfootball_ufl'
     const anchorDay = isFootball ? 2 : 1 // 0=Sun, 1=Mon, 2=Tue
-    const startEtDate = new Date(league.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-    const [y, m, d] = startEtDate.split('-').map(Number)
+    const startPtDate = new Date(league.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+    const [y, m, d] = startPtDate.split('-').map(Number)
     const probe = new Date(Date.UTC(y, m - 1, d, 12)) // noon UTC to dodge any DST boundary weirdness
     const probeDay = probe.getUTCDay() // 0=Sun..6=Sat
     const daysBackToAnchor = (probeDay - anchorDay + 7) % 7
     probe.setUTCDate(probe.getUTCDate() - daysBackToAnchor)
-    const anchorEtDate = probe.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-    current.setTime(new Date(`${anchorEtDate}T10:00:00.000Z`).getTime())
+    const anchorPtDate = probe.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+    current.setTime(new Date(`${anchorPtDate}T10:00:00.000Z`).getTime())
 
     while (current < end) {
       const weekEnd = new Date(current)
@@ -611,13 +615,13 @@ export async function generateLeagueWeeks(league) {
       weekEnd.setUTCHours(9, 59, 59, 999)
 
       if (weekEnd.getTime() > startsAtMs) {
-        // Week 1 anchors to the Monday of the ET week containing
-        // starts_at, which can land days before starts_at for sports
-        // with mid-week starts (NFL Week 1 Thursday → Week 1 anchored
-        // to Monday). This is intentional — picks open with lead time
-        // before the first game. The activation cron uses a separate
-        // first-game-in-period signal so the league stays 'open' until
-        // the first real game kicks off, not just when picks open.
+        // Week 1 anchors to the anchor day (Mon or Tue) of the PT week
+        // containing starts_at, which can land days before starts_at for
+        // sports with mid-week starts (NFL Week 1 Thursday → Week 1
+        // anchored to Tuesday). This is intentional — picks open with
+        // lead time before the first game. The activation cron uses a
+        // separate first-game-in-period signal so the league stays
+        // 'open' until the first real game kicks off.
         periods.push({
           league_id: league.id,
           week_number: periodNum++,
@@ -638,18 +642,18 @@ export async function generateLeagueWeeks(league) {
   }
 
   // Sanity log — when investigating "Day 1 is on the wrong date" reports,
-  // this single line shows starts_at + the first period's ET interpretation
+  // this single line shows starts_at + the first period's PT interpretation
   // side-by-side so the bug class is easy to catch in production logs.
   if (periods.length > 0) {
     const first = periods[0]
-    const fmt = (iso) => new Date(iso).toLocaleString('en-US', { timeZone: 'America/New_York' })
+    const fmt = (iso) => new Date(iso).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
     logger.info({
       leagueId: league.id,
       format: league.format,
       pickFrequency: isDaily ? 'daily' : 'weekly',
-      startsAtEt: fmt(league.starts_at),
-      day1StartEt: fmt(first.starts_at),
-      day1EndEt: fmt(first.ends_at),
+      startsAtPt: fmt(league.starts_at),
+      day1StartPt: fmt(first.starts_at),
+      day1EndPt: fmt(first.ends_at),
       periodCount: periods.length,
     }, 'Survivor periods generated')
   }
@@ -698,10 +702,16 @@ async function extendLeagueWeeks(league) {
       current.setUTCDate(current.getUTCDate() + 1)
     }
   } else {
-    // Align to next Monday 10:00 UTC
+    // Align to the next anchor-day 10:00 UTC. Anchor day depends on sport
+    // (matches generateLeagueWeeks): Tue for NFL/NCAAF/UFL so extensions
+    // stay on the MNF-ending week; Mon for everything else.
+    const isFootball = league.sport === 'americanfootball_nfl'
+      || league.sport === 'americanfootball_ncaaf'
+      || league.sport === 'americanfootball_ufl'
+    const anchorDay = isFootball ? 2 : 1 // 0=Sun, 1=Mon, 2=Tue
     const day = current.getUTCDay()
-    const daysToMonday = (8 - day) % 7 || 7
-    current.setUTCDate(current.getUTCDate() + daysToMonday)
+    const daysToAnchor = ((anchorDay - day + 7) % 7) || 7
+    current.setUTCDate(current.getUTCDate() + daysToAnchor)
     current.setUTCHours(10, 0, 0, 0)
 
     while (current < end) {
