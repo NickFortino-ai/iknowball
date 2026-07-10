@@ -86,18 +86,33 @@ export async function getTopPlayersByPosition(season, { unlimited = false } = {}
   // player_ids for the same person (rookie stub left behind after draft,
   // position variant, etc.) and both get synced into nfl_players. Prefer the
   // row with the most stats history so we don't drop the "real" entry.
+  //
+  // Also track alias ids per canonical player — a blurb might have been
+  // written against a different id than the one that survives dedupe (if
+  // the admin picked "Write blurb" on an earlier deploy where a different
+  // row was displayed). Return the alias list so the caller can query
+  // player_blurbs across all ids-per-player.
   const dedup = new Map()
+  const aliases = new Map() // canonical id → Set of all ids for this (name, team)
   for (const p of players) {
     const key = `${(p.full_name || '').toLowerCase()}|${p.team || ''}`
     const cur = dedup.get(key)
-    if (!cur) { dedup.set(key, p); continue }
+    if (!cur) {
+      dedup.set(key, p)
+      aliases.set(p.id, new Set([p.id]))
+      continue
+    }
     const curGP = gamesPlayed[cur.id] || 0
     const newGP = gamesPlayed[p.id] || 0
-    if (newGP > curGP) { dedup.set(key, p); continue }
-    if (newGP < curGP) continue
-    const curPts = seasonTotals[cur.id] || 0
-    const newPts = seasonTotals[p.id] || 0
-    if (newPts > curPts) dedup.set(key, p)
+    const winner = newGP > curGP ? p
+      : newGP < curGP ? cur
+      : ((seasonTotals[p.id] || 0) > (seasonTotals[cur.id] || 0)) ? p : cur
+    // Merge alias sets under the winner's canonical id
+    const merged = new Set([...(aliases.get(cur.id) || [cur.id]), ...(aliases.get(p.id) || [p.id])])
+    aliases.delete(cur.id)
+    aliases.delete(p.id)
+    aliases.set(winner.id, merged)
+    dedup.set(key, winner)
   }
   const uniquePlayers = Array.from(dedup.values())
 
@@ -110,6 +125,10 @@ export async function getTopPlayersByPosition(season, { unlimited = false } = {}
     if (!byPosition[family]) byPosition[family] = []
     byPosition[family].push({
       ...p,
+      // All ids this canonical player has been known under. The admin
+      // route uses this to look up existing blurbs written against any
+      // prior alias id.
+      aliasIds: Array.from(aliases.get(p.id) || [p.id]),
       seasonPoints: Math.round((seasonTotals[p.id] || 0) * 100) / 100,
       gamesPlayed: gamesPlayed[p.id] || 0,
       avgPoints: gamesPlayed[p.id] ? Math.round((seasonTotals[p.id] || 0) / gamesPlayed[p.id] * 100) / 100 : 0,

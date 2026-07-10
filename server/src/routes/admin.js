@@ -1779,23 +1779,37 @@ router.get('/blurbs/players', async (req, res) => {
 
   // Attach current blurb status for each player. Scope by sport so an NBA
   // espn_player_id doesn't accidentally match a same-string NFL player_id.
-  const playerIds = players.map((p) => p.id)
-  if (playerIds.length) {
+  // Query blurbs across ALL alias ids per player — Sleeper stubs sometimes
+  // leave two nfl_players rows for the same person, and a blurb written
+  // against one id needs to surface when we display the (deduped) canonical
+  // row. Fall back to [p.id] when aliasIds isn't populated (non-NFL sports
+  // don't run the dedupe pass).
+  const idToCanonical = new Map()
+  const allBlurbLookupIds = []
+  for (const p of players) {
+    const ids = (p.aliasIds && p.aliasIds.length) ? p.aliasIds : [p.id]
+    for (const aid of ids) {
+      idToCanonical.set(aid, p.id)
+      allBlurbLookupIds.push(aid)
+    }
+  }
+  if (allBlurbLookupIds.length) {
     const { data: blurbs } = await supabase
       .from('player_blurbs')
       .select('player_id, status, id, content')
       .eq('sport', sport)
-      .in('player_id', playerIds)
+      .in('player_id', allBlurbLookupIds)
       .in('status', ['draft', 'published'])
     const blurbMap = {}
     for (const b of blurbs || []) {
+      const canonical = idToCanonical.get(b.player_id) || b.player_id
       // Prefer the draft over the published one. The published blurb is
       // already live; the draft is what needs admin attention (publish
       // or edit). Surfacing only the published one made fresh drafts
       // written on top of an existing published blurb effectively
       // invisible — no Draft badge, no Publish button, no contribution
       // to the Publish All Drafts count.
-      if (!blurbMap[b.player_id] || b.status === 'draft') blurbMap[b.player_id] = b
+      if (!blurbMap[canonical] || b.status === 'draft') blurbMap[canonical] = b
     }
     for (const p of players) {
       p.blurb = blurbMap[p.id] || null
