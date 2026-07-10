@@ -46,13 +46,18 @@ export async function getTopPlayersByPosition(season, { unlimited = false } = {}
     totals[s.player_id] = (totals[s.player_id] || 0) + 1
   }
 
-  // Get all active NFL players with a team
+  // Get all active NFL players with a team. Explicit .order('id') is
+  // load-bearing for the fetchAll paginator: Postgres doesn't guarantee
+  // stable row order without ORDER BY, so .range()-based pagination can
+  // silently skip or duplicate rows across pages. With ~1700 rows in the
+  // NFL pool this matters — veterans on later pages were missing.
   const players = await fetchAll(
     supabase
       .from('nfl_players')
       .select('id, full_name, position, team, injury_status, injury_body_part')
       .not('team', 'is', null)
       .in('position', BLURB_POSITIONS)
+      .order('id', { ascending: true })
   )
 
   // Fetch actual season point totals using the scoring column
