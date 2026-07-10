@@ -748,13 +748,15 @@ const NFL_GAME_COLS = (statMap) => ({
   // column (interceptions thrown for QBs, picked for DBs — separate stat
   // types but same label). The client branches by position group so there's
   // no ambiguity in display.
-  def_tackles_solo: parseInt(statMap['SOLO'] || statMap['Solo']) || 0,
-  def_tackles_ast: parseInt(statMap['AST'] || statMap['Ast']) || 0,
-  def_sack: parseFloat(statMap['SACK'] || statMap['Sacks']) || 0,
-  def_tfl: parseFloat(statMap['TFL'] || statMap['Tackles for Loss']) || 0,
-  def_pass_def: parseInt(statMap['PD'] || statMap['Passes Defensed']) || 0,
-  def_ff: parseInt(statMap['FF'] || statMap['Forced Fumbles']) || 0,
-  def_fum_rec: parseInt(statMap['FR'] || statMap['Fumble Recoveries']) || 0,
+  def_tackles_solo: parseInt(statMap['SOLO']) || 0,
+  def_tackles_ast: parseInt(statMap['AST']) || 0,
+  def_sack: parseFloat(statMap['SACK']) || 0,
+  // ESPN uses STF (stuffs) for tackles-for-loss, not TFL. Verified via
+  // /athletes/{id}/gamelog labels on 2024 defensive stats.
+  def_tfl: parseFloat(statMap['STF']) || 0,
+  def_pass_def: parseInt(statMap['PD']) || 0,
+  def_ff: parseInt(statMap['FF']) || 0,
+  def_fum_rec: parseInt(statMap['FR']) || 0,
 })
 
 // Player game log — last 10 games (supports NBA, MLB, and NFL)
@@ -893,7 +895,11 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     let averages = null
     if (statsRes.ok) {
       const statsData = await statsRes.json()
+      // Offense NFL players + NBA + MLB expose an 'averages' category. Defensive
+      // NFL players use a 'defensive' category (totals + rate columns). Fall
+      // back to it when the offense-style averages block isn't present.
       const avgs = statsData.categories?.find((c) => c.name === 'averages')
+        || (isNFL ? statsData.categories?.find((c) => c.name === 'defensive') : null)
       if (avgs?.labels && avgs?.statistics?.length) {
         const sLabels = avgs.labels
         const latest = avgs.statistics[avgs.statistics.length - 1]
@@ -921,10 +927,11 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
             pass_yds: get('PYDS'), pass_td: get('PTD'), int: get('INT'),
             rush_yds: get('RYDS'), rush_td: get('RTD'),
             rec: get('REC'), rec_yds: get('RECYDS'), rec_td: get('RECTD'),
-            // Defense (IDP). ESPN uses SOLO/AST/SACK/TFL/PD/FF/FR labels
-            // on defensive players' averages endpoint.
+            // Defense (IDP). ESPN uses SOLO/AST/SACK/STF/PD/FF/FR labels on
+            // the 'defensive' category (stuffs, not tackles-for-loss). Verified
+            // live against ESPN's public API on 2024 season data.
             def_tackles_solo: get('SOLO'), def_tackles_ast: get('AST'),
-            def_sack: get('SACK'), def_tfl: get('TFL'),
+            def_sack: get('SACK'), def_tfl: get('STF'),
             def_pass_def: get('PD'), def_ff: get('FF'), def_fum_rec: get('FR'),
             def_int: get('INT'),
             gp: get('GP'),
