@@ -1170,9 +1170,13 @@ export async function autoEliminateMissedPicks() {
         new Date(m.joined_at).getTime() <= weekStartMs
       )
 
-      // Collect all team names available in this period
+      // Collect all team names that were actually pickable in this period.
+      // Skip postponed games — their teams weren't a real option for anyone,
+      // so a user whose only remaining unused team was on a postponed game
+      // shouldn't be eliminated for "missing" a pick that wasn't possible.
       const periodTeamNames = new Set()
       for (const g of games) {
+        if (g.status === 'postponed') continue
         periodTeamNames.add(g.home_team)
         periodTeamNames.add(g.away_team)
       }
