@@ -2,10 +2,11 @@ import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tansta
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import { supabase } from '../lib/supabase'
+import { SPORTS_TZ } from '../lib/sportsDay'
 
 function getUserTz() {
-  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York' }
-  catch { return 'America/New_York' }
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || SPORTS_TZ }
+  catch { return SPORTS_TZ }
 }
 
 export function useMyLeagues() {

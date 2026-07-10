@@ -111,7 +111,7 @@ function MlbLiveView({ league, date: leagueDate }) {
   const [expandedUserId, setExpandedUserId] = useState(null)
 
   const today = todayLocal()
-  const leagueStart = league.starts_at ? new Date(league.starts_at).toISOString().split('T')[0] : today
+  const leagueStart = leagueStartSportsDay(league.starts_at) || today
   const canGoBack = viewDate > leagueStart
   const canGoForward = viewDate < today
 

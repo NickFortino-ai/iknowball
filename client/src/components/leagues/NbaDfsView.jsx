@@ -109,10 +109,8 @@ function LiveView({ league, date: leagueDate }) {
   const [expandedUserId, setExpandedUserId] = useState(null)
   const [expandedSlot, setExpandedSlot] = useState(null)
 
-  const today = new Date().toLocaleDateString('en-CA')
-  const leagueStart = league.starts_at
-    ? new Date(league.starts_at).toISOString().split('T')[0]
-    : today
+  const today = todaySportsDay()
+  const leagueStart = leagueStartSportsDay(league.starts_at) || today
   const canGoBack = viewDate > leagueStart
   const canGoForward = viewDate < today
 

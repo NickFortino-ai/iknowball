@@ -47,6 +47,7 @@ import { api } from '../lib/api'
 import { getBackdropUrl, getBackdropFilterKey } from '../lib/backdropUrl'
 import { getSeasonEndDate, isSeasonUnderway } from '../lib/seasonDates'
 import { formatStartDateShort, formatEndDateShort, formatEndDateLong, formatDraftDateShort } from '../lib/leagueDate'
+import { todaySportsDay, leagueStartSportsDay } from '../lib/sportsDay'
 
 const REPORT_FORMATS = ['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs']
 
@@ -2553,7 +2554,7 @@ export default function LeagueDetailPage() {
       <div className="relative z-10 mb-6 flex gap-2 overflow-x-auto no-scrollbar scroll-smooth -mx-4 px-4 md:mx-0 md:px-0 md:justify-center md:flex-wrap" style={{ WebkitOverflowScrolling: 'touch' }}>
         {tabs.map((tab, i) => {
           const isLiveDisabled = tab === 'Live' && (league.format === 'nba_dfs' || league.format === 'wnba_dfs') && league.starts_at &&
-            new Date(league.starts_at).toISOString().split('T')[0] > new Date().toLocaleDateString('en-CA')
+            leagueStartSportsDay(league.starts_at) > todaySportsDay()
 
           return (
           <button
