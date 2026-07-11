@@ -25,9 +25,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>I KNOW BALL needs access to your camera to take a profile photo.</string>
+	<string>I KNOW BALL needs camera access so you can take a profile photo and record videos to share on your posts.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>I KNOW BALL needs microphone access to record audio with videos you post.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>I KNOW BALL needs access to your photo library to set a profile photo.</string>
+	<string>I KNOW BALL needs photo library access so you can set a profile photo and attach images or videos to your posts.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
