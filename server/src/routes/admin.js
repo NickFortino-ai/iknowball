@@ -1737,14 +1737,64 @@ router.post('/backdrop-submissions/:id/reject', async (req, res) => {
 
 // Pending counts for admin badge indicators
 router.get('/pending-counts', async (req, res) => {
-  const [reports, backdrops] = await Promise.all([
+  const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
+  const [reports, backdrops, stuckLeagues] = await Promise.all([
     supabase.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('backdrop_submissions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    // A "stuck" league is one whose ends_at was more than 6h ago but hasn't
+    // flipped to completed. Six hours is the comfortable buffer past the
+    // "end of sports day PT" convention so late West Coast games have time
+    // to finalize and cron has time to fire. Anything past that is real
+    // stuckness — usually a stale game status blocking completion. Bracket
+    // leagues excluded (they complete on championship-score signal, not
+    // ends_at, so this heuristic doesn't apply).
+    supabase.from('leagues').select('id', { count: 'exact', head: true })
+      .neq('status', 'completed')
+      .neq('format', 'bracket')
+      .not('ends_at', 'is', null)
+      .lte('ends_at', sixHoursAgo),
   ])
   res.json({
     reports: reports.count || 0,
     backdrops: backdrops.count || 0,
+    stuckLeagues: stuckLeagues.count || 0,
   })
+})
+
+// Detail view of stuck leagues — includes the game rows blocking each
+// league's completion so an admin can jump straight to the override.
+router.get('/stuck-leagues', async (req, res) => {
+  const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
+  const { data: leagues } = await supabase.from('leagues')
+    .select('id, name, format, sport, starts_at, ends_at, status')
+    .neq('status', 'completed')
+    .neq('format', 'bracket')
+    .not('ends_at', 'is', null)
+    .lte('ends_at', sixHoursAgo)
+    .order('ends_at', { ascending: true })
+
+  if (!leagues?.length) return res.json({ leagues: [] })
+
+  // Pull sport ids once so we can filter games per league
+  const sportKeys = [...new Set(leagues.map((l) => l.sport).filter((s) => s && s !== 'all'))]
+  const { data: sportRows } = await supabase.from('sports')
+    .select('id, key').in('key', sportKeys)
+  const sportIdByKey = Object.fromEntries((sportRows || []).map((s) => [s.key, s.id]))
+
+  const enriched = []
+  for (const league of leagues) {
+    let gameQuery = supabase.from('games')
+      .select('id, home_team, away_team, status, starts_at, home_score, away_score')
+      .gte('starts_at', league.starts_at)
+      .lte('starts_at', league.ends_at)
+      .not('status', 'in', '("final","postponed")')
+      .order('starts_at', { ascending: true })
+    const sid = sportIdByKey[league.sport]
+    if (sid) gameQuery = gameQuery.eq('sport_id', sid)
+    const { data: blockers } = await gameQuery
+    enriched.push({ ...league, blockers: blockers || [] })
+  }
+  res.json({ leagues: enriched })
 })
 
 // =====================================================================

@@ -259,7 +259,7 @@ export default function AdminPage() {
       {/* Top-level section tabs */}
       <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-6">
         {[
-          { key: 'dashboard', label: 'Dashboard' },
+          { key: 'dashboard', label: 'Dashboard', badge: pendingCounts?.stuckLeagues },
           { key: 'props', label: 'Props' },
           { key: 'brackets', label: 'Brackets' },
           { key: 'futures', label: 'Futures' },

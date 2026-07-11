@@ -650,6 +650,17 @@ export function useAdminPendingCounts() {
   })
 }
 
+// Detail on leagues that should have completed but haven't — used by the
+// Dashboard's Stuck Leagues card. Includes the game rows blocking each so
+// an admin can jump straight to Game Override with the id in hand.
+export function useStuckLeagues() {
+  return useQuery({
+    queryKey: ['admin', 'stuck-leagues'],
+    queryFn: () => api.get('/admin/stuck-leagues'),
+    refetchInterval: 120_000,
+  })
+}
+
 // Backdrop submissions
 export function useBackdropSubmissions() {
   return useQuery({

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAdminDashboard } from '../../hooks/useAdmin'
+import { useAdminDashboard, useStuckLeagues } from '../../hooks/useAdmin'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 
@@ -61,6 +61,63 @@ function MetricCard({ label, value, sublabel, growth }) {
   )
 }
 
+function StuckLeaguesCard() {
+  const { data } = useStuckLeagues()
+  const leagues = data?.leagues || []
+  if (!leagues.length) return null
+  return (
+    <div className="rounded-xl border border-incorrect/40 bg-incorrect/5 p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs font-bold uppercase tracking-wider text-incorrect">Stuck Leagues</span>
+        <span className="bg-incorrect text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1.5 flex items-center justify-center">
+          {leagues.length}
+        </span>
+      </div>
+      <div className="text-xs text-text-secondary mb-3">
+        Past their end date by 6h+ but haven't completed — usually a game stuck at
+        <code className="mx-1 px-1 py-0.5 rounded bg-black/20">live</code> or
+        <code className="mx-1 px-1 py-0.5 rounded bg-black/20">scheduled</code> in our DB
+        when ESPN has it as final or postponed. Use Tools → Game Override to fix.
+      </div>
+      <div className="space-y-2">
+        {leagues.map((l) => (
+          <div key={l.id} className="rounded-lg bg-bg-primary/60 border border-text-primary/10 p-3">
+            <div className="flex items-baseline justify-between gap-3 mb-1">
+              <div className="text-sm font-semibold text-text-primary truncate">{l.name}</div>
+              <div className="text-[10px] text-text-muted whitespace-nowrap uppercase tracking-wider">
+                {FORMAT_LABELS[l.format] || l.format} · {l.sport || 'all'}
+              </div>
+            </div>
+            <div className="text-[10px] text-text-muted mb-2">
+              ended {formatRelativeTime(l.ends_at)}
+            </div>
+            {l.blockers.length === 0 ? (
+              <div className="text-xs text-text-muted italic">No blocking games — should have completed. Check Render logs.</div>
+            ) : (
+              <div className="space-y-1">
+                {l.blockers.slice(0, 5).map((g) => (
+                  <div key={g.id} className="text-xs text-text-secondary flex items-center gap-2">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                      g.status === 'live' ? 'bg-accent/20 text-accent' : 'bg-yellow-500/20 text-yellow-500'
+                    }`}>{g.status}</span>
+                    <span className="truncate">{g.away_team} @ {g.home_team}</span>
+                    <span className="text-[10px] text-text-muted whitespace-nowrap ml-auto">
+                      {new Date(g.starts_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })}
+                    </span>
+                  </div>
+                ))}
+                {l.blockers.length > 5 && (
+                  <div className="text-[10px] text-text-muted italic pt-1">+ {l.blockers.length - 5} more</div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function DashboardPanel() {
   const [range, setRange] = useState('30d')
   const { data, isLoading, isError } = useAdminDashboard(range)
@@ -72,6 +129,10 @@ export default function DashboardPanel() {
 
   return (
     <div className="space-y-6">
+      {/* Ops card: catches leagues that should have completed but got
+          hung on a stale game status. Hidden when there are none. */}
+      <StuckLeaguesCard />
+
       {/* Range selector */}
       <div className="flex gap-2">
         {RANGES.map((r) => (
