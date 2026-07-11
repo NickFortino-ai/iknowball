@@ -1518,12 +1518,18 @@ async function checkSurvivorWinner(leagueId) {
           ? await getDisplayPeriodNumber(leagueId, latestWeek)
           : '?'
 
+        // Revive with the league's configured lives-per-member (falls back
+        // to 1 if unset — matches the join-time fallback). Previously
+        // hardcoded to 1 which quietly downgraded a 2-life league to 1 for
+        // everyone after the first mass-elimination event, so the next
+        // missed pick eliminated them instead of costing a life.
+        const reviveLives = league?.settings?.lives || 1
         for (const m of toRevive) {
           await supabase
             .from('league_members')
             .update({
               is_alive: true,
-              lives_remaining: 1,
+              lives_remaining: reviveLives,
               eliminated_week: null,
             })
             .eq('league_id', leagueId)
