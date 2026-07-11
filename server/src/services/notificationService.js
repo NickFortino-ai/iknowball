@@ -4,7 +4,7 @@ import { sendPushNotification } from './pushService.js'
 import { sendApnsToUser, sendApnsBadgeUpdate } from './apnsService.js'
 import { sendFcmToUser } from './fcmService.js'
 
-const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_result', 'squares_quarter_win', 'record_broken', 'survivor_result', 'survivor_win', 'survivor_pick_reminder', 'roster_reminder', 'league_win', 'league_invitation', 'direct_message', 'league_thread_mention', 'league_report', 'nfl_injury_warning', 'fantasy_trade_proposed', 'fantasy_trade_accepted', 'fantasy_trade_declined', 'fantasy_waiver_awarded', 'fantasy_stat_correction', 'fantasy_draft_starting_soon', 'poll_response_milestone', 'og_welcome', 'bracket_published']
+const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_result', 'squares_quarter_win', 'record_broken', 'survivor_result', 'survivor_win', 'survivor_pick_reminder', 'roster_reminder', 'league_win', 'league_invitation', 'direct_message', 'league_thread_mention', 'league_report', 'nfl_injury_warning', 'fantasy_trade_proposed', 'fantasy_trade_accepted', 'fantasy_trade_declined', 'fantasy_waiver_awarded', 'fantasy_stat_correction', 'fantasy_draft_starting_soon', 'poll_response_milestone', 'og_welcome', 'bracket_published', 'commissioner_report_reply']
 
 // Types that respect quiet hours (10 PM – 8 AM PT). The DB row is still
 // written so the user sees the notification in-app when they open the
@@ -98,6 +98,11 @@ export async function createNotification(userId, type, message, metadata = {}) {
           ? `/hub?tab=highlights&scrollTo=hot_take-${metadata.hotTakeId}`
         : (isFantasyTradeNotif && metadata.leagueId)
           ? `/leagues/${metadata.leagueId}?tab=Transactions&subtab=trades`
+        // Admin reply on a support ticket lands the commissioner directly
+        // in their report thread. Client reads ?openReport=1 and routes to
+        // the Commish tab (fantasy) or settings modal report view (others).
+        : (type === 'commissioner_report_reply' && metadata.leagueId)
+          ? `/leagues/${metadata.leagueId}?openReport=1`
         : metadata.leagueId ? `/leagues/${metadata.leagueId}` : '/results'
         // Fan out to all three transports. Web push → desktop PWA and
         // Safari users, APNs → native iOS app, FCM → native Android app.

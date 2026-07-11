@@ -254,10 +254,12 @@ function getNotificationRoute(notification) {
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=Report` : null
 
     case 'commissioner_report_reply':
-      // Admin reply lands the commissioner back on their league so they can
-      // see the reply in context. Deep link into the settings modal / support
-      // ticket would be nicer down the line.
-      return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
+      // openReport=1 tells LeagueDetailPage to route the commissioner
+      // straight to their report thread — Commish tab for traditional
+      // fantasy (which has it), settings modal in report view for every
+      // other format. Handled client-side because URL construction
+      // doesn't have league.format context.
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}?openReport=1` : null
 
     case 'commissioner_lineup_forced':
       // Target user opens My Team tab to see the corrected lineup.

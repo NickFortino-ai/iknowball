@@ -1845,6 +1845,32 @@ export default function LeagueDetailPage() {
     }
   }, [editingNote])
 
+  // Deep link via ?openReport=1 — commissioner_report_reply notification
+  // routes here. Traditional fantasy has the Commish tab, other formats
+  // don't, so surface the report thread via whichever entry point exists.
+  useEffect(() => {
+    if (!league) return
+    if (!searchParams.get('openReport')) return
+    const isCommish = league.commissioner_id === profile?.id
+    if (!isCommish) return
+    const isTraditionalFantasy = league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap'
+    if (isTraditionalFantasy) {
+      const tabs = getLeagueTabs(league, false, fantasySettings, true, false, true)
+      const commishIdx = tabs.indexOf('Commish')
+      if (commishIdx >= 0) {
+        setActiveTab(commishIdx)
+        setTabInitialized(true)
+      }
+    } else {
+      setShowSettingsModal(true)
+      setSettingsView('report')
+    }
+    // Strip the param so a refresh doesn't re-fire the routing.
+    const next = new URLSearchParams(searchParams)
+    next.delete('openReport')
+    setSearchParams(next, { replace: true })
+  }, [league, fantasySettings, profile?.id, searchParams, setSearchParams])
+
   // Deep link via ?tab=Trades, ?tab=My+Team, ?tab=Live, etc.
   useEffect(() => {
     if (!league || tabInitialized) return
