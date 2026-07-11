@@ -1738,7 +1738,7 @@ router.post('/backdrop-submissions/:id/reject', async (req, res) => {
 // Pending counts for admin badge indicators
 router.get('/pending-counts', async (req, res) => {
   const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
-  const [reports, backdrops, stuckLeagues] = await Promise.all([
+  const [reports, backdrops, stuckLeagues, support] = await Promise.all([
     supabase.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('backdrop_submissions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     // A "stuck" league is one whose ends_at was more than 6h ago but hasn't
@@ -1753,11 +1753,17 @@ router.get('/pending-counts', async (req, res) => {
       .neq('format', 'bracket')
       .not('ends_at', 'is', null)
       .lte('ends_at', sixHoursAgo),
+    // Commissioner support tickets awaiting an admin reply. 'open' =
+    // new report or commissioner-replied-after-admin — either way, the
+    // admin owes them a response. 'replied' = admin already answered
+    // and it's the commissioner's turn (no badge). 'resolved' = closed.
+    supabase.from('commissioner_reports').select('id', { count: 'exact', head: true }).eq('status', 'open'),
   ])
   res.json({
     reports: reports.count || 0,
     backdrops: backdrops.count || 0,
     stuckLeagues: stuckLeagues.count || 0,
+    support: support.count || 0,
   })
 })
 
