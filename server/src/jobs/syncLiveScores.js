@@ -104,6 +104,7 @@ async function syncSportLiveScores(sportKey) {
       updated++
     } else if (match.state === 'postponed' && game.status !== 'postponed' && game.status !== 'final') {
       // ESPN says game is postponed/canceled — mark it so picks aren't settled
+      const wasPreStart = game.status === 'upcoming'
       const { error } = await supabase
         .from('games')
         .update({ status: 'postponed', updated_at: new Date().toISOString() })
@@ -112,7 +113,28 @@ async function syncSportLiveScores(sportKey) {
         logger.error({ error, gameId: game.id }, 'Failed to mark game postponed')
         continue
       }
-      logger.info({ gameId: game.id, home: game.home_team, away: game.away_team }, 'Marked game postponed via ESPN')
+      logger.info({ gameId: game.id, home: game.home_team, away: game.away_team, wasPreStart }, 'Marked game postponed via ESPN')
+      // For MLB pre-start postponements only, flag the DFS salary rows so
+      // MLB DFS / HR Derby / Strikeouts users can swap out players whose
+      // game never actually happened. Mid-game postponements (previously
+      // 'live') stay locked — users who banked partial innings eat it.
+      if (wasPreStart && sportKey === 'baseball_mlb') {
+        try {
+          const gameDate = new Date(game.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+          const { error: flagErr, count } = await supabase
+            .from('mlb_dfs_salaries')
+            .update({ is_postponed: true }, { count: 'exact' })
+            .eq('game_date', gameDate)
+            .in('team', [game.home_team, game.away_team])
+          if (flagErr) {
+            logger.error({ err: flagErr, gameId: game.id }, 'Failed to flag mlb_dfs_salaries as postponed')
+          } else {
+            logger.info({ gameId: game.id, gameDate, flagged: count }, 'Flagged mlb_dfs_salaries as postponed (pre-start)')
+          }
+        } catch (err) {
+          logger.error({ err, gameId: game.id }, 'Exception flagging postponed salaries')
+        }
+      }
       updated++
       continue
     } else if (match.state === 'post' && game.status === 'live') {

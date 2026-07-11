@@ -126,7 +126,7 @@ router.get('/picks', async (req, res) => {
   if (espnIds.length) {
     const { data: salaryRows } = await supabase
       .from('mlb_dfs_salaries')
-      .select('espn_player_id, injury_status, lineup_status, batting_order')
+      .select('espn_player_id, injury_status, lineup_status, batting_order, is_postponed')
       .eq('game_date', date)
       .in('espn_player_id', espnIds)
     for (const r of salaryRows || []) salaryByEspnId[r.espn_player_id] = r
@@ -142,6 +142,7 @@ router.get('/picks', async (req, res) => {
       injury_status: s.injury_status || null,
       lineup_status: s.lineup_status ?? null,
       batting_order: s.batting_order ?? null,
+      is_postponed: !!s.is_postponed,
     }
   })
 

@@ -126,6 +126,10 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
   const now = new Date()
   function isPickLocked(p) {
     if (!p) return false
+    // Pre-start postponed games (rain-outs called before first pitch) don't
+    // lock — user can swap the affected player. Mid-game postponements stay
+    // locked (server doesn't flag is_postponed for those).
+    if (p.is_postponed) return false
     if (p.game_state === 'in' || p.game_state === 'post') return true
     if (p.game_starts_at && new Date(p.game_starts_at) <= now) return true
     return false
@@ -154,6 +158,9 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
     return players.filter((p) => {
       if (selectedIds.has(p.espn_player_id)) return false
       if (p.injury_status === 'Out') return false
+      // Hide players from pre-start postponed games — their game isn't
+      // happening today, so picking them would just burn a pick slot.
+      if (p.is_postponed) return false
       const gameStarted = p.game_starts_at && new Date(p.game_starts_at) <= now
       if (gameStarted) return false
       if (search) {

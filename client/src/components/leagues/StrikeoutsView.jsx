@@ -125,6 +125,10 @@ export default function StrikeoutsView({ league, tab = 'picks' }) {
   const now = new Date()
   function isPickLocked(p) {
     if (!p) return false
+    // Pre-start postponed games (rain-outs called before first pitch) don't
+    // lock — user can swap the affected pitcher. Mid-game postponements stay
+    // locked (server doesn't flag is_postponed for those).
+    if (p.is_postponed) return false
     if (p.game_state === 'in' || p.game_state === 'post') return true
     if (p.game_starts_at && new Date(p.game_starts_at) <= now) return true
     return false
@@ -155,6 +159,9 @@ export default function StrikeoutsView({ league, tab = 'picks' }) {
       if (p.injury_status === 'Out') return false
       // Pitchers we know aren't starting today are useless to pick.
       if (p.lineup_status === 'not_starting') return false
+      // Hide pitchers from pre-start postponed games — their start isn't
+      // happening today, so picking them would waste a slot.
+      if (p.is_postponed) return false
       const gameStarted = p.game_starts_at && new Date(p.game_starts_at) <= now
       if (gameStarted) return false
       if (search) {

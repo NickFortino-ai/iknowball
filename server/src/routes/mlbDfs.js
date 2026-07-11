@@ -65,6 +65,11 @@ router.post('/roster', async (req, res) => {
   // A player is locked once their game starts — they must stay in the same
   // slot in the submitted roster (can't be removed/swapped) and new players
   // whose games have already started can't be added.
+  //
+  // Exception: pre-start postponed games (is_postponed=true, set by
+  // syncLiveScores when a game flips upcoming → postponed) are treated as
+  // never having started, so users can swap out the affected players.
+  // Mid-game postponements don't set is_postponed, so those stay locked.
   const now = new Date()
   const espnIds = (slots || []).map((s) => s.espn_player_id).filter(Boolean)
 
@@ -76,18 +81,18 @@ router.post('/roster', async (req, res) => {
       .map((s) => s.espn_player_id).filter(Boolean)
     const { data: existingSalaries } = await supabase
       .from('mlb_dfs_salaries')
-      .select('espn_player_id, game_starts_at')
+      .select('espn_player_id, game_starts_at, is_postponed')
       .eq('game_date', date)
       .in('espn_player_id', existingIds)
 
-    const gameTimeMap = {}
+    const salaryMap = {}
     for (const s of existingSalaries || []) {
-      gameTimeMap[s.espn_player_id] = s.game_starts_at
+      salaryMap[s.espn_player_id] = s
     }
 
     for (const existingSlot of existingRoster.mlb_dfs_roster_slots) {
-      const gameTime = gameTimeMap[existingSlot.espn_player_id]
-      if (gameTime && new Date(gameTime) <= now) {
+      const sal = salaryMap[existingSlot.espn_player_id]
+      if (sal?.game_starts_at && new Date(sal.game_starts_at) <= now && !sal.is_postponed) {
         // Locked: must remain in the same slot with the same player.
         const matchingNew = (slots || []).find((s) => s.roster_slot === existingSlot.roster_slot)
         if (!matchingNew || matchingNew.espn_player_id !== existingSlot.espn_player_id) {
@@ -97,16 +102,16 @@ router.post('/roster', async (req, res) => {
     }
   }
 
-  // Reject new players whose game has already started.
+  // Reject new players whose game has already started (unless postponed).
   if (espnIds.length) {
     const { data: newSalaries } = await supabase
       .from('mlb_dfs_salaries')
-      .select('espn_player_id, player_name, game_starts_at')
+      .select('espn_player_id, player_name, game_starts_at, is_postponed')
       .eq('game_date', date)
       .in('espn_player_id', espnIds)
 
     for (const sal of newSalaries || []) {
-      if (sal.game_starts_at && new Date(sal.game_starts_at) <= now) {
+      if (sal.game_starts_at && new Date(sal.game_starts_at) <= now && !sal.is_postponed) {
         const wasExisting = existingRoster?.mlb_dfs_roster_slots?.some(
           (s) => s.espn_player_id === sal.espn_player_id
         )

@@ -74,6 +74,10 @@ function InjuryBadge({ status }) {
 
 function getPlayerGameState(player) {
   if (!player?.game_starts_at) return 'upcoming'
+  // Pre-start postponed games (rain-outs called before first pitch) are
+  // treated as unlocked so users can swap the affected player. Mid-game
+  // postponements don't set is_postponed on the salary row.
+  if (player.is_postponed) return 'upcoming'
   const now = new Date()
   const start = new Date(player.game_starts_at)
   if (start > now) return 'upcoming'
@@ -328,6 +332,9 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
     const filtered = players.filter((p) => {
       if (usedPlayerIds.has(p.espn_player_id)) return false
       if (p.injury_status === 'Out') return false
+      // Hide players from pre-start postponed games — their game isn't
+      // happening today, so picking them would burn a slot.
+      if (p.is_postponed) return false
       const gameStarted = p.game_starts_at && new Date(p.game_starts_at) <= now
       if (gameStarted) return false
       if (!isViewMode && p.salary > remainingSalary) return false
