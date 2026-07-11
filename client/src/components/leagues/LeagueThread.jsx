@@ -297,12 +297,15 @@ export default function LeagueThread({ league }) {
                             key={imgIdx}
                             type="button"
                             onClick={() => setLightbox({ images: msgImages, initialIndex: imgIdx })}
-                            className="block rounded-lg overflow-hidden border border-text-primary/10"
+                            className="block rounded-lg overflow-hidden border border-text-primary/10 bg-black/30"
                           >
                             <img
                               src={url}
                               alt=""
-                              className="w-full h-auto max-h-64 object-cover"
+                              // Use object-contain so tall portraits don't get cropped —
+                              // the "middle-of-the-torso" look on a head-to-toe photo.
+                              // Multi-image grids stay object-cover for a tidy grid.
+                              className={`w-full ${msgImages.length > 1 ? 'h-32 object-cover' : 'max-h-80 object-contain'}`}
                               loading="lazy"
                             />
                           </button>

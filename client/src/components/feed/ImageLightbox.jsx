@@ -86,13 +86,18 @@ export default function ImageLightbox({ src, images, initialIndex = 0, onClose }
         {list.map((url, i) => (
           <div
             key={url + i}
-            className="shrink-0 w-full h-full flex items-center justify-center snap-center p-4"
+            // pt-16 leaves headroom for the close button (48px tall + top offset).
+            // Without it, tall portrait images get clipped behind the X and users
+            // can't see the button OR the top of the image.
+            className="shrink-0 w-full h-full flex items-center justify-center snap-center px-4 pt-16 pb-6"
           >
             <img
               src={fastImage(url)}
               alt=""
               loading={Math.abs(i - initialIndex) <= 1 ? 'eager' : 'lazy'}
-              className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              // Cap at the interior height (viewport minus the padding above/below)
+              // so tall portraits fit entirely without overflowing behind chrome.
+              className="max-w-full max-h-[calc(100vh-6rem)] object-contain rounded-lg"
             />
           </div>
         ))}
