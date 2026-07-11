@@ -59,9 +59,11 @@ export default function ImageLightbox({ src, images, initialIndex = 0, onClose }
       onClick={onClose}
     >
       <button
-        onClick={onClose}
+        onClick={(e) => { e.stopPropagation(); onClose() }}
         aria-label="Close"
-        className="absolute right-3 text-white/90 hover:text-white text-3xl z-20 w-12 h-12 flex items-center justify-center rounded-full bg-black/40 active:bg-black/60"
+        // z-50 so nothing (image, scroller, arrows) can obscure the close
+        // affordance. Border ring bumps contrast on light images.
+        className="absolute right-3 text-white text-3xl z-50 w-12 h-12 flex items-center justify-center rounded-full bg-black/60 ring-1 ring-white/30 active:bg-black/80 hover:bg-black/80"
         style={{ top: 'max(0.75rem, calc(env(safe-area-inset-top) + 0.5rem))' }}
       >
         ×
@@ -76,10 +78,14 @@ export default function ImageLightbox({ src, images, initialIndex = 0, onClose }
       {/* Horizontal scroll-snap carousel — native swipe on touch devices,
           no extra gesture library needed. Each slide is exactly the
           viewport width so snap points land cleanly. */}
+      {/* Scroller has NO onClick stopPropagation — that used to intercept
+          every click in the viewport (scroller is w-full h-full) so the
+          outer backdrop click-to-close never fired. Instead, stop
+          propagation only on the actual image element so click-on-image
+          doesn't close but click-on-empty-space does. */}
       <div
         ref={scrollerRef}
         onScroll={handleScroll}
-        onClick={(e) => e.stopPropagation()}
         className="w-full h-full flex overflow-x-auto snap-x snap-mandatory overscroll-contain scrollbar-hide"
         style={{ scrollSnapType: 'x mandatory' }}
       >
@@ -95,6 +101,7 @@ export default function ImageLightbox({ src, images, initialIndex = 0, onClose }
               src={fastImage(url)}
               alt=""
               loading={Math.abs(i - initialIndex) <= 1 ? 'eager' : 'lazy'}
+              onClick={(e) => e.stopPropagation()}
               // Cap at the interior height (viewport minus the padding above/below)
               // so tall portraits fit entirely without overflowing behind chrome.
               className="max-w-full max-h-[calc(100vh-6rem)] object-contain rounded-lg"
