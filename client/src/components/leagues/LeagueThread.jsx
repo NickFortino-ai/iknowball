@@ -299,13 +299,18 @@ export default function LeagueThread({ league }) {
                             onClick={() => setLightbox({ images: msgImages, initialIndex: imgIdx })}
                             className="block rounded-lg overflow-hidden border border-text-primary/10 bg-black/30"
                           >
+                            {/* Single image: natural aspect within max bounds. Mobile
+                                Safari collapses w-full max-h object-contain to 0 when
+                                the image aspect exceeds the cap; using max-w/max-h
+                                without a forced width lets the browser scale down
+                                proportionally on both axes.
+                                Multi-image grid: keep the tidy tile look. */}
                             <img
                               src={url}
                               alt=""
-                              // Use object-contain so tall portraits don't get cropped —
-                              // the "middle-of-the-torso" look on a head-to-toe photo.
-                              // Multi-image grids stay object-cover for a tidy grid.
-                              className={`w-full ${msgImages.length > 1 ? 'h-32 object-cover' : 'max-h-80 object-contain'}`}
+                              className={msgImages.length > 1
+                                ? 'w-full h-32 object-cover'
+                                : 'max-w-full max-h-80 w-auto h-auto mx-auto block'}
                               loading="lazy"
                             />
                           </button>
