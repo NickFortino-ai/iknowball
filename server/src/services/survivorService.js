@@ -1131,7 +1131,14 @@ export async function autoEliminateMissedPicks() {
       // Note: scoreSurvivorPicks continues to settle each pick's
       // survived/eliminated state as its own game finishes, so picked
       // users still get real-time results.
-      const allStarted = games.every((g) => g.status !== 'scheduled')
+      //
+      // CRITICAL: games use status 'upcoming' before start, not 'scheduled'
+      // (that literal never appears in the schema). Earlier version of this
+      // check used `!== 'scheduled'` which is vacuously true for every
+      // status, so the cron fired at the *start* of each new period and
+      // wrongly eliminated everyone who hadn't yet picked for the day.
+      const STARTED_STATUSES = new Set(['live', 'final', 'postponed'])
+      const allStarted = games.every((g) => STARTED_STATUSES.has(g.status))
       if (!allStarted) continue
 
       // Get alive members. We pull joined_at so we can skip any member who
