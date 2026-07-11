@@ -304,14 +304,18 @@ export default function LeagueThread({ league }) {
                                 the image aspect exceeds the cap; using max-w/max-h
                                 without a forced width lets the browser scale down
                                 proportionally on both axes.
-                                Multi-image grid: keep the tidy tile look. */}
+                                Multi-image grid: keep the tidy tile look.
+                                No loading="lazy" — WKWebView defers indefinitely on
+                                lazy imgs whose container needs the image content to
+                                compute h-auto height, leaving thread messages with
+                                empty white space where the image should be. Threads
+                                have few images anyway. */}
                             <img
                               src={url}
                               alt=""
                               className={msgImages.length > 1
                                 ? 'w-full h-32 object-cover'
                                 : 'max-w-full max-h-80 w-auto h-auto mx-auto block'}
-                              loading="lazy"
                             />
                           </button>
                         ))}
