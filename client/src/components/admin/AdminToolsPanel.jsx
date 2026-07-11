@@ -430,8 +430,19 @@ function GameOverride() {
 
   function selectGame(game) {
     setSelected(game)
+    // Default the status to 'final' when opening a live/upcoming game, since
+    // that's what an admin almost always means by "override" (correcting a
+    // stuck game to its actual finalized state). Without this, the form
+    // preserves the current status ('live'), the admin enters scores + winner
+    // and hits Apply, and the server silently keeps the game at 'live' —
+    // downstream scoring never fires because it's gated on status='final'.
+    // Already-final or postponed games keep their current status as the
+    // default (admin can adjust intentionally).
+    const defaultStatus = game.status === 'live' || game.status === 'upcoming'
+      ? 'final'
+      : game.status
     setForm({
-      status: game.status,
+      status: defaultStatus,
       winner: game.winner || '',
       home_score: game.home_score ?? '',
       away_score: game.away_score ?? '',
