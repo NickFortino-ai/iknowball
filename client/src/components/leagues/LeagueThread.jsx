@@ -206,6 +206,22 @@ export default function LeagueThread({ league }) {
     }
   }
 
+  // Paste-to-attach: matches the Hub composer behavior. Iterates clipboard
+  // items, grabs the first image/*, feeds it through the same selectImage
+  // path as the paperclip button.
+  function handlePaste(e) {
+    const items = e.clipboardData?.items
+    if (!items) return
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault()
+        const file = item.getAsFile()
+        if (file) selectImage(file)
+        return
+      }
+    }
+  }
+
   if (isLoading) return <LoadingSpinner />
 
   return (
@@ -375,6 +391,7 @@ export default function LeagueThread({ league }) {
               }}
               onKeyDown={handleKeyDown}
               onFocus={handleInputFocus}
+              onPaste={handlePaste}
               placeholder="Message"
               rows={1}
               className="flex-1 bg-transparent pl-1 pr-1 py-1.5 text-[16px] leading-5 text-text-primary placeholder-text-muted resize-none focus:outline-none max-h-24 overflow-y-auto"
