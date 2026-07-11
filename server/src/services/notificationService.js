@@ -28,6 +28,13 @@ const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_resul
 const QUIET_HOURS_TYPES = new Set([
   'survivor_result',
   'survivor_win',
+  // League-completion notifications fire from the completeLeagues cron
+  // whenever the last game in the window finalizes — which for late-slate
+  // MLB can be 11 PM+ PT. Winners don't want to be woken up mid-night
+  // for news that will be true when they wake up. league_finish is the
+  // non-winner variant (podium placement) — same reasoning.
+  'league_win',
+  'league_finish',
   'fantasy_waiver_awarded',
   'fantasy_stat_correction',
 ])
