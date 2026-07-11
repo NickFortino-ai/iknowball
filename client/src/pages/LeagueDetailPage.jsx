@@ -39,6 +39,7 @@ import LeagueReport from '../components/leagues/LeagueReport'
 import FantasyUnderfillBanner from '../components/leagues/FantasyUnderfillBanner'
 import FantasyDraftLiveBanner from '../components/leagues/FantasyDraftLiveBanner'
 import CommissionerToolsPage from '../components/leagues/CommissionerToolsPage'
+import ReportProblemSection from '../components/leagues/ReportProblemSection'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
@@ -1828,6 +1829,11 @@ export default function LeagueDetailPage() {
   const noteRef = useRef(null)
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  // Which view the settings modal is showing. 'settings' by default; flips
+  // to 'report' when a commissioner taps "Report a Problem" so we swap
+  // the modal's content in place instead of stacking modals. Resets to
+  // 'settings' whenever the modal closes.
+  const [settingsView, setSettingsView] = useState('settings')
   const [showBackdropPicker, setShowBackdropPicker] = useState(false)
   const [showMembersModal, setShowMembersModal] = useState(false)
   const updateLeague = useUpdateLeague()
@@ -2810,63 +2816,107 @@ export default function LeagueDetailPage() {
       {/* Delete League */}
       {/* Settings Modal */}
       {showSettingsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowSettingsModal(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => { setShowSettingsModal(false); setSettingsView('settings') }}
+        >
           <div className="absolute inset-0 bg-black/60" />
           <div
             className="relative bg-bg-primary/80 backdrop-blur-md border border-text-primary/20 w-full max-w-lg rounded-2xl p-6 max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-xl text-text-primary">League Settings</h2>
+              <div className="flex items-center gap-2 min-w-0">
+                {settingsView === 'report' && (
+                  <button
+                    onClick={() => setSettingsView('settings')}
+                    className="w-8 h-8 -ml-1 flex items-center justify-center text-text-muted hover:text-text-primary rounded-full hover:bg-bg-secondary transition-colors"
+                    aria-label="Back"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                  </button>
+                )}
+                <h2 className="font-display text-xl text-text-primary truncate">
+                  {settingsView === 'report' ? 'Report a Problem to the IKB Admin' : 'League Settings'}
+                </h2>
+              </div>
               <button
-                onClick={() => setShowSettingsModal(false)}
-                className="w-10 h-10 -m-2 flex items-center justify-center text-text-muted hover:text-text-primary text-xl leading-none rounded-full hover:bg-bg-secondary transition-colors"
+                onClick={() => { setShowSettingsModal(false); setSettingsView('settings') }}
+                className="w-10 h-10 -m-2 flex items-center justify-center text-text-muted hover:text-text-primary text-xl leading-none rounded-full hover:bg-bg-secondary transition-colors shrink-0"
               >
                 &times;
               </button>
             </div>
 
-            {league.ends_at && !(league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap') && (
-              <div className="flex items-baseline justify-between mb-4 px-1">
-                <span className="text-xs uppercase tracking-wider text-text-muted">Runs until</span>
-                <span className="text-sm font-semibold text-text-primary">
-                  {league.format === 'survivor'
-                    ? 'Last one standing'
-                    : formatEndDateLong(league.ends_at)}
-                </span>
-              </div>
+            {settingsView === 'report' ? (
+              // Reuses the same threaded-message component the Fantasy Commish
+              // tab uses. Embedded mode hides its own title/back chrome since
+              // the modal header already provides that.
+              <ReportProblemSection league={league} embedded={true} onEmbeddedBack={() => setSettingsView('settings')} />
+            ) : (
+              <>
+                {league.ends_at && !(league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap') && (
+                  <div className="flex items-baseline justify-between mb-4 px-1">
+                    <span className="text-xs uppercase tracking-wider text-text-muted">Runs until</span>
+                    <span className="text-sm font-semibold text-text-primary">
+                      {league.format === 'survivor'
+                        ? 'Last one standing'
+                        : formatEndDateLong(league.ends_at)}
+                    </span>
+                  </div>
+                )}
+
+                <LeagueConditions league={league} isCommissioner={isCommissioner} updateLeague={updateLeague} bracketTournament={bracketTournament} bracketEntries={bracketEntries} fantasySettings={fantasySettings} />
+
+                {isCommissioner && league.settings_editable && (
+                  <div className="mt-4">
+                    <LeagueSettingsEditor league={league} updateLeague={updateLeague} hasLockedPicks={league.has_locked_picks} />
+                  </div>
+                )}
+
+                {/* Report a Problem — commissioner-only. Available for every
+                    league format via the gear icon; the Fantasy Commish tab
+                    also surfaces this same feature for that specific format. */}
+                {isCommissioner && (
+                  <button
+                    onClick={() => setSettingsView('report')}
+                    className="mt-6 w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-text-primary/20 bg-bg-primary/60 hover:bg-text-primary/5 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl leading-none">📨</span>
+                      <div>
+                        <div className="text-sm font-semibold text-text-primary">Report a Problem to the IKB Admin</div>
+                        <div className="text-xs text-text-primary/60 mt-0.5">Message the admin about anything wrong with this league.</div>
+                      </div>
+                    </div>
+                    <span className="text-text-muted text-lg leading-none">›</span>
+                  </button>
+                )}
+
+                {isCommissioner && (
+                  <div className="mt-10 pt-4 border-t border-border text-center">
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm('Are you sure? All data will be erased.')) return
+                        try {
+                          await deleteLeague.mutateAsync(league.id)
+                          toast('League deleted', 'success')
+                          navigate('/leagues')
+                        } catch (err) {
+                          toast(err.message || 'Failed to delete league', 'error')
+                        }
+                      }}
+                      disabled={deleteLeague.isPending}
+                      className="text-xs text-text-muted hover:text-incorrect transition-colors disabled:opacity-50"
+                    >
+                      {deleteLeague.isPending ? 'Deleting...' : 'Delete League'}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
-
-            <LeagueConditions league={league} isCommissioner={isCommissioner} updateLeague={updateLeague} bracketTournament={bracketTournament} bracketEntries={bracketEntries} fantasySettings={fantasySettings} />
-
-            {isCommissioner && league.settings_editable && (
-              <div className="mt-4">
-                <LeagueSettingsEditor league={league} updateLeague={updateLeague} hasLockedPicks={league.has_locked_picks} />
-              </div>
-            )}
-
-
-            {isCommissioner && (
-              <div className="mt-10 pt-4 border-t border-border text-center">
-                <button
-                  onClick={async () => {
-                    if (!window.confirm('Are you sure? All data will be erased.')) return
-                    try {
-                      await deleteLeague.mutateAsync(league.id)
-                      toast('League deleted', 'success')
-                      navigate('/leagues')
-                    } catch (err) {
-                      toast(err.message || 'Failed to delete league', 'error')
-                    }
-                  }}
-                  disabled={deleteLeague.isPending}
-                  className="text-xs text-text-muted hover:text-incorrect transition-colors disabled:opacity-50"
-                >
-                  {deleteLeague.isPending ? 'Deleting...' : 'Delete League'}
-                </button>
-              </div>
-            )}
-
           </div>
         </div>
       )}
