@@ -389,11 +389,14 @@ export default function PlayerBlurbsPanel() {
                     )}
                     {/* Last-published freshness — actual date rendered on
                         the row so stale entries jump out during scanning
-                        (e.g. an old May blurb still riding into July). */}
+                        (e.g. an old May blurb still riding into July).
+                        Bumped from [10px] muted → xs semibold-secondary so
+                        the date reads as a first-class piece of info, not
+                        a whisper. */}
                     {player.last_published_at && (
-                      <div className="text-[10px] text-text-muted mt-0.5" title={new Date(player.last_published_at).toLocaleString()}>
-                        Published {new Date(player.last_published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        <span className="text-text-muted/60"> · {formatPublishedAgo(player.last_published_at)}</span>
+                      <div className="text-xs text-text-secondary mt-1" title={new Date(player.last_published_at).toLocaleString()}>
+                        Published <span className="font-semibold text-text-primary">{new Date(player.last_published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        <span className="text-text-muted"> · {formatPublishedAgo(player.last_published_at)}</span>
                       </div>
                     )}
                     {/* Mobile: drop Published/Draft badge under the name row so
