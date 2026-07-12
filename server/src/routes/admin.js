@@ -1862,13 +1862,18 @@ router.get('/blurbs/players', async (req, res) => {
       const chunk = allBlurbLookupIds.slice(i, i + CHUNK)
       const { data: chunkBlurbs } = await supabase
         .from('player_blurbs')
-        .select('player_id, status, id, content')
+        .select('player_id, status, id, content, published_at')
         .eq('sport', sport)
         .in('player_id', chunk)
         .in('status', ['draft', 'published'])
       if (chunkBlurbs) allBlurbs.push(...chunkBlurbs)
     }
     const blurbMap = {}
+    // Track the latest published_at per canonical player independently of
+    // the primary blurbMap so we can surface freshness even when a fresh
+    // draft is the current .blurb. Used by the admin panel to show
+    // "Published <relative time>" on each row and to sort by staleness.
+    const lastPublishedAt = {}
     for (const b of allBlurbs) {
       const canonical = idToCanonical.get(b.player_id) || b.player_id
       // Prefer the draft over the published one. The published blurb is
@@ -1878,9 +1883,16 @@ router.get('/blurbs/players', async (req, res) => {
       // invisible — no Draft badge, no Publish button, no contribution
       // to the Publish All Drafts count.
       if (!blurbMap[canonical] || b.status === 'draft') blurbMap[canonical] = b
+      if (b.status === 'published' && b.published_at) {
+        const prev = lastPublishedAt[canonical]
+        if (!prev || new Date(b.published_at) > new Date(prev)) {
+          lastPublishedAt[canonical] = b.published_at
+        }
+      }
     }
     for (const p of players) {
       p.blurb = blurbMap[p.id] || null
+      p.last_published_at = lastPublishedAt[p.id] || null
     }
     // Diagnostic — leave in place until we've confirmed the chunked fix
     // works across the "all" filter (2500+ lookup ids) and search flows.

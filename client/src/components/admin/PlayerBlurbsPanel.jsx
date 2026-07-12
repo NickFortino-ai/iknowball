@@ -49,6 +49,11 @@ export default function PlayerBlurbsPanel() {
   const [week, setWeek] = useState(1)
   const [search, setSearch] = useState('')
   const [injuryFilter, setInjuryFilter] = useState('all')
+  // 'default' preserves the server ordering (points-based). 'recent' sorts
+  // by most recent published blurb, with never-blurbed players sunk to the
+  // bottom — used to catch stale entries fast (e.g. an old May blurb still
+  // sitting on Caitlin Clark's row in July).
+  const [sortBy, setSortBy] = useState('default')
   const season = new Date().getFullYear()
 
   const filteredPlayers = (() => {
@@ -60,8 +65,31 @@ export default function PlayerBlurbsPanel() {
     } else if (injuryFilter !== 'all') {
       list = list.filter((p) => p.injury_status === injuryFilter)
     }
+    if (sortBy === 'recent') {
+      list = [...list].sort((a, b) => {
+        const at = a.last_published_at ? new Date(a.last_published_at).getTime() : null
+        const bt = b.last_published_at ? new Date(b.last_published_at).getTime() : null
+        // Nulls (no published blurb) sink to the bottom
+        if (at == null && bt == null) return 0
+        if (at == null) return 1
+        if (bt == null) return -1
+        return bt - at
+      })
+    }
     return list
   })()
+
+  function formatPublishedAgo(iso) {
+    if (!iso) return null
+    const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+    if (seconds < 60) return 'just now'
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+    if (seconds < 86400 * 7) return `${Math.floor(seconds / 86400)}d ago`
+    if (seconds < 86400 * 30) return `${Math.floor(seconds / (86400 * 7))}w ago`
+    if (seconds < 86400 * 365) return `${Math.floor(seconds / (86400 * 30))}mo ago`
+    return `${Math.floor(seconds / (86400 * 365))}y ago`
+  }
 
   const fetchPlayers = useCallback(async () => {
     setLoading(true)
@@ -231,6 +259,19 @@ export default function PlayerBlurbsPanel() {
           className="flex-1 min-w-[12rem] max-w-sm px-3 py-1.5 rounded-lg bg-bg-card border border-text-primary/20 text-sm text-text-primary placeholder-text-muted"
         />
 
+        {/* Sort control — 'default' is the server's points-based order.
+            'recent' surfaces the freshest blurbs first (never-blurbed at
+            bottom) so stale entries like an old May blurb still sitting
+            in July are easy to catch. */}
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="px-3 py-1.5 rounded-lg bg-bg-card border border-text-primary/20 text-sm text-text-primary"
+        >
+          <option value="default">Sort: Default</option>
+          <option value="recent">Sort: Recent blurb</option>
+        </select>
+
         <div className="flex items-center gap-2 ml-auto">
           <label className="text-xs text-text-muted">Week</label>
           <input
@@ -340,6 +381,14 @@ export default function PlayerBlurbsPanel() {
                     {sport === 'nfl' && (
                       <div className="text-[10px] text-text-muted">
                         {player.seasonPoints} pts · {player.gamesPlayed} GP · {player.avgPoints} avg
+                      </div>
+                    )}
+                    {/* Last-published freshness — surfaces stale blurbs at a
+                        glance so a May blurb still riding into July jumps out
+                        of a scanning admin's peripheral vision. */}
+                    {player.last_published_at && (
+                      <div className="text-[10px] text-text-muted mt-0.5" title={new Date(player.last_published_at).toLocaleString()}>
+                        Published {formatPublishedAgo(player.last_published_at)}
                       </div>
                     )}
                     {/* Mobile: drop Published/Draft badge under the name row so
