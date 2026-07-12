@@ -135,7 +135,7 @@ export default function PlayerBlurbsPanel() {
       const result = await api.post('/admin/blurbs/generate', {
         playerIds: [...selected],
         season,
-        week,
+        week: sport === 'nfl' ? week : null,
       })
       toast(`Generated ${result.generated} blurbs`, 'success')
       setSelected(new Set())
@@ -181,7 +181,7 @@ export default function PlayerBlurbsPanel() {
 
   const handleCreate = async (playerId) => {
     try {
-      await api.post('/admin/blurbs', { player_id: playerId, content: createContent, season, week, sport })
+      await api.post('/admin/blurbs', { player_id: playerId, content: createContent, season, week: sport === 'nfl' ? week : null, sport })
       toast('Blurb created', 'success')
       setCreatingFor(null)
       setCreateContent('')
@@ -272,17 +272,21 @@ export default function PlayerBlurbsPanel() {
           <option value="recent">Sort: Recent blurb</option>
         </select>
 
-        <div className="flex items-center gap-2 ml-auto">
-          <label className="text-xs text-text-muted">Week</label>
-          <input
-            type="number"
-            min={1}
-            max={18}
-            value={week}
-            onChange={(e) => setWeek(Number(e.target.value))}
-            className="w-14 px-2 py-1 rounded-lg bg-bg-card border border-text-primary/20 text-sm text-text-primary"
-          />
-        </div>
+        {/* Week is an NFL-only concept — hide the input on other sports
+            where scoring is daily. Non-NFL blurb inserts send week=null. */}
+        {sport === 'nfl' && (
+          <div className="flex items-center gap-2 ml-auto">
+            <label className="text-xs text-text-muted">Week</label>
+            <input
+              type="number"
+              min={1}
+              max={18}
+              value={week}
+              onChange={(e) => setWeek(Number(e.target.value))}
+              className="w-14 px-2 py-1 rounded-lg bg-bg-card border border-text-primary/20 text-sm text-text-primary"
+            />
+          </div>
+        )}
       </div>
 
       {/* Injury status filter */}
@@ -515,7 +519,8 @@ export default function PlayerBlurbsPanel() {
                                 }`}>{h.status}</span>
                                 <div className="flex items-center gap-2">
                                   <span className="text-text-muted">
-                                    {sourceLabel} · W{h.week || '?'}
+                                    {sourceLabel}
+                                    {sport === 'nfl' && ` · W${h.week || '?'}`}
                                     {h.published_at && ` · ${new Date(h.published_at).toLocaleDateString()}`}
                                   </span>
                                   <button onClick={() => handleDelete(h.id)} className="text-incorrect hover:underline">Delete</button>
