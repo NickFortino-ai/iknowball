@@ -383,12 +383,13 @@ export default function PlayerBlurbsPanel() {
                         {player.seasonPoints} pts · {player.gamesPlayed} GP · {player.avgPoints} avg
                       </div>
                     )}
-                    {/* Last-published freshness — surfaces stale blurbs at a
-                        glance so a May blurb still riding into July jumps out
-                        of a scanning admin's peripheral vision. */}
+                    {/* Last-published freshness — actual date rendered on
+                        the row so stale entries jump out during scanning
+                        (e.g. an old May blurb still riding into July). */}
                     {player.last_published_at && (
                       <div className="text-[10px] text-text-muted mt-0.5" title={new Date(player.last_published_at).toLocaleString()}>
-                        Published {formatPublishedAgo(player.last_published_at)}
+                        Published {new Date(player.last_published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        <span className="text-text-muted/60"> · {formatPublishedAgo(player.last_published_at)}</span>
                       </div>
                     )}
                     {/* Mobile: drop Published/Draft badge under the name row so
