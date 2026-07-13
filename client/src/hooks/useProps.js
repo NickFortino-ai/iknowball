@@ -10,6 +10,23 @@ export function usePropPick(propPickId) {
   })
 }
 
+// User-facing props tab: fetches today's slate of props for one (sport,
+// market) via the server-side loader which upserts+publishes rows and
+// returns them enriched with headshots + game metadata. Server-side cache
+// (5-min TTL) absorbs the traffic across users; client-side we hold each
+// (sport, market) fresh for 60s so quickly toggling groups doesn't hammer
+// the endpoint. First tap on a chip pays the round-trip; re-taps within
+// the window are instant from React Query cache.
+export function useLoadedProps(sport, market, { enabled = true } = {}) {
+  return useQuery({
+    queryKey: ['loadedProps', sport, market],
+    queryFn: () => api.get(`/props/load?sport=${encodeURIComponent(sport)}&market=${encodeURIComponent(market)}`),
+    enabled: enabled && !!sport && !!market,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  })
+}
+
 export function useFeaturedProps(date, { fallback = false } = {}) {
   return useQuery({
     queryKey: ['featuredProps', date, fallback],

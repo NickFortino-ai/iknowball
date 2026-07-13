@@ -11,6 +11,7 @@ import ParlaySlip from '../components/picks/ParlaySlip'
 import ParlayCard from '../components/picks/ParlayCard'
 import FeaturedPropSection from '../components/picks/FeaturedPropSection'
 import FuturesSection from '../components/picks/FuturesSection'
+import PropsSection from '../components/picks/PropsSection'
 import GameIntelModal from '../components/picks/GameIntelModal'
 import GameDetailModal from '../components/picks/GameDetailModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
@@ -65,6 +66,7 @@ export default function PicksPage() {
   const [activeSport, setActiveSport] = useState(null)
   const [dayOffset, setDayOffset] = useState(0)
   const [isFuturesMode, setIsFuturesMode] = useState(false)
+  const [isPropsMode, setIsPropsMode] = useState(false)
   const userChangedDay = useRef(false)
 
   const { data: activeSportsData } = useActiveSports()
@@ -238,7 +240,7 @@ export default function PicksPage() {
       </h1>
 
       {/* Straight / Parlay toggle */}
-      {!isFuturesMode && (
+      {!isFuturesMode && !isPropsMode && (
         <div className="flex rounded-xl border border-text-primary/20 p-1 mb-4">
           {['Straight', 'Parlay'].map((mode) => {
             const isActive = mode === 'Parlay' ? parlayMode : !parlayMode
@@ -260,11 +262,11 @@ export default function PicksPage() {
 
       <div className="flex overflow-x-auto gap-2 pb-2 mb-4 scrollbar-hide -mx-4 px-4">
         {sortedTabs.filter((t) => activeKeys.has(t.key)).map((tab) => {
-          const isActive = activeSport === tab.key && !isFuturesMode
+          const isActive = activeSport === tab.key && !isFuturesMode && !isPropsMode
           return (
             <button
               key={tab.key}
-              onClick={() => { setActiveSport(tab.key); setIsFuturesMode(false) }}
+              onClick={() => { setActiveSport(tab.key); setIsFuturesMode(false); setIsPropsMode(false) }}
               className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                 isActive
                   ? 'bg-accent text-white'
@@ -275,9 +277,21 @@ export default function PicksPage() {
             </button>
           )
         })}
+        {/* Props sits just left of Futures — new discovery surface for
+            self-serve prop loading (replaces the old admin-featured flow) */}
+        <button
+          onClick={() => { setIsPropsMode(true); setIsFuturesMode(false) }}
+          className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            isPropsMode
+              ? 'bg-accent text-white'
+              : 'bg-bg-primary border border-text-primary/20 text-text-primary hover:border-text-primary/40'
+          }`}
+        >
+          Props
+        </button>
         {/* Futures sits at the right edge of the live tabs, always */}
         <button
-          onClick={() => setIsFuturesMode(true)}
+          onClick={() => { setIsFuturesMode(true); setIsPropsMode(false) }}
           className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
             isFuturesMode
               ? 'bg-accent text-white'
@@ -288,11 +302,11 @@ export default function PicksPage() {
         </button>
         {/* Inactive (out-of-season) sports follow, grayed out */}
         {sortedTabs.filter((t) => !activeKeys.has(t.key)).map((tab) => {
-          const isActive = activeSport === tab.key && !isFuturesMode
+          const isActive = activeSport === tab.key && !isFuturesMode && !isPropsMode
           return (
             <button
               key={tab.key}
-              onClick={() => { setActiveSport(tab.key); setIsFuturesMode(false) }}
+              onClick={() => { setActiveSport(tab.key); setIsFuturesMode(false); setIsPropsMode(false) }}
               className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                 isActive
                   ? 'bg-accent text-white'
@@ -305,7 +319,9 @@ export default function PicksPage() {
         })}
       </div>
 
-      {isFuturesMode ? (
+      {isPropsMode ? (
+        <PropsSection />
+      ) : isFuturesMode ? (
         <FuturesSection />
       ) : (
         <>
