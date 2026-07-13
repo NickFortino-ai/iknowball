@@ -77,6 +77,7 @@ export default function AppConfigPanel() {
   const [leaderboardOrder, setLeaderboardOrder] = useState([])
   const [draftPrepHidden, setDraftPrepHidden] = useState(false)
   const [propsVisibility, setPropsVisibility] = useState({})
+  const [propsOrder, setPropsOrder] = useState([])
 
   useEffect(() => {
     if (!cfg) return
@@ -99,6 +100,13 @@ export default function AppConfigPanel() {
     const merged = {}
     for (const opt of PROPS_SPORT_OPTIONS) merged[opt.key] = !!stored[opt.key]
     setPropsVisibility(merged)
+    // Merge any newly-added sports into the stored order so a sport added
+    // after the order was last saved still appears in the reorder list.
+    const storedOrder = Array.isArray(cfg.props_sport_order) ? cfg.props_sport_order : []
+    const knownKeys = new Set(PROPS_SPORT_OPTIONS.map((o) => o.key))
+    const preserved = storedOrder.filter((k) => knownKeys.has(k))
+    const missing = PROPS_SPORT_OPTIONS.map((o) => o.key).filter((k) => !preserved.includes(k))
+    setPropsOrder([...preserved, ...missing])
   }, [cfg])
 
   async function save(key, value, label) {
@@ -190,6 +198,26 @@ export default function AppConfigPanel() {
           className="mt-3 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover disabled:opacity-50"
         >
           Save props visibility
+        </button>
+      </section>
+
+      <section>
+        <h3 className="text-sm font-semibold text-text-primary mb-2">Props tab — sport order</h3>
+        <p className="text-xs text-text-muted mb-3">
+          Display order of sport tiles in the Props tab grid. Hidden sports (unchecked above) still show in this list —
+          reorder them so they're ready to appear when you toggle them on.
+        </p>
+        <ReorderList
+          items={propsOrder}
+          onChange={setPropsOrder}
+          getLabel={(k) => PROPS_SPORT_OPTIONS.find((o) => o.key === k)?.label || k}
+        />
+        <button
+          onClick={() => save('props_sport_order', propsOrder, 'props sport order')}
+          disabled={updateCfg.isPending}
+          className="mt-3 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover disabled:opacity-50"
+        >
+          Save props order
         </button>
       </section>
 

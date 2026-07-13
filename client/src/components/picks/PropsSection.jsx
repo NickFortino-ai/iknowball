@@ -6,22 +6,30 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
 import { triggerHaptic } from '../../lib/haptics'
 
-// Sport tile display order + labels. Order controls how tiles appear in
-// the grid (top-left first). Only sports the admin has toggled ON in the
-// props_sport_visibility remote-config knob are actually rendered.
+// Sport tile display order + labels. The actual order in the grid comes
+// from the props_sport_order remote-config knob (admin-reorderable); this
+// list is just the source of truth for labels + backdrop filenames, and
+// the fallback order if config hasn't loaded yet. Only sports the admin
+// has toggled ON in props_sport_visibility are actually rendered.
+//
+// backdrop: filename inside client/public/backdrops/props/ or null if we
+// don't have art for that sport yet. Tiles without backdrops fall back to
+// the plain glass-edge style.
 const SPORT_TILES = [
-  { key: 'nba', label: 'NBA' },
-  { key: 'wnba', label: 'WNBA' },
-  { key: 'mlb', label: 'MLB' },
-  { key: 'nfl', label: 'NFL' },
-  { key: 'ncaaf', label: 'NCAAF' },
-  { key: 'ncaab', label: 'NCAAB' },
-  { key: 'wncaab', label: 'WNCAAB' },
-  { key: 'nhl', label: 'NHL' },
-  { key: 'ufl', label: 'UFL' },
-  { key: 'mls', label: 'MLS' },
-  { key: 'wc', label: 'WC' },
+  { key: 'nba',    label: 'NBA',    backdrop: 'nba.webp' },
+  { key: 'wnba',   label: 'WNBA',   backdrop: 'wnba.jpg' },
+  { key: 'mlb',    label: 'MLB',    backdrop: 'mlb.jpg' },
+  { key: 'nfl',    label: 'NFL',    backdrop: 'nfl.jpg' },
+  { key: 'ncaaf',  label: 'NCAAF',  backdrop: 'ncaaf.jpg' },
+  { key: 'ncaab',  label: 'NCAAB',  backdrop: 'ncaab.webp' },
+  { key: 'wncaab', label: 'WNCAAB', backdrop: null },
+  { key: 'nhl',    label: 'NHL',    backdrop: null },
+  { key: 'ufl',    label: 'UFL',    backdrop: null },
+  { key: 'mls',    label: 'MLS',    backdrop: null },
+  { key: 'wc',     label: 'WC',     backdrop: null },
 ]
+
+const TILE_BY_KEY = Object.fromEntries(SPORT_TILES.map((t) => [t.key, t]))
 
 // Markets available per sport, in display order. First entry is
 // auto-expanded when a user opens a sport — pick the most popular market
@@ -118,11 +126,23 @@ function sortProps(props) {
 export default function PropsSection() {
   const { data: cfg } = useAppConfig()
   const visibility = cfg?.props_sport_visibility || {}
+  const order = Array.isArray(cfg?.props_sport_order) && cfg.props_sport_order.length
+    ? cfg.props_sport_order
+    : SPORT_TILES.map((t) => t.key)
   const [selectedSport, setSelectedSport] = useState(null)
 
   const visibleTiles = useMemo(() => {
-    return SPORT_TILES.filter((t) => visibility[t.key])
-  }, [visibility])
+    const seen = new Set()
+    const out = []
+    for (const key of order) {
+      if (seen.has(key)) continue
+      const tile = TILE_BY_KEY[key]
+      if (!tile || !visibility[key]) continue
+      out.push(tile)
+      seen.add(key)
+    }
+    return out
+  }, [visibility, order])
 
   if (selectedSport) {
     return (
@@ -147,16 +167,39 @@ export default function PropsSection() {
       <h2 className="font-display text-xl mb-4">Choose a sport</h2>
       <div className="grid grid-cols-2 gap-3">
         {visibleTiles.map((tile) => (
-          <button
+          <SportTile
             key={tile.key}
-            onClick={() => setSelectedSport(tile.key)}
-            className="bg-bg-primary border border-text-primary/20 hover:border-text-primary/40 rounded-2xl px-6 py-10 transition-all hover:scale-[1.02] hover:shadow-lg"
-          >
-            <div className="font-display text-3xl text-text-primary">{tile.label}</div>
-          </button>
+            tile={tile}
+            onSelect={() => setSelectedSport(tile.key)}
+          />
         ))}
       </div>
     </div>
+  )
+}
+
+function SportTile({ tile, onSelect }) {
+  const hasBackdrop = !!tile.backdrop
+  const bgUrl = hasBackdrop ? `/backdrops/props/${tile.backdrop}` : null
+
+  return (
+    <button
+      onClick={onSelect}
+      className="relative overflow-hidden bg-bg-primary border border-text-primary/20 hover:border-text-primary/40 rounded-2xl px-6 py-10 transition-all hover:scale-[1.02] hover:shadow-lg"
+      style={hasBackdrop ? {
+        backgroundImage: `url(${bgUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      } : undefined}
+    >
+      {/* Dark scrim so the label stays readable regardless of underlying image */}
+      {hasBackdrop && (
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/20 pointer-events-none" />
+      )}
+      <div className={`relative font-display text-3xl ${hasBackdrop ? 'text-white drop-shadow-lg' : 'text-text-primary'}`}>
+        {tile.label}
+      </div>
+    </button>
   )
 }
 
