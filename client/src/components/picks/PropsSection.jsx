@@ -165,7 +165,7 @@ export default function PropsSection() {
   return (
     <div>
       <h2 className="font-display text-xl mb-4">Choose a sport</h2>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {visibleTiles.map((tile) => (
           <SportTile
             key={tile.key}
@@ -226,7 +226,7 @@ function SportPropsView({ sport, onBack }) {
       <div className="flex items-center gap-3 mb-4">
         <button
           onClick={onBack}
-          className="w-10 h-10 flex items-center justify-center rounded-lg bg-bg-primary border border-text-primary/20 text-text-primary hover:border-text-primary/40"
+          className="w-11 h-11 flex items-center justify-center rounded-lg bg-bg-primary border border-text-primary/20 text-text-primary hover:border-text-primary/40"
           aria-label="Back to sport grid"
         >
           ‹
