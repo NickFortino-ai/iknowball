@@ -1332,7 +1332,7 @@ export async function settleSurvivorLeague(leagueId, userId) {
 async function checkSurvivorWinner(leagueId) {
   const { data: aliveMembers } = await supabase
     .from('league_members')
-    .select('user_id')
+    .select('user_id, lives_remaining')
     .eq('league_id', leagueId)
     .eq('is_alive', true)
 
@@ -1377,6 +1377,50 @@ async function checkSurvivorWinner(leagueId) {
     if (unsettledPicks?.length > 0) {
       logger.info({ leagueId, winnerId }, 'Last survivor standing has unsettled pick in a started period — waiting before declaring winner')
       return
+    }
+
+    // Guard: in all_eliminated_survive mode, if the sole survivor has 1 life
+    // left AND there's a started period whose missed-pick processing hasn't
+    // run yet AND they have no pick in it, autoEliminateMissedPicks could
+    // still eliminate them → 0 alive → mass-revive fires → league continues.
+    // Declaring a winner now would be premature and get reversed. Wait until
+    // missed_picks_processed=true for the period.
+    if (
+      league?.settings?.all_eliminated_survive
+      && (aliveMembers[0].lives_remaining || 0) <= 1
+    ) {
+      const { data: pendingPeriods } = await supabase
+        .from('league_weeks')
+        .select('id, week_number')
+        .eq('league_id', leagueId)
+        .eq('missed_picks_processed', false)
+        .lte('starts_at', nowIso)
+
+      if (pendingPeriods?.length > 0) {
+        const periodIds = pendingPeriods.map((p) => p.id)
+        const { data: winnerPicks } = await supabase
+          .from('survivor_picks')
+          .select('league_week_id')
+          .eq('league_id', leagueId)
+          .eq('user_id', winnerId)
+          .in('league_week_id', periodIds)
+
+        const pickedPeriodIds = new Set((winnerPicks || []).map((p) => p.league_week_id))
+        const unpickedPeriods = pendingPeriods.filter((p) => !pickedPeriodIds.has(p.id))
+
+        if (unpickedPeriods.length > 0) {
+          logger.info(
+            {
+              leagueId,
+              winnerId,
+              winnerLives: aliveMembers[0].lives_remaining,
+              unpickedPeriodWeeks: unpickedPeriods.map((p) => p.week_number),
+            },
+            'Last survivor standing has 1 life + unprocessed missed-pick period(s) with no pick — waiting to declare winner (mass-revive could fire)'
+          )
+          return
+        }
+      }
     }
 
     // First time single survivor — award bonus, send win notification, but do NOT mark league completed
