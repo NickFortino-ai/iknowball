@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { fetchPlayerProps } from './oddsService.js'
-import { getMarketLabel } from '../utils/propMarkets.js'
+import { getMarketLabel, PROP_MARKETS } from '../utils/propMarkets.js'
 import { calculateRiskPoints, calculateRewardPoints } from '../utils/scoring.js'
 import { checkRecordAfterSettle } from './recordService.js'
 import { fetchCompletedGameStats as fetchNbaStatsFromEspn } from '../jobs/scoreNBADFS.js'
@@ -9,6 +9,42 @@ import { fetchCompletedGameStats as fetchMlbStatsFromEspn } from '../jobs/scoreM
 import { fetchCompletedWNBAGameStats as fetchWnbaStatsFromEspn } from '../jobs/scoreWNBADFS.js'
 import { normalizeName } from '../utils/name.js'
 import { todaySportsDay, yesterdaySportsDay } from '../utils/sportsDay.js'
+import { getPlayerHeadshotUrl, refreshPlayerHeadshotCache } from './espnService.js'
+
+// Short-key → full Odds API sport key. Short keys are what the admin
+// props-visibility config uses; full keys are what the games table stores
+// in sports.key and what fetchPlayerProps expects.
+const SHORT_TO_FULL_SPORT_KEY = {
+  nba: 'basketball_nba',
+  wnba: 'basketball_wnba',
+  ncaab: 'basketball_ncaab',
+  wncaab: 'basketball_wncaab',
+  mlb: 'baseball_mlb',
+  nfl: 'americanfootball_nfl',
+  ncaaf: 'americanfootball_ncaaf',
+  ufl: 'americanfootball_ufl',
+  nhl: 'icehockey_nhl',
+  mls: 'soccer_usa_mls',
+  wc: 'soccer_world_cup',
+}
+
+// Odds API sport key → ESPN sportPath (used by the headshot cache).
+// Only sports with ESPN roster coverage are mapped; unmapped sports skip
+// the headshot lookup and the card renders with a placeholder.
+const SPORT_KEY_TO_ESPN_PATH = {
+  basketball_nba: 'basketball/nba',
+  basketball_wnba: 'basketball/wnba',
+  baseball_mlb: 'baseball/mlb',
+  americanfootball_nfl: 'football/nfl',
+}
+
+// In-memory cache for user-loaded props. Key: `${game_id}:${market_key}`.
+// TTL 5 min — long enough that a busy prop tab tap doesn't fan out to the
+// Odds API 50 times, short enough that live line moves surface reasonably
+// fast. Cache stores just a timestamp; the actual prop rows live in the
+// player_props table (upserted below) so all readers stay consistent.
+const PROPS_LOAD_CACHE = new Map()
+const PROPS_LOAD_TTL_MS = 5 * 60 * 1000
 
 export async function syncPropsForGame(gameId, markets) {
   // Get game details
@@ -111,6 +147,194 @@ export async function syncPropsForGame(gameId, markets) {
 
   logger.info({ gameId, synced: rows.length }, 'Props synced for game')
   return { synced: rows.length }
+}
+
+// User-facing prop loader for the Props tab. Fans out fetchPlayerProps
+// across all of today's games in the given sport for a single market,
+// upserts fresh prop rows with status='published' so they're immediately
+// pickable, and returns the enriched rows (with headshots + game metadata).
+//
+// Caching: per (game_id, market_key) with 5-min TTL. First caller pays the
+// Odds API round-trip; subsequent callers within the window are served
+// from the DB (rows are already published) and skip the external fetch.
+//
+// Status preservation: existing 'locked' / 'settled' rows are left alone
+// so a mid-game reload can't roll a settled prop back to published.
+export async function loadPropsForSportMarket(shortSportKey, marketKey) {
+  const fullSportKey = SHORT_TO_FULL_SPORT_KEY[shortSportKey]
+  if (!fullSportKey) {
+    const err = new Error(`Unknown sport: ${shortSportKey}`)
+    err.status = 400
+    throw err
+  }
+
+  const market = PROP_MARKETS[marketKey]
+  if (!market || !market.sports.includes(fullSportKey)) {
+    const err = new Error(`Market ${marketKey} not available for ${shortSportKey}`)
+    err.status = 400
+    throw err
+  }
+
+  const { data: sport } = await supabase
+    .from('sports')
+    .select('id')
+    .eq('key', fullSportKey)
+    .single()
+
+  if (!sport) return []
+
+  // Today's PT window as UTC boundaries. sportsDay is 'YYYY-MM-DD' anchored
+  // to America/Los_Angeles, so we bracket starts_at by the PT day's UTC
+  // boundaries. Includes both upcoming and live games so a user opening the
+  // tab mid-slate still sees the games in progress.
+  const todayPt = todaySportsDay()
+  const startUtc = new Date(`${todayPt}T00:00:00-07:00`).toISOString()
+  const endUtc = new Date(new Date(`${todayPt}T00:00:00-07:00`).getTime() + 24 * 60 * 60 * 1000).toISOString()
+
+  const { data: games } = await supabase
+    .from('games')
+    .select('id, external_id, home_team, away_team, starts_at, status')
+    .eq('sport_id', sport.id)
+    .in('status', ['upcoming', 'live'])
+    .gte('starts_at', startUtc)
+    .lt('starts_at', endUtc)
+    .order('starts_at', { ascending: true })
+
+  if (!games?.length) return []
+
+  const sportPath = SPORT_KEY_TO_ESPN_PATH[fullSportKey]
+  if (sportPath) {
+    try { await refreshPlayerHeadshotCache(sportPath) } catch (err) {
+      logger.warn({ err: err.message, sportPath }, 'Headshot cache refresh failed — cards may render without headshots')
+    }
+  }
+
+  const now = Date.now()
+
+  await Promise.all(games.map(async (game) => {
+    const cacheKey = `${game.id}:${marketKey}`
+    const cached = PROPS_LOAD_CACHE.get(cacheKey)
+    if (cached && cached.expiresAt > now) return
+
+    let apiData
+    try {
+      apiData = await fetchPlayerProps(fullSportKey, game.external_id, [marketKey])
+    } catch (err) {
+      logger.warn({ err: err.message, gameId: game.id, marketKey }, 'fetchPlayerProps failed for load')
+      PROPS_LOAD_CACHE.set(cacheKey, { expiresAt: now + PROPS_LOAD_TTL_MS })
+      return
+    }
+
+    if (!apiData?.bookmakers?.length) {
+      PROPS_LOAD_CACHE.set(cacheKey, { expiresAt: now + PROPS_LOAD_TTL_MS })
+      return
+    }
+
+    // Prefer a bookmaker with both sides; matches syncPropsForGame's rule.
+    let primary = apiData.bookmakers[0]
+    for (const bm of apiData.bookmakers) {
+      const sides = new Set()
+      for (const mkt of bm.markets || []) {
+        for (const o of mkt.outcomes || []) sides.add(o.name?.toLowerCase())
+      }
+      if (sides.has('over') && sides.has('under')) { primary = bm; break }
+    }
+
+    const rows = []
+    for (const mkt of primary.markets || []) {
+      for (const outcome of mkt.outcomes || []) {
+        if (!outcome.point && outcome.point !== 0) continue
+        const playerName = outcome.description || outcome.name
+        const line = outcome.point
+        const side = outcome.name?.toLowerCase()
+
+        let row = rows.find((r) => r.player_name === playerName && r.market_key === mkt.key && r.line === line)
+        if (!row) {
+          row = {
+            game_id: game.id,
+            sport_id: sport.id,
+            player_name: playerName,
+            market_key: mkt.key,
+            market_label: getMarketLabel(mkt.key),
+            line,
+            over_odds: null,
+            under_odds: null,
+            bookmaker: primary.key,
+            external_event_id: game.external_id,
+          }
+          if (sportPath) {
+            const url = getPlayerHeadshotUrl(playerName, sportPath)
+            if (url) row.player_headshot_url = url
+          }
+          rows.push(row)
+        }
+        if (side === 'over') row.over_odds = outcome.price
+        else if (side === 'under') row.under_odds = outcome.price
+      }
+    }
+
+    if (!rows.length) {
+      PROPS_LOAD_CACHE.set(cacheKey, { expiresAt: now + PROPS_LOAD_TTL_MS })
+      return
+    }
+
+    // Look up existing rows to preserve 'locked' / 'settled' statuses; only
+    // set status='published' on inserts / 'synced' / 'published' upserts.
+    const { data: existing } = await supabase
+      .from('player_props')
+      .select('player_name, line, status')
+      .eq('game_id', game.id)
+      .eq('market_key', marketKey)
+
+    const preserve = new Map()
+    for (const e of existing || []) {
+      if (e.status === 'locked' || e.status === 'settled') {
+        preserve.set(`${e.player_name}|${e.line}`, e.status)
+      }
+    }
+
+    for (const row of rows) {
+      const preserved = preserve.get(`${row.player_name}|${row.line}`)
+      row.status = preserved || 'published'
+    }
+
+    // Chunked upsert with per-row fallback — a single poisoned row
+    // (e.g. odd Unicode in player_name) shouldn't nuke the whole game's slate.
+    const CHUNK = 40
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const chunk = rows.slice(i, i + CHUNK)
+      const { error } = await supabase
+        .from('player_props')
+        .upsert(chunk, { onConflict: 'game_id,player_name,market_key,line' })
+      if (error) {
+        logger.warn({ err: error.message, gameId: game.id, marketKey, chunkSize: chunk.length }, 'Chunked upsert failed — retrying per-row')
+        for (const row of chunk) {
+          const { error: rowErr } = await supabase
+            .from('player_props')
+            .upsert(row, { onConflict: 'game_id,player_name,market_key,line' })
+          if (rowErr) {
+            logger.error({ err: rowErr.message, row: { player: row.player_name, line: row.line } }, 'Per-row prop upsert failed')
+          }
+        }
+      }
+    }
+
+    PROPS_LOAD_CACHE.set(cacheKey, { expiresAt: now + PROPS_LOAD_TTL_MS })
+  }))
+
+  // Read back everything — fresh + cached rows — so the response is
+  // consistent regardless of who paid the fetch. Only 'published' rows are
+  // pickable; 'locked' / 'settled' rows returned here so the client can
+  // show them as picked-but-locked in the same list.
+  const gameIds = games.map((g) => g.id)
+  const { data: allProps } = await supabase
+    .from('player_props')
+    .select('*, games(id, home_team, away_team, starts_at, status, sports(key, name))')
+    .in('game_id', gameIds)
+    .eq('market_key', marketKey)
+    .in('status', ['published', 'locked', 'settled'])
+
+  return allProps || []
 }
 
 export async function getAllPropsForGame(gameId) {

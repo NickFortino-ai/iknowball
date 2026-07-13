@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
+import { supabase } from '../config/supabase.js'
 import {
   getFeaturedProps,
   submitPropPick,
@@ -8,6 +9,7 @@ import {
   getUserPropPickHistory,
   getUserLivePropStats,
   getPropPickById,
+  loadPropsForSportMarket,
 } from '../services/propService.js'
 
 const router = Router()
@@ -22,6 +24,37 @@ router.get('/featured', async (req, res) => {
   }
   const props = await getFeaturedProps(date, { fallback: fallback === 'true' })
   res.json(props)
+})
+
+// User-facing prop loader for the Props tab. Loads today's slate of props
+// for a single (sport, market) — fans out to fetchPlayerProps per game,
+// upserts new rows as status='published', returns enriched rows.
+// Gated by props_sport_visibility so a sport that admin has toggled off
+// can't be loaded via a hand-crafted request.
+router.get('/load', async (req, res) => {
+  const { sport, market } = req.query
+  if (!sport || !market) {
+    return res.status(400).json({ error: 'sport and market are required' })
+  }
+
+  const { data: cfg } = await supabase
+    .from('app_config')
+    .select('value')
+    .eq('key', 'props_sport_visibility')
+    .single()
+
+  const visibility = cfg?.value || {}
+  if (!visibility[sport]) {
+    return res.status(403).json({ error: `Props for ${sport} are not enabled` })
+  }
+
+  try {
+    const props = await loadPropsForSportMarket(sport, market)
+    res.json(props)
+  } catch (err) {
+    const status = err.status || 500
+    res.status(status).json({ error: err.message })
+  }
 })
 
 // Submit a prop pick
