@@ -19,6 +19,22 @@ const LEADERBOARD_OPTIONS = [
   'NFL', 'NCAAF', 'UFL', 'WNBA',
 ]
 
+// Sports we render as tiles in the user-facing Props tab grid. Order here
+// = display order in the grid. Toggling a sport off hides its tile.
+const PROPS_SPORT_OPTIONS = [
+  { key: 'nba', label: 'NBA' },
+  { key: 'wnba', label: 'WNBA' },
+  { key: 'mlb', label: 'MLB' },
+  { key: 'nfl', label: 'NFL' },
+  { key: 'ncaaf', label: 'NCAAF' },
+  { key: 'ncaab', label: 'NCAAB' },
+  { key: 'wncaab', label: 'WNCAAB' },
+  { key: 'nhl', label: 'NHL' },
+  { key: 'ufl', label: 'UFL' },
+  { key: 'mls', label: 'MLS' },
+  { key: 'wc', label: 'WC' },
+]
+
 function ReorderList({ items, onChange, getLabel }) {
   function move(idx, dir) {
     const target = dir === 'up' ? idx - 1 : idx + 1
@@ -60,6 +76,7 @@ export default function AppConfigPanel() {
   const [newsOrder, setNewsOrder] = useState([])
   const [leaderboardOrder, setLeaderboardOrder] = useState([])
   const [draftPrepHidden, setDraftPrepHidden] = useState(false)
+  const [propsVisibility, setPropsVisibility] = useState({})
 
   useEffect(() => {
     if (!cfg) return
@@ -76,6 +93,12 @@ export default function AppConfigPanel() {
     setNewsOrder(initialNews)
     setLeaderboardOrder(initialLb)
     setDraftPrepHidden(!!cfg.draft_prep_hidden)
+    // Any sport missing from the stored object defaults to false so newly
+    // added sports don't silently light up in production before we vet them.
+    const stored = (cfg.props_sport_visibility && typeof cfg.props_sport_visibility === 'object') ? cfg.props_sport_visibility : {}
+    const merged = {}
+    for (const opt of PROPS_SPORT_OPTIONS) merged[opt.key] = !!stored[opt.key]
+    setPropsVisibility(merged)
   }, [cfg])
 
   async function save(key, value, label) {
@@ -136,6 +159,37 @@ export default function AppConfigPanel() {
           className="mt-3 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover disabled:opacity-50"
         >
           Save
+        </button>
+      </section>
+
+      <section>
+        <h3 className="text-sm font-semibold text-text-primary mb-2">Props tab — sport visibility</h3>
+        <p className="text-xs text-text-muted mb-3">
+          Which sport tiles show up in the user-facing Props tab grid. A sport should be off if The Odds API doesn't
+          reliably return player props for it, or if it's out of season.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {PROPS_SPORT_OPTIONS.map((opt) => (
+            <label
+              key={opt.key}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg bg-bg-primary border border-text-primary/20 cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                checked={!!propsVisibility[opt.key]}
+                onChange={(e) => setPropsVisibility({ ...propsVisibility, [opt.key]: e.target.checked })}
+                className="accent-accent"
+              />
+              <span className="text-sm text-text-primary">{opt.label}</span>
+            </label>
+          ))}
+        </div>
+        <button
+          onClick={() => save('props_sport_visibility', propsVisibility, 'props sport visibility')}
+          disabled={updateCfg.isPending}
+          className="mt-3 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover disabled:opacity-50"
+        >
+          Save props visibility
         </button>
       </section>
 
