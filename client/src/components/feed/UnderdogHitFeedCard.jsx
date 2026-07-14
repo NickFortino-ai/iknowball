@@ -17,6 +17,11 @@ export default function UnderdogHitFeedCard({ item, reactions, onUserTap }) {
   const cardClass = `feed-victory-entrance ${tier === 'marquee' ? 'underdog-gold-glow' : ''}`
 
   const logoUrl = getTeamLogoUrl(pick.picked_team_name, game.sport_key)
+  const hasScore = game.home_score != null && game.away_score != null
+
+  const pillColorClasses = tier === 'marquee'
+    ? 'border-yellow-500/60 bg-yellow-500/10 text-yellow-400'
+    : 'border-correct/60 bg-correct/10 text-correct'
 
   return (
     <FeedCardWrapper
@@ -31,38 +36,37 @@ export default function UnderdogHitFeedCard({ item, reactions, onUserTap }) {
       cardClassName={cardClass}
     >
       <div className="text-center">
-        {logoUrl ? (
+        {logoUrl && (
           <img
             src={logoUrl}
             alt=""
-            className="w-24 h-24 mx-auto mb-3 object-contain"
+            className="w-28 h-28 mx-auto mb-4 object-contain"
             onError={(e) => {
               const fb = getTeamLogoFallbackUrl(pick.picked_team_name, game.sport_key)
               if (fb && e.target.src !== fb) e.target.src = fb
               else e.target.style.display = 'none'
             }}
           />
-        ) : (
-          <div className="text-5xl mb-3">{'🐶'}</div>
         )}
 
-        <div className={`inline-flex items-center px-4 py-1.5 rounded-full border mb-3 ${
-          tier === 'marquee'
-            ? 'border-yellow-500/60 bg-yellow-500/10 text-yellow-400'
-            : 'border-correct/60 bg-correct/10 text-correct'
-        }`}>
-          <span className="font-bold text-sm tracking-wider">
-            UNDERDOG HIT {formatOdds(pick.odds_at_pick)}
-          </span>
+        <div className={`inline-flex flex-col items-center gap-1 px-6 py-3 rounded-xl border-2 mb-4 ${pillColorClasses}`}>
+          <span className="font-bold text-xl tracking-wider">UNDERDOG HIT</span>
+          <span className="text-sm font-semibold opacity-80">Odds: {formatOdds(pick.odds_at_pick)}</span>
         </div>
 
-        <div className="font-display text-xl text-text-primary">
+        <div className="font-display text-2xl text-text-primary">
           {pick.picked_team_name}
         </div>
-        <div className="text-xs text-text-muted mt-1">
-          {game.sport_name && <span className="uppercase tracking-wider mr-2">{game.sport_name}</span>}
+        <div className="text-sm text-text-secondary mt-1">
+          {game.sport_name && <span className="uppercase tracking-wider mr-2 text-text-muted">{game.sport_name}</span>}
           {game.away_team} @ {game.home_team}
         </div>
+
+        {hasScore && (
+          <div className="mt-2 text-sm font-semibold text-text-primary">
+            Final: {game.away_score}–{game.home_score}
+          </div>
+        )}
 
         <div className="mt-4 font-display text-3xl font-bold text-correct">
           W +{pick.points_earned}

@@ -451,7 +451,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     skipForHotTakes ||
     applyBefore(filterByUser(supabase
       .from('picks')
-      .select('id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, game_id, games(home_team, away_team, sports(name))'),
+      .select('id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, game_id, games(home_team, away_team, home_score, away_score, sports(name, key))'),
       'user_id', connectedIds)
       .eq('status', 'settled')
       .or('and(is_correct.eq.true,odds_at_pick.gte.250),multiplier.gte.3'), 'updated_at')
@@ -462,7 +462,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     skipForHotTakes ||
     applyBefore(filterByUser(supabase
       .from('parlays')
-      .select('id, user_id, leg_count, combined_multiplier, status, is_correct, points_earned, risk_points, reward_points, updated_at, parlay_legs(picked_team, odds_at_submission, status, games(home_team, away_team, sports(name)))'),
+      .select('id, user_id, leg_count, combined_multiplier, status, is_correct, points_earned, risk_points, reward_points, updated_at, parlay_legs(picked_team, odds_at_submission, status, games(home_team, away_team, sports(name, key)))'),
       'user_id', connectedIds)
       .eq('status', 'settled'), 'updated_at')
       .order('updated_at', { ascending: false })
@@ -668,6 +668,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       game: {
         home_team: pick.games?.home_team,
         away_team: pick.games?.away_team,
+        home_score: pick.games?.home_score,
+        away_score: pick.games?.away_score,
         sport_name: pick.games?.sports?.name,
         sport_key: pick.games?.sports?.key,
       },
