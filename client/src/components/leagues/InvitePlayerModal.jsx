@@ -33,6 +33,23 @@ export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, fo
     }
   }
 
+  async function handleInviteAll() {
+    // Snapshot the available list up front so items filtering out mid-loop
+    // (as invitations return and invitedUsernames re-derives) don't skip
+    // anyone. Fire in parallel with allSettled — one bad row shouldn't
+    // block the rest.
+    const targets = availableConnections.map((c) => c.username).filter(Boolean)
+    if (!targets.length) return
+    const results = await Promise.allSettled(
+      targets.map((u) => sendInvitation.mutateAsync({ leagueId, username: u }))
+    )
+    const ok = results.filter((r) => r.status === 'fulfilled').length
+    const fail = results.length - ok
+    if (fail === 0) toast(`Invited ${ok} ${ok === 1 ? 'player' : 'players'}`, 'success')
+    else if (ok === 0) toast(`Failed to invite ${fail} ${fail === 1 ? 'player' : 'players'}`, 'error')
+    else toast(`Invited ${ok}, ${fail} failed`, 'info')
+  }
+
   async function handleEmailInvite(e) {
     e.preventDefault()
     if (!email.trim()) return
@@ -163,7 +180,18 @@ export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, fo
         {/* Your Connections */}
         {availableConnections.length > 0 && (
           <div className="mb-4">
-            <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">Your Squad</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs text-text-muted uppercase tracking-wider">Your Squad</h3>
+              {availableConnections.length > 1 && (
+                <button
+                  onClick={handleInviteAll}
+                  disabled={sendInvitation.isPending}
+                  className="text-xs font-semibold text-accent hover:text-accent-hover transition-colors disabled:opacity-50"
+                >
+                  {sendInvitation.isPending ? 'Inviting…' : `Invite All (${availableConnections.length})`}
+                </button>
+              )}
+            </div>
             <div className="space-y-1 mb-3">
               {availableConnections.map((conn) => (
                 <div
