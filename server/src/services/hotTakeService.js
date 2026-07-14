@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { assertConnected } from './socialService.js'
 import { createNotification } from './notificationService.js'
 
-export async function createHotTake(userId, content, teamTags, sportKey, imageUrl, userTags, videoUrl, imageUrls, postType = 'post', streamVideoUid = null) {
+export async function createHotTake(userId, content, teamTags, sportKey, imageUrl, userTags, videoUrl, imageUrls, postType = 'post', streamVideoUid = null, embed = null) {
   // Support both single image_url and multi image_urls
   const resolvedImageUrls = imageUrls?.length ? imageUrls : imageUrl ? [imageUrl] : null
   // Posts without a Cloudflare Stream video are immediately ready. Posts
@@ -12,7 +12,22 @@ export async function createHotTake(userId, content, teamTags, sportKey, imageUr
   const streamReadyAt = streamVideoUid ? null : new Date().toISOString()
   const { data, error } = await supabase
     .from('hot_takes')
-    .insert({ user_id: userId, content, team_tags: teamTags?.length ? teamTags : null, sport_key: sportKey || null, image_url: resolvedImageUrls?.[0] || null, image_urls: resolvedImageUrls, user_tags: userTags?.length ? userTags : null, video_url: videoUrl || null, stream_video_uid: streamVideoUid || null, stream_ready_at: streamReadyAt, post_type: postType || 'post' })
+    .insert({
+      user_id: userId,
+      content,
+      team_tags: teamTags?.length ? teamTags : null,
+      sport_key: sportKey || null,
+      image_url: resolvedImageUrls?.[0] || null,
+      image_urls: resolvedImageUrls,
+      user_tags: userTags?.length ? userTags : null,
+      video_url: videoUrl || null,
+      stream_video_uid: streamVideoUid || null,
+      stream_ready_at: streamReadyAt,
+      post_type: postType || 'post',
+      embed_provider: embed?.provider || null,
+      embed_ref_id: embed?.refId || null,
+      embed_url: embed?.url || null,
+    })
     .select()
     .single()
 

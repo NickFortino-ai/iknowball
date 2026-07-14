@@ -9,6 +9,7 @@ import { createNotification } from '../services/notificationService.js'
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { FALLBACK_TEAMS } from './teams.js'
+import { parseEmbedSource } from '../utils/embedParser.js'
 
 const router = Router()
 
@@ -23,8 +24,12 @@ const hotTakeSchema = z.object({
   user_tags: z.array(z.string().uuid()).max(3).optional(),
   post_type: z.enum(['post', 'prediction', 'poll']).optional(),
   poll_options: z.array(z.string().min(1).max(100)).min(2).max(10).optional(),
-}).refine((data) => data.content || data.image_url || data.image_urls?.length || data.video_url, {
-  message: 'Post must have text, an image, or a video',
+  // Raw user input — URL or full embed snippet. Server parses it to a
+  // safe {provider, refId, url} on the way in; only that structured shape
+  // is stored so rendering can never trust user HTML.
+  embed_source: z.string().max(4000).optional(),
+}).refine((data) => data.content || data.image_url || data.image_urls?.length || data.video_url || data.embed_source, {
+  message: 'Post must have text, an image, a video, or an embed',
 })
 
 const flexSchema = z.object({
@@ -62,7 +67,24 @@ router.post('/', requireAuth, validate(hotTakeSchema), async (req, res) => {
     return res.status(400).json({ error: 'Your post contains inappropriate language. Please revise and try again.' })
   }
 
-  const hotTake = await createHotTake(req.user.id, req.validated.content, req.validated.team_tags, req.validated.sport_key, req.validated.image_url, req.validated.user_tags, req.validated.video_url, req.validated.image_urls, req.validated.post_type, req.validated.stream_video_uid)
+  // If the user sent an embed, parse it server-side into a safe structured
+  // shape. Unknown / malformed input is silently dropped (post still goes
+  // through) so a bad paste doesn't block the whole submission.
+  const embed = req.validated.embed_source ? parseEmbedSource(req.validated.embed_source) : null
+
+  const hotTake = await createHotTake(
+    req.user.id,
+    req.validated.content,
+    req.validated.team_tags,
+    req.validated.sport_key,
+    req.validated.image_url,
+    req.validated.user_tags,
+    req.validated.video_url,
+    req.validated.image_urls,
+    req.validated.post_type,
+    req.validated.stream_video_uid,
+    embed
+  )
 
   // Create poll options if poll type
   if (req.validated.post_type === 'poll' && req.validated.poll_options?.length) {
@@ -111,7 +133,7 @@ router.get('/sport', requireAuth, async (req, res) => {
   // so nothing pending should leak in.
   let query = supabase
     .from('hot_takes')
-    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, stream_video_uid, stream_ready_at, post_type, created_at')
+    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, stream_video_uid, stream_ready_at, post_type, embed_provider, embed_ref_id, embed_url, created_at')
     .or(`sport_key.eq.${sport},and(sport_key.is.null,team_tags.ov.{${teamList.map((t) => `"${t}"`).join(',')}})`)
     .or(`stream_ready_at.not.is.null,user_id.eq.${req.user.id}`)
     .order('created_at', { ascending: false })
@@ -219,7 +241,7 @@ router.get('/team', requireAuth, async (req, res) => {
 
   let query = supabase
     .from('hot_takes')
-    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, stream_video_uid, stream_ready_at, post_type, created_at')
+    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, stream_video_uid, stream_ready_at, post_type, embed_provider, embed_ref_id, embed_url, created_at')
     .contains('team_tags', [team])
     .or(`stream_ready_at.not.is.null,user_id.eq.${req.user.id}`)
     .order('created_at', { ascending: false })
@@ -442,7 +464,7 @@ router.post('/ask/:userId', requireAuth, async (req, res) => {
 router.get('/:id', requireAuth, async (req, res) => {
   const { data: take, error } = await supabase
     .from('hot_takes')
-    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, stream_video_uid, stream_ready_at, post_type, created_at')
+    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, stream_video_uid, stream_ready_at, post_type, embed_provider, embed_ref_id, embed_url, created_at')
     .eq('id', req.params.id)
     .single()
 
