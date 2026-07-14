@@ -564,7 +564,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                   type="text"
                   value={embedInput}
                   onChange={(e) => setEmbedInput(e.target.value)}
-                  placeholder="Paste YouTube link or X post link…"
+                  placeholder="Paste YouTube / X link or embed code…"
                   className="w-full bg-bg-surface border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
                 />
               )}
@@ -585,7 +585,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
               )}
               {showEmbedInput && embedInput.trim() && !parsedEmbed && (
                 <div className="text-xs text-yellow-500">
-                  Doesn't look like a YouTube or X link — post will send without an embed.
+                  Doesn't look like a YouTube / X link or embed code — post will send without an embed.
                 </div>
               )}
             </div>
