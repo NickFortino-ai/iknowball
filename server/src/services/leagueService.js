@@ -121,33 +121,39 @@ export async function assertLeagueJoinable(league) {
     if (firstStart && new Date(firstStart) > now) return
 
     // First period has started — need to check whether the last game of
-    // the period is still upcoming. Missing sport or ends_at → fall back
-    // to the strict pre-period gate.
+    // the period is still upcoming. Missing ends_at → fall back to the
+    // strict pre-period gate.
     const sportKey = league.sport
-    if (!sportKey || !firstEnd) {
-      if (firstStart && new Date(firstStart) <= now) {
-        const err = new Error('This survivor pool has already started — no new members can join')
-        err.status = 400
-        throw err
-      }
-      return
-    }
-
-    const { data: sportRow } = await supabase.from('sports').select('id').eq('key', sportKey).single()
-    if (!sportRow) {
+    if (!firstEnd) {
       const err = new Error('This survivor pool has already started — no new members can join')
       err.status = 400
       throw err
     }
 
-    const { data: periodGames } = await supabase
+    // Resolve sport_id when the league is single-sport. 'all' is a
+    // synthetic multi-sport pool — no matching row in the sports table;
+    // we query games across every sport in that case.
+    let sportIdFilter = null
+    if (sportKey && sportKey !== 'all') {
+      const { data: sportRow } = await supabase.from('sports').select('id').eq('key', sportKey).single()
+      if (!sportRow) {
+        const err = new Error('This survivor pool has already started — no new members can join')
+        err.status = 400
+        throw err
+      }
+      sportIdFilter = sportRow.id
+    }
+
+    let gameQuery = supabase
       .from('games')
       .select('starts_at')
-      .eq('sport_id', sportRow.id)
       .gte('starts_at', firstStart)
       .lt('starts_at', firstEnd)
       .order('starts_at', { ascending: false })
       .limit(1)
+    if (sportIdFilter) gameQuery = gameQuery.eq('sport_id', sportIdFilter)
+
+    const { data: periodGames } = await gameQuery
 
     const lastGame = periodGames?.[0]
     if (lastGame && new Date(lastGame.starts_at) > now) return // still time to join
