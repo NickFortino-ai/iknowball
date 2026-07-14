@@ -13,28 +13,31 @@ export default function RecordFeedCard({ item, reactions, onUserTap, onRecordTap
       reactions={reactions}
       onUserTap={onUserTap}
       commentCount={item.commentCount}
+      headerLayout="centered"
     >
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-xl">{'\uD83C\uDFC6'}</span>
-        <span className="font-bold text-sm text-yellow-500">Record Broken!</span>
-      </div>
-
       <div
-        className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg px-3 py-2 cursor-pointer hover:bg-yellow-500/10 transition-colors"
+        className="text-center cursor-pointer"
         onClick={() => onRecordTap?.(record.id)}
       >
-        <div className="font-semibold text-sm">{record.display_name}</div>
-        <div className="flex items-center gap-2 mt-1 text-xs">
-          <span className="text-yellow-500 font-bold">{formatRecordValue(record)}</span>
-          {record.previous_value != null && (
-            <>
-              <span className="text-text-muted">was {formatRecordPreviousValue(record, record.previous_value)}</span>
-              {record.previous_holder_username && (
-                <span className="text-text-muted">by @{record.previous_holder_username}</span>
-              )}
-            </>
-          )}
+        <div className="inline-flex items-center gap-2 mb-4">
+          <span className="text-xl">{'🏆'}</span>
+          <span className="font-bold text-sm text-yellow-500">Record Broken!</span>
         </div>
+
+        <div className="font-semibold text-base text-text-primary mb-2">{record.display_name}</div>
+
+        <div className="font-display text-4xl text-yellow-500 font-bold mb-2">
+          {formatRecordValue(record)}
+        </div>
+
+        {record.previous_value != null && (
+          <div className="text-xs text-text-muted">
+            was {formatRecordPreviousValue(record, record.previous_value)}
+            {record.previous_holder_username && (
+              <> by @{record.previous_holder_username}</>
+            )}
+          </div>
+        )}
       </div>
     </FeedCardWrapper>
   )

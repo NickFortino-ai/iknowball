@@ -27,24 +27,46 @@ export default function FeedCardWrapper({
   onEdit,
   cardClassName = '',
   streakCount,
+  headerLayout = 'default',
   children,
 }) {
   const { session } = useAuth()
   const isOwnContent = item.userId === session?.user?.id
   const borderClass = BORDER_COLORS[borderColor] || 'border-l-transparent'
+  const userForAvatar = { avatar_url: item.avatar_url, avatar_emoji: item.avatar_emoji, username: item.username, display_name: item.display_name }
 
   return (
     <div
       className={`bg-bg-primary border border-text-primary/20 rounded-xl overflow-hidden border-l-4 ${borderClass} ${cardClassName} ${onCardTap ? 'cursor-pointer' : ''}`}
       onClick={onCardTap}
     >
-      {/* Header: avatar + name + timestamp */}
+      {headerLayout === 'centered' ? (
+        /* Centered player-headshot style \u2014 used by hero cards like a
+           broken record where the honoree is the point of the card. */
+        <div className="relative px-4 pt-5 pb-2 flex flex-col items-center text-center">
+          <span className="absolute top-3 right-4 text-xs text-text-muted">{timeAgo(item.timestamp)}</span>
+          <button
+            onClick={(e) => { if (onCardTap) e.stopPropagation(); onUserTap?.(item.userId) }}
+            className="hover:ring-2 hover:ring-accent/30 transition-shadow rounded-full mb-2"
+          >
+            <Avatar user={userForAvatar} size="3xl" />
+          </button>
+          <button
+            onClick={(e) => { if (onCardTap) e.stopPropagation(); onUserTap?.(item.userId) }}
+            className="font-semibold text-base text-accent hover:underline truncate max-w-full"
+          >
+            {item.display_name || item.username}
+          </button>
+          <span className="text-xs text-text-muted">@{item.username}</span>
+        </div>
+      ) : (
+      /* Header: avatar + name + timestamp */
       <div className="px-4 pt-3 pb-2 flex items-center gap-3">
         <button
           onClick={(e) => { if (onCardTap) e.stopPropagation(); onUserTap?.(item.userId) }}
           className="hover:ring-2 hover:ring-accent/30 transition-shadow rounded-full"
         >
-          <Avatar user={{ avatar_url: item.avatar_url, avatar_emoji: item.avatar_emoji, username: item.username, display_name: item.display_name }} size="lg" />
+          <Avatar user={userForAvatar} size="lg" />
         </button>
         <div className="min-w-0 flex-1">
           <button
@@ -77,6 +99,7 @@ export default function FeedCardWrapper({
           <ReportButton targetType={targetType} targetId={targetId} reportedUserId={item.userId} />
         )}
       </div>
+      )}
 
       {/* Card body */}
       <div className="px-4 pb-3">
