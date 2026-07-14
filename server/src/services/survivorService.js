@@ -1142,9 +1142,10 @@ export async function autoEliminateMissedPicks() {
       if (!allStarted) continue
 
       // Get alive members. We pull joined_at so we can skip any member who
-      // joined after this period started — they couldn't have picked in time
-      // and shouldn't be retroactively eliminated for a period that began
-      // before they were a member.
+      // joined AFTER this period ENDED — they couldn't have picked and
+      // shouldn't be retroactively eliminated. Members who joined mid-period
+      // (allowed for the first period by the join gate in leagueService) had
+      // opportunity to pick and ARE eligible for missed-pick elimination.
       const { data: aliveMembers } = await supabase
         .from('league_members')
         .select('user_id, lives_remaining, joined_at')
@@ -1169,12 +1170,14 @@ export async function autoEliminateMissedPicks() {
       const pickedUserIds = new Set((existingPicks || []).map((p) => p.user_id))
 
       // Find alive members with no pick for this week. Skip anyone who
-      // joined the league after this period's start — their first eligible
-      // period is the next one.
-      const weekStartMs = new Date(week.starts_at).getTime()
+      // joined the league after this period's END — they couldn't have
+      // picked. Mid-period joiners (allowed for the first period) had
+      // opportunity to pick and ARE eligible for elimination if they
+      // didn't. Their first-period joining doesn't grant Day-1 immunity.
+      const weekEndMs = new Date(week.ends_at).getTime()
       const missedMembers = aliveMembers.filter((m) =>
         !pickedUserIds.has(m.user_id) &&
-        new Date(m.joined_at).getTime() <= weekStartMs
+        new Date(m.joined_at).getTime() < weekEndMs
       )
 
       // Collect all team names that were actually pickable in this period.
