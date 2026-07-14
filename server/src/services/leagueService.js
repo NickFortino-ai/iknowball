@@ -96,27 +96,65 @@ export async function assertLeagueJoinable(league) {
     return // joinable
   }
 
-  // Survivor: strict join-gate. Once the first period begins, the pool is
-  // closed to new members — no exceptions. Late joiners would get unfair
-  // immunity for every period before they joined (the missed-pick
-  // elimination logic correctly skips periods that started before
-  // joined_at), so a Day-N joiner could outlast Day-1 members purely by
-  // showing up late. Block them at the door instead.
+  // Survivor: join-gate. Users can join until the LAST game of the FIRST
+  // period kicks off — same rule other formats use for their start day.
+  // Mid-Day-1 joiners can still pick a game that hasn't started yet.
+  //
+  // Fairness note: autoEliminateMissedPicks skips members whose joined_at
+  // is after the period's starts_at, so a mid-Day-1 joiner who doesn't
+  // pick gets a Day-1 free pass. Accepted as a small welcome-to-the-pool
+  // leniency limited to the first period — after that, all subsequent
+  // periods start with the joiner already in, so no immunity accrues.
   if (league.format === 'survivor') {
     const { data: firstPeriod } = await supabase
       .from('league_weeks')
-      .select('starts_at')
+      .select('starts_at, ends_at')
       .eq('league_id', league.id)
       .order('week_number', { ascending: true })
       .limit(1)
       .maybeSingle()
     const firstStart = firstPeriod?.starts_at || league.starts_at
-    if (firstStart && new Date(firstStart) <= new Date()) {
+    const firstEnd = firstPeriod?.ends_at
+    const now = new Date()
+
+    // First period hasn't started yet — always joinable.
+    if (firstStart && new Date(firstStart) > now) return
+
+    // First period has started — need to check whether the last game of
+    // the period is still upcoming. Missing sport or ends_at → fall back
+    // to the strict pre-period gate.
+    const sportKey = league.sport
+    if (!sportKey || !firstEnd) {
+      if (firstStart && new Date(firstStart) <= now) {
+        const err = new Error('This survivor pool has already started — no new members can join')
+        err.status = 400
+        throw err
+      }
+      return
+    }
+
+    const { data: sportRow } = await supabase.from('sports').select('id').eq('key', sportKey).single()
+    if (!sportRow) {
       const err = new Error('This survivor pool has already started — no new members can join')
       err.status = 400
       throw err
     }
-    return
+
+    const { data: periodGames } = await supabase
+      .from('games')
+      .select('starts_at')
+      .eq('sport_id', sportRow.id)
+      .gte('starts_at', firstStart)
+      .lt('starts_at', firstEnd)
+      .order('starts_at', { ascending: false })
+      .limit(1)
+
+    const lastGame = periodGames?.[0]
+    if (lastGame && new Date(lastGame.starts_at) > now) return // still time to join
+
+    const err = new Error('This survivor pool has already started — no new members can join')
+    err.status = 400
+    throw err
   }
 
   // All other formats (pickem, nba_dfs, mlb_dfs, hr_derby, td_pass, salary_cap fantasy):
