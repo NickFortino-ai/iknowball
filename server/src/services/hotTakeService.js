@@ -226,7 +226,7 @@ export async function askForHotTakes(actorId, targetUserId) {
   return { success: true }
 }
 
-export async function updateHotTake(userId, hotTakeId, content, teamTags, sportKey, imageUrl, userTags, videoUrl, imageUrls) {
+export async function updateHotTake(userId, hotTakeId, content, teamTags, sportKey, imageUrl, userTags, videoUrl, imageUrls, embed = undefined) {
   const { data: hotTake } = await supabase
     .from('hot_takes')
     .select('id, user_id, user_tags')
@@ -245,9 +245,27 @@ export async function updateHotTake(userId, hotTakeId, content, teamTags, sportK
     throw err
   }
 
+  // Embed columns are only touched when the caller passed an explicit value
+  // (null to clear, object to set). Undefined = leave whatever's in the row
+  // alone so an edit that doesn't touch the embed field doesn't wipe it.
+  const embedPatch = embed === undefined ? {} : {
+    embed_provider: embed?.provider || null,
+    embed_ref_id: embed?.refId || null,
+    embed_url: embed?.url || null,
+  }
+
   const { data, error } = await supabase
     .from('hot_takes')
-    .update({ content, team_tags: teamTags?.length ? teamTags : null, sport_key: sportKey || null, image_url: (imageUrls?.length ? imageUrls[0] : imageUrl) || null, image_urls: imageUrls?.length ? imageUrls : imageUrl ? [imageUrl] : null, user_tags: userTags?.length ? userTags : null, video_url: videoUrl || null })
+    .update({
+      content,
+      team_tags: teamTags?.length ? teamTags : null,
+      sport_key: sportKey || null,
+      image_url: (imageUrls?.length ? imageUrls[0] : imageUrl) || null,
+      image_urls: imageUrls?.length ? imageUrls : imageUrl ? [imageUrl] : null,
+      user_tags: userTags?.length ? userTags : null,
+      video_url: videoUrl || null,
+      ...embedPatch,
+    })
     .eq('id', hotTakeId)
     .select()
     .single()

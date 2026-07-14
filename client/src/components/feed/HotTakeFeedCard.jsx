@@ -17,6 +17,7 @@ import LinkPreview from './LinkPreview'
 import PostEmbed from './PostEmbed'
 import { extractFirstUrl } from '../../lib/urlUtils'
 import { useHlsSource } from '../../lib/useHlsSource'
+import { parseEmbedSource } from '../../lib/embedParser'
 
 // Convert a Supabase storage public URL to a resized thumbnail URL.
 // Only works for Supabase-hosted images; external URLs pass through unchanged.
@@ -353,6 +354,13 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
   // re-uploading the images.
   const [existingImageUrls, setExistingImageUrls] = useState(null)
   const [existingVideoUrl, setExistingVideoUrl] = useState(null)
+  // Embed edit state — editEmbedTouched flags whether the user has changed
+  // the embed at all this session. Only send embed_source to the server on
+  // save if touched; otherwise leave whatever's already stored alone.
+  const [editEmbedInput, setEditEmbedInput] = useState('')
+  const [showEditEmbedInput, setShowEditEmbedInput] = useState(false)
+  const [editEmbedTouched, setEditEmbedTouched] = useState(false)
+  const editParsedEmbed = useMemo(() => parseEmbedSource(editEmbedInput), [editEmbedInput])
   const updateHotTake = useUpdateHotTake()
   const deleteHotTake = useDeleteHotTake()
   const { uploading, previewUrl, selectImage, removeImage, uploadImage, hasImage } = useHotTakeImageUpload()
@@ -384,6 +392,11 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     setExistingImageUrl(hot_take.image_url || null)
     setExistingImageUrls(hot_take.image_urls?.length ? hot_take.image_urls : (hot_take.image_url ? [hot_take.image_url] : null))
     setExistingVideoUrl(hot_take.video_url || null)
+    // Prefill the embed field with the canonical stored URL so the user can
+    // see what's already there. The parser recognizes it and shows a chip.
+    setEditEmbedInput(hot_take.embed_url || '')
+    setShowEditEmbedInput(!!hot_take.embed_url)
+    setEditEmbedTouched(false)
     setEditing(true)
   }
 
@@ -398,6 +411,9 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     setExistingImageUrl(null)
     setExistingImageUrls(null)
     setExistingVideoUrl(null)
+    setEditEmbedInput('')
+    setShowEditEmbedInput(false)
+    setEditEmbedTouched(false)
     removeImage()
     removeVideo()
   }
@@ -426,8 +442,13 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
       if (!videoUrl && hasVideo) return // upload failed
     }
 
+    // Only include embed_source in the PATCH if the user actually touched
+    // the embed field. Empty string clears the embed; parsed input sets it.
+    const embedPatch = editEmbedTouched
+      ? { embed_source: editEmbedInput.trim() || null }
+      : {}
     updateHotTake.mutate(
-      { id: hot_take.id, content: trimmed, team_tags: editTeamTags.length ? editTeamTags : undefined, image_url: imageUrl || undefined, image_urls: imageUrls, video_url: videoUrl || undefined, user_tags: editUserTags.length ? editUserTags.map((u) => u.id) : undefined },
+      { id: hot_take.id, content: trimmed, team_tags: editTeamTags.length ? editTeamTags : undefined, image_url: imageUrl || undefined, image_urls: imageUrls, video_url: videoUrl || undefined, user_tags: editUserTags.length ? editUserTags.map((u) => u.id) : undefined, ...embedPatch },
       {
         onSuccess: () => {
           cancelEditing()
@@ -615,6 +636,57 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
               >
                 ×
               </button>
+            </div>
+          )}
+
+          {/* Embed edit — same paste/preview pattern as the composer */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setShowEditEmbedInput((v) => !v); if (!showEditEmbedInput) setEditEmbedTouched(true) }}
+              className={`transition-colors p-1 ${showEditEmbedInput || editParsedEmbed ? 'text-accent' : 'text-text-muted hover:text-text-secondary'}`}
+              title="Embed YouTube or X"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="16 18 22 12 16 6" />
+                <polyline points="8 6 2 12 8 18" />
+              </svg>
+            </button>
+            {(showEditEmbedInput || editParsedEmbed) && (
+              <span className="text-[10px] uppercase tracking-wider text-text-muted">Embed</span>
+            )}
+          </div>
+          {(showEditEmbedInput || editParsedEmbed) && (
+            <div className="space-y-2">
+              {showEditEmbedInput && (
+                <textarea
+                  value={editEmbedInput}
+                  onChange={(e) => { setEditEmbedInput(e.target.value); setEditEmbedTouched(true) }}
+                  placeholder="Paste YouTube / X link or embed code…"
+                  rows={3}
+                  className="w-full bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent resize-y font-mono"
+                />
+              )}
+              {editParsedEmbed && (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/40 text-xs">
+                  <span className="font-semibold text-accent">
+                    {editParsedEmbed.provider === 'youtube' ? 'YouTube video' : 'X post'}
+                  </span>
+                  <span className="text-text-muted truncate max-w-[160px]">#{editParsedEmbed.refId}</span>
+                  <button
+                    onClick={() => { setEditEmbedInput(''); setShowEditEmbedInput(false); setEditEmbedTouched(true) }}
+                    className="text-text-muted hover:text-text-primary leading-none ml-1"
+                    aria-label="Remove embed"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+              {showEditEmbedInput && editEmbedInput.trim() && !editParsedEmbed && (
+                <div className="text-xs text-yellow-500">
+                  Doesn't look like a YouTube / X link or embed code — post will save without an embed.
+                </div>
+              )}
             </div>
           )}
 

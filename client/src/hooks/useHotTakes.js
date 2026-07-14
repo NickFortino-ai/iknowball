@@ -65,8 +65,8 @@ export function useUpdateHotTake() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, content, team_tags, image_url, video_url, user_tags }) =>
-      api.patch(`/hot-takes/${id}`, { content, team_tags, image_url, video_url, user_tags }),
+    mutationFn: ({ id, content, team_tags, image_url, video_url, user_tags, embed_source }) =>
+      api.patch(`/hot-takes/${id}`, { content, team_tags, image_url, video_url, user_tags, ...(embed_source !== undefined ? { embed_source } : {}) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
     },

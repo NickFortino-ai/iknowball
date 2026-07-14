@@ -26,8 +26,9 @@ const hotTakeSchema = z.object({
   poll_options: z.array(z.string().min(1).max(100)).min(2).max(10).optional(),
   // Raw user input — URL or full embed snippet. Server parses it to a
   // safe {provider, refId, url} on the way in; only that structured shape
-  // is stored so rendering can never trust user HTML.
-  embed_source: z.string().max(4000).optional(),
+  // is stored so rendering can never trust user HTML. Nullable so PATCH
+  // can send an explicit null to wipe an existing embed.
+  embed_source: z.string().max(4000).nullable().optional(),
 }).refine((data) => data.content || data.image_url || data.image_urls?.length || data.video_url || data.embed_source, {
   message: 'Post must have text, an image, a video, or an embed',
 })
@@ -217,6 +218,9 @@ router.get('/sport', requireAuth, async (req, res) => {
         image_urls: take.image_urls || (take.image_url ? [take.image_url] : null),
         video_url: take.video_url,
         post_type: take.post_type || 'post',
+        embed_provider: take.embed_provider,
+        embed_ref_id: take.embed_ref_id,
+        embed_url: take.embed_url,
         tagged_users,
       },
     }
@@ -325,6 +329,9 @@ router.get('/team', requireAuth, async (req, res) => {
         image_urls: take.image_urls || (take.image_url ? [take.image_url] : null),
         video_url: take.video_url,
         post_type: take.post_type || 'post',
+        embed_provider: take.embed_provider,
+        embed_ref_id: take.embed_ref_id,
+        embed_url: take.embed_url,
         tagged_users,
       },
     }
@@ -526,7 +533,16 @@ router.patch('/:id', requireAuth, validate(hotTakeSchema), async (req, res) => {
     return res.status(400).json({ error: 'Your post contains inappropriate language. Please revise and try again.' })
   }
 
-  const hotTake = await updateHotTake(req.user.id, req.params.id, req.validated.content, req.validated.team_tags, req.validated.sport_key, req.validated.image_url, req.validated.user_tags, req.validated.video_url, req.validated.image_urls)
+  // Edit-time embed handling: three states from the client —
+  //   embed_source omitted entirely → don't touch existing embed columns
+  //   embed_source: null or ''       → user cleared the embed → wipe columns
+  //   embed_source: string           → parse & set (or clear if unparseable)
+  let embedArg = undefined
+  if ('embed_source' in (req.body || {})) {
+    const raw = req.validated.embed_source
+    embedArg = raw ? parseEmbedSource(raw) : null
+  }
+  const hotTake = await updateHotTake(req.user.id, req.params.id, req.validated.content, req.validated.team_tags, req.validated.sport_key, req.validated.image_url, req.validated.user_tags, req.validated.video_url, req.validated.image_urls, embedArg)
   res.json(hotTake)
 })
 

@@ -1256,6 +1256,9 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         image_urls: take.image_urls || (take.image_url ? [take.image_url] : null),
         video_url: take.video_url,
         post_type: take.post_type || 'post',
+        embed_provider: take.embed_provider,
+        embed_ref_id: take.embed_ref_id,
+        embed_url: take.embed_url,
         ...flexData,
       },
     })
@@ -1356,7 +1359,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     if (viralIds.length > 0) {
       const { data: viralTakes } = await supabase
         .from('hot_takes')
-        .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, post_type, created_at')
+        .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, post_type, embed_provider, embed_ref_id, embed_url, created_at')
         .in('id', viralIds)
         .order('created_at', { ascending: false })
         .limit(10)
@@ -1392,6 +1395,9 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
             image_urls: take.image_urls || (take.image_url ? [take.image_url] : null),
             video_url: take.video_url,
             post_type: take.post_type || 'post',
+            embed_provider: take.embed_provider,
+            embed_ref_id: take.embed_ref_id,
+            embed_url: take.embed_url,
           },
           remindCount: remindCounts[take.id],
           viral: true,
