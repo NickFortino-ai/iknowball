@@ -36,6 +36,11 @@ export default function UnderdogHitFeedCard({ item, reactions, onUserTap }) {
       cardClassName={cardClass}
     >
       <div className="text-center">
+        <div className={`inline-flex flex-col items-center gap-1 px-6 py-3 rounded-xl border-2 mb-4 ${pillColorClasses}`}>
+          <span className="font-bold text-xl tracking-wider">UNDERDOG HIT</span>
+          <span className="text-sm font-semibold opacity-80">Odds: {formatOdds(pick.odds_at_pick)}</span>
+        </div>
+
         {logoUrl && (
           <img
             src={logoUrl}
@@ -48,11 +53,6 @@ export default function UnderdogHitFeedCard({ item, reactions, onUserTap }) {
             }}
           />
         )}
-
-        <div className={`inline-flex flex-col items-center gap-1 px-6 py-3 rounded-xl border-2 mb-4 ${pillColorClasses}`}>
-          <span className="font-bold text-xl tracking-wider">UNDERDOG HIT</span>
-          <span className="text-sm font-semibold opacity-80">Odds: {formatOdds(pick.odds_at_pick)}</span>
-        </div>
 
         <div className="font-display text-2xl text-text-primary">
           {pick.picked_team_name}
