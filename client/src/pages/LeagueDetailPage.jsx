@@ -43,6 +43,7 @@ import ReportProblemSection from '../components/leagues/ReportProblemSection'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
+import LeagueStartsBanner from '../components/leagues/LeagueStartsBanner'
 import { toast } from '../components/ui/Toast'
 import { api } from '../lib/api'
 import { getBackdropUrl, getBackdropFilterKey } from '../lib/backdropUrl'
@@ -2202,24 +2203,13 @@ export default function LeagueDetailPage() {
             </div>
           )}
         </div>
-        {league.status === 'open' && league.starts_at && league.format !== 'survivor' && (() => {
-          // Traditional fantasy: starts_at is a soft creation-time
-          // default that doesn't reflect when the league actually
-          // begins (draft or NFL Week 1). Show the meaningful signal
-          // instead. Salary cap fantasy has always shown NFL Week 1.
-          // Survivor leagues get their own prominent countdown banner on
-          // the Picks tab, so we suppress the yellow header hint here to
-          // avoid duplication.
-          let label
-          if (league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap') {
-            label = fantasySettings?.draft_date
-              ? `Drafts ${formatDraftDateShort(fantasySettings.draft_date)}`
-              : 'Starts with NFL Week 1'
-          } else if (league.format === 'fantasy' && fantasySettings?.format === 'salary_cap') {
-            label = 'Starts with NFL Week 1'
-          } else {
-            label = `Starts ${formatStartDateShort(league.starts_at)}`
-          }
+        {league.status === 'open' && league.starts_at && !['survivor', 'squares', 'bracket', 'fantasy'].includes(league.format) && (() => {
+          // Formats with their own prominent countdown banner on the
+          // primary tab (survivor / squares / bracket / fantasy) suppress
+          // this yellow header hint to avoid duplication. Other formats
+          // (DFS contests, etc.) still show the subtle header cue since
+          // they intentionally opt out of the banner.
+          const label = `Starts ${formatStartDateShort(league.starts_at)}`
           return (
             <div className="mt-2 text-sm text-yellow-500 font-semibold">
               {label}
@@ -2670,40 +2660,35 @@ export default function LeagueDetailPage() {
         // Day 1 earlier than leagues.starts_at). Suppress the "starts later"
         // banner in that case.
         const notStartedYet = league.status === 'open' && league.starts_at && new Date(league.starts_at) > new Date()
-        // PT-anchored day diff — matches how the rest of the league math
-        // decides "which slate is this?" See lib/sportsDay.
-        const startPtDay = leagueStartSportsDay(league.starts_at)
-        const todayPtDay = todaySportsDay()
-        const daysUntil = startPtDay && todayPtDay
-          ? Math.round((new Date(`${startPtDay}T00:00Z`).getTime() - new Date(`${todayPtDay}T00:00Z`).getTime()) / 86400000)
-          : null
-        const countdownLabel = daysUntil == null ? null
-          : daysUntil <= 0 ? 'Starts today'
-          : daysUntil === 1 ? 'Starts tomorrow'
-          : `Starts in ${daysUntil} days`
         return (
           <div className="relative z-10">
             {notStartedYet && (
-              <div className="rounded-2xl border border-text-primary/20 bg-bg-primary/50 backdrop-blur-sm p-8 mb-4 text-center max-w-md mx-auto">
-                {countdownLabel && (
-                  <div className="inline-flex items-center justify-center px-5 py-2 rounded-full border border-accent/60 bg-accent/10 text-accent text-sm font-bold tracking-wide mb-5 shadow-lg shadow-accent/10">
-                    {countdownLabel}
-                  </div>
-                )}
-                <div className="font-display text-2xl text-text-primary">
-                  {new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles' })}
-                </div>
-                <div className="text-sm text-text-muted mt-3">Picks lock when each game starts — you can pick early.</div>
-              </div>
+              <LeagueStartsBanner
+                countdownTo={league.starts_at}
+                headline={new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles' })}
+                subtitle="Picks lock when each game starts — you can pick early."
+              />
             )}
             <SurvivorView league={league} />
           </div>
         )
       })()}
 
-      {tabs[activeTab] === 'Board' && league.format === 'squares' && (
-        <div className="relative z-10"><SquaresView league={league} isCommissioner={isCommissioner} onUserTap={setSelectedUserId} /></div>
-      )}
+      {tabs[activeTab] === 'Board' && league.format === 'squares' && (() => {
+        const notStartedYet = league.status === 'open' && league.starts_at && new Date(league.starts_at) > new Date()
+        return (
+          <div className="relative z-10">
+            {notStartedYet && (
+              <LeagueStartsBanner
+                countdownTo={league.starts_at}
+                headline={new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles' })}
+                subtitle="Board fills when the game starts."
+              />
+            )}
+            <SquaresView league={league} isCommissioner={isCommissioner} onUserTap={setSelectedUserId} />
+          </div>
+        )
+      })()}
 
       {league.format === 'bracket' && (isBracketLocked ? (
         /* When locked, always render BracketView so court bg + tabs persist across all tabs */
@@ -2722,18 +2707,27 @@ export default function LeagueDetailPage() {
           />
         </>
       ) : (tabs[activeTab] === 'Bracket' || tabs[activeTab] === 'Standings') ? (
-        <BracketView
-          league={league}
-          tab={tabs[activeTab] === 'Standings' ? 'standings' : 'bracket'}
-          onTabChange={(t) => {
-            const idx = tabs.indexOf(t === 'bracket' ? 'Bracket' : 'Standings')
-            if (idx !== -1) setActiveTab(idx)
-          }}
-          tabs={null}
-          activeTabIndex={activeTab}
-          threadUnread={threadUnread?.unread}
-          onTabSelect={setActiveTab}
-        />
+        <>
+          {tabs[activeTab] === 'Bracket' && league.status === 'open' && league.starts_at && new Date(league.starts_at) > new Date() && (
+            <LeagueStartsBanner
+              countdownTo={league.starts_at}
+              headline={new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles' })}
+              subtitle="Fill out your bracket before the first game tips off."
+            />
+          )}
+          <BracketView
+            league={league}
+            tab={tabs[activeTab] === 'Standings' ? 'standings' : 'bracket'}
+            onTabChange={(t) => {
+              const idx = tabs.indexOf(t === 'bracket' ? 'Bracket' : 'Standings')
+              if (idx !== -1) setActiveTab(idx)
+            }}
+            tabs={null}
+            activeTabIndex={activeTab}
+            threadUnread={threadUnread?.unread}
+            onTabSelect={setActiveTab}
+          />
+        </>
       ) : null)}
 
       {tabs[activeTab] === 'Players' && league.format === 'fantasy' && (
@@ -2748,12 +2742,54 @@ export default function LeagueDetailPage() {
         <div className="relative z-10"><LeagueMockDraft league={league} fantasySettings={fantasySettings} /></div>
       )}
 
-      {tabs[activeTab] === 'My Team' && league.format === 'fantasy' && (
-        <div className="relative z-10"><FantasyMyTeam league={league} /></div>
-      )}
-      {tabs[activeTab] === 'Roster' && league.format === 'fantasy' && fantasySettings?.format === 'salary_cap' && (
-        <div className="relative z-10"><NflSalaryCapView league={league} /></div>
-      )}
+      {tabs[activeTab] === 'My Team' && league.format === 'fantasy' && (() => {
+        // Traditional fantasy: countdown to the draft (not starts_at, which
+        // is a soft creation-time default). Show only when the draft hasn't
+        // completed / isn't in progress yet.
+        const draftPending = fantasySettings?.format !== 'salary_cap'
+          && fantasySettings?.draft_status !== 'completed'
+          && fantasySettings?.draft_status !== 'in_progress'
+        const countdownDate = fantasySettings?.draft_date || league.starts_at
+        const notStartedYet = draftPending && countdownDate && new Date(countdownDate) > new Date()
+        const mockDraftTabIndex = tabs.indexOf('Mock Draft')
+        return (
+          <div className="relative z-10">
+            {notStartedYet && (
+              <LeagueStartsBanner
+                countdownTo={countdownDate}
+                headline={fantasySettings?.draft_date
+                  ? `Drafts ${new Date(fantasySettings.draft_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`
+                  : 'Starts with NFL Week 1'}
+                subtitle="You can mock draft right here in this league — it's already configured to your settings."
+                extra={mockDraftTabIndex !== -1 && (
+                  <button
+                    onClick={() => setActiveTab(mockDraftTabIndex)}
+                    className="inline-flex items-center gap-1 px-4 py-2 rounded-lg border border-accent/60 bg-accent/10 text-accent text-sm font-semibold hover:bg-accent/20 transition-colors"
+                  >
+                    Try Mock Draft →
+                  </button>
+                )}
+              />
+            )}
+            <FantasyMyTeam league={league} />
+          </div>
+        )
+      })()}
+      {tabs[activeTab] === 'Roster' && league.format === 'fantasy' && fantasySettings?.format === 'salary_cap' && (() => {
+        const notStartedYet = league.status === 'open' && league.starts_at && new Date(league.starts_at) > new Date()
+        return (
+          <div className="relative z-10">
+            {notStartedYet && (
+              <LeagueStartsBanner
+                countdownTo={league.starts_at}
+                headline="Kicks off NFL Week 1"
+                subtitle="Set your roster before Thursday's opener."
+              />
+            )}
+            <NflSalaryCapView league={league} />
+          </div>
+        )
+      })()}
 
       {tabs[activeTab] === 'Standings' && league.format === 'fantasy' && (
         <div className="relative z-10"><FantasyStandings league={league} isSalaryCap={fantasySettings?.format === 'salary_cap'} championMetric={fantasySettings?.champion_metric || 'total_points'} /></div>
