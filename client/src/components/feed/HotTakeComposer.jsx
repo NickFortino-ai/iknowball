@@ -570,13 +570,13 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
               )}
               {parsedEmbed && (
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/40 text-xs">
-                  <span className="font-semibold text-accent uppercase tracking-wider">
-                    {parsedEmbed.provider === 'youtube' ? 'YouTube' : 'X'}
+                  <span className="font-semibold text-accent">
+                    {parsedEmbed.provider === 'youtube' ? 'YouTube video' : 'X post'}
                   </span>
-                  <span className="text-text-muted truncate max-w-[200px]">{parsedEmbed.refId}</span>
+                  <span className="text-text-muted truncate max-w-[160px]">#{parsedEmbed.refId}</span>
                   <button
                     onClick={() => { setEmbedInput(''); setShowEmbedInput(false) }}
-                    className="text-text-muted hover:text-text-primary leading-none"
+                    className="text-text-muted hover:text-text-primary leading-none ml-1"
                     aria-label="Remove embed"
                   >
                     ×
