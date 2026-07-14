@@ -6,6 +6,7 @@ import { useConnectionStatus } from '../../hooks/useConnections'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 import RichContent from './RichContent'
+import PostEmbed from './PostEmbed'
 import PollDisplay from './PollDisplay'
 import LinkPreview from './LinkPreview'
 import FeedReactions from './FeedReactions'
@@ -192,7 +193,10 @@ export default function HotTakeDetailModal({ hotTakeId, onClose, reminderContext
                 <img src={hotTake.image_url} alt="" className="w-full rounded-lg mt-2" />
               )}
               {hotTake.video_url && <DetailVideo url={hotTake.video_url} />}
-              {extractFirstUrl(hotTake.content) && (
+              {hotTake.embed_provider && hotTake.embed_ref_id && (
+                <PostEmbed provider={hotTake.embed_provider} refId={hotTake.embed_ref_id} />
+              )}
+              {!hotTake.embed_provider && extractFirstUrl(hotTake.content) && (
                 <LinkPreview url={extractFirstUrl(hotTake.content)} />
               )}
               {(hotTake.team_tags?.length > 0 || hotTake.tagged_users?.length > 0) && (

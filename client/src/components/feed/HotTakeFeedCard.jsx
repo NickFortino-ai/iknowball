@@ -14,6 +14,7 @@ import { toast } from '../ui/Toast'
 import RichContent from './RichContent'
 import PollDisplay from './PollDisplay'
 import LinkPreview from './LinkPreview'
+import PostEmbed from './PostEmbed'
 import { extractFirstUrl } from '../../lib/urlUtils'
 import { useHlsSource } from '../../lib/useHlsSource'
 
@@ -858,8 +859,15 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
             hot_take.video_url && <FeedVideo url={hot_take.video_url} />
           )}
 
-          {/* Link preview */}
-          {extractFirstUrl(hot_take.content) && (
+          {/* YouTube / X embed — rendered from the safe (provider, ref_id)
+              tuple the server extracted at submit time */}
+          {hot_take.embed_provider && hot_take.embed_ref_id && (
+            <PostEmbed provider={hot_take.embed_provider} refId={hot_take.embed_ref_id} />
+          )}
+
+          {/* Link preview — suppress when we have a structured embed so
+              we don't show the same YouTube video twice */}
+          {!hot_take.embed_provider && extractFirstUrl(hot_take.content) && (
             <LinkPreview url={extractFirstUrl(hot_take.content)} />
           )}
 
