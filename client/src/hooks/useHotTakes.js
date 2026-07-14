@@ -8,8 +8,8 @@ export function useCreateHotTake() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ content, team_tags, sport_key, image_url, image_urls, video_url, stream_video_uid, user_tags, post_type, poll_options }) =>
-      api.post('/hot-takes', { content, team_tags, sport_key, image_url, image_urls, video_url, stream_video_uid, user_tags, post_type, poll_options }),
+    mutationFn: ({ content, team_tags, sport_key, image_url, image_urls, video_url, stream_video_uid, user_tags, post_type, poll_options, embed_source }) =>
+      api.post('/hot-takes', { content, team_tags, sport_key, image_url, image_urls, video_url, stream_video_uid, user_tags, post_type, poll_options, embed_source }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
     },

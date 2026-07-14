@@ -9,6 +9,7 @@ import InfoTooltip from '../ui/InfoTooltip'
 import TeamAutocomplete from './TeamAutocomplete'
 import { toast } from '../ui/Toast'
 import { supabase } from '../../lib/supabase'
+import { parseEmbedSource } from '../../lib/embedParser'
 
 const MAX_CHARS = 2000
 const IMAGE_URL_REGEX = /(?:https?:\/\/|www\.)[^\s]+\.(jpg|jpeg|png|gif|webp)(\?[^\s]*)?/gi
@@ -67,6 +68,13 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
   // Inline content autocomplete — extract current word at cursor
   const [inlineMatches, setInlineMatches] = useState([])
   const [inlineDropdownPos, setInlineDropdownPos] = useState(null)
+
+  // Embed state — raw user input for YouTube / X paste. Client parses for
+  // an inline preview; server re-parses on submit for the authoritative
+  // structured store. Cleared on post.
+  const [embedInput, setEmbedInput] = useState('')
+  const [showEmbedInput, setShowEmbedInput] = useState(false)
+  const parsedEmbed = useMemo(() => parseEmbedSource(embedInput), [embedInput])
 
   // Extract image URLs from content, store separately, strip from visible text
   const [imageUrlsFromText, setImageUrlsFromText] = useState([])
@@ -176,7 +184,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
 
   const charCount = content.length
   const pollValid = postType !== 'poll' || pollOptions.filter((o) => o.trim()).length >= 2
-  const hasContent = charCount > 0 || hasImage || hasVideo
+  const hasContent = charCount > 0 || hasImage || hasVideo || !!parsedEmbed
   const canPost = hasContent && charCount <= MAX_CHARS && !createHotTake.isPending && !uploading && !videoUploading && pollValid
 
   async function handlePost() {
@@ -214,7 +222,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
       : content.trim()
 
     createHotTake.mutate(
-      { content: finalContent, team_tags: teamTags.length ? teamTags : undefined, sport_key: selectedSport || undefined, image_url: imageUrl, image_urls: imageUrls, video_url: videoUrl, stream_video_uid: streamVideoUid, user_tags: userTags.length ? userTags.map((u) => u.id) : undefined, post_type: postType, poll_options: trimmedPollOptions },
+      { content: finalContent, team_tags: teamTags.length ? teamTags : undefined, sport_key: selectedSport || undefined, image_url: imageUrl, image_urls: imageUrls, video_url: videoUrl, stream_video_uid: streamVideoUid, user_tags: userTags.length ? userTags.map((u) => u.id) : undefined, post_type: postType, poll_options: trimmedPollOptions, embed_source: parsedEmbed ? embedInput.trim() : undefined },
       {
         onSuccess: () => {
           setContent('')
@@ -227,6 +235,8 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
           setTeamSearch('')
           setExpanded(false)
           setImageUrlsFromText([])
+          setEmbedInput('')
+          setShowEmbedInput(false)
           removeImage()
           removeVideo()
           queryClient.invalidateQueries({ queryKey: ['hotTakes', 'team'] })
@@ -254,6 +264,8 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
     setSelectedSport(null)
     setTeamSearch('')
     setImageUrlsFromText([])
+    setEmbedInput('')
+    setShowEmbedInput(false)
     removeImage()
     removeVideo()
   }
@@ -544,6 +556,41 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
             </div>
           )}
 
+          {/* Embed input + preview */}
+          {(showEmbedInput || parsedEmbed) && (
+            <div className="mt-2 space-y-2">
+              {showEmbedInput && (
+                <input
+                  type="text"
+                  value={embedInput}
+                  onChange={(e) => setEmbedInput(e.target.value)}
+                  placeholder="Paste YouTube link or X post link…"
+                  className="w-full bg-bg-surface border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+              )}
+              {parsedEmbed && (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/40 text-xs">
+                  <span className="font-semibold text-accent uppercase tracking-wider">
+                    {parsedEmbed.provider === 'youtube' ? 'YouTube' : 'X'}
+                  </span>
+                  <span className="text-text-muted truncate max-w-[200px]">{parsedEmbed.refId}</span>
+                  <button
+                    onClick={() => { setEmbedInput(''); setShowEmbedInput(false) }}
+                    className="text-text-muted hover:text-text-primary leading-none"
+                    aria-label="Remove embed"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+              {showEmbedInput && embedInput.trim() && !parsedEmbed && (
+                <div className="text-xs text-yellow-500">
+                  Doesn't look like a YouTube or X link — post will send without an embed.
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Poll options */}
           {postType === 'poll' && expanded && (
             <div className="mt-2 space-y-1.5">
@@ -678,6 +725,16 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                       <circle cx="12" cy="13" r="4" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setShowEmbedInput((v) => !v)}
+                    className={`transition-colors p-1 ${showEmbedInput || parsedEmbed ? 'text-accent' : 'text-text-muted hover:text-text-secondary'}`}
+                    title="Embed YouTube or X"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="16 18 22 12 16 6" />
+                      <polyline points="8 6 2 12 8 18" />
                     </svg>
                   </button>
                   <InfoTooltip text="Share posts, predictions, and polls. Tag teams so fans can find them. Your squad can react, comment, and remind you of your predictions later. Bookmark predictions to save receipts." />
