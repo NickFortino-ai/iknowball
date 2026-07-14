@@ -669,6 +669,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         home_team: pick.games?.home_team,
         away_team: pick.games?.away_team,
         sport_name: pick.games?.sports?.name,
+        sport_key: pick.games?.sports?.key,
       },
     })
   }
@@ -684,6 +685,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     const legs = (parlay.parlay_legs || []).map((leg) => ({
       picked_team_name: buildPickedTeamName(leg.picked_team, leg.games),
       sport_name: leg.games?.sports?.name,
+      sport_key: leg.games?.sports?.key,
       odds: leg.odds_at_submission,
       status: leg.status,
       home_team: leg.games?.home_team,
@@ -938,6 +940,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         home_team: pick.games?.home_team,
         away_team: pick.games?.away_team,
         sport_name: pick.games?.sports?.name,
+        sport_key: pick.games?.sports?.key,
       },
     })
   }
