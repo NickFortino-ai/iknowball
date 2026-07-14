@@ -560,12 +560,12 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
           {(showEmbedInput || parsedEmbed) && (
             <div className="mt-2 space-y-2">
               {showEmbedInput && (
-                <input
-                  type="text"
+                <textarea
                   value={embedInput}
                   onChange={(e) => setEmbedInput(e.target.value)}
                   placeholder="Paste YouTube / X link or embed code…"
-                  className="w-full bg-bg-surface border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+                  rows={3}
+                  className="w-full bg-bg-surface border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent resize-y font-mono"
                 />
               )}
               {parsedEmbed && (
