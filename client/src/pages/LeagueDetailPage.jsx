@@ -2202,11 +2202,14 @@ export default function LeagueDetailPage() {
             </div>
           )}
         </div>
-        {league.status === 'open' && league.starts_at && (() => {
+        {league.status === 'open' && league.starts_at && league.format !== 'survivor' && (() => {
           // Traditional fantasy: starts_at is a soft creation-time
           // default that doesn't reflect when the league actually
           // begins (draft or NFL Week 1). Show the meaningful signal
           // instead. Salary cap fantasy has always shown NFL Week 1.
+          // Survivor leagues get their own prominent countdown banner on
+          // the Picks tab, so we suppress the yellow header hint here to
+          // avoid duplication.
           let label
           if (league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap') {
             label = fantasySettings?.draft_date
