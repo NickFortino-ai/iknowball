@@ -437,6 +437,12 @@ export async function updateFantasySettings(leagueId, updates) {
       .update({ max_members: updates.num_teams })
       .eq('id', leagueId)
     if (leagueErr) throw leagueErr
+    // Legit commissioner edits to the target size also update the
+    // immutable-by-default initial_num_teams — the commish's current
+    // intent IS the new baseline for the underfill notification copy.
+    // (Internal code paths like generateDraftOrder that overwrite
+    // num_teams as a side effect deliberately do NOT touch this.)
+    updates.initial_num_teams = updates.num_teams
   }
 
   // If playoff_teams or championship_week is being changed, recompute
@@ -2317,9 +2323,13 @@ export async function processFantasyUnderfillNotifications() {
       // Use the immutable initial_num_teams for the "of X" copy so the
       // commish sees their ORIGINAL target — not a stale num_teams that
       // may have been resized down after a previous notification.
+      // Legit commish edits to num_teams (via settings modal or the
+      // resize-down action) also update initial_num_teams, so this
+      // stays in sync with the commish's current intent while being
+      // immune to internal side-effect writes to num_teams.
       const targetForCopy = row.initial_num_teams || row.num_teams
       const body = state.state === 'below_threshold'
-        ? `Only ${memberCount} of ${targetForCopy} have joined. IKB doesn't run traditional fantasy leagues with fewer than 6 members. Postpone the draft to give people more time to join, and make sure the league is set to open so anyone on IKB can join. Let’s prevent having to cancel.`
+        ? `Only ${memberCount} of ${targetForCopy} have joined. IKB doesn't run traditional fantasy leagues with fewer than 6 members. Postpone the draft to give people more time to join, and make sure the league is set to open so anyone on IKB can join. Once you hit 6+ members you'll also be able to resize the league down. Let's prevent having to cancel.`
         : `Only ${memberCount} of ${targetForCopy} have joined. You can resize the league down to ${state.targetEven} (drops the ${state.willDrop} most recent signup${state.willDrop === 1 ? '' : 's'}), postpone the draft, or cancel.`
 
       await createNotification(commishId, 'fantasy_league_underfilled', `${headline}. ${body}`, {
@@ -2483,11 +2493,13 @@ export async function resizeFantasyLeague(leagueId, options = {}) {
     .in('user_id', dropTargets)
     .eq('league_id', leagueId)
 
-  // Update num_teams + max_members to the new size
+  // Update num_teams + max_members to the new size. Explicit commish
+  // action → also update initial_num_teams so subsequent notifications
+  // reflect the new intent instead of the pre-resize ambition.
   const newSize = state.targetEven
   await supabase
     .from('fantasy_settings')
-    .update({ num_teams: newSize })
+    .update({ num_teams: newSize, initial_num_teams: newSize })
     .eq('league_id', leagueId)
   await supabase
     .from('leagues')
