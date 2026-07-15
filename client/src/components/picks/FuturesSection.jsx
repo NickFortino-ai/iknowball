@@ -15,7 +15,7 @@ const SPORT_DISPLAY = {
   basketball_wnba: 'WNBA Champion',
   icehockey_nhl: 'NHL Champion',
   golf: 'Golf',
-  soccer: 'FIFA World Cup',
+  soccer: "Int'l Soccer",
 }
 
 function sportLabel(key) {

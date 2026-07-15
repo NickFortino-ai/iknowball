@@ -24,7 +24,7 @@ const SPORT_LABELS = {
   basketball_wnba: 'WNBA',
   icehockey_nhl: 'NHL',
   soccer_usa_mls: 'MLS',
-  soccer_world_cup: 'World Cup',
+  soccer_world_cup: 'Int\'l Soccer',
 }
 function sportLabel(key) {
   return SPORT_LABELS[key] || key || 'Other'
