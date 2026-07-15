@@ -7,6 +7,7 @@ import EmptyState from '../ui/EmptyState'
 import { toast } from '../ui/Toast'
 import { formatOdds } from '../../lib/scoring'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
+import { shortTeamLabel } from '../../lib/teamShort'
 import Avatar from '../ui/Avatar'
 import TouchdownPicker from './TouchdownPicker'
 
@@ -565,7 +566,7 @@ export default function SurvivorView({ league }) {
                       className={`text-xs font-semibold px-2 py-1 rounded-lg shrink-0 ${chipStyle}`}
                       title={`${periodLabel} ${p.league_weeks?.week_number}: ${isLocked ? 'Hidden' : p.team_name || 'No pick'}`}
                     >
-                      {isLocked ? '???' : p.team_name?.split(' ').pop() || 'No pick'}
+                      {isLocked ? '???' : shortTeamLabel(p.team_name) || 'No pick'}
                     </span>
                   )
                 })}

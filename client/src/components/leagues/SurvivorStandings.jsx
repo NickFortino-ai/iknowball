@@ -3,6 +3,7 @@ import { useSurvivorBoard } from '../../hooks/useLeagues'
 import { useAuthStore } from '../../stores/authStore'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import { shortTeamLabel } from '../../lib/teamShort'
 
 const FOOTBALL_SPORTS = ['americanfootball_nfl', 'americanfootball_ncaaf']
 const BASEBALL_SPORTS = ['baseball_mlb']
@@ -152,7 +153,7 @@ export default function SurvivorStandings({ league, onUserTap }) {
               className={`text-xs font-semibold px-2 py-1 rounded-lg shrink-0 ${chipStyle}`}
               title={`${periodLabel} ${p.league_weeks?.week_number || item.week?.week_number}: ${isLocked ? 'Hidden' : p.team_name || 'No pick'}`}
             >
-              {isLocked ? '???' : p.team_name?.split(' ').pop() || 'No pick'}
+              {isLocked ? '???' : shortTeamLabel(p.team_name) || 'No pick'}
             </span>
           )
         })}
