@@ -165,7 +165,7 @@ export default function PropsSection() {
   return (
     <div>
       <h2 className="font-display text-xl mb-4">Choose a sport</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {visibleTiles.map((tile) => (
           <SportTile
             key={tile.key}
@@ -327,7 +327,7 @@ function MarketGroup({ sport, market, expanded, onToggle }) {
             <div className="py-8"><LoadingSpinner /></div>
           ) : activeProps.length === 0 ? (
             <div className="py-8 text-center text-sm text-text-muted">
-              No {market.label.toLowerCase()} props available for today's games yet.
+              No props available right now — either no games today, or this market isn't offered for tonight's slate.
             </div>
           ) : (
             <div className="space-y-2">
