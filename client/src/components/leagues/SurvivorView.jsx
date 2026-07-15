@@ -312,8 +312,8 @@ export default function SurvivorView({ league }) {
             {showPickForm
               ? 'Hide Pick Form'
               : board.user_has_picked
-                ? `Edit ${periodLabel} ${board.display_period_number || pickWeek.week_number} Pick`
-                : `Make ${periodLabel} ${board.display_period_number || pickWeek.week_number} Pick`}
+                ? `Edit ${periodLabel} ${board.pick_period_number || pickWeek.week_number} Pick`
+                : `Make ${periodLabel} ${board.pick_period_number || pickWeek.week_number} Pick`}
           </button>
         </div>
       )}

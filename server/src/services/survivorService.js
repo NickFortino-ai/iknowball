@@ -438,11 +438,13 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
     }
   }
 
-  // Compute display period number for the CURRENT (wall-clock) period,
-  // not the pick week. Using pickWeek here would prematurely bump the
-  // header to "Day 2" the moment a user's Day 1 pick settled — even
-  // though the league is still on Day 1 by the clock. The pick form
-  // uses pick_week separately for its own advancement UX.
+  // Two separate period numbers so the header and the pick-form button
+  // can disagree without confusing the user:
+  //   displayPeriodNumber → bound to currentWeek (wall-clock period).
+  //     Used for the "N Day" header tile. Should NOT bump to Day 2 just
+  //     because a user's Day 1 pick settled.
+  //   pickPeriodNumber → bound to pickWeek (advances past a user's own
+  //     settled picks). Used for the "Make/Edit Day N Pick" button.
   const weekIdsWithPicks = new Set((picks || []).map((p) => p.league_week_id))
   const firstActiveIndex = (weeks || []).findIndex(
     (w) => weekIdsWithPicks.has(w.id) || w.id === currentWeekId
@@ -450,9 +452,15 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
   const currentWeekIndex = currentWeek
     ? (weeks || []).findIndex((w) => w.id === currentWeek.id)
     : -1
+  const pickWeekIndex = pickWeek
+    ? (weeks || []).findIndex((w) => w.id === pickWeek.id)
+    : -1
   const displayPeriodNumber = firstActiveIndex >= 0 && currentWeekIndex >= 0
     ? currentWeekIndex - firstActiveIndex + 1
     : currentWeek?.week_number || null
+  const pickPeriodNumber = firstActiveIndex >= 0 && pickWeekIndex >= 0
+    ? pickWeekIndex - firstActiveIndex + 1
+    : pickWeek?.week_number || null
 
   // Find user's current pick for the pick week (for highlighting in form)
   const userPickWeekPick = pickWeek && (picks || []).find(
@@ -489,6 +497,7 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
     weeks: weeks || [],
     user_has_picked: !!pickWeekUserHasPicked,
     display_period_number: displayPeriodNumber,
+    pick_period_number: pickPeriodNumber,
     pick_week: pickWeek,
     current_pick: userPickWeekPick ? { team_name: userPickWeekPick.team_name, game_id: userPickWeekPick.game_id } : null,
     survivor_winner: survivorWinner,
