@@ -131,16 +131,25 @@ export default function SurvivorView({ league }) {
   // Always drop games that start before the league does — pre-start games
   // belong to no league_week and just clutter the slate with un-pickable rows
   // (especially the "I picked Day 1, league hasn't started yet" case).
+  // Also drop games in the CURRENT wall-clock period once today's pick has
+  // left 'pending' (locked or settled) — otherwise a user in "pre-pick
+  // tomorrow" mode who accidentally taps a today game would overwrite
+  // their settled pick and lose the credit.
   const pickWeekGames = useMemo(() => {
     if (!games?.length) return []
-    const upcoming = league?.starts_at
+    let upcoming = league?.starts_at
       ? games.filter((g) => g.starts_at >= league.starts_at)
       : games
+    if (todayPick && todayPick.status !== 'pending' && actualCurrentWeek?.starts_at && actualCurrentWeek?.ends_at) {
+      upcoming = upcoming.filter((g) =>
+        !(g.starts_at >= actualCurrentWeek.starts_at && g.starts_at <= actualCurrentWeek.ends_at)
+      )
+    }
     if (!board?.user_has_picked && pickWeek?.starts_at && pickWeek?.ends_at) {
       return upcoming.filter((g) => g.starts_at >= pickWeek.starts_at && g.starts_at <= pickWeek.ends_at)
     }
     return upcoming
-  }, [games, pickWeek, board?.user_has_picked, league?.starts_at])
+  }, [games, pickWeek, board?.user_has_picked, league?.starts_at, todayPick, actualCurrentWeek])
 
   // Detect when user has used every available team in current period (pool expansion)
   const poolExpanded = useMemo(() => {

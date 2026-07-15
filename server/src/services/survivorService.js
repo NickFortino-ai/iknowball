@@ -87,6 +87,26 @@ export async function submitSurvivorPick(leagueId, userId, weekId, gameId, picke
 
   const resolvedWeekId = gameWeek?.id || weekId
 
+  // Refuse to overwrite a pick that has already left 'pending' state —
+  // once a period's pick is locked (game started) or settled
+  // (survived / eliminated / survived_wrong), the user can no longer
+  // change it. Without this, a user tapping a game in the pick form
+  // that BELONGS TO A PAST/SETTLED PERIOD would silently upsert over
+  // their settled pick and lose the survived credit.
+  const { data: existingPick } = await supabase
+    .from('survivor_picks')
+    .select('id, status')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .eq('league_week_id', resolvedWeekId)
+    .maybeSingle()
+
+  if (existingPick && existingPick.status !== 'pending') {
+    const err = new Error("You've already submitted your pick for this period and it can't be changed.")
+    err.status = 400
+    throw err
+  }
+
   const teamName = pickedTeam === 'home' ? game.home_team : game.away_team
 
   // Check if team has been used before in this league. Include 'pending'
