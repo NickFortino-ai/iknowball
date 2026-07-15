@@ -278,7 +278,7 @@ export default function SurvivorView({ league }) {
           until the user either clicks the pre-pick button or the period
           naturally advances. */}
       {showTodayCompletion && !leagueCompleted && userIsAlive && (
-        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center relative z-10">
+        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center relative z-10 max-w-md mx-auto">
           <p className="text-sm text-text-primary font-semibold mb-1">
             You've picked {isDaily ? 'today' : 'this week'} ✓
           </p>
@@ -292,7 +292,9 @@ export default function SurvivorView({ league }) {
             onClick={() => { setShowPreNextDay(true); setShowPickForm(true) }}
             className="px-6 py-2 rounded-xl font-display text-sm bg-accent/10 backdrop-blur-sm text-text-primary hover:bg-accent/20 border border-accent transition-colors"
           >
-            Pre-pick {isDaily ? 'tomorrow' : 'next week'} →
+            {board.user_has_picked
+              ? `Edit ${periodLabel} ${board.pick_period_number || pickWeek?.week_number} Pick`
+              : `Make ${isDaily ? "tomorrow's" : "next week's"} pick →`}
           </button>
         </div>
       )}
