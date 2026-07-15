@@ -309,6 +309,9 @@ export async function createFantasySettings(leagueId, settings = {}) {
       // placeholder. Destructuring default above only handles
       // undefined, not null.
       num_teams: num_teams ?? 10,
+      // Immutable snapshot for underfill-notification copy — never
+      // changes even if the commish resizes down later.
+      initial_num_teams: num_teams ?? 10,
       roster_slots,
       draft_date,
       draft_pick_timer,
@@ -2263,7 +2266,7 @@ export async function processFantasyUnderfillNotifications() {
 
   const { data: candidates } = await supabase
     .from('fantasy_settings')
-    .select('league_id, draft_date, num_teams, format, underfill_notified_3d_at, underfill_notified_1d_at, underfill_notified_10m_at, leagues!inner(name, visibility, commissioner_id, status)')
+    .select('league_id, draft_date, num_teams, initial_num_teams, format, underfill_notified_3d_at, underfill_notified_1d_at, underfill_notified_10m_at, leagues!inner(name, visibility, commissioner_id, status)')
     .eq('format', 'traditional')
     .eq('draft_status', 'pending')
     .not('draft_date', 'is', null)
@@ -2311,9 +2314,13 @@ export async function processFantasyUnderfillNotifications() {
         : window === '1d' ? `${leagueName} draft is tomorrow and the league isn't full`
         : `${leagueName} is underfilled — your draft is in 3 days`
 
+      // Use the immutable initial_num_teams for the "of X" copy so the
+      // commish sees their ORIGINAL target — not a stale num_teams that
+      // may have been resized down after a previous notification.
+      const targetForCopy = row.initial_num_teams || row.num_teams
       const body = state.state === 'below_threshold'
-        ? `Only ${memberCount} of ${row.num_teams} have joined. IKB doesn't run traditional fantasy leagues with fewer than 6 members. Postpone the draft to give people more time to join, and make sure the league is set to open so anyone on IKB can join. Let’s prevent having to cancel.`
-        : `Only ${memberCount} of ${row.num_teams} have joined. You can resize the league down to ${state.targetEven} (drops the ${state.willDrop} most recent signup${state.willDrop === 1 ? '' : 's'}), postpone the draft, or cancel.`
+        ? `Only ${memberCount} of ${targetForCopy} have joined. IKB doesn't run traditional fantasy leagues with fewer than 6 members. Postpone the draft to give people more time to join, and make sure the league is set to open so anyone on IKB can join. Let’s prevent having to cancel.`
+        : `Only ${memberCount} of ${targetForCopy} have joined. You can resize the league down to ${state.targetEven} (drops the ${state.willDrop} most recent signup${state.willDrop === 1 ? '' : 's'}), postpone the draft, or cancel.`
 
       await createNotification(commishId, 'fantasy_league_underfilled', `${headline}. ${body}`, {
         leagueId: row.league_id,

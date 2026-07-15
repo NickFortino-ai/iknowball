@@ -71,7 +71,7 @@ export default function CommissionerToolsPage({ league, onOpenSettings }) {
             icon="📨"
             title="Report a Problem to the IKB Admin"
             description="Message the IKB admin about anything wrong with this league. They'll reply here."
-            badge={unreadReplies > 0 ? `${unreadReplies} new` : null}
+            badge={unreadReplies > 0 ? `${unreadReplies}` : null}
             onClick={() => setOpenTool('report_problem')}
           />
           <ToolCard
