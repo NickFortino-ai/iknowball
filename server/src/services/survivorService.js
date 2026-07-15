@@ -438,17 +438,21 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
     }
   }
 
-  // Compute display period number for the pick week
+  // Compute display period number for the CURRENT (wall-clock) period,
+  // not the pick week. Using pickWeek here would prematurely bump the
+  // header to "Day 2" the moment a user's Day 1 pick settled — even
+  // though the league is still on Day 1 by the clock. The pick form
+  // uses pick_week separately for its own advancement UX.
   const weekIdsWithPicks = new Set((picks || []).map((p) => p.league_week_id))
   const firstActiveIndex = (weeks || []).findIndex(
     (w) => weekIdsWithPicks.has(w.id) || w.id === currentWeekId
   )
-  const pickWeekIndex = pickWeek
-    ? (weeks || []).findIndex((w) => w.id === pickWeek.id)
+  const currentWeekIndex = currentWeek
+    ? (weeks || []).findIndex((w) => w.id === currentWeek.id)
     : -1
-  const displayPeriodNumber = firstActiveIndex >= 0 && pickWeekIndex >= 0
-    ? pickWeekIndex - firstActiveIndex + 1
-    : pickWeek?.week_number || null
+  const displayPeriodNumber = firstActiveIndex >= 0 && currentWeekIndex >= 0
+    ? currentWeekIndex - firstActiveIndex + 1
+    : currentWeek?.week_number || null
 
   // Find user's current pick for the pick week (for highlighting in form)
   const userPickWeekPick = pickWeek && (picks || []).find(
