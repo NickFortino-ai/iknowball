@@ -237,6 +237,23 @@ export async function replyToCommissionerReport(reportId, adminUserId, reply) {
   return postReportMessage(reportId, adminUserId, 'admin', reply)
 }
 
+// When the commissioner opens their reports thread for a league, flip
+// any 'replied' rows back to 'open' — this clears the ⋯-tab badge for
+// them. Semantic: 'replied' means "admin has said something since the
+// commish last engaged." Once they've seen it, the report is 'open'
+// again from their side (either awaiting their reply or resolved by
+// admin). Only flips their own reports in the given league.
+export async function markCommissionerReportsRead(leagueId, commissionerUserId) {
+  const { error } = await supabase
+    .from('commissioner_reports')
+    .update({ status: 'open', updated_at: new Date().toISOString() })
+    .eq('league_id', leagueId)
+    .eq('commissioner_id', commissionerUserId)
+    .eq('status', 'replied')
+  if (error) throw error
+  return { ok: true }
+}
+
 export async function resolveCommissionerReport(reportId, adminUserId) {
   const { error } = await supabase
     .from('commissioner_reports')

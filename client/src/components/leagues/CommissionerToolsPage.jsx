@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Avatar from '../ui/Avatar'
 import ForceLineupModal from './ForceLineupModal'
 import CommissionerAddDropModal from './CommissionerAddDropModal'
 import ReportProblemSection from './ReportProblemSection'
-import { useMyReports } from '../../hooks/useLeagues'
+import { useMyReports, useMarkMyReportsRead } from '../../hooks/useLeagues'
 
 /**
  * Full-tab Commissioner Tools page. Rendered when the "Commish" tab is
@@ -28,13 +28,25 @@ export default function CommissionerToolsPage({ league, onOpenSettings }) {
   // commissioner sees the signal without having to enter the tool.
   const { data: myReports } = useMyReports(league.id)
   const unreadReplies = (myReports || []).filter((r) => r.status === 'replied').length
+  const markRead = useMarkMyReportsRead(league.id)
+
+  // When the commissioner opens the Report a Problem section, flag any
+  // 'replied' reports as read so the badge clears. Fires once per open
+  // (openTool transitions to 'report_problem') so we don't re-fire on
+  // re-renders. Only runs when there ARE unread to clear.
+  useEffect(() => {
+    if (openTool === 'report_problem' && unreadReplies > 0) {
+      markRead.mutate()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openTool])
 
   return (
     <div className="max-w-2xl md:max-w-4xl mx-auto space-y-4 pb-6">
       <div className="pt-2">
         <h2 className="font-display text-2xl text-text-primary">Commissioner Tools</h2>
         <p className="text-sm text-text-primary/80 mt-1">
-          Actions you can take on behalf of managers. Every action is logged and the affected manager is notified.
+          Everything you need to run your league — message the IKB admin, override a manager's actions, or edit league settings. On-behalf actions are logged and notify the affected manager.
         </p>
       </div>
 

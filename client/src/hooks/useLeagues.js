@@ -1834,6 +1834,16 @@ export function useReplyToMyReport(leagueId) {
   })
 }
 
+// Fires when the commissioner opens their report thread — server flips
+// any 'replied' reports to 'open' so the Commish-tab unread badge clears.
+export function useMarkMyReportsRead(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.post(`/leagues/${leagueId}/report-problem/mark-read`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'report-problem'] }),
+  })
+}
+
 export function useFantasyRosterForUser(leagueId, userId) {
   return useQuery({
     queryKey: ['leagues', leagueId, 'fantasy', 'roster', userId],

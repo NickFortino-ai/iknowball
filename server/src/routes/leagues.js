@@ -23,7 +23,7 @@ import {
   getLeagueInvitations,
 } from '../services/invitationService.js'
 import { sendLeagueInviteEmail } from '../services/emailService.js'
-import { createCommissionerReport, listReportsForCommissioner, postReportMessage } from '../services/commissionerReportService.js'
+import { createCommissionerReport, listReportsForCommissioner, postReportMessage, markCommissionerReportsRead } from '../services/commissionerReportService.js'
 import {
   submitSurvivorPick,
   submitTouchdownPick,
@@ -1149,6 +1149,18 @@ router.post('/:id/report-problem/:reportId/message', requireAuth, validate(repor
   try {
     const msg = await postReportMessage(req.params.reportId, req.user.id, 'commissioner', req.validated.message)
     res.status(201).json(msg)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// Commissioner-side: mark all 'replied' reports as read (flips them to
+// 'open') so the unread badge on the Commish tab clears once they've
+// actually opened the thread. Fires when the ReportProblemSection mounts.
+router.post('/:id/report-problem/mark-read', requireAuth, async (req, res) => {
+  try {
+    const result = await markCommissionerReportsRead(req.params.id, req.user.id)
+    res.json(result)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })
   }
