@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import { useSavedRankingConfigs } from '../../hooks/useDraftPrep'
+import { useState, useRef, useEffect } from 'react'
+import { useSavedRankingConfigs, useRenameSavedRanking } from '../../hooks/useDraftPrep'
 import { parseRosterConfigHash } from '../../lib/rosterConfigHash'
+import { toast } from '../ui/Toast'
 
 const SLOT_ORDER = [
   { key: 'qb', label: 'QB' },
@@ -42,7 +43,44 @@ function formatRelative(iso) {
 
 export default function SavedRankings({ activeScoringFormat, activeConfigHash, onLoad }) {
   const { data: configs, isLoading, error } = useSavedRankingConfigs()
+  const rename = useRenameSavedRanking()
   const [open, setOpen] = useState(false)
+  // Which row is showing the ⋯ menu open (key: `${config_hash}|${scoring}`)
+  const [menuKey, setMenuKey] = useState(null)
+  // Which row is in inline-edit mode + its draft value
+  const [editKey, setEditKey] = useState(null)
+  const [editName, setEditName] = useState('')
+  const inputRef = useRef(null)
+
+  // Close menu / edit on click outside
+  useEffect(() => {
+    if (!menuKey && !editKey) return
+    function onDocClick(e) {
+      if (e.target.closest('[data-savedranking-row]')) return
+      setMenuKey(null)
+      if (editKey) {
+        setEditKey(null)
+        setEditName('')
+      }
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [menuKey, editKey])
+
+  useEffect(() => {
+    if (editKey && inputRef.current) inputRef.current.select()
+  }, [editKey])
+
+  async function handleSaveName(configHash, scoringFormat) {
+    try {
+      await rename.mutateAsync({ configHash, scoringFormat, name: editName })
+      toast(editName.trim() ? 'Ranking renamed' : 'Name cleared', 'success')
+      setEditKey(null)
+      setEditName('')
+    } catch (err) {
+      toast(err.message || 'Failed to rename', 'error')
+    }
+  }
 
   if (isLoading) return null
 
@@ -107,25 +145,52 @@ export default function SavedRankings({ activeScoringFormat, activeConfigHash, o
       {open && (
         <div className="px-3 pb-3 pt-1 space-y-1.5">
           {sorted.map((c) => {
+            const rowKey = `${c.config_hash}|${c.scoring_format}`
             const slots = parseRosterConfigHash(c.config_hash)
             const isActive = c.config_hash === activeConfigHash && c.scoring_format === activeScoringFormat
             const rosterLabel = formatRoster(slots) || 'No starters'
+            const isEditing = editKey === rowKey
+            const isMenuOpen = menuKey === rowKey
+            // Prefer the user-supplied name; fall back to roster label
+            const displayName = c.name || rosterLabel
+
             return (
-              <button
-                key={`${c.config_hash}|${c.scoring_format}`}
-                onClick={() => !isActive && onLoad?.({ scoringFormat: c.scoring_format, rosterSlots: slots })}
-                disabled={isActive}
-                className={`w-full text-left rounded-lg border px-3 py-2.5 transition-colors ${
+              <div
+                key={rowKey}
+                data-savedranking-row
+                className={`relative rounded-lg border px-3 py-2.5 transition-colors ${
                   isActive
-                    ? 'border-accent bg-accent/10 cursor-default'
-                    : 'border-text-primary/15 bg-bg-primary/20 hover:bg-bg-primary/40 hover:border-text-primary/30 cursor-pointer'
+                    ? 'border-accent bg-accent/10'
+                    : 'border-text-primary/15 bg-bg-primary/20 hover:bg-bg-primary/40 hover:border-text-primary/30'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0 flex-1">
+                  <button
+                    onClick={() => !isActive && !isEditing && onLoad?.({ scoringFormat: c.scoring_format, rosterSlots: slots })}
+                    disabled={isActive || isEditing}
+                    className={`min-w-0 flex-1 text-left ${isActive || isEditing ? 'cursor-default' : 'cursor-pointer'}`}
+                  >
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-text-primary">{rosterLabel}</span>
-                      {isActive && (
+                      {isEditing ? (
+                        <input
+                          ref={inputRef}
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value.slice(0, 50))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') { e.preventDefault(); handleSaveName(c.config_hash, c.scoring_format) }
+                            if (e.key === 'Escape') { setEditKey(null); setEditName('') }
+                          }}
+                          onBlur={() => handleSaveName(c.config_hash, c.scoring_format)}
+                          placeholder={rosterLabel}
+                          maxLength={50}
+                          className="text-sm font-semibold text-text-primary bg-transparent border-b border-accent/60 outline-none flex-1 min-w-0"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <span className="text-sm font-semibold text-text-primary truncate">{displayName}</span>
+                      )}
+                      {isActive && !isEditing && (
                         <span className="text-[9px] font-bold text-accent uppercase tracking-wider px-1.5 py-0.5 rounded border border-accent/40">Active</span>
                       )}
                     </div>
@@ -133,13 +198,70 @@ export default function SavedRankings({ activeScoringFormat, activeConfigHash, o
                       <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider px-1.5 py-0.5 rounded bg-bg-primary/40 border border-text-primary/15">
                         {SCORING_LABELS[c.scoring_format] || c.scoring_format}
                       </span>
-                      {c.last_updated && (
+                      {/* When a custom name exists, show the auto roster label as
+                          the secondary line so users don't lose the config info */}
+                      {c.name && !isEditing && (
+                        <span className="text-[10px] text-text-muted truncate">{rosterLabel}</span>
+                      )}
+                      {c.last_updated && !c.name && !isEditing && (
                         <span className="text-[10px] text-text-muted">{formatRelative(c.last_updated)}</span>
                       )}
                     </div>
-                  </div>
+                  </button>
+
+                  {/* ⋯ menu — hidden while editing */}
+                  {!isEditing && (
+                    <div className="relative shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setMenuKey(isMenuOpen ? null : rowKey)
+                        }}
+                        className="w-8 h-8 flex items-center justify-center rounded text-text-muted hover:text-text-primary hover:bg-bg-primary/40 transition-colors"
+                        aria-label="Row actions"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <circle cx="5" cy="12" r="1.5" />
+                          <circle cx="12" cy="12" r="1.5" />
+                          <circle cx="19" cy="12" r="1.5" />
+                        </svg>
+                      </button>
+                      {isMenuOpen && (
+                        <div className="absolute right-0 top-full mt-1 z-20 min-w-[9rem] rounded-lg border border-text-primary/20 bg-bg-primary shadow-lg overflow-hidden">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setMenuKey(null)
+                              setEditKey(rowKey)
+                              setEditName(c.name || '')
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs text-text-primary hover:bg-bg-primary/60"
+                          >
+                            Rename
+                          </button>
+                          {c.name && (
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation()
+                                setMenuKey(null)
+                                try {
+                                  await rename.mutateAsync({ configHash: c.config_hash, scoringFormat: c.scoring_format, name: '' })
+                                  toast('Name cleared', 'success')
+                                } catch (err) {
+                                  toast(err.message || 'Failed to clear', 'error')
+                                }
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs text-text-muted hover:bg-bg-primary/60 border-t border-text-primary/10"
+                            >
+                              Clear name
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </button>
+              </div>
             )
           })}
         </div>

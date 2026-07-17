@@ -88,6 +88,16 @@ export async function getSavedRankingConfigs(userId) {
   if (error) throw error
   if (!data?.length) return []
 
+  // Fetch user-supplied names for each (config, scoring) pair.
+  const { data: names } = await supabase
+    .from('draft_prep_ranking_names')
+    .select('roster_config_hash, scoring_format, name')
+    .eq('user_id', userId)
+  const nameMap = {}
+  for (const n of names || []) {
+    nameMap[`${n.roster_config_hash}|${n.scoring_format}`] = n.name
+  }
+
   const map = {}
   for (const row of data) {
     const key = `${row.roster_config_hash}|${row.scoring_format}`
@@ -95,6 +105,7 @@ export async function getSavedRankingConfigs(userId) {
       map[key] = {
         config_hash: row.roster_config_hash,
         scoring_format: row.scoring_format,
+        name: nameMap[key] || null,
         player_count: 0,
         last_updated: row.created_at,
       }
@@ -110,6 +121,34 @@ export async function getSavedRankingConfigs(userId) {
     if (!b.last_updated) return -1
     return b.last_updated.localeCompare(a.last_updated)
   })
+}
+
+// Upsert / delete a user-supplied name for a saved ranking config.
+// Empty name → delete the row (reverts display to auto-generated roster
+// label). Trims + caps at 50 chars per the DB check constraint.
+export async function setSavedRankingName(userId, configHash, scoringFormat, name) {
+  const trimmed = (name || '').trim().slice(0, 50)
+  if (!trimmed) {
+    const { error } = await supabase
+      .from('draft_prep_ranking_names')
+      .delete()
+      .eq('user_id', userId)
+      .eq('roster_config_hash', configHash)
+      .eq('scoring_format', scoringFormat)
+    if (error) throw error
+    return { name: null }
+  }
+  const { error } = await supabase
+    .from('draft_prep_ranking_names')
+    .upsert({
+      user_id: userId,
+      roster_config_hash: configHash,
+      scoring_format: scoringFormat,
+      name: trimmed,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,roster_config_hash,scoring_format' })
+  if (error) throw error
+  return { name: trimmed }
 }
 
 // ── Rankings CRUD ────────────────────────────────────────────────────

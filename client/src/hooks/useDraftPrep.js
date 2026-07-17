@@ -10,6 +10,17 @@ export function useSavedRankingConfigs() {
   })
 }
 
+export function useRenameSavedRanking() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ configHash, scoringFormat, name }) =>
+      api.patch('/draft-prep/saved-configs/name', { configHash, scoringFormat, name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['draftPrep', 'savedConfigs'] })
+    },
+  })
+}
+
 // ── Rankings ─────────────────────────────────────────────────────────
 
 export function useDraftPrepRankings(scoringFormat, configHash) {

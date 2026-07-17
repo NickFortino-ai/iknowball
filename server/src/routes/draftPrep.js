@@ -5,6 +5,7 @@ import {
   setDraftPrepRankings,
   resetDraftPrepRankings,
   getSavedRankingConfigs,
+  setSavedRankingName,
   getSyncPreferences,
   syncLeague,
   unsyncLeague,
@@ -59,6 +60,19 @@ router.get('/saved-configs', requireAuth, async (req, res) => {
   try {
     const data = await getSavedRankingConfigs(req.user.id)
     res.json(data)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+router.patch('/saved-configs/name', requireAuth, async (req, res) => {
+  try {
+    const { configHash, scoringFormat, name } = req.body
+    if (!configHash || !scoringFormat) {
+      return res.status(400).json({ error: 'configHash and scoringFormat are required' })
+    }
+    const result = await setSavedRankingName(req.user.id, configHash, scoringFormat, name)
+    res.json(result)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })
   }
