@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useSavedRankingConfigs, useRenameSavedRanking } from '../../hooks/useDraftPrep'
+import { useSavedRankingConfigs, useRenameSavedRanking, useDeleteSavedRanking } from '../../hooks/useDraftPrep'
 import { parseRosterConfigHash } from '../../lib/rosterConfigHash'
 import { toast } from '../ui/Toast'
 
@@ -44,6 +44,7 @@ function formatRelative(iso) {
 export default function SavedRankings({ activeScoringFormat, activeConfigHash, onLoad }) {
   const { data: configs, isLoading, error } = useSavedRankingConfigs()
   const rename = useRenameSavedRanking()
+  const deleteRanking = useDeleteSavedRanking()
   const [open, setOpen] = useState(false)
   // Which row is showing the ⋯ menu open (key: `${config_hash}|${scoring}`)
   const [menuKey, setMenuKey] = useState(null)
@@ -254,6 +255,23 @@ export default function SavedRankings({ activeScoringFormat, activeConfigHash, o
                               Clear name
                             </button>
                           )}
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              setMenuKey(null)
+                              const label = c.name || rosterLabel
+                              if (!confirm(`Delete "${label}"? This removes the ranking and can't be undone.`)) return
+                              try {
+                                await deleteRanking.mutateAsync({ configHash: c.config_hash, scoringFormat: c.scoring_format })
+                                toast('Ranking deleted', 'success')
+                              } catch (err) {
+                                toast(err.message || 'Failed to delete', 'error')
+                              }
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs text-incorrect hover:bg-incorrect/10 border-t border-text-primary/10"
+                          >
+                            Delete
+                          </button>
                         </div>
                       )}
                     </div>

@@ -6,6 +6,7 @@ import {
   resetDraftPrepRankings,
   getSavedRankingConfigs,
   setSavedRankingName,
+  deleteSavedRanking,
   getSyncPreferences,
   syncLeague,
   unsyncLeague,
@@ -72,6 +73,19 @@ router.patch('/saved-configs/name', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'configHash and scoringFormat are required' })
     }
     const result = await setSavedRankingName(req.user.id, configHash, scoringFormat, name)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+router.delete('/saved-configs', requireAuth, async (req, res) => {
+  try {
+    const { configHash, scoringFormat } = req.query
+    if (!configHash || !scoringFormat) {
+      return res.status(400).json({ error: 'configHash and scoringFormat are required' })
+    }
+    const result = await deleteSavedRanking(req.user.id, configHash, scoringFormat)
     res.json(result)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })

@@ -123,6 +123,28 @@ export async function getSavedRankingConfigs(userId) {
   })
 }
 
+// Delete every saved-ranking artifact for a (user, config, scoring)
+// triple — the per-player ranking rows AND the user-supplied name row.
+// Used by the ⋯ menu's Delete action; irreversible from the user's
+// side (there's no undo since the customized ordering is gone).
+export async function deleteSavedRanking(userId, configHash, scoringFormat) {
+  const { error: rankingsErr } = await supabase
+    .from('draft_prep_rankings')
+    .delete()
+    .eq('user_id', userId)
+    .eq('roster_config_hash', configHash)
+    .eq('scoring_format', scoringFormat)
+  if (rankingsErr) throw rankingsErr
+  const { error: nameErr } = await supabase
+    .from('draft_prep_ranking_names')
+    .delete()
+    .eq('user_id', userId)
+    .eq('roster_config_hash', configHash)
+    .eq('scoring_format', scoringFormat)
+  if (nameErr) throw nameErr
+  return { deleted: true }
+}
+
 // Upsert / delete a user-supplied name for a saved ranking config.
 // Empty name → delete the row (reverts display to auto-generated roster
 // label). Trims + caps at 50 chars per the DB check constraint.

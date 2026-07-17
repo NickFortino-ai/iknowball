@@ -21,6 +21,18 @@ export function useRenameSavedRanking() {
   })
 }
 
+export function useDeleteSavedRanking() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ configHash, scoringFormat }) =>
+      api.delete(`/draft-prep/saved-configs?configHash=${encodeURIComponent(configHash)}&scoringFormat=${encodeURIComponent(scoringFormat)}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['draftPrep', 'savedConfigs'] })
+      queryClient.invalidateQueries({ queryKey: ['draftPrep', 'rankings'] })
+    },
+  })
+}
+
 // ── Rankings ─────────────────────────────────────────────────────────
 
 export function useDraftPrepRankings(scoringFormat, configHash) {
