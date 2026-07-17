@@ -2,6 +2,7 @@ import { timeAgo } from '../../lib/time'
 import Avatar from '../ui/Avatar'
 import FeedReactions from './FeedReactions'
 import PickComments from '../social/PickComments'
+import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 
 function formatOdds(odds) {
   return odds >= 0 ? `+${odds}` : `${odds}`
@@ -106,56 +107,56 @@ export default function GroupedPickFeedCard({ item, reactions, onUserTap }) {
         <span className="text-xs text-text-muted flex-shrink-0">{timeAgo(item.timestamp)}</span>
       </div>
 
-      {/* Card body — mirrors the individual card layouts */}
+      {/* Card body — underdog_hit gets the hero layout matching the
+          single-user UnderdogHitFeedCard; other types keep the compact
+          banner + inline row layout. */}
       <div className="px-4 pb-3">
-        {/* Type-specific banner */}
-        {type === 'underdog_hit' && (
-          <UnderdogBanner odds={pick.odds_at_pick} />
-        )}
-        {(type === 'multiplier_hit' || type === 'multiplier_miss') && (
-          <MultiplierBanner pick={pick} isHit={type === 'multiplier_hit'} />
-        )}
+        {type === 'underdog_hit' ? (
+          <UnderdogHeroBody pick={pick} game={game} users={users} onUserTap={onUserTap} />
+        ) : (
+          <>
+            {(type === 'multiplier_hit' || type === 'multiplier_miss') && (
+              <MultiplierBanner pick={pick} isHit={type === 'multiplier_hit'} />
+            )}
 
-        {/* Sport tag */}
-        {game.sport_name && (
-          <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
-            {game.sport_name}
-          </span>
-        )}
-
-        {/* Matchup */}
-        <div className="text-sm text-text-secondary mt-0.5">
-          {game.away_team} @ {game.home_team}
-        </div>
-
-        {/* Pick details */}
-        <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm">{pick.picked_team_name}</span>
-            <span className="text-xs text-text-muted">{formatOdds(pick.odds_at_pick)}</span>
-            {type === 'pick' && pick.multiplier > 1 && (
-              <span className="text-[10px] font-bold text-accent px-1.5 py-0.5 rounded">
-                {pick.multiplier}x
+            {game.sport_name && (
+              <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+                {game.sport_name}
               </span>
             )}
-          </div>
-          <PickResult type={type} pick={pick} />
-        </div>
 
-        {/* Username list */}
-        <div className="mt-2 flex flex-wrap gap-x-1.5 text-xs text-text-muted">
-          {users.map((user, i) => (
-            <span key={user.userId}>
-              <button
-                onClick={() => onUserTap?.(user.userId)}
-                className="text-accent hover:underline"
-              >
-                {user.username}
-              </button>
-              {i < users.length - 1 && <span className="text-text-muted ml-0.5">&middot;</span>}
-            </span>
-          ))}
-        </div>
+            <div className="text-sm text-text-secondary mt-0.5">
+              {game.away_team} @ {game.home_team}
+            </div>
+
+            <div className="flex items-center justify-between mt-2">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-sm">{pick.picked_team_name}</span>
+                <span className="text-xs text-text-muted">{formatOdds(pick.odds_at_pick)}</span>
+                {type === 'pick' && pick.multiplier > 1 && (
+                  <span className="text-[10px] font-bold text-accent px-1.5 py-0.5 rounded">
+                    {pick.multiplier}x
+                  </span>
+                )}
+              </div>
+              <PickResult type={type} pick={pick} />
+            </div>
+
+            <div className="mt-2 flex flex-wrap gap-x-1.5 text-xs text-text-muted">
+              {users.map((user, i) => (
+                <span key={user.userId}>
+                  <button
+                    onClick={() => onUserTap?.(user.userId)}
+                    className="text-accent hover:underline"
+                  >
+                    {user.username}
+                  </button>
+                  {i < users.length - 1 && <span className="text-text-muted ml-0.5">&middot;</span>}
+                </span>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Footer: reactions + comments (on first pick's ID) */}
@@ -167,23 +168,72 @@ export default function GroupedPickFeedCard({ item, reactions, onUserTap }) {
   )
 }
 
-function UnderdogBanner({ odds }) {
-  const tier = getOddsTier(odds)
+// Hero body for grouped underdog_hit cards — mirrors the single-user
+// UnderdogHitFeedCard layout (pill on top → team logo → team name →
+// matchup + final score → W +N) so a squad's group card feels like a
+// group version of the same celebration, not a different card format.
+// The contributor username list replaces the single user's identity
+// (which is already shown in the shared header stack).
+function UnderdogHeroBody({ pick, game, users, onUserTap }) {
+  const tier = getOddsTier(pick.odds_at_pick)
+  const logoUrl = getTeamLogoUrl(pick.picked_team_name, game.sport_key)
+  const hasScore = game.home_score != null && game.away_score != null
+
+  const pillColorClasses = tier === 'marquee'
+    ? 'border-yellow-500/60 bg-yellow-500/10 text-yellow-400'
+    : 'border-correct/60 bg-correct/10 text-correct'
+
   return (
-    <div className={`mb-2 rounded-lg px-3 text-center border ${
-      tier === 'marquee'
-        ? 'bg-yellow-500/15 border-yellow-500/40 py-3'
-        : 'bg-correct/10 border-correct/30 py-2'
-    }`}>
-      <span className={`font-bold ${
-        tier === 'marquee'
-          ? 'text-yellow-400 text-lg'
-          : tier === 'bold'
-          ? 'text-correct text-base'
-          : 'text-correct text-sm'
-      }`}>
-        UNDERDOG HIT {formatOdds(odds)}
-      </span>
+    <div className="text-center">
+      <div className={`inline-flex flex-col items-center gap-1 px-6 py-3 rounded-xl border-2 mb-4 ${pillColorClasses}`}>
+        <span className="font-bold text-xl tracking-wider">UNDERDOG HIT</span>
+        <span className="text-sm font-semibold opacity-80">Odds: {formatOdds(pick.odds_at_pick)}</span>
+      </div>
+
+      {logoUrl && (
+        <img
+          src={logoUrl}
+          alt=""
+          className="w-28 h-28 mx-auto mb-4 object-contain"
+          onError={(e) => {
+            const fb = getTeamLogoFallbackUrl(pick.picked_team_name, game.sport_key)
+            if (fb && e.target.src !== fb) e.target.src = fb
+            else e.target.style.display = 'none'
+          }}
+        />
+      )}
+
+      <div className="font-display text-2xl text-text-primary">
+        {pick.picked_team_name}
+      </div>
+      <div className="text-sm text-text-secondary mt-1">
+        {game.sport_name && <span className="uppercase tracking-wider mr-2 text-text-muted">{game.sport_name}</span>}
+        {game.away_team} @ {game.home_team}
+      </div>
+
+      {hasScore && (
+        <div className="mt-2 text-sm font-semibold text-text-primary">
+          Final: {game.away_score}–{game.home_score}
+        </div>
+      )}
+
+      <div className="mt-4 font-display text-3xl font-bold text-correct">
+        W +{pick.points_earned}
+      </div>
+
+      <div className="mt-4 flex flex-wrap justify-center gap-x-1.5 text-xs text-text-muted">
+        {users.map((user, i) => (
+          <span key={user.userId}>
+            <button
+              onClick={() => onUserTap?.(user.userId)}
+              className="text-accent hover:underline"
+            >
+              {user.username}
+            </button>
+            {i < users.length - 1 && <span className="text-text-muted ml-0.5">&middot;</span>}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }
