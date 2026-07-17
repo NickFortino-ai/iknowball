@@ -55,14 +55,6 @@ export default function SurvivorView({ league }) {
   // Optimistic removal: the game_id of a pick the user just toggled off, so
   // the highlight clears immediately before the board refetch lands.
   const [localRemovedGameId, setLocalRemovedGameId] = useState(null)
-  // Explicit opt-in to pre-pick the next period. When false and the user
-  // has already settled the current-period pick, we show a completion
-  // state instead of silently auto-advancing to the next period's pick
-  // form (which felt premature — from the user's perspective the current
-  // day/week hasn't ended yet). When true, the pick form renders using
-  // board.pick_week (which the server already advanced). Applies to both
-  // daily and weekly frequencies; only the labels differ.
-  const [showPreNextDay, setShowPreNextDay] = useState(false)
   // Collapsed sport sub-sections for All-Sports survivor. Stored as
   // "${dateKey}|${sportKey}" so collapsing one sport on Mar 5 doesn't
   // collapse the same sport on Mar 6.
@@ -73,9 +65,8 @@ export default function SurvivorView({ league }) {
   const pickWeek = board?.pick_week || currentWeek
 
   // The TRUE current calendar day, before any server-side advance logic.
-  // Used to detect "user settled today's pick and server advanced pickWeek
-  // to tomorrow" — the state where we want the completion card + pre-pick
-  // opt-in, not the pick form.
+  // Used to hide today's games from the pick form once today's pick has
+  // left 'pending' — prevents accidental overwrites of a settled pick.
   const actualCurrentWeek = useMemo(() => {
     const weeks = board?.weeks || []
     if (!weeks.length) return null
@@ -83,20 +74,14 @@ export default function SurvivorView({ league }) {
     return weeks.find((w) => w.starts_at <= nowIso && w.ends_at >= nowIso) || null
   }, [board?.weeks])
 
-  // User's pick for today (not for pickWeek). If it's settled, we're in the
-  // "today's done — show completion" state.
+  // User's pick for the current wall-clock period. Only used for the
+  // "hide today's games once today's pick is locked/settled" filter below.
   const todayPick = useMemo(() => {
     if (!actualCurrentWeek?.id) return null
     const myEntry = board?.members?.find((m) => m.users?.id === currentUserId || m.user_id === currentUserId)
     return (myEntry?.picks || []).find((p) => p.league_week_id === actualCurrentWeek.id) || null
   }, [board?.members, currentUserId, actualCurrentWeek?.id])
 
-  const todayPickSettled = todayPick && todayPick.status !== 'pending' && todayPick.status !== 'locked'
-  // Server auto-advanced past today AND user hasn't opted into the next-day
-  // form yet → render completion instead of pick form.
-  const showTodayCompletion = todayPickSettled
-    && pickWeek?.id !== actualCurrentWeek?.id
-    && !showPreNextDay
   const usedTeamSet = useMemo(() => new Set(usedTeams || []), [usedTeams])
 
   // Build a map of game_id -> { team_name, league_week_id } for ALL of the
@@ -280,37 +265,14 @@ export default function SurvivorView({ league }) {
         </div>
       )}
 
-      {/* Current-period completion state. Shown when the user has settled
-          their pick for the actual current period (day or week) AND the
-          server has auto-advanced pickWeek to the next period AND the
-          user hasn't opted into pre-picking yet. Replaces the pick form
-          until the user either clicks the pre-pick button or the period
-          naturally advances. */}
-      {showTodayCompletion && !leagueCompleted && userIsAlive && (
-        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center relative z-10 max-w-md mx-auto">
-          <p className="text-sm text-text-primary font-semibold mb-1">
-            You've picked {isDaily ? 'today' : 'this week'} ✓
-          </p>
-          <p className="text-xs text-text-secondary mb-3">
-            {todayPick?.team_name}
-            {todayPick?.status === 'survived' ? ' — survived' : ''}
-            {todayPick?.status === 'survived_wrong' ? ' — pushed (everyone lost)' : ''}
-            {todayPick?.status === 'eliminated' ? ' — lost a life' : ''}
-          </p>
-          <button
-            onClick={() => { setShowPreNextDay(true); setShowPickForm(true) }}
-            className="px-6 py-2 rounded-xl font-display text-sm bg-accent/10 backdrop-blur-sm text-text-primary hover:bg-accent/20 border border-accent transition-colors"
-          >
-            {board.user_has_picked
-              ? `Edit ${periodLabel} ${board.pick_period_number || pickWeek?.week_number} Pick`
-              : `Make ${isDaily ? "tomorrow's" : "next week's"} pick →`}
-          </button>
-        </div>
-      )}
-
-      {/* Make pick button — only for alive users, and only when we're not in
-          the "already picked today" completion state. */}
-      {pickWeek && !leagueCompleted && userIsAlive && !showTodayCompletion && (
+      {/* Make/Edit pick button. Always shown for alive users when a
+          pickWeek exists. The label follows the server-computed pickWeek
+          (which advances past any pick that has left 'pending'), so:
+            no pick yet → 'Make Day N Pick'
+            pending pick → 'Edit Day N Pick' until it locks
+            pick locks / settles → server bumps pickWeek to the next
+              period and the button rewrites automatically */}
+      {pickWeek && !leagueCompleted && userIsAlive && (
         <div className="flex justify-center mb-4 relative z-10">
           <button
             onClick={() => setShowPickForm(!showPickForm)}
