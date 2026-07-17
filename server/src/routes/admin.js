@@ -7,7 +7,7 @@ import { syncOdds } from '../jobs/syncOdds.js'
 import { syncInjuries } from '../jobs/syncInjuries.js'
 import { scoreGames } from '../jobs/scoreGames.js'
 import { recalculateAllUserPoints } from '../services/scoringService.js'
-import { sendEmailBlast, sendTargetedEmail, sendTemplateBracketEmail, sendTestEmail } from '../services/emailService.js'
+import { sendEmailBlast, sendTargetedEmail, sendTemplateBracketEmail } from '../services/emailService.js'
 import {
   syncPropsForGame,
   getAllPropsForGame,
@@ -488,28 +488,6 @@ router.patch('/app-config', async (req, res) => {
     return res.status(500).json({ error: 'Failed to update config' })
   }
   res.json(data)
-})
-
-// Send a single test email to an arbitrary address. For deliverability
-// audits (mail-tester, one's own external inbox) that need to route
-// through the current SMTP provider — same pipe as the real bulk sends,
-// so the DKIM/SPF/DMARC result mirrors what real recipients will see.
-router.post('/email-test', requireFullAdmin, async (req, res) => {
-  const { subject, body, toEmail } = req.body
-  if (!subject || !body || !toEmail) {
-    return res.status(400).json({ error: 'subject, body, and toEmail are required' })
-  }
-  // Cheap sanity: must contain @ and a dot; the SMTP server will do
-  // the authoritative validation.
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail)) {
-    return res.status(400).json({ error: 'toEmail must be a valid email address' })
-  }
-  try {
-    const result = await sendTestEmail(subject, body, toEmail)
-    res.json(result)
-  } catch (err) {
-    res.status(500).json({ error: err.message || 'Failed to send test email' })
-  }
 })
 
 router.post('/email-blast', requireFullAdmin, async (req, res) => {

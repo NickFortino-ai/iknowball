@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSyncNflPlayers, useSyncNBASalaries, useSyncMLBSalaries, useSyncWNBASalaries, useSyncNFLSalaries, useEnrichEspnIds, useSyncWeeklyProjections, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useSendTestEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps, useAdminPendingCounts, useAdminLeagueSearch } from '../hooks/useAdmin'
+import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSyncNflPlayers, useSyncNBASalaries, useSyncMLBSalaries, useSyncWNBASalaries, useSyncNFLSalaries, useEnrichEspnIds, useSyncWeeklyProjections, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps, useAdminPendingCounts, useAdminLeagueSearch } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import { useSearchUsers } from '../hooks/useInvitations'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
@@ -80,8 +80,6 @@ export default function AdminPage() {
   const sendEmailBlast = useSendEmailBlast()
   const sendTargetedEmail = useSendTargetedEmail()
   const sendTemplateBracketEmail = useSendTemplateBracketEmail()
-  const sendTestEmail = useSendTestEmail()
-  const [testEmailAddress, setTestEmailAddress] = useState('')
   const { data: emailTemplates } = useBracketTemplates()
   const { data: templateUserCount } = useBracketTemplateUserCount(selectedTemplateId)
   const { data: emailLogs } = useEmailLogs()
@@ -308,42 +306,6 @@ export default function AdminPage() {
           <p className="text-text-muted text-sm mb-4">
             From: admin@iknowball.club
           </p>
-          {/* Deliverability test: send the current draft to any address
-              (mail-tester, personal inbox on Yahoo/Outlook, etc.) via
-              the same SMTP pipe as real sends. Uses whatever's currently
-              in Subject + Body — fill those in first, then send test. */}
-          <div className="mb-4 p-3 rounded-lg border border-border bg-bg-primary/40">
-            <div className="text-xs uppercase tracking-wider text-text-muted mb-2">Send Test (deliverability check)</div>
-            <div className="flex flex-col md:flex-row gap-2">
-              <input
-                type="email"
-                placeholder="test-abc@srv1.mail-tester.com"
-                value={testEmailAddress}
-                onChange={(e) => setTestEmailAddress(e.target.value)}
-                className="flex-1 bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
-              />
-              <button
-                onClick={async () => {
-                  const address = testEmailAddress.trim()
-                  if (!address) return
-                  if (!emailSubject.trim() || !emailBody.trim()) {
-                    toast('Fill in Subject + Body first (the test uses the current draft)', 'error')
-                    return
-                  }
-                  try {
-                    await sendTestEmail.mutateAsync({ subject: emailSubject, body: emailBody, toEmail: address })
-                    toast(`Test sent to ${address}`, 'success')
-                  } catch (err) {
-                    toast(err.message || 'Test send failed', 'error')
-                  }
-                }}
-                disabled={sendTestEmail.isPending || !testEmailAddress.trim()}
-                className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold disabled:opacity-50 hover:bg-accent-hover transition-colors whitespace-nowrap"
-              >
-                {sendTestEmail.isPending ? 'Sending…' : 'Send Test'}
-              </button>
-            </div>
-          </div>
           <div className="space-y-4">
             <div className="flex bg-bg-primary rounded-lg border border-border p-1">
               {[
