@@ -121,7 +121,7 @@ export default function SavedRankings({ activeScoringFormat, activeConfigHash, o
   ).length
 
   return (
-    <div className="rounded-xl border border-text-primary/20 bg-bg-primary/15 backdrop-blur-md">
+    <div className="relative z-30 rounded-xl border border-text-primary/20 bg-bg-primary/15 backdrop-blur-md">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-bg-primary/10 transition-colors"
