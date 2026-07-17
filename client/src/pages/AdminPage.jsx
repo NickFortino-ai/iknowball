@@ -18,6 +18,7 @@ import MlbSalariesEditor from '../components/admin/MlbSalariesEditor'
 import PlayerBlurbsPanel from '../components/admin/PlayerBlurbsPanel'
 import AdminToolsPanel from '../components/admin/AdminToolsPanel'
 import DashboardPanel from '../components/admin/DashboardPanel'
+import RichEmailEditor from '../components/admin/RichEmailEditor'
 import SeasonDatesPanel from '../components/admin/SeasonDatesPanel'
 import UserSurveysPanel from '../components/admin/UserSurveysPanel'
 import AppConfigPanel from '../components/admin/AppConfigPanel'
@@ -457,7 +458,7 @@ export default function AdminPage() {
                                   ? `https://iknowball.club/join/${league.invite_code}`
                                   : `https://iknowball.club/leagues/${league.id}`
                                 const link = `<a href="${url}" style="display:inline-block;background:#f97316;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">Join ${league.name}</a>`
-                                setEmailBody((prev) => prev ? `${prev}\n\n${link}` : link)
+                                setEmailBody((prev) => prev ? `${prev}<p>${link}</p>` : `<p>${link}</p>`)
                                 setShowLeagueSearch(false)
                                 setLeagueSearch('')
                                 toast.success(`Link to "${league.name}" inserted`)
@@ -480,13 +481,13 @@ export default function AdminPage() {
                   )}
                 </div>
               </div>
-              <textarea
-                value={emailBody}
-                onChange={(e) => setEmailBody(e.target.value)}
-                placeholder="Write your email here... HTML tags like <b>, <a>, <p> are supported."
-                rows={10}
-                className="w-full bg-bg-primary border border-border rounded-lg px-4 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent resize-y"
-              />
+              <div className="bg-bg-primary border border-border rounded-lg px-3 py-2 focus-within:border-accent">
+                <RichEmailEditor
+                  value={emailBody}
+                  onChange={setEmailBody}
+                  placeholder="Write your email here… Paste from Google Docs or Notion — formatting is preserved."
+                />
+              </div>
             </div>
             {/* Schedule toggle */}
             <div className="flex items-center gap-3">
