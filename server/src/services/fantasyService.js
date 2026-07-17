@@ -404,11 +404,13 @@ export async function updateFantasySettings(leagueId, updates) {
     }
   }
   const draftDone = current?.draft_status === 'completed'
+  const draftLive = current?.draft_status === 'in_progress'
 
-  if (draftDone) {
+  if (draftDone || draftLive) {
     const blocked = Object.keys(updates).filter((k) => PRESEASON_ONLY_FIELDS.has(k))
     if (blocked.length) {
-      const err = new Error(`Cannot change ${blocked.join(', ')} after the draft has completed`)
+      const when = draftDone ? 'after the draft has completed' : 'while the draft is in progress'
+      const err = new Error(`Cannot change ${blocked.join(', ')} ${when}`)
       err.status = 400
       throw err
     }
@@ -1211,6 +1213,88 @@ export async function autoDraftPick(leagueId, userId) {
 
   const drafted = new Set((draftedIds || []).map((d) => d.player_id))
 
+  // Compute the user's current roster (position counts) + total rounds
+  // so autodraft respects position caps and force-fills required starter
+  // slots (K/DEF) in the final rounds. Human drafters can skip slots
+  // deliberately; an autodrafted team should end up with a legal roster.
+  const settings = await getFantasySettings(leagueId)
+  const rosterSlots = settings?.roster_slots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6 }
+  const totalRounds = Object.entries(rosterSlots).reduce((sum, [k, v]) => sum + (k === 'ir' ? 0 : (v || 0)), 0)
+
+  const { data: userPickRows } = await supabase
+    .from('fantasy_draft_picks')
+    .select('nfl_players(position)')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .not('player_id', 'is', null)
+
+  const have = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DEF: 0, DL: 0, LB: 0, DB: 0, S: 0 }
+  for (const p of userPickRows || []) {
+    const pos = p.nfl_players?.position
+    if (pos && have[pos] != null) have[pos] += 1
+  }
+  const userPicksMade = userPickRows?.length || 0
+  const roundsRemaining = totalRounds - userPicksMade
+
+  // Position caps — mirrors the mock-draft heuristic: starters + flex
+  // overflow + a small buffer for depth. Beyond this, autodraft won't
+  // hoard a position it can't use.
+  const flex = rosterSlots.flex || 0
+  const maxByPos = {
+    QB: (rosterSlots.qb || 0) + 1 + (rosterSlots.superflex || 0),
+    RB: (rosterSlots.rb || 0) + flex + 2,
+    WR: (rosterSlots.wr || 0) + flex + 2,
+    TE: (rosterSlots.te || 0) + flex + 1,
+    K: (rosterSlots.k || 0),
+    DEF: (rosterSlots.def || 0),
+    DL: (rosterSlots.dl || 0) + 1,
+    LB: (rosterSlots.lb || 0) + 1,
+    DB: (rosterSlots.db || 0) + 1,
+    S: (rosterSlots.s || 0) + 1,
+  }
+
+  // K/DEF forcing: if remaining rounds equal or fewer than unfilled
+  // required K/DEF slots, we MUST pick those next. Prevents autodraft
+  // from ending with an empty K or DEF slot.
+  const needK = Math.max(0, (rosterSlots.k || 0) - have.K)
+  const needD = Math.max(0, (rosterSlots.def || 0) - have.DEF)
+  const kdefForced = roundsRemaining <= (needK + needD) && (needK > 0 || needD > 0)
+
+  // Helper: is this position still eligible for this user?
+  function isEligible(pos) {
+    if (!pos) return true
+    if ((have[pos] || 0) >= (maxByPos[pos] || 0)) return false
+    // Delay K/DEF unless forced (mock-draft logic: no K/DEF before final rounds)
+    const roundNum = userPicksMade + 1
+    if (!kdefForced && (pos === 'K' || pos === 'DEF') && roundNum < 11) return false
+    return true
+  }
+
+  // Given a list of candidate player IDs, filter to eligible ones by
+  // fetching their positions and applying isEligible + drafted checks.
+  async function firstEligible(candidateIds) {
+    if (!candidateIds?.length) return null
+    const undrafted = candidateIds.filter((id) => !drafted.has(id))
+    if (!undrafted.length) return null
+    // Fetch positions for the candidates. Preserve the input order.
+    const { data: rows } = await supabase
+      .from('nfl_players')
+      .select('id, position')
+      .in('id', undrafted)
+    const posById = {}
+    for (const r of rows || []) posById[r.id] = r.position
+    // If K/DEF is forced, only return K or DEF candidates.
+    for (const id of undrafted) {
+      const pos = posById[id]
+      if (kdefForced) {
+        if ((needK > 0 && pos === 'K') || (needD > 0 && pos === 'DEF')) return id
+        continue
+      }
+      if (isEligible(pos)) return id
+    }
+    return null
+  }
+
   // 1. Try the user's in-room draft queue first
   const { data: queueRows } = await supabase
     .from('fantasy_draft_queues')
@@ -1218,19 +1302,12 @@ export async function autoDraftPick(leagueId, userId) {
     .eq('league_id', leagueId)
     .eq('user_id', userId)
     .order('rank', { ascending: true })
-
-  let pick = null
-  for (const q of queueRows || []) {
-    if (!drafted.has(q.player_id)) {
-      pick = { id: q.player_id }
-      break
-    }
-  }
+  let pickId = await firstEligible((queueRows || []).map((q) => q.player_id))
 
   // 2. Fallback: best available from the user's big-board rankings.
   //    If the league is synced to Draft Prep, the rankings live in
   //    draft_prep_rankings — same branch logic getMyRankings uses.
-  if (!pick) {
+  if (!pickId) {
     const syncInfo = await getLeagueSyncInfo(leagueId, userId)
     let rankingRows = null
     if (syncInfo.isSynced) {
@@ -1251,32 +1328,40 @@ export async function autoDraftPick(leagueId, userId) {
         .order('rank', { ascending: true })
       rankingRows = data
     }
-    for (const r of rankingRows || []) {
-      if (!drafted.has(r.player_id)) {
-        pick = { id: r.player_id }
-        break
-      }
-    }
+    pickId = await firstEligible((rankingRows || []).map((r) => r.player_id))
   }
 
-  // 3. Fallback: best available by Sleeper search_rank (league-wide ADP)
-  if (!pick) {
+  // 3. Fallback: best available by Sleeper search_rank (league-wide ADP).
+  //    Filter positions server-side too when K/DEF is forced.
+  if (!pickId) {
+    let positionFilter = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+    if (kdefForced) {
+      positionFilter = []
+      if (needK > 0) positionFilter.push('K')
+      if (needD > 0) positionFilter.push('DEF')
+    }
     const { data: bestAvailable } = await supabase
       .from('nfl_players')
-      .select('id')
-      .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
+      .select('id, position')
+      .in('position', positionFilter)
       .not('team', 'is', null)
       .order('search_rank', { ascending: true })
       .limit(300)
-    pick = (bestAvailable || []).find((p) => !drafted.has(p.id))
+    for (const p of bestAvailable || []) {
+      if (drafted.has(p.id)) continue
+      if (!kdefForced && !isEligible(p.position)) continue
+      pickId = p.id
+      break
+    }
   }
-  if (!pick) {
+
+  if (!pickId) {
     logger.warn({ leagueId, userId }, 'No available players for auto-pick')
     return null
   }
 
   // Use makeDraftPick but mark as auto
-  const result = await makeDraftPick(leagueId, userId, pick.id)
+  const result = await makeDraftPick(leagueId, userId, pickId)
 
   // Mark as auto-pick
   await supabase
