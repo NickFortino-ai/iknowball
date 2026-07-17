@@ -457,6 +457,27 @@ export async function sendAdminEmail(subject, body) {
   return { sent, total: admins.length }
 }
 
+// Send a one-off email to an arbitrary address for deliverability tests
+// (mail-tester, one's own external inbox, etc.). Uses the same transport
+// as all the other admin sends, so this is the authoritative way to
+// verify that DKIM/SPF alignment through the current SMTP provider is
+// actually working. No unsubscribe footer / list headers — this isn't
+// a bulk send.
+export async function sendTestEmail(subject, body, toEmail) {
+  const transport = getTransporter()
+  const from = env.SMTP_FROM_NAME
+    ? `"${env.SMTP_FROM_NAME}" <${env.SMTP_FROM}>`
+    : `"I KNOW BALL" <${env.SMTP_FROM}>`
+  await transport.sendMail({
+    from,
+    to: toEmail,
+    subject,
+    html: body,
+    text: body.replace(/<[^>]+>/g, ''),
+  })
+  return { sent: 1, to: toEmail }
+}
+
 export async function unsubscribeUser(userId) {
   const { error } = await supabase
     .from('users')

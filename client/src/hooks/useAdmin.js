@@ -309,6 +309,13 @@ export function useSendTargetedEmail() {
   })
 }
 
+export function useSendTestEmail() {
+  return useMutation({
+    mutationFn: ({ subject, body, toEmail }) =>
+      api.post('/admin/email-test', { subject, body, toEmail }),
+  })
+}
+
 export function useEmailLogs() {
   return useQuery({
     queryKey: ['admin', 'email-logs'],
