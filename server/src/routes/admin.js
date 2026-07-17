@@ -698,12 +698,14 @@ router.post('/games/override', async (req, res) => {
 
   logger.info({ game_id, update, admin: req.user.id }, 'Admin game status override')
 
-  // If the override is flipping the game to final with a winner, mirror
-  // the downstream-scoring chain that scoreGames runs after a normal
+  // If the override is flipping the game to final, mirror the
+  // downstream-scoring chain that scoreGames runs after a normal
   // finalization. Without this, a stuck-postponed game corrected via
   // override leaves survivor / pickem / parlay / bracket picks unsettled.
+  // Fires even when winner is null (draw) — every downstream scorer
+  // handles the null-winner push convention (all locked picks survive).
   const downstreamRan = { picks: false, parlays: false, survivor: false, leaguePicks: false, bracket: false }
-  if (status === 'final' && winner) {
+  if (status === 'final') {
     try {
       const { scoreCompletedGame, scoreParlayLegs } = await import('../services/scoringService.js')
       const { scoreSurvivorPicks } = await import('../services/survivorService.js')
