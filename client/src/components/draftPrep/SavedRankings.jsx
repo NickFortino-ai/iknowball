@@ -52,20 +52,18 @@ export default function SavedRankings({ activeScoringFormat, activeConfigHash, o
   const [editName, setEditName] = useState('')
   const inputRef = useRef(null)
 
-  // Close menu / edit on click outside
+  // Close the ⋯ menu on click outside. NOT the inline-edit input — that
+  // one uses its own onBlur to save on click-out, so we don't want to
+  // race with it here.
   useEffect(() => {
-    if (!menuKey && !editKey) return
+    if (!menuKey) return
     function onDocClick(e) {
       if (e.target.closest('[data-savedranking-row]')) return
       setMenuKey(null)
-      if (editKey) {
-        setEditKey(null)
-        setEditName('')
-      }
     }
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
-  }, [menuKey, editKey])
+  }, [menuKey])
 
   useEffect(() => {
     if (editKey && inputRef.current) inputRef.current.select()
