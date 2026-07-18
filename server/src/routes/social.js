@@ -19,6 +19,13 @@ import { fetchAll } from '../utils/fetchAll.js'
 
 const router = Router()
 
+// A single non-UUID value in a batch (undefined pick id from a stale client
+// cache, JSON-stringified as null, etc.) makes PostgREST reject the whole
+// `.in()` query with 400. Filter defensively so one bad id never poisons
+// the batch.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const filterUuids = (arr) => (Array.isArray(arr) ? arr.filter((v) => typeof v === 'string' && UUID_RE.test(v)) : [])
+
 const reactionSchema = z.object({
   reaction_type: z.enum(['fire', 'clown', 'goat', 'dead', 'clap', 'ice']),
 })
@@ -34,7 +41,7 @@ router.get('/picks/:pickId/reactions', requireAuth, async (req, res) => {
 })
 
 router.get('/picks/reactions/batch', requireAuth, async (req, res) => {
-  const pickIds = req.query.pickIds ? req.query.pickIds.split(',') : []
+  const pickIds = filterUuids(req.query.pickIds ? req.query.pickIds.split(',') : [])
   const reactions = await getReactionsForPicks(pickIds)
   res.json(reactions)
 })
@@ -42,7 +49,7 @@ router.get('/picks/reactions/batch', requireAuth, async (req, res) => {
 // POST variant — query strings choke once you have ~100 UUIDs (each 36
 // chars + comma puts the URL well past most server / proxy limits).
 router.post('/picks/reactions/batch', requireAuth, async (req, res) => {
-  const pickIds = Array.isArray(req.body?.pickIds) ? req.body.pickIds : []
+  const pickIds = filterUuids(req.body?.pickIds)
   const reactions = await getReactionsForPicks(pickIds)
   res.json(reactions)
 })
@@ -188,18 +195,31 @@ router.post('/feed/reactions', requireAuth, validate(feedReactionSchema), async 
   res.json(result)
 })
 
+// Same defensive filter as picks/reactions/batch: drop items whose
+// target_id isn't a well-formed UUID before they hit PostgREST.
+const filterFeedItems = (arr) =>
+  Array.isArray(arr)
+    ? arr.filter(
+        (i) =>
+          i &&
+          typeof i.target_type === 'string' &&
+          i.target_type.length > 0 &&
+          typeof i.target_id === 'string' &&
+          UUID_RE.test(i.target_id)
+      )
+    : []
+
 router.get('/feed/reactions/batch', requireAuth, async (req, res) => {
   let items = []
   try {
     items = JSON.parse(req.query.items || '[]')
   } catch (_) { /* ignore parse errors */ }
-  const reactions = await getFeedReactionsBatch(items)
+  const reactions = await getFeedReactionsBatch(filterFeedItems(items))
   res.json(reactions)
 })
 
 router.post('/feed/reactions/batch', requireAuth, async (req, res) => {
-  const items = Array.isArray(req.body?.items) ? req.body.items : []
-  const reactions = await getFeedReactionsBatch(items)
+  const reactions = await getFeedReactionsBatch(filterFeedItems(req.body?.items))
   res.json(reactions)
 })
 

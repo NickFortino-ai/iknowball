@@ -307,6 +307,34 @@ export async function upsertPlayerStats(playerStats, date, season) {
     }
   })
 
+  // Doubleheader dedupe: when a team plays two games same date, a player
+  // shows up twice with the same (espn_player_id, game_date, season)
+  // conflict key. Postgres refuses to update the same target row twice
+  // in one upsert, so the whole chunk 400s and we fall back to per-row
+  // (which then silently overwrites game 1 with game 2). Merge the two
+  // rows into a single summed row so both games' production counts.
+  const SUMMABLE = [
+    'at_bats','hits','runs','home_runs','rbis','stolen_bases','walks','strikeouts',
+    'doubles','triples','total_bases',
+    'innings_pitched','hits_allowed','earned_runs','wins','losses','saves',
+  ]
+  const byKey = new Map()
+  let dupeCount = 0
+  for (const row of rows) {
+    const key = `${row.espn_player_id}|${row.game_date}|${row.season}`
+    const existing = byKey.get(key)
+    if (!existing) {
+      byKey.set(key, row)
+      continue
+    }
+    dupeCount++
+    for (const k of SUMMABLE) existing[k] = (existing[k] || 0) + (row[k] || 0)
+    existing.fantasy_points = calculateMLBFantasyPoints(existing)
+    existing.updated_at = row.updated_at
+  }
+  if (dupeCount) logger.info({ dupeCount, date }, 'MLB stat dedupe merged doubleheader rows')
+  const dedupedRows = Array.from(byKey.values())
+
   // Try a chunked upsert first for speed. If it fails (typically a
   // single bad row poisoning the whole chunk via duplicate conflict
   // key or constraint violation), fall back to per-row so the good
@@ -314,8 +342,8 @@ export async function upsertPlayerStats(playerStats, date, season) {
   // this fallback a single bad row silently strands the entire late
   // half of a daily slate.
   const CHUNK = 100
-  for (let i = 0; i < rows.length; i += CHUNK) {
-    const chunk = rows.slice(i, i + CHUNK)
+  for (let i = 0; i < dedupedRows.length; i += CHUNK) {
+    const chunk = dedupedRows.slice(i, i + CHUNK)
     const { error } = await supabase
       .from('mlb_dfs_player_stats')
       .upsert(chunk, { onConflict: 'espn_player_id,game_date,season' })
@@ -334,7 +362,7 @@ export async function upsertPlayerStats(playerStats, date, season) {
     }
   }
 
-  logger.info({ count: rows.length, date }, 'Upserted MLB DFS player stats')
+  logger.info({ count: dedupedRows.length, date }, 'Upserted MLB DFS player stats')
 }
 
 /**
