@@ -304,7 +304,11 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
     const loaded = {}
     for (const slot of existingRoster.mlb_dfs_roster_slots) {
       const player = players?.find((p) => p.espn_player_id === slot.espn_player_id)
-      if (player) loaded[slot.roster_slot] = player
+      // Preserve the at-pick-time salary from the saved slot instead of the
+      // fresh market salary, which drifts intraday. Without this the roster
+      // page shows over-cap when any player's price bumps up post-lock even
+      // though the stored roster is fine.
+      if (player) loaded[slot.roster_slot] = { ...player, salary: slot.salary }
     }
     if (Object.keys(loaded).length) {
       setRoster(loaded)
@@ -513,8 +517,11 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
           </div>
           {SLOTS.map((slot) => {
             const rosterPlayer = roster[slot.key]
-            // Refresh injury status from latest players data
-            const player = rosterPlayer ? (players?.find((p) => p.espn_player_id === rosterPlayer.espn_player_id) || rosterPlayer) : null
+            // Refresh injury status / headshot from latest players data, but
+            // preserve the at-pick-time salary from rosterPlayer so the
+            // salary cap display stays consistent with what was actually spent.
+            const freshPlayer = rosterPlayer ? players?.find((p) => p.espn_player_id === rosterPlayer.espn_player_id) : null
+            const player = freshPlayer ? { ...freshPlayer, salary: rosterPlayer.salary } : rosterPlayer
             const gameState = player ? getPlayerGameState(player) : null
             const isLocked = gameState === 'live' || gameState === 'final'
             return (

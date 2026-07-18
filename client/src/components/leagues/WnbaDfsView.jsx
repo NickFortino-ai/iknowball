@@ -567,7 +567,8 @@ export default function WnbaDfsView({ league, tab = 'roster' }) {
     const loaded = {}
     for (const slot of existingRoster.wnba_dfs_roster_slots) {
       const player = players?.find((p) => p.espn_player_id === slot.espn_player_id)
-      if (player) loaded[slot.roster_slot] = player
+      // Preserve at-pick-time salary — see MlbDfsView for the same fix.
+      if (player) loaded[slot.roster_slot] = { ...player, salary: slot.salary }
     }
     if (Object.keys(loaded).length) {
       setRoster(loaded)
@@ -757,8 +758,10 @@ export default function WnbaDfsView({ league, tab = 'roster' }) {
         </div>
         {SLOTS.map((slot) => {
           const rosterPlayer = roster[slot.key]
-          // Refresh injury status from latest players data
-          const player = rosterPlayer ? (players?.find((p) => p.espn_player_id === rosterPlayer.espn_player_id) || rosterPlayer) : null
+          // Refresh injury status from latest players data, but preserve
+          // the at-pick-time salary — see MlbDfsView for the full rationale.
+          const freshPlayer = rosterPlayer ? players?.find((p) => p.espn_player_id === rosterPlayer.espn_player_id) : null
+          const player = freshPlayer ? { ...freshPlayer, salary: rosterPlayer.salary } : rosterPlayer
           const gameState = player ? getPlayerGameState(player) : null
           const isLocked = gameState === 'live' || gameState === 'final'
           const savedSlot = existingRoster?.wnba_dfs_roster_slots?.find((s) => s.roster_slot === slot.key)
