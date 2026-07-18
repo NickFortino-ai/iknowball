@@ -48,17 +48,31 @@ async function syncSportLiveScores(sportKey) {
     .gte('starts_at', sixHoursAgo.toISOString())
     .lte('starts_at', now.toISOString())
 
-  if (liveCount === 0 && recentCount === 0) {
+  // Recently-postponed games are a resume candidate too — a rain delay
+  // can be reported as postponed by ESPN and then flip back to in-progress
+  // once play resumes. Without this the row stays stuck at whatever score
+  // it had when the delay hit. Same 6h window as recent 'upcoming'.
+  const { count: postponedCount } = await supabase
+    .from('games')
+    .select('id', { count: 'exact', head: true })
+    .eq('sport_id', sport.id)
+    .eq('status', 'postponed')
+    .gte('starts_at', sixHoursAgo.toISOString())
+    .lte('starts_at', now.toISOString())
+
+  if (liveCount === 0 && recentCount === 0 && postponedCount === 0) {
     logger.debug({ sportKey }, 'No live or recently started games, skipping ESPN fetch')
     return 0
   }
 
-  // Fetch games that could need live score updates
+  // Fetch games that could need live score updates. Include 'postponed' so
+  // rain-delayed games get re-checked and flip back to 'live' once ESPN
+  // reports state='in' again.
   const { data: games } = await supabase
     .from('games')
     .select('*')
     .eq('sport_id', sport.id)
-    .in('status', ['upcoming', 'live'])
+    .in('status', ['upcoming', 'live', 'postponed'])
     .gte('starts_at', sixHoursAgo.toISOString())
     .lte('starts_at', new Date(now.getTime() + 1 * 60 * 60 * 1000).toISOString())
 
