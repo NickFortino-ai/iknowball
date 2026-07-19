@@ -5,10 +5,16 @@ import { useEffect, useRef } from 'react'
 // user-supplied HTML — the iframe / blockquote is reconstructed from
 // scratch from provider-specific templates the server can't influence.
 //
-// YouTube uses youtube-nocookie so no third-party JS or tracking loads
-// until the user actually plays the video. X requires their widgets.js
-// script which we lazy-load exactly once and call widgets.load() on any
-// newly-mounted blockquote.
+// YouTube uses youtube.com/embed rather than youtube-nocookie because
+// the -nocookie domain is stricter about parent-window origin
+// verification and rejects Capacitor WebViews (origin is
+// capacitor://localhost on iOS, http://localhost on Android) with
+// "Error 153: Video player configuration error." youtube.com works
+// in both WebViews and desktop browsers. playsinline=1 keeps the
+// video in the card on iOS (default fullscreen otherwise); rel=0
+// hides most related-video overlays.
+// X requires their widgets.js script which we lazy-load exactly once
+// and call widgets.load() on any newly-mounted blockquote.
 
 let twitterScriptPromise = null
 function loadTwitterScript() {
@@ -45,7 +51,7 @@ export default function PostEmbed({ provider, refId }) {
     return (
       <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black mt-2">
         <iframe
-          src={`https://www.youtube-nocookie.com/embed/${refId}`}
+          src={`https://www.youtube.com/embed/${refId}?playsinline=1&rel=0`}
           className="absolute inset-0 w-full h-full border-0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
