@@ -117,7 +117,11 @@ export default function LinkPreview({ url }) {
           style={isShort ? { aspectRatio: '9/16' } : { paddingBottom: '56.25%' }}
         >
           <iframe
-            src={`https://www.youtube.com/embed/${data.youtubeVideoId}?autoplay=1&mute=1`}
+            // playsinline=1 is required for iOS WebView — without it, autoplay
+            // attempts throw YouTube's Error 153 "configuration error" instead
+            // of rendering the player. rel=0 hides most related-video overlays.
+            // Same fix as PostEmbed.
+            src={`https://www.youtube.com/embed/${data.youtubeVideoId}?autoplay=1&mute=1&playsinline=1&rel=0`}
             title={data.title || 'YouTube video'}
             className={isShort ? 'w-full h-full' : 'absolute inset-0 w-full h-full'}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

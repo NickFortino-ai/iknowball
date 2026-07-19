@@ -19,7 +19,10 @@ export default function RichContent({ text, className }) {
           <div key={i} className="mt-2 mb-1" onClick={(e) => e.stopPropagation()}>
             <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingBottom: '56.25%' }}>
               <iframe
-                src={`https://www.youtube.com/embed/${seg.videoId}?autoplay=1&mute=1`}
+                // playsinline=1 required for iOS WebView — see LinkPreview for
+                // the full context. Autoplay attempts without it throw YouTube
+                // Error 153 in Capacitor.
+                src={`https://www.youtube.com/embed/${seg.videoId}?autoplay=1&mute=1&playsinline=1&rel=0`}
                 title="YouTube video"
                 className="absolute inset-0 w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
