@@ -138,7 +138,11 @@ const SPORT_TEAMS = {
   ],
   'baseball/mlb': [
     'ari', 'atl', 'bal', 'bos', 'chc', 'chw', 'cin', 'cle', 'col', 'det',
-    'hou', 'kc', 'laa', 'lad', 'mia', 'mil', 'min', 'nym', 'nyy', 'oak',
+    'hou', 'kc', 'laa', 'lad', 'mia', 'mil', 'min', 'nym', 'nyy',
+    // 2025 rebrand: dropped 'Oakland', now just 'Athletics'. ESPN's
+    // roster URL flipped from /teams/oak to /teams/ath. Keep both so
+    // whichever ESPN accepts fills the cache; the other 404s silently.
+    'oak', 'ath',
     'phi', 'pit', 'sd', 'sf', 'sea', 'stl', 'tb', 'tex', 'tor', 'wsh',
   ],
   // WNBA — keyed by ESPN team IDs (from espnTeamMap.js) rather than
