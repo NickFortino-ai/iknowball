@@ -2232,8 +2232,15 @@ export default function LeagueDetailPage() {
         const mc = league.members?.length || 0
         const sport = league.sport
         const lid = league.id
+        // Keep in sync with TrophyCase.getTrophyImage — sport-specific
+        // large trophies land here for 12+ member leagues. Missing soccer
+        // meant the FIFA-style trophy in the trophy case didn't match the
+        // celebration card, which fell through to the basketball default.
         const trophySrc = mc >= 14
-          ? (['americanfootball_nfl', 'americanfootball_ncaaf'].includes(sport) ? '/trophies/large-football.webp' : ['baseball_mlb'].includes(sport) ? '/trophies/large-baseball.webp' : '/trophies/large-basketball.webp')
+          ? (['americanfootball_nfl', 'americanfootball_ncaaf'].includes(sport) ? '/trophies/large-football.webp'
+              : ['baseball_mlb'].includes(sport) ? '/trophies/large-baseball.webp'
+              : ['soccer_world_cup'].includes(sport) ? '/trophies/large-soccer.webp'
+              : '/trophies/large-basketball.webp')
           : mc >= 9 ? `/trophies/medium-${(Math.abs([...lid].reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0)) % 3) + 1}.webp`
           : mc >= 5 ? `/trophies/small-${(Math.abs([...lid].reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0)) % 3) + 1}.webp`
           : `/trophies/medal-${(Math.abs([...lid].reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0)) % 3) + 1}.webp`
