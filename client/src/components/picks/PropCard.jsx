@@ -104,10 +104,19 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
             />
           </button>
         ) : (
-          // Placeholder so the card layout stays consistent when the
-          // headshot lookup whiffed (e.g. recent call-up not yet in
-          // the ESPN roster cache or the DFS salary salary table).
-          <div className="shrink-0 w-20 h-20 rounded-full bg-bg-secondary" />
+          // Fallback initials when the headshot lookup whiffed (recent
+          // call-up not yet in the ESPN roster cache or the DFS salary
+          // table). Blank circle looks broken; initials at least anchor
+          // the card visually.
+          <div className="shrink-0 w-20 h-20 rounded-full bg-bg-secondary flex items-center justify-center text-text-muted font-bold text-lg">
+            {(prop.player_name || '')
+              .split(/\s+/)
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((n) => n[0])
+              .join('')
+              .toUpperCase()}
+          </div>
         )}
         <div className="flex gap-2 flex-1">
           <button
