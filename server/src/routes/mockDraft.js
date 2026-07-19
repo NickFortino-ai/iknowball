@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../config/supabase.js'
 import { getDraftPlayerDetail } from '../services/fantasyService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 const router = Router()
 
@@ -20,14 +21,18 @@ router.get('/players', requireAuth, async (req, res) => {
   // Parallel queries so DEFs and Ks are each guaranteed in the pool — both
   // typically have null ADPs (default to 9999), so they'd sink past the
   // offensive slice cutoff if grouped with skill positions.
-  const [offensiveResult, kickerResult, defResult] = await Promise.all([
-    supabase
-      .from('nfl_players')
-      .select(SELECT)
-      .in('position', ['QB', 'RB', 'WR', 'TE'])
-      .not('team', 'is', null)
-      .order('search_rank', { ascending: true, nullsFirst: false })
-      .limit(800),
+  // Offensive uses fetchAll (no cap) so deep-league mock drafts (20-team
+  // superflex with 20-round rosters can want 400+ offensive picks) never
+  // clip a real on-team player. Payload is ~1000 offensive + ~50 K + 32 DEF.
+  const [offensiveRows, kickerResult, defResult] = await Promise.all([
+    fetchAll(
+      supabase
+        .from('nfl_players')
+        .select(SELECT)
+        .in('position', ['QB', 'RB', 'WR', 'TE'])
+        .not('team', 'is', null)
+        .order('search_rank', { ascending: true, nullsFirst: false })
+    ),
     supabase
       .from('nfl_players')
       .select(SELECT)
@@ -40,21 +45,19 @@ router.get('/players', requireAuth, async (req, res) => {
       .not('team', 'is', null),
   ])
 
-  if (offensiveResult.error) return res.status(500).json({ error: offensiveResult.error.message })
   if (kickerResult.error) return res.status(500).json({ error: kickerResult.error.message })
   if (defResult.error) return res.status(500).json({ error: defResult.error.message })
 
   // Composite ADP score: prefer adp_half_ppr → adp_ppr → search_rank
-  // (lower is better in all three). Sort offensive skill players by ADP and
-  // take top 400 — enough to cover 20-team leagues with deep benches or
-  // superflex depth. K + DEF are always appended below regardless.
-  const offensiveSorted = (offensiveResult.data || [])
+  // (lower is better in all three). Sort offensive skill players by ADP.
+  // No .slice() — return the full offensive pool so deep leagues have
+  // headroom and the client can render/filter as needed.
+  const offensiveSorted = offensiveRows
     .map((p) => ({
       ...p,
       _adp: p.adp_half_ppr ?? p.adp_ppr ?? p.search_rank ?? 9999,
     }))
     .sort((a, b) => a._adp - b._adp)
-    .slice(0, 400)
 
   const kickers = (kickerResult.data || [])
     .map((p) => ({
