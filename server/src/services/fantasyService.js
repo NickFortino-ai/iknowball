@@ -1340,13 +1340,17 @@ export async function autoDraftPick(leagueId, userId) {
       if (needK > 0) positionFilter.push('K')
       if (needD > 0) positionFilter.push('DEF')
     }
-    const { data: bestAvailable } = await supabase
-      .from('nfl_players')
-      .select('id, position')
-      .in('position', positionFilter)
-      .not('team', 'is', null)
-      .order('search_rank', { ascending: true })
-      .limit(300)
+    // No .limit(): matches searchAvailablePlayers/getAdpList depth so a
+    // late-round autopick in a deep league never falls off the end of a
+    // 300-cap and returns null.
+    const bestAvailable = await fetchAll(
+      supabase
+        .from('nfl_players')
+        .select('id, position')
+        .in('position', positionFilter)
+        .not('team', 'is', null)
+        .order('search_rank', { ascending: true })
+    )
     for (const p of bestAvailable || []) {
       if (drafted.has(p.id)) continue
       if (!kdefForced && !isEligible(p.position)) continue
@@ -1508,21 +1512,24 @@ async function seedUserRankings(leagueId, userId) {
   // on the draft board (scoring-aware + SuperFlex-aware).
   // DEFs queried separately so they're guaranteed in the pool even though
   // they typically have very high (or null) search_rank values.
-  const [offensiveResult, defResult] = await Promise.all([
-    supabase
-      .from('nfl_players')
-      .select('id, position, search_rank, adp_ppr, adp_half_ppr')
-      .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
-      .not('team', 'is', null)
-      .order('search_rank', { ascending: true, nullsFirst: false })
-      .limit(800),
+  // No .limit(): full offensive pool feeds the rankings-seed generator so
+  // even 20-team superflex deep configs get a complete ADP-ordered seed.
+  const [offensiveRows, defResult] = await Promise.all([
+    fetchAll(
+      supabase
+        .from('nfl_players')
+        .select('id, position, search_rank, adp_ppr, adp_half_ppr')
+        .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
+        .not('team', 'is', null)
+        .order('search_rank', { ascending: true, nullsFirst: false })
+    ),
     supabase
       .from('nfl_players')
       .select('id, position, search_rank, adp_ppr, adp_half_ppr')
       .eq('position', 'DEF')
       .not('team', 'is', null),
   ])
-  const pool = [...(offensiveResult.data || []), ...(defResult.data || [])]
+  const pool = [...offensiveRows, ...(defResult.data || [])]
 
   if (!pool.length) return
 
@@ -3090,23 +3097,29 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   const hasIdp = (rosterSlots.lb || 0) + (rosterSlots.dl || 0)
     + (rosterSlots.db || 0) + (rosterSlots.s || 0) > 0
   const PLAYER_SELECT = 'id, full_name, position, team, headshot_url, search_rank, injury_status, projected_pts_half_ppr, bye_week, adp_ppr, adp_half_ppr'
-  const idpQuery = hasIdp
-    ? supabase
+  // No .limit() on the offensive + IDP queries — the team-filter already
+  // prunes to on-roster players (~1000 offensive, ~500 IDP). fetchAll
+  // paginates past Supabase's silent 1000-row default so we never clip a
+  // legitimate draftable in deep-league configs (20-team superflex, etc.).
+  const idpPromise = hasIdp
+    ? fetchAll(
+        supabase
+          .from('nfl_players')
+          .select(PLAYER_SELECT)
+          .in('position', ['DE', 'DT', 'NT', 'DL', 'LB', 'ILB', 'OLB', 'MLB', 'CB', 'S', 'FS', 'SS', 'DB'])
+          .not('team', 'is', null)
+          .order('search_rank', { ascending: true, nullsFirst: false })
+      )
+    : Promise.resolve([])
+  const [offensiveRows, kickerRes, defRes, idpRows] = await Promise.all([
+    fetchAll(
+      supabase
         .from('nfl_players')
         .select(PLAYER_SELECT)
-        .in('position', ['DE', 'DT', 'NT', 'DL', 'LB', 'ILB', 'OLB', 'MLB', 'CB', 'S', 'FS', 'SS', 'DB'])
+        .in('position', ['QB', 'RB', 'WR', 'TE'])
         .not('team', 'is', null)
         .order('search_rank', { ascending: true, nullsFirst: false })
-        .limit(500)
-    : Promise.resolve({ data: [], error: null })
-  const [offensiveRes, kickerRes, defRes, idpRes] = await Promise.all([
-    supabase
-      .from('nfl_players')
-      .select(PLAYER_SELECT)
-      .in('position', ['QB', 'RB', 'WR', 'TE'])
-      .not('team', 'is', null)
-      .order('search_rank', { ascending: true, nullsFirst: false })
-      .limit(800),
+    ),
     supabase
       .from('nfl_players')
       .select(PLAYER_SELECT)
@@ -3117,17 +3130,15 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
       .select(PLAYER_SELECT)
       .eq('position', 'DEF')
       .not('team', 'is', null),
-    idpQuery,
+    idpPromise,
   ])
-  if (offensiveRes.error) throw offensiveRes.error
   if (kickerRes.error) throw kickerRes.error
   if (defRes.error) throw defRes.error
-  if (idpRes.error) throw idpRes.error
   const allPlayers = [
-    ...(offensiveRes.data || []),
+    ...offensiveRows,
     ...(kickerRes.data || []),
     ...(defRes.data || []),
-    ...(idpRes.data || []),
+    ...idpRows,
   ]
   const error = null
 

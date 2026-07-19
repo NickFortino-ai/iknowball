@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { effectiveAdp } from '../utils/effectiveAdp.js'
 import { buildRosterConfigHash } from '../utils/rosterConfigHash.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 const RANKINGS_SEED_SIZE = 400
 
@@ -442,40 +443,45 @@ export async function getAdpList(scoringFormat, position) {
   // Fetch offensive + defenses separately so DEFs are guaranteed in the list
   // even when filtered to All positions. If a specific position is requested,
   // short-circuit to a single query.
+  // No .limit(): the team-filter already prunes to ~1000 offensive players.
+  // Deep leagues (20-team superflex + deep rosters) can exhaust an arbitrary
+  // 300-cap; ~1000 covers even the wildest configs. fetchAll paginates past
+  // Supabase's silent 1000-row default cap so the offensive pool is future-
+  // proof if it grows past 1000.
   if (position && position !== 'All') {
-    const { data, error } = await supabase
-      .from('nfl_players')
-      .select(SELECT)
-      .eq('position', position)
-      .not('team', 'is', null)
-      .order('search_rank', { ascending: true, nullsFirst: false })
-      .limit(300)
-    if (error) throw error
+    const data = await fetchAll(
+      supabase
+        .from('nfl_players')
+        .select(SELECT)
+        .eq('position', position)
+        .not('team', 'is', null)
+        .order('search_rank', { ascending: true, nullsFirst: false })
+    )
 
     // Apply effective-ADP sort (scoring-aware) on the returned rows
-    return (data || [])
+    return data
       .map((p) => ({ ...p, _adp: effectiveAdp(p, scoringFormat, false) }))
       .sort((a, b) => a._adp - b._adp)
   }
 
-  const [offensiveResult, defResult] = await Promise.all([
-    supabase
-      .from('nfl_players')
-      .select(SELECT)
-      .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
-      .not('team', 'is', null)
-      .order('search_rank', { ascending: true, nullsFirst: false })
-      .limit(300),
+  const [offensiveRows, defResult] = await Promise.all([
+    fetchAll(
+      supabase
+        .from('nfl_players')
+        .select(SELECT)
+        .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
+        .not('team', 'is', null)
+        .order('search_rank', { ascending: true, nullsFirst: false })
+    ),
     supabase
       .from('nfl_players')
       .select(SELECT)
       .eq('position', 'DEF')
       .not('team', 'is', null),
   ])
-  if (offensiveResult.error) throw offensiveResult.error
   if (defResult.error) throw defResult.error
 
-  const offensiveSorted = (offensiveResult.data || [])
+  const offensiveSorted = offensiveRows
     .map((p) => ({ ...p, _adp: effectiveAdp(p, scoringFormat, false) }))
     .sort((a, b) => a._adp - b._adp)
   const defs = (defResult.data || [])
