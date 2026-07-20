@@ -2249,7 +2249,11 @@ export default function LeagueDetailPage() {
           : mc >= 9 ? 'w-32 h-40 md:w-48 md:h-56'
           : mc >= 5 ? 'w-28 h-32 md:w-40 md:h-48'
           : 'w-20 h-20 md:w-32 md:h-32'
-        const outlasted = mc > 1 ? mc - 1 : 0
+        // For brackets, use entries submitted rather than total members
+        // joined — the "outlasted" count should only include people who
+        // actually competed by filling out a bracket.
+        const competitorCount = league.champion.competitor_count ?? mc
+        const outlasted = competitorCount > 1 ? competitorCount - 1 : 0
         return (
         <div className="mb-6 rounded-xl border-2 border-yellow-500 py-6 md:py-8 px-4 md:px-10 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent pointer-events-none" />

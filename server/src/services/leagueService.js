@@ -1152,10 +1152,29 @@ export async function getLeagueDetails(leagueId, userId) {
       .maybeSingle()
 
     if (winBonus?.users) {
+      // For brackets, "competitors" = users who submitted an entry, not
+      // everyone who joined the league. Prevents the champion card from
+      // over-counting joiners who never filled out a bracket.
+      let competitorCount = null
+      if (league.format === 'bracket') {
+        const { data: tourney } = await supabase
+          .from('bracket_tournaments')
+          .select('id')
+          .eq('league_id', leagueId)
+          .maybeSingle()
+        if (tourney?.id) {
+          const { count } = await supabase
+            .from('bracket_entries')
+            .select('id', { count: 'exact', head: true })
+            .eq('tournament_id', tourney.id)
+          competitorCount = count ?? null
+        }
+      }
       champion = {
         user: winBonus.users,
         points: winBonus.points,
         label: winBonus.label,
+        competitor_count: competitorCount,
       }
     }
   }
