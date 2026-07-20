@@ -104,12 +104,6 @@ export default function CommissionerToolsPage({ league, onOpenSettings }) {
             description="Open the full league settings — dates, roster slots, playoff config, and more."
             onClick={() => onOpenSettings && onOpenSettings()}
           />
-          <ToolCard
-            icon="👥"
-            title="Transfer team ownership"
-            description="Hand a team over to a new user. Coming soon."
-            disabled
-          />
         </div>
       )}
 
