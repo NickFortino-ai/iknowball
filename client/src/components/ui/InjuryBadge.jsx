@@ -1,7 +1,7 @@
 // Injury indicator — colored letter only, no pill background. The
 // color carries the meaning, the letter carries the specifics.
 //   Q   bright yellow   Questionable
-//   D   bright yellow   Doubtful
+//   D   red             Doubtful (unlikely to play — treated like Out)
 //   DTD bright yellow   Day-To-Day
 //   O   red             Out
 //   IR  red             Injured Reserve
@@ -10,7 +10,7 @@ const INJURY_COLORS = {
   Out: 'text-incorrect',
   IR: 'text-incorrect',
   Questionable: 'text-yellow-400',
-  Doubtful: 'text-yellow-400',
+  Doubtful: 'text-incorrect',
   Probable: 'text-correct',
   'Day-To-Day': 'text-yellow-400',
 }
