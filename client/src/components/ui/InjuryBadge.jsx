@@ -6,30 +6,41 @@
 //   O   red             Out
 //   IR  red             Injured Reserve
 //   P   green           Probable
+// Case-insensitive lookup so Sleeper / ESPN / manual values all resolve.
+// Previously "Doubtful" from any non-canonical casing fell through to gray.
 const INJURY_COLORS = {
-  Out: 'text-incorrect',
-  IR: 'text-incorrect',
-  Questionable: 'text-yellow-400',
-  Doubtful: 'text-incorrect',
-  Probable: 'text-correct',
-  'Day-To-Day': 'text-yellow-400',
+  out: 'text-incorrect',
+  ir: 'text-incorrect',
+  pup: 'text-incorrect',
+  sus: 'text-incorrect',
+  suspended: 'text-incorrect',
+  doubtful: 'text-incorrect',
+  questionable: 'text-yellow-400',
+  probable: 'text-correct',
+  'day-to-day': 'text-yellow-400',
+  dtd: 'text-yellow-400',
+  na: 'text-text-muted',
 }
 
 function shortLabel(status) {
-  if (status === 'Day-To-Day') return 'DTD'
-  if (status === 'Questionable') return 'Q'
-  if (status === 'Doubtful') return 'D'
-  if (status === 'Probable') return 'P'
-  if (status === 'Out') return 'O'
-  if (status === 'IR') return 'IR'
-  return status?.charAt(0) || ''
+  const s = String(status).toLowerCase()
+  if (s === 'day-to-day' || s === 'dtd') return 'DTD'
+  if (s === 'questionable') return 'Q'
+  if (s === 'doubtful') return 'D'
+  if (s === 'probable') return 'P'
+  if (s === 'out') return 'O'
+  if (s === 'ir') return 'IR'
+  if (s === 'pup') return 'PUP'
+  if (s === 'sus' || s === 'suspended') return 'SUS'
+  return status?.charAt(0)?.toUpperCase() || ''
 }
 
 export default function InjuryBadge({ status, className = '' }) {
   if (!status) return null
+  const color = INJURY_COLORS[String(status).toLowerCase()] || 'text-text-muted'
   return (
     <span
-      className={`text-[12px] font-mono font-bold shrink-0 ${INJURY_COLORS[status] || 'text-text-muted'} ${className}`}
+      className={`text-[12px] font-mono font-bold shrink-0 ${color} ${className}`}
       title={status}
     >
       {shortLabel(status)}
