@@ -14,7 +14,7 @@ const INJURY_COLORS = {
   pup: 'text-incorrect',
   sus: 'text-incorrect',
   suspended: 'text-incorrect',
-  doubtful: 'text-incorrect',
+  doubtful: 'text-yellow-400',
   questionable: 'text-yellow-400',
   probable: 'text-correct',
   'day-to-day': 'text-yellow-400',
