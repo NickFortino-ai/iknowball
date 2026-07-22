@@ -50,7 +50,19 @@ export default function FuturesSection() {
       if (!map[m.sport_key]) map[m.sport_key] = []
       map[m.sport_key].push(m)
     }
-    // Sort by SPORT_DISPLAY order
+    // Within each sport, put the championship market (Super Bowl,
+    // World Series, NBA Championship, etc.) first — admin-created custom
+    // markets like division winners sit below. Custom markets are keyed
+    // as 'custom_<sport>' by /admin/futures/create.
+    for (const key of Object.keys(map)) {
+      map[key].sort((a, b) => {
+        const aCustom = String(a.futures_sport_key || '').startsWith('custom_') ? 1 : 0
+        const bCustom = String(b.futures_sport_key || '').startsWith('custom_') ? 1 : 0
+        if (aCustom !== bCustom) return aCustom - bCustom
+        return (a.title || '').localeCompare(b.title || '')
+      })
+    }
+    // Sort sports by SPORT_DISPLAY order
     const order = Object.keys(SPORT_DISPLAY)
     return Object.entries(map).sort(
       ([a], [b]) => (order.indexOf(a) === -1 ? 99 : order.indexOf(a)) - (order.indexOf(b) === -1 ? 99 : order.indexOf(b))
