@@ -225,6 +225,11 @@ router.get('/live', async (req, res) => {
       .eq('game_date', date)
       .in('espn_player_id', [...new Set(allEspnIds)])
 
+    // Doubleheader: if a player has two salary rows for the same date,
+    // pick the game that's actually happening (live > final > upcoming).
+    // Without this the second iteration blindly overwrites the first, so
+    // Game 2 (still upcoming) hides Game 1's finished status and stats.
+    const STATUS_RANK = { live: 3, final: 2, upcoming: 1 }
     for (const sal of salaries || []) {
       const startTime = sal.game_starts_at ? new Date(sal.game_starts_at) : null
       let status = 'upcoming'
@@ -232,6 +237,8 @@ router.get('/live', async (req, res) => {
         const approxEnd = new Date(startTime.getTime() + 4 * 60 * 60 * 1000)
         status = now < approxEnd ? 'live' : 'final'
       }
+      const existing = gameStateMap[sal.espn_player_id]
+      if (existing && STATUS_RANK[existing.status] >= STATUS_RANK[status]) continue
       gameStateMap[sal.espn_player_id] = {
         gameStartsAt: sal.game_starts_at, status, headshot_url: sal.headshot_url,
         team: sal.team, opponent: sal.opponent,
@@ -247,6 +254,7 @@ router.get('/live', async (req, res) => {
       const espnData = await espnRes.json()
       // Build team abbreviation → game score map
       const teamGameMap = {}
+      const STATUS_RANK_ESPN = { live: 3, final: 2, upcoming: 1 }
       for (const event of espnData.events || []) {
         const comp = event.competitions?.[0]
         if (!comp) continue
@@ -265,8 +273,12 @@ router.get('/live', async (req, res) => {
         const inningHalf = comp.status?.type?.shortDetail || null
 
         const gameData = { homeAbbrev, awayAbbrev, homeScore, awayScore, gameStatus, period, inningHalf }
-        if (homeAbbrev) teamGameMap[homeAbbrev] = gameData
-        if (awayAbbrev) teamGameMap[awayAbbrev] = gameData
+        // Same doubleheader guard as above — if both games are on ESPN's
+        // scoreboard, prefer the one that's live > final > upcoming so
+        // Game 1's finished data doesn't get shadowed by Game 2's upcoming.
+        const better = (existing) => !existing || STATUS_RANK_ESPN[gameStatus] > STATUS_RANK_ESPN[existing.gameStatus]
+        if (homeAbbrev && better(teamGameMap[homeAbbrev])) teamGameMap[homeAbbrev] = gameData
+        if (awayAbbrev && better(teamGameMap[awayAbbrev])) teamGameMap[awayAbbrev] = gameData
       }
 
       // Match players to their games
