@@ -129,7 +129,9 @@ export default function FuturesSection() {
 
       {grouped.map(([sportKey, sportMarkets]) => {
         const isOpen = !!expanded[sportKey]
-        const hasPick = sportMarkets.some((m) => picksMap[m.id])
+        const pickCount = sportMarkets.reduce((n, m) => n + (picksMap[m.id] ? 1 : 0), 0)
+        const totalCount = sportMarkets.length
+        const allPicked = pickCount === totalCount && totalCount > 0
         return (
           <div key={sportKey} className="bg-bg-primary border border-text-primary/20 rounded-xl overflow-hidden">
             <button
@@ -138,9 +140,9 @@ export default function FuturesSection() {
             >
               <div className="flex items-center gap-2">
                 <span className="font-display text-lg">{sportLabel(sportKey)}</span>
-                {hasPick && (
-                  <span className="w-2 h-2 rounded-full bg-accent" />
-                )}
+                <span className={`text-xs font-semibold ${allPicked ? 'text-correct' : pickCount > 0 ? 'text-accent' : 'text-text-muted'}`}>
+                  {pickCount}/{totalCount}
+                </span>
               </div>
               <svg
                 className={`w-5 h-5 text-text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`}
