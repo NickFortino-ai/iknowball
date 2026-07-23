@@ -83,6 +83,13 @@ async function syncSportLiveScores(sportKey) {
 
   let updated = 0
   const unmatched = []
+  // TODO(remove after 2026-07-24): temporary debug for MLS name mismatch
+  if (sportKey === 'soccer_usa_mls') {
+    logger.info({
+      dbGames: games.map((g) => ({ id: g.id, home: g.home_team, away: g.away_team, status: g.status })),
+      espnEvents: espnEvents.map((e) => ({ home: e.homeTeam, away: e.awayTeam, state: e.state, homeScore: e.homeScore, awayScore: e.awayScore })),
+    }, 'MLS sync debug')
+  }
   for (const game of games) {
     const match = espnEvents.find((e) => matchESPNToGame(e, game))
     if (!match) {
