@@ -4,6 +4,26 @@ import { useGameIntel } from '../../hooks/useGames'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
+function PitcherAvatar({ headshot, name }) {
+  const [errored, setErrored] = useState(false)
+  const initials = (name || '?').split(/\s+/).map((n) => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?'
+  if (headshot && !errored) {
+    return (
+      <img
+        src={headshot}
+        alt=""
+        className="w-12 h-12 rounded-full object-cover bg-bg-secondary shrink-0"
+        onError={() => setErrored(true)}
+      />
+    )
+  }
+  return (
+    <div className="w-12 h-12 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-sm text-text-muted font-bold">
+      {initials}
+    </div>
+  )
+}
+
 function TeamLogo({ team, sportKey }) {
   const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
   const [hidden, setHidden] = useState(false)
@@ -83,9 +103,7 @@ export default function GameDetailModal({ gameId, onClose }) {
                 <div className="space-y-3">
                   {data.awayPitcher && (
                     <div className="flex items-center gap-3">
-                      {data.awayPitcher.headshot && (
-                        <img src={data.awayPitcher.headshot} alt="" className="w-12 h-12 rounded-full object-cover bg-bg-secondary" />
-                      )}
+                      <PitcherAvatar headshot={data.awayPitcher.headshot} name={data.awayPitcher.name} />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold text-text-primary">{data.awayPitcher.name}</div>
                         <div className="text-xs text-text-muted">{game.away_team.split(' ').pop()}{data.awayPitcher.record ? ` · ${data.awayPitcher.record}` : ''}</div>
@@ -98,9 +116,7 @@ export default function GameDetailModal({ gameId, onClose }) {
                   {data.awayPitcher && data.homePitcher && <div className="h-px bg-text-primary/10" />}
                   {data.homePitcher && (
                     <div className="flex items-center gap-3">
-                      {data.homePitcher.headshot && (
-                        <img src={data.homePitcher.headshot} alt="" className="w-12 h-12 rounded-full object-cover bg-bg-secondary" />
-                      )}
+                      <PitcherAvatar headshot={data.homePitcher.headshot} name={data.homePitcher.name} />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold text-text-primary">{data.homePitcher.name}</div>
                         <div className="text-xs text-text-muted">{game.home_team.split(' ').pop()}{data.homePitcher.record ? ` · ${data.homePitcher.record}` : ''}</div>
