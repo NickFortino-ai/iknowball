@@ -78,20 +78,46 @@ async function syncSportLiveScores(sportKey) {
 
   if (!games?.length) return 0
 
-  const espnEvents = await fetchESPNScoreboard(sportKey)
-  if (!espnEvents.length) return 0
+  // Group games by their ET-date so we can fetch the correct ESPN
+  // scoreboard for each. Without this, a game that started 10pm ET the
+  // day before is on yesterday's scoreboard while ESPN's default endpoint
+  // returns today-ET's slate — hides late-night live PT games entirely.
+  const etDateOf = (iso) => {
+    // YYYYMMDD in ET as ESPN expects for the ?dates= param
+    const d = new Date(iso)
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(d)
+    const y = parts.find((p) => p.type === 'year').value
+    const m = parts.find((p) => p.type === 'month').value
+    const day = parts.find((p) => p.type === 'day').value
+    return `${y}${m}${day}`
+  }
+  const uniqueDates = [...new Set(games.map((g) => etDateOf(g.starts_at)))]
+  const eventsByDate = {}
+  for (const d of uniqueDates) {
+    eventsByDate[d] = await fetchESPNScoreboard(sportKey, d)
+  }
+  // Also merge the default (no-date) scoreboard so we still catch cases
+  // ESPN groups slightly differently. Duplicates dedupe naturally via the
+  // matchESPNToGame path since we only take .find() on the first match.
+  const defaultEvents = await fetchESPNScoreboard(sportKey)
+  const allEvents = [...defaultEvents, ...Object.values(eventsByDate).flat()]
+  if (!allEvents.length) return 0
 
   let updated = 0
   const unmatched = []
   // TODO(remove after 2026-07-24): temporary debug for MLS name mismatch
   if (sportKey === 'soccer_usa_mls') {
     logger.info({
-      dbGames: games.map((g) => ({ id: g.id, home: g.home_team, away: g.away_team, status: g.status })),
-      espnEvents: espnEvents.map((e) => ({ home: e.homeTeam, away: e.awayTeam, state: e.state, homeScore: e.homeScore, awayScore: e.awayScore })),
+      dbGames: games.map((g) => ({ id: g.id, home: g.home_team, away: g.away_team, status: g.status, etDate: etDateOf(g.starts_at) })),
+      espnEventsCount: allEvents.length,
+      espnDates: uniqueDates,
+      espnEvents: allEvents.slice(0, 30).map((e) => ({ home: e.homeTeam, away: e.awayTeam, state: e.state, homeScore: e.homeScore, awayScore: e.awayScore })),
     }, 'MLS sync debug')
   }
   for (const game of games) {
-    const match = espnEvents.find((e) => matchESPNToGame(e, game))
+    const match = allEvents.find((e) => matchESPNToGame(e, game))
     if (!match) {
       // Only flag games already marked live — upcoming games won't be on ESPN yet
       if (game.status === 'live') {
