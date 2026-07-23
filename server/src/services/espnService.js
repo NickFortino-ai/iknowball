@@ -19,7 +19,18 @@ const SPORT_TO_ESPN = {
 }
 
 function normalizeTeamName(name) {
-  return name.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim()
+  // Expand common soccer suffixes so "FC" ↔ "Football Club" doesn't
+  // block otherwise-obvious matches ("Los Angeles FC" vs
+  // "Los Angeles Football Club").
+  const expanded = name
+    .replace(/\bF\.?C\.?\b/gi, 'football club')
+    .replace(/\bS\.?C\.?\b/gi, 'sporting club')
+    .replace(/\bC\.?F\.?\b/gi, 'club de futbol')
+  return expanded.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim()
+}
+
+function initialsOf(normalized) {
+  return normalized.split(/\s+/).map((w) => w[0]).join('')
 }
 
 function teamsMatch(espnName, dbName) {
@@ -35,6 +46,13 @@ function teamsMatch(espnName, dbName) {
   if (aLast.length > 2 && aLast === bLast) return true
   // Suffix match — e.g. "Lopes" vs "Antelopes", "Jacks" vs "Lumberjacks"
   if (aLast.length > 2 && bLast.length > 2 && (aLast.endsWith(bLast) || bLast.endsWith(aLast))) return true
+  // Initials of the longer name equal the shorter — e.g. ESPN
+  // "LAFC" matches DB "Los Angeles Football Club" (initials 'lafc').
+  const longer = a.length >= b.length ? a : b
+  const shorter = a.length >= b.length ? b : a
+  if (shorter.length >= 3 && !shorter.includes(' ')) {
+    if (initialsOf(longer) === shorter) return true
+  }
   return false
 }
 
