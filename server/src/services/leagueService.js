@@ -1291,7 +1291,18 @@ export async function updateLeague(leagueId, userId, data) {
   if (data.name !== undefined) updates.name = data.name
   if (data.max_members !== undefined) updates.max_members = data.max_members
   if (data.settings !== undefined) updates.settings = data.settings
-  if (data.starts_at !== undefined) updates.starts_at = data.starts_at
+  if (data.starts_at !== undefined) {
+    // Match createLeague's parseDate convention: a date-only 'YYYY-MM-DD'
+    // string means noon-PT-anchored (not midnight UTC), which is 19:00 UTC.
+    // Without this, Postgres reads the bare date as midnight UTC, which is
+    // 5pm PT the day BEFORE — silently shifting the start back a day and
+    // making the commissioner's edit look like it didn't take effect.
+    if (typeof data.starts_at === 'string' && data.starts_at.length === 10) {
+      updates.starts_at = `${data.starts_at}T19:00:00Z`
+    } else {
+      updates.starts_at = data.starts_at
+    }
+  }
   if (data.ends_at !== undefined) {
     // Parse end date to end-of-sports-day if date-only string
     if (typeof data.ends_at === 'string' && data.ends_at.length === 10) {
