@@ -198,7 +198,61 @@ export async function getDraftPrepRankings(userId, configHash, scoringFormat, ro
     .eq('scoring_format', scoringFormat)
     .order('rank', { ascending: true })
   if (error) throw error
-  return data || []
+  const ranked = data || []
+
+  // Append the rest of the draftable pool (any on-team player not already
+  // in the user's saved rankings) so consumers like the in-person draft
+  // board see every draftable name — not just the ~200-400 that were in
+  // the seed at the time the config was first created. Ordered by ADP
+  // and slotted below the user's customized rankings so their order is
+  // preserved. Zero backfill needed; front-loads on read.
+  const rankedIds = new Set(ranked.map((r) => r.player_id))
+  const isSuperflex = (rosterSlots?.superflex || rosterSlots?.sflex || 0) > 0 || (rosterSlots?.qb || 0) >= 2
+  const tail = await fetchDraftablePlayersNotIn(rankedIds, scoringFormat, isSuperflex)
+  const tailRows = tail.map((p, i) => ({
+    player_id: p.id,
+    rank: ranked.length + i,
+    nfl_players: p,
+  }))
+  return [...ranked, ...tailRows]
+}
+
+// Returns on-team NFL players not already in the excludeIds set, sorted
+// by scoring-aware effective ADP. Used to backfill the tail of a user's
+// saved ranking so every draftable name is visible.
+async function fetchDraftablePlayersNotIn(excludeIds, scoringFormat, isSuperflex) {
+  const SELECT = 'id, full_name, position, team, headshot_url, injury_status, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_std, search_rank, adp_ppr, adp_half_ppr'
+  const [offense, kickers, defs] = await Promise.all([
+    fetchAll(
+      supabase
+        .from('nfl_players')
+        .select(SELECT)
+        .in('position', ['QB', 'RB', 'WR', 'TE'])
+        .not('team', 'is', null)
+        .order('search_rank', { ascending: true, nullsFirst: false })
+    ),
+    supabase
+      .from('nfl_players')
+      .select(SELECT)
+      .eq('position', 'K')
+      .not('team', 'is', null),
+    supabase
+      .from('nfl_players')
+      .select(SELECT)
+      .eq('position', 'DEF')
+      .not('team', 'is', null),
+  ])
+  const pool = [
+    ...(offense || []),
+    ...(kickers.data || []),
+    ...(defs.data || []),
+  ].filter((p) => !excludeIds.has(p.id))
+  return pool
+    .map((p) => ({ ...p, _adp: effectiveAdp(p, scoringFormat, isSuperflex) }))
+    .sort((a, b) => a._adp - b._adp)
+    // Strip the transient _adp field before returning — the client
+    // consumes nfl_players.* fields directly and doesn't need it.
+    .map(({ _adp, ...rest }) => rest)
 }
 
 export async function setDraftPrepRankings(userId, configHash, scoringFormat, playerIds) {
