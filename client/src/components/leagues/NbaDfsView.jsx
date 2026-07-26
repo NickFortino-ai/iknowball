@@ -342,7 +342,9 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   const availableDates = []
   if (inWindow(today)) availableDates.push(today)
   if (inWindow(tomorrow)) availableDates.push(tomorrow)
-  if (!availableDates.length) availableDates.push(leagueEnd || leagueStart)
+  // Pre-start → first day; post-end → last day. Previously always fell
+  // back to leagueEnd, opening not-yet-started leagues on their final date.
+  if (!availableDates.length) availableDates.push(today < leagueStart ? leagueStart : (leagueEnd || leagueStart))
 
   const [selectedDate, setSelectedDate] = useState(availableDates[0])
   const date = selectedDate

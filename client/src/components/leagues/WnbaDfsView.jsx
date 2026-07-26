@@ -341,7 +341,11 @@ export default function WnbaDfsView({ league, tab = 'roster' }) {
   const availableDates = []
   if (inWindow(today)) availableDates.push(today)
   if (inWindow(tomorrow)) availableDates.push(tomorrow)
-  if (!availableDates.length) availableDates.push(leagueEnd || leagueStart)
+  // Pre-start → show the first day; post-end → show the last day.
+  // Previously fell back to leagueEnd unconditionally, so a not-yet-started
+  // league opened on its final date and confused users into thinking there
+  // were no players available.
+  if (!availableDates.length) availableDates.push(today < leagueStart ? leagueStart : (leagueEnd || leagueStart))
 
   const [selectedDate, setSelectedDate] = useState(availableDates[0])
   const date = selectedDate
