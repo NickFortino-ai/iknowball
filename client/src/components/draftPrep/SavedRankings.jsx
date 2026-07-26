@@ -96,9 +96,9 @@ export default function SavedRankings({ activeScoringFormat, activeConfigHash, o
 
   if (!configs?.length) {
     return (
-      <div className="rounded-xl border border-text-primary/15 bg-bg-primary/10 backdrop-blur-md px-4 py-3">
-        <div className="text-sm font-semibold text-text-primary">Your Saved Rankings</div>
-        <div className="text-[11px] text-text-muted mt-0.5">Based on different roster configurations</div>
+      <div className="rounded-xl border border-text-primary/15 bg-bg-primary/10 backdrop-blur-md px-4 py-4 text-center">
+        <div className="font-display text-xl text-text-primary">Your Saved Rankings</div>
+        <div className="text-xs text-text-muted mt-1">Based on different roster configurations</div>
         <div className="text-[11px] text-text-muted mt-2">
           No saved rankings yet. Reorder a few players below — your board saves automatically against the current roster.
         </div>
@@ -124,18 +124,16 @@ export default function SavedRankings({ activeScoringFormat, activeConfigHash, o
     <div className="relative z-30 rounded-xl border border-text-primary/20 bg-bg-primary/15 backdrop-blur-md">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-bg-primary/10 transition-colors"
+        className="w-full relative px-4 py-4 hover:bg-bg-primary/10 transition-colors text-center"
       >
-        <div className="text-left">
-          <div className="text-sm font-semibold text-text-primary">Your Saved Rankings</div>
-          <div className="text-[11px] text-text-muted mt-0.5">Based on different roster configurations</div>
-          <div className="text-[11px] text-text-muted mt-1">
-            {total} {total === 1 ? 'ranking' : 'rankings'}
-            {otherCount > 0 && open === false && ` · ${otherCount} other${otherCount === 1 ? '' : 's'} not loaded`}
-          </div>
+        <div className="font-display text-xl text-text-primary">Your Saved Rankings</div>
+        <div className="text-xs text-text-muted mt-1">Based on different roster configurations</div>
+        <div className="text-[11px] text-text-muted mt-1">
+          {total} {total === 1 ? 'ranking' : 'rankings'}
+          {otherCount > 0 && open === false && ` · ${otherCount} other${otherCount === 1 ? '' : 's'} not loaded`}
         </div>
         <svg
-          className={`w-4 h-4 shrink-0 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 shrink-0 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`}
           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
