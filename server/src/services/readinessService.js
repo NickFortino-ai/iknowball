@@ -457,11 +457,26 @@ async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTa
   // entirely so every league of this sport shows no clip. Without this,
   // empty WNBA/MLB off-days red-flagged every member with "you haven't set
   // tonight's lineup" for a slate that doesn't exist.
+  //
+  // Games-table fallback: WNBA odds sync sometimes lags the day's slate
+  // by hours, but the DFS salary generator pulls straight from ESPN and
+  // populates <sport>_dfs_salaries earlier. If today has salary rows,
+  // treat that as a slate even when the games table is still empty —
+  // otherwise brand-new leagues on day 1 show no readiness flag until
+  // odds sync catches up.
   const dfsSport = rosterTable === 'nba_dfs_rosters' ? 'nba'
     : rosterTable === 'wnba_dfs_rosters' ? 'wnba'
     : 'mlb'
   const firstGameToday = await earliestDfsGameStart(dfsSport, todayET)
-  if (!firstGameToday && !yesterdayStillLive) return
+  let salariesExistToday = false
+  if (!firstGameToday && !yesterdayStillLive) {
+    const { count } = await supabase
+      .from(salaryTable)
+      .select('espn_player_id', { count: 'exact', head: true })
+      .eq('game_date', todayET)
+    salariesExistToday = (count || 0) > 0
+  }
+  if (!firstGameToday && !yesterdayStillLive && !salariesExistToday) return
 
   const rosterByLeague = {}
   for (const r of todayRosters || []) rosterByLeague[r.league_id] = r
