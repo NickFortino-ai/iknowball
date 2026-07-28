@@ -312,20 +312,23 @@ function wnbaGameFpts(statMap) {
 
 /**
  * Calculate WNBA salary from fantasy points per game average.
- * $3,500 base + $170/fppg, capped at $11,000.
+ * $3,500 base + $130/fppg, capped at $11,000.
  *
- * NBA's slope is $130/fppg. NBA top stars sit around 55-65 FPPG and hit
- * the $11k cap. WNBA top stars (A'ja Wilson, Caitlin Clark) sit around
- * 40-46 FPPG — so a steeper slope (~$170/fppg) keeps the spread using
- * the full $3,500-$11,000 range and lands the top players near the cap.
- *   45 FPPG → 3500 + 45×170 = 11,150 → cap at 11,000
- *   25 FPPG → 3500 + 25×170 = 7,750
- *   10 FPPG → 3500 + 10×170 = 5,200
- *    3 FPPG → 3500 + 3×170  = 4,010
+ * Previously $170/fppg to push top stars near the $11k cap given
+ * WNBA's tighter FPPG range vs NBA. In practice this priced mid-tier
+ * defensive-stat players (~35 FPPG) at $9.5-10k, which felt expensive
+ * against the $60k cap. Dropping to $130/fppg (matches NBA's slope)
+ * compresses the mid range down and leaves top stars a touch below
+ * the ceiling — the spread that better matches DK-style pricing.
+ *   45 FPPG → 3500 + 45×130 = 9,350
+ *   35 FPPG → 3500 + 35×130 = 8,050
+ *   25 FPPG → 3500 + 25×130 = 6,750
+ *   10 FPPG → 3500 + 10×130 = 4,800
+ *    3 FPPG → 3500 + 3×130  = 3,890
  */
 function fantasyPointsToSalary(fppg) {
   if (!fppg || fppg <= 0) return 3500
-  const salary = Math.round((3500 + fppg * 170) / 100) * 100
+  const salary = Math.round((3500 + fppg * 130) / 100) * 100
   return Math.max(3500, Math.min(11000, salary))
 }
 
