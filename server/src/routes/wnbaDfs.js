@@ -166,9 +166,19 @@ router.get('/live', async (req, res) => {
       const startTime = sal.game_starts_at ? new Date(sal.game_starts_at) : null
       let status = 'upcoming'
       if (startTime && startTime <= now) status = 'live'
+      // Derive matchup abbrevs from salary.team + salary.opponent so the
+      // pre-game roster view can render "MIN @ TOR" before tipoff. The
+      // games-table match below overrides with authoritative data once the
+      // game goes live.
+      const oppRaw = sal.opponent || ''
+      const isHome = oppRaw.startsWith('vs')
+      const oppAbbrev = oppRaw.replace(/^(vs|@)\s*/, '').trim()
+      const teamAbbrev = (sal.team || '').toUpperCase()
       gameStateMap[sal.espn_player_id] = {
         gameStartsAt: sal.game_starts_at, status,
         headshot_url: sal.headshot_url, team: sal.team, opponent: sal.opponent,
+        homeAbbrev: teamAbbrev && oppAbbrev ? (isHome ? teamAbbrev : oppAbbrev) : null,
+        awayAbbrev: teamAbbrev && oppAbbrev ? (isHome ? oppAbbrev : teamAbbrev) : null,
       }
     }
   }

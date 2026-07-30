@@ -239,9 +239,18 @@ router.get('/live', async (req, res) => {
       }
       const existing = gameStateMap[sal.espn_player_id]
       if (existing && STATUS_RANK[existing.status] >= STATUS_RANK[status]) continue
+      // Derive matchup abbrevs so pre-game roster rows can render
+      // "OAK @ TOR" before first pitch. ESPN scoreboard match below
+      // overrides with authoritative live/final scores + inning.
+      const oppRaw = sal.opponent || ''
+      const isHome = oppRaw.startsWith('vs')
+      const oppAbbrev = oppRaw.replace(/^(vs|@)\s*/, '').trim()
+      const teamAbbrev = (sal.team || '').toUpperCase()
       gameStateMap[sal.espn_player_id] = {
         gameStartsAt: sal.game_starts_at, status, headshot_url: sal.headshot_url,
         team: sal.team, opponent: sal.opponent,
+        homeAbbrev: teamAbbrev && oppAbbrev ? (isHome ? teamAbbrev : oppAbbrev) : null,
+        awayAbbrev: teamAbbrev && oppAbbrev ? (isHome ? oppAbbrev : teamAbbrev) : null,
       }
     }
   }
