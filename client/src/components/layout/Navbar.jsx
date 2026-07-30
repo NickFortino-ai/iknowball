@@ -106,6 +106,10 @@ function getNotificationIcon(n) {
     case 'commissioner_report_reply': return '📨' // 📨
     case 'commissioner_lineup_forced': return '🔧' // 🔧
     case 'commissioner_add_drop': return '➕' // ➕
+    // "You didn't submit a roster in time" removal notifications and other
+    // administrative league updates. Falling through to the trophy default
+    // was misreading as a win.
+    case 'league_update': return '📢' // 📢
     case 'league_win':
       if (n.metadata?.isWinner === false && n.metadata?.points != null) {
         return n.metadata.points < 0 ? '\uD83D\uDCC9' : '\uD83D\uDCCA' // 📉 / 📊

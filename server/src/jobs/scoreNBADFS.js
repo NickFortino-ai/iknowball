@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from '../services/notificationService.js'
 import { calculateNBAFantasyPoints, generateNBASalaries, refreshNBAInjuries } from '../services/nbaDfsService.js'
-import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay, leagueStartSportsDay } from '../utils/sportsDay.js'
+import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay, leagueStartSportsDay, leagueEndSportsDay } from '../utils/sportsDay.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 
@@ -276,7 +276,7 @@ async function cleanupSingleNightNoRosters(date, season, allFinal) {
   // Find single-night NBA DFS leagues starting on this date
   const { data: leagues } = await supabase
     .from('leagues')
-    .select('id, name, starts_at, fantasy_settings(season_type)')
+    .select('id, name, starts_at, ends_at, fantasy_settings(season_type)')
     .eq('format', 'nba_dfs')
     .in('status', ['open', 'active'])
 
@@ -288,6 +288,12 @@ async function cleanupSingleNightNoRosters(date, season, allFinal) {
 
     const leagueStart = leagueStartSportsDay(league.starts_at)
     if (leagueStart !== date) continue
+
+    // Multi-day guard (mirror scoreWNBADFS): only remove for true
+    // single-day leagues. Day-1 no-shows in a multi-day contest can
+    // still play the remaining nights.
+    const leagueEnd = leagueEndSportsDay(league.ends_at)
+    if (leagueEnd && leagueEnd !== leagueStart) continue
 
     // Get all members
     const { data: members } = await supabase

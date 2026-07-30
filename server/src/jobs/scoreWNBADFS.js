@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from '../services/notificationService.js'
 import { calculateWNBAFantasyPoints, generateWNBASalaries, refreshWNBAInjuries } from '../services/wnbaDfsService.js'
-import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay, leagueStartSportsDay } from '../utils/sportsDay.js'
+import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay, leagueStartSportsDay, leagueEndSportsDay } from '../utils/sportsDay.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 
@@ -228,7 +228,7 @@ async function cleanupSingleNightNoRosters(date, season, allFinal) {
   // is custom_range AND whose start date is this scoring date.
   const { data: leagues } = await supabase
     .from('leagues')
-    .select('id, name, starts_at, duration')
+    .select('id, name, starts_at, ends_at, duration')
     .eq('format', 'wnba_dfs')
     .in('status', ['open', 'active'])
 
@@ -239,6 +239,14 @@ async function cleanupSingleNightNoRosters(date, season, allFinal) {
 
     const leagueStart = leagueStartSportsDay(league.starts_at)
     if (leagueStart !== date) continue
+
+    // Only remove for truly single-day leagues. Multi-day custom_range
+    // leagues (e.g. a week-long WNBA DFS contest) should NOT drop members
+    // who missed day 1 — they can still play the remaining nights and
+    // accrue points. Removing them here made day-1 no-shows disappear
+    // from a league that was supposed to run all week.
+    const leagueEnd = leagueEndSportsDay(league.ends_at)
+    if (leagueEnd && leagueEnd !== leagueStart) continue
 
     const { data: members } = await supabase
       .from('league_members')
