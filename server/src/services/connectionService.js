@@ -549,7 +549,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions || isPosts) ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('hot_take_reminders')
-      .select('id, reminder_user_id, hot_take_id, comment, created_at, hot_takes(id, user_id, content, team_tags, user_tags, created_at)')
+      .select('id, reminder_user_id, hot_take_id, comment, created_at, hot_takes(id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, stream_video_uid, stream_ready_at, post_type, embed_provider, embed_ref_id, embed_url, created_at)')
       .in('reminder_user_id', allIds), 'created_at')
       .order('created_at', { ascending: false })
       .limit(15),
@@ -1327,18 +1327,39 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       ...buildUserFields(user),
       timestamp: reminder.created_at,
       comment: reminder.comment,
+      // Full post payload so the client can embed the original hot take
+      // in the "Called It" card — image, embed, and post type included so
+      // the reminder reads like a receipt of the original, not a stripped
+      // quote.
       hot_take: {
         id: take.id,
+        user_id: take.user_id,
         content: take.content,
         team_tags: take.team_tags,
         user_tags: take.user_tags,
+        image_url: take.image_url,
+        image_urls: take.image_urls || (take.image_url ? [take.image_url] : null),
+        video_url: take.video_url,
+        stream_video_uid: take.stream_video_uid,
+        stream_ready_at: take.stream_ready_at,
+        post_type: take.post_type || 'post',
+        embed_provider: take.embed_provider,
+        embed_ref_id: take.embed_ref_id,
+        embed_url: take.embed_url,
         created_at: take.created_at,
       },
       reminded_user: takeAuthor ? {
+        id: takeAuthor.id,
         username: takeAuthor.username,
         display_name: takeAuthor.display_name,
+        avatar_url: takeAuthor.avatar_url,
+        avatar_emoji: takeAuthor.avatar_emoji,
         title_preference: takeAuthor.title_preference || null,
       } : null,
+      // True when the reminder author is the take author — this is the
+      // "called it" self-celebration case. Client renders a prominent
+      // CALLED IT banner instead of the "reminded X of Y" line.
+      self_remind: reminder.reminder_user_id === take.user_id,
     })
   }
 
