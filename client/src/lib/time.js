@@ -9,6 +9,19 @@ export function timeAgo(dateStr) {
   return `${days}d`
 }
 
+// Long-form variant — "95 days" / "3 hours" instead of "95d" / "3h".
+// Doesn't include the word "ago"; callers append it.
+export function timeAgoLong(dateStr) {
+  const seconds = Math.floor((Date.now() - new Date(dateStr)) / 1000)
+  if (seconds < 60) return 'moments'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'}`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'}`
+  const days = Math.floor(hours / 24)
+  return `${days} day${days === 1 ? '' : 's'}`
+}
+
 export function getDateKey(dateStr) {
   const d = new Date(dateStr)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
