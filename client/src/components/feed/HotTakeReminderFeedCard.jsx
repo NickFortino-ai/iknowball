@@ -26,6 +26,20 @@ export default function HotTakeReminderFeedCard({ item, reactions, onUserTap }) 
     ? hot_take.image_urls
     : hot_take.image_url ? [hot_take.image_url] : []
 
+  // Self-remind (author reminding themselves) is a victory lap and
+  // deserves the loud header. Rendered as a topBanner so it sits flush
+  // against the top of the card, above the user header.
+  const calledItBanner = self_remind ? (
+    <div className="py-4 bg-gradient-to-b from-yellow-500/25 to-yellow-500/5 border-b border-yellow-500/30 text-center">
+      <div className="font-display text-3xl text-yellow-400 tracking-wider drop-shadow-[0_0_12px_rgba(234,179,8,0.4)]">
+        CALLED IT
+      </div>
+      <div className="text-sm text-yellow-500/90 font-semibold mt-1">
+        Predicted {timeAgo(hot_take.created_at)} ago
+      </div>
+    </div>
+  ) : null
+
   return (
     <FeedCardWrapper
       item={item}
@@ -35,23 +49,11 @@ export default function HotTakeReminderFeedCard({ item, reactions, onUserTap }) 
       reactions={reactions}
       onUserTap={onUserTap}
       commentCount={item.commentCount}
+      topBanner={calledItBanner}
     >
-      {/* CALLED IT banner — self-remind (author reminding themselves)
-          is a victory lap and deserves the loud header. The "N days
-          ago" callout underneath is the actual receipt — how long the
-          prediction sat before it came true. Other-remind keeps the
-          original "reminded X of Y prediction" line but still surfaces
-          the elapsed time prominently. */}
-      {self_remind ? (
-        <div className="-mx-4 -mt-4 mb-3 py-4 bg-gradient-to-b from-yellow-500/20 to-transparent border-b border-yellow-500/30 text-center">
-          <div className="font-display text-3xl text-yellow-400 tracking-wider drop-shadow-[0_0_12px_rgba(234,179,8,0.4)]">
-            CALLED IT
-          </div>
-          <div className="text-sm text-yellow-500/90 font-semibold mt-1">
-            Predicted {timeAgo(hot_take.created_at)} ago
-          </div>
-        </div>
-      ) : (
+      {/* Other-remind keeps the "reminded X of Y prediction" line inside
+          the card body with the elapsed time in yellow. */}
+      {!self_remind && (
         <div className="mb-3">
           <div className="text-sm text-text-secondary">
             reminded <span className="font-semibold text-accent">@{reminded_user?.username || 'unknown'}</span> of {possessive} prediction from{' '}

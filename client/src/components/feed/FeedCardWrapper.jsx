@@ -28,6 +28,7 @@ export default function FeedCardWrapper({
   cardClassName = '',
   streakCount,
   headerLayout = 'default',
+  topBanner = null,
   children,
 }) {
   const { session } = useAuth()
@@ -40,6 +41,7 @@ export default function FeedCardWrapper({
       className={`bg-bg-primary border border-text-primary/20 rounded-xl overflow-hidden border-l-4 ${borderClass} ${cardClassName} ${onCardTap ? 'cursor-pointer' : ''}`}
       onClick={onCardTap}
     >
+      {topBanner}
       {headerLayout === 'centered' ? (
         /* Centered player-headshot style \u2014 used by hero cards like a
            broken record where the honoree is the point of the card. */

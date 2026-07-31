@@ -545,14 +545,25 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         .limit((isHotTakes || isUserHotTakes || isPolls || isPredictions || isPosts) ? 30 : 15)
     })(),
 
-    // Source 10: Hot take reminders (squad only)
-    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions || isPosts) ? Promise.resolve({ data: [] }) :
-    applyBefore(supabase
-      .from('hot_take_reminders')
-      .select('id, reminder_user_id, hot_take_id, comment, created_at, hot_takes(id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, stream_video_uid, stream_ready_at, post_type, embed_provider, embed_ref_id, embed_url, created_at)')
-      .in('reminder_user_id', allIds), 'created_at')
-      .order('created_at', { ascending: false })
-      .limit(15),
+    // Source 10: Hot take reminders. Squad-scope filters to allIds;
+    // All-of-IKB scope pulls the recent global set so "CALLED IT"
+    // moments surface widely — this is the kind of receipt that
+    // rewards the whole audience, not just the squad.
+    (isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions || isPosts) ? Promise.resolve({ data: [] }) :
+    (isAll
+      ? applyBefore(supabase
+          .from('hot_take_reminders')
+          .select('id, reminder_user_id, hot_take_id, comment, created_at, hot_takes(id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, stream_video_uid, stream_ready_at, post_type, embed_provider, embed_ref_id, embed_url, created_at)'),
+          'created_at')
+          .order('created_at', { ascending: false })
+          .limit(30)
+      : applyBefore(supabase
+          .from('hot_take_reminders')
+          .select('id, reminder_user_id, hot_take_id, comment, created_at, hot_takes(id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, stream_video_uid, stream_ready_at, post_type, embed_provider, embed_ref_id, embed_url, created_at)')
+          .in('reminder_user_id', allIds), 'created_at')
+          .order('created_at', { ascending: false })
+          .limit(15)
+    ),
 
     // Source 11: All pick shares for sweat cards (squad only)
     (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions || isPosts) ? Promise.resolve({ data: [] }) :
@@ -594,6 +605,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     for (const take of hotTakes.data || []) userIdSet.add(take.user_id)
     for (const win of leagueWins.data || []) userIdSet.add(win.user_id)
     for (const fp of futuresPicks.data || []) userIdSet.add(fp.user_id)
+    for (const r of hotTakeReminders.data || []) userIdSet.add(r.reminder_user_id)
     // viralHotTakes user IDs are added after we fetch the actual hot takes below
     userIdSet.delete(undefined)
     for (const id of blockedSet) userIdSet.delete(id)
@@ -1804,6 +1816,14 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         break
       case 'called_shot':
         score = 75
+        break
+      case 'hot_take_reminder':
+        // Self-remind = CALLED IT card. High-signal receipt — the
+        // author predicted something days/weeks/months ago and it came
+        // true. Boost aggressively so All-of-IKB surfaces it. Other
+        // reminders (someone else reminding you of your prediction)
+        // score below regular hot takes.
+        score = item.self_remind ? 100 : 45
         break
       case 'record':
         score = 70
