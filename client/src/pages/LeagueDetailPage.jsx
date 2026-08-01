@@ -542,7 +542,11 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
     const seasonType = fantasySettings?.season_type
     items.push({ label: 'Type', value: seasonType === 'single_week' ? 'Single Night' : 'Full Season' })
     if (fantasySettings?.champion_metric && seasonType !== 'single_week') {
-      items.push({ label: 'Champion', value: fantasySettings.champion_metric === 'most_wins' ? 'Most Nightly Wins' : 'Most Total Points' })
+      // NFL salary cap fantasy plays weekly; DFS plays nightly. Same setting
+      // key, different label.
+      const isWeekly = league.format === 'fantasy'
+      const winsLabel = isWeekly ? 'Most Weekly Wins' : 'Most Nightly Wins'
+      items.push({ label: 'Champion', value: fantasySettings.champion_metric === 'most_wins' ? winsLabel : 'Most Total Points' })
     }
     if (league.starts_at) {
       items.push({ label: 'Starts', value: league.format === 'fantasy' ? 'NFL Week 1' : formatStartDateShort(league.starts_at) })
@@ -665,7 +669,8 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
       const isSalaryCap = fantasySettings?.format === 'salary_cap'
       if (isSalaryCap) {
         const cap = fantasySettings?.salary_cap ? `$${fantasySettings.salary_cap.toLocaleString()}` : '$60,000'
-        return `Build a new NFL lineup each week under a ${cap} salary cap. Set your starters, watch live scoring update throughout Sunday, and compete to win the most points each week. Tap any player headshot or name to view their stat line, weekly history, injury status, and the latest news and analysis. Your finishing position impacts your global IKB score — see the table below.`
+        const metric = fantasySettings?.champion_metric === 'most_wins' ? 'most weekly wins' : 'most total fantasy points'
+        return `Build a new NFL lineup each week under a ${cap} salary cap. Set your starters, watch live scoring update throughout Sunday, and compete to win the most points each week. Tap any player headshot or name to view their stat line, weekly history, injury status, and the latest news and analysis. The champion is determined by ${metric} over the season. Your finishing position impacts your global IKB score — see the table below.`
       }
       const waiverType = fantasySettings?.waiver_type
       let winnerRule = 'highest waiver priority wins'
