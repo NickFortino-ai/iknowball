@@ -786,7 +786,12 @@ async function computeWnbaThreePointReadiness(leagues, userId, todayET, result) 
 
 async function computeTdPassReadiness(leagues, userId, result) {
   const { getCurrentNflWeek } = await import('./tdPassService.js')
-  const { week } = await getCurrentNflWeek()
+  const { week, isPreSeason } = await getCurrentNflWeek()
+  // Preseason: Week 1 hasn't kicked off yet. A red "Week 1 QB not picked"
+  // flag on brand-new leagues weeks before the season starts spooked new
+  // members Nick was inviting for launch — surfaces as urgency for an
+  // event that isn't imminent. Skip readiness until Week 1 actually opens.
+  if (isPreSeason) return
   const leagueIds = leagues.map((l) => l.id)
   const { data: picks } = await supabase
     .from('td_pass_picks')
@@ -803,7 +808,8 @@ async function computeTdPassReadiness(leagues, userId, result) {
 
 async function computeSacksReadiness(leagues, userId, result) {
   const { getCurrentNflWeek } = await import('./tdPassService.js')
-  const { week } = await getCurrentNflWeek()
+  const { week, isPreSeason } = await getCurrentNflWeek()
+  if (isPreSeason) return
   const leagueIds = leagues.map((l) => l.id)
   const { data: picks } = await supabase
     .from('sacks_picks')
@@ -823,7 +829,8 @@ async function computeSacksReadiness(leagues, userId, result) {
 
 async function computeIntsReadiness(leagues, userId, result) {
   const { getCurrentNflWeek } = await import('./tdPassService.js')
-  const { week } = await getCurrentNflWeek()
+  const { week, isPreSeason } = await getCurrentNflWeek()
+  if (isPreSeason) return
   const leagueIds = leagues.map((l) => l.id)
   const { data: picks } = await supabase
     .from('ints_picks')
@@ -892,6 +899,16 @@ async function isNflWeekDone(week, season) {
  * starter is currently 'Out'. Questionable starters → attention.
  */
 async function computeFantasyReadiness(leagues, userId, result) {
+  // Preseason gate — same reasoning as computeTdPassReadiness. A pre-Week 1
+  // "Set your Week 1 lineup" flag on a fresh league weeks before kickoff
+  // reads as urgency for an event that isn't imminent, which scares new
+  // members. Traditional fantasy also hasn't even drafted yet in preseason.
+  try {
+    const { getCurrentNflWeek } = await import('./tdPassService.js')
+    const { isPreSeason } = await getCurrentNflWeek()
+    if (isPreSeason) return
+  } catch { /* fall through — never let this gate silently break readiness */ }
+
   const leagueIds = leagues.map((l) => l.id)
   const { data: settings } = await supabase
     .from('fantasy_settings')
