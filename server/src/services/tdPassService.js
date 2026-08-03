@@ -375,13 +375,19 @@ export async function getCurrentWeekMatchups() {
     .gte('starts_at', `${minDate}T00:00:00Z`)
     .lt('starts_at', `${maxDate}T23:59:59Z`)
 
+  // games.home_team / away_team are full names ("Buffalo Bills") but
+  // nfl_players.team (what the client keys on) is Sleeper's abbreviation
+  // ("BUF"). Key the returned map by abbreviation so QB lookups match.
+  // Without this every QB was tagged BYE in Week 1.
   const byTeam = {}
   for (const g of games || []) {
-    if (g.home_team) {
-      byTeam[g.home_team] = { opponent: g.away_team, home_away: 'home', starts_at: g.starts_at }
+    const homeAbbr = NFL_FULL_TO_ABBR_LOCK[g.home_team]
+    const awayAbbr = NFL_FULL_TO_ABBR_LOCK[g.away_team]
+    if (homeAbbr) {
+      byTeam[homeAbbr] = { opponent: awayAbbr || g.away_team, home_away: 'home', starts_at: g.starts_at }
     }
-    if (g.away_team) {
-      byTeam[g.away_team] = { opponent: g.home_team, home_away: 'away', starts_at: g.starts_at }
+    if (awayAbbr) {
+      byTeam[awayAbbr] = { opponent: homeAbbr || g.home_team, home_away: 'away', starts_at: g.starts_at }
     }
   }
   return byTeam
