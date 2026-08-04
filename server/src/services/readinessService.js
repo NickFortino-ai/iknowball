@@ -168,10 +168,23 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
       }
     }
     if (byFormat.survivor?.length) {
-      // Filter out daily survivor leagues whose sport day is done
+      // Filter out daily survivor leagues whose sport day is done, AND
+      // NFL survivor leagues while the NFL is still in preseason. Full
+      // Season NFL survivors created before kickoff have Week 1 anchored
+      // to this week's Tuesday (auto by generateLeagueWeeks), so the
+      // current-week gate in computeSurvivorReadiness would mark them
+      // red even though NFL Week 1 is 30+ days out.
+      let nflIsPreSeason = false
+      try {
+        const { getCurrentNflWeek } = await import('./tdPassService.js')
+        const { isPreSeason } = await getCurrentNflWeek()
+        nflIsPreSeason = !!isPreSeason
+      } catch { /* leave false — don't let this gate break readiness */ }
       const eligible = byFormat.survivor.filter((l) => {
         const isDaily = l.settings?.pick_frequency === 'daily'
-        return !(isDaily && doneSports.has(l.sport))
+        if (isDaily && doneSports.has(l.sport)) return false
+        if (nflIsPreSeason && l.sport === 'americanfootball_nfl') return false
+        return true
       })
       if (eligible.length) await computeSurvivorReadiness(eligible, userId, result)
     }
