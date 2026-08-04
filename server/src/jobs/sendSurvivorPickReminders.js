@@ -47,8 +47,23 @@ export async function sendSurvivorPickReminders() {
 
   if (!leagues?.length) return
 
+  // NFL preseason gate — a Full Season survivor league created before
+  // Week 1 kickoff has starts_at defaulted to now, which puts
+  // league_weeks Week 1 in the past, which makes isOpenNow true, which
+  // fires this push reminder weeks before any NFL game actually happens.
+  // Suppress until Week 1 has actually kicked off (isPreSeason flips
+  // false). Non-NFL survivors skip the gate.
+  let nflIsPreSeason = false
+  try {
+    const { getCurrentNflWeek } = await import('../services/tdPassService.js')
+    const { isPreSeason } = await getCurrentNflWeek()
+    nflIsPreSeason = !!isPreSeason
+  } catch { /* leave false — never let this gate break reminders */ }
+
   let totalSent = 0
   for (const league of leagues) {
+    // Skip NFL survivor leagues while the NFL is still in preseason.
+    if (nflIsPreSeason && league.sport === 'americanfootball_nfl') continue
     // Only fire during the FIRST period — find the lowest week_number for
     // this league, then only proceed if that period is currently open.
     const { data: firstWeeks } = await supabase
