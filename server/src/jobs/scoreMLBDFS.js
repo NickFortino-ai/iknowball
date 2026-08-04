@@ -527,10 +527,12 @@ async function scoreStrikeoutsPicks(date) {
  * Score HR Derby picks: pull home_runs from mlb_dfs_player_stats into hr_derby_picks.
  */
 async function scoreHRDerbyPicks(date) {
-  // Get all hr_derby_picks for this date that haven't been scored yet
+  // Get all hr_derby_picks for this date. Include current home_runs so we
+  // can log any change — makes retroactive drops (stat corrections, ESPN
+  // data flips, doubleheader dedupe re-runs) traceable instead of silent.
   const { data: picks } = await supabase
     .from('hr_derby_picks')
-    .select('id, espn_player_id')
+    .select('id, user_id, league_id, player_name, espn_player_id, home_runs')
     .eq('game_date', date)
 
   if (!picks?.length) return
@@ -550,17 +552,34 @@ async function scoreHRDerbyPicks(date) {
     hrMap[s.espn_player_id] = s.home_runs || 0
   }
 
-  // Update each pick with the player's HR count
+  // Update each pick with the player's HR count. Log every DECREASE
+  // loudly — the field is monotonic in the happy path (bats can only
+  // ADD HRs during a game), so any drop points at either a stat
+  // correction, ESPN data glitch, or a dedupe re-run issue and deserves
+  // to be visible in Render logs for post-mortem.
+  let updated = 0
+  let decreases = 0
   for (const pick of picks) {
     const hrs = hrMap[pick.espn_player_id]
     if (hrs === undefined) continue
+    const prev = pick.home_runs || 0
+    if (prev === hrs) continue
+    if (hrs < prev) {
+      decreases++
+      logger.warn({
+        date, pickId: pick.id, userId: pick.user_id, leagueId: pick.league_id,
+        playerName: pick.player_name, espnPlayerId: pick.espn_player_id,
+        prevHRs: prev, newHRs: hrs, delta: hrs - prev,
+      }, 'HR Derby pick home_runs DECREASED — investigate')
+    }
     await supabase
       .from('hr_derby_picks')
       .update({ home_runs: hrs })
       .eq('id', pick.id)
+    updated++
   }
 
-  logger.info({ date, picks: picks.length }, 'Scored HR Derby picks')
+  logger.info({ date, picks: picks.length, updated, decreases }, 'Scored HR Derby picks')
 }
 
 /**
