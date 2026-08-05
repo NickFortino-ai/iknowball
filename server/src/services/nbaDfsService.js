@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { fetchGameLog, calcWeightedFppg, fetchDefensiveRankings, applyDefensiveAdjustment } from '../utils/dfsAlgorithm.js'
 import { writeEspnBlurb } from './playerBlurbService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 const NBA_SLOTS = ['PG1', 'PG2', 'SG1', 'SG2', 'SF1', 'SF2', 'PF1', 'PF2', 'C']
 
@@ -215,13 +216,16 @@ export async function getNBADFSStandings(leagueId) {
     .eq('league_id', leagueId)
     .single()
 
-  const { data: results, error } = await supabase
-    .from('nba_dfs_nightly_results')
-    .select('user_id, game_date, total_points, night_rank, is_night_winner, users(id, username, display_name, avatar_url, avatar_emoji)')
-    .eq('league_id', leagueId)
-    .order('game_date', { ascending: true })
-
-  if (error) throw error
+  // fetchAll pages past the 1000-row cap — a full-season NBA DFS league
+  // with enough members × nights crosses 1000 mid-season and a plain
+  // .select() silently drops the oldest rows, undercounting every user.
+  const results = await fetchAll(
+    supabase
+      .from('nba_dfs_nightly_results')
+      .select('user_id, game_date, total_points, night_rank, is_night_winner, users(id, username, display_name, avatar_url, avatar_emoji)')
+      .eq('league_id', leagueId)
+      .order('game_date', { ascending: true })
+  )
 
   const userMap = {}
   for (const r of (results || [])) {

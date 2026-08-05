@@ -282,10 +282,15 @@ async function getFantasyLeagueStandings(league) {
       : isNBA ? 'nba_dfs_nightly_results' : 'dfs_weekly_results'
     const winnerField = (isNBA || isMLB) ? 'is_night_winner' : 'is_week_winner'
 
-    const { data: results } = await supabase
-      .from(table)
-      .select('user_id, total_points, ' + winnerField)
-      .eq('league_id', league.id)
+    // fetchAll pages past the 1000-row cap. A nightly-results league with
+    // enough members × nights crosses 1000 mid-season and a plain .select()
+    // silently drops the oldest rows — payouts would be off.
+    const results = await fetchAll(
+      supabase
+        .from(table)
+        .select('user_id, total_points, ' + winnerField)
+        .eq('league_id', league.id)
+    )
 
     if (!results?.length) return []
 
@@ -447,10 +452,12 @@ async function getWNBADFSStandings(league) {
     .eq('league_id', league.id)
     .single()
 
-  const { data: results } = await supabase
-    .from('wnba_dfs_nightly_results')
-    .select('user_id, total_points, is_night_winner')
-    .eq('league_id', league.id)
+  const results = await fetchAll(
+    supabase
+      .from('wnba_dfs_nightly_results')
+      .select('user_id, total_points, is_night_winner')
+      .eq('league_id', league.id)
+  )
 
   if (!results?.length) return []
 
@@ -495,10 +502,12 @@ async function getMLBDFSStandings(league) {
     .eq('league_id', league.id)
     .single()
 
-  const { data: results } = await supabase
-    .from('mlb_dfs_nightly_results')
-    .select('user_id, total_points, is_night_winner')
-    .eq('league_id', league.id)
+  const results = await fetchAll(
+    supabase
+      .from('mlb_dfs_nightly_results')
+      .select('user_id, total_points, is_night_winner')
+      .eq('league_id', league.id)
+  )
 
   if (!results?.length) return []
 
@@ -760,10 +769,13 @@ async function getThreePointStandings(league) {
 }
 
 async function getStrikeoutsStandings(league) {
-  const { data: picks } = await supabase
-    .from('strikeouts_picks')
-    .select('user_id, strikeouts')
-    .eq('league_id', league.id)
+  // See HR Derby note above — same 1000-row-cap risk for daily-pick formats.
+  const picks = await fetchAll(
+    supabase
+      .from('strikeouts_picks')
+      .select('user_id, strikeouts')
+      .eq('league_id', league.id)
+  )
 
   if (!picks?.length) return []
 

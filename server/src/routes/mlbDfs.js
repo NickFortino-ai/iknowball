@@ -8,6 +8,7 @@ import {
 } from '../services/mlbDfsService.js'
 import { getFantasySettings } from '../services/fantasyService.js'
 import { leagueEndSportsDay, leagueStartSportsDay } from '../utils/sportsDay.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -148,10 +149,15 @@ router.get('/standings', async (req, res) => {
 
   const championMetric = settings?.champion_metric || 'total_points'
 
-  const { data: results } = await supabase
-    .from('mlb_dfs_nightly_results')
-    .select('user_id, total_points, is_night_winner')
-    .eq('league_id', league_id)
+  // fetchAll pages past the 1000-row cap — a full-season MLB DFS league
+  // with enough members × nights crosses 1000 mid-season and a plain
+  // .select() silently drops the oldest rows, undercounting every user.
+  const results = await fetchAll(
+    supabase
+      .from('mlb_dfs_nightly_results')
+      .select('user_id, total_points, is_night_winner')
+      .eq('league_id', league_id)
+  )
 
   if (!results?.length) return res.json({ standings: [], championMetric })
 

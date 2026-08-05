@@ -5,6 +5,7 @@ import { getMLBPlayerPool } from '../services/mlbDfsService.js'
 import { fetchESPNScoreboard } from '../services/espnService.js'
 import { leagueEndSportsDay } from '../utils/sportsDay.js'
 import { logger } from '../utils/logger.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -304,11 +305,16 @@ router.get('/standings', async (req, res) => {
 
   const allMemberIds = members.map((m) => m.user_id)
 
-  const { data: picks } = await supabase
-    .from('strikeouts_picks')
-    .select('user_id, player_name, team, headshot_url, strikeouts, game_date, espn_player_id')
-    .eq('league_id', league_id)
-    .order('game_date', { ascending: false })
+  // fetchAll pages past the 1000-row cap. A daily-picks contest with
+  // enough members × nights crosses 1000 eventually; a plain .select()
+  // silently drops the oldest rows and under-reports every user's total.
+  const picks = await fetchAll(
+    supabase
+      .from('strikeouts_picks')
+      .select('user_id, player_name, team, headshot_url, strikeouts, game_date, espn_player_id')
+      .eq('league_id', league_id)
+      .order('game_date', { ascending: false })
+  )
 
   // ET is the source of truth for US sports calendar dates — server runs in UTC
   // on Render so naive ambient-TZ would roll over at 8pm ET and miss today.

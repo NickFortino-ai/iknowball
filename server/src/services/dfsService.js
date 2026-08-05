@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { calculateFantasyPoints } from './sleeperService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 const DFS_SLOTS = ['QB', 'RB1', 'RB2', 'WR1', 'WR2', 'WR3', 'TE', 'FLEX', 'DEF']
 const FLEX_ELIGIBLE = ['RB', 'WR', 'TE']
@@ -192,13 +193,16 @@ export async function getDFSStandings(leagueId) {
     .eq('league_id', leagueId)
     .single()
 
-  const { data: results, error } = await supabase
-    .from('dfs_weekly_results')
-    .select('user_id, nfl_week, total_points, week_rank, is_week_winner, users(id, username, display_name, avatar_url, avatar_emoji)')
-    .eq('league_id', leagueId)
-    .order('nfl_week', { ascending: true })
-
-  if (error) throw error
+  // fetchAll pages past the 1000-row cap. NFL DFS is weekly (18 weeks),
+  // so a league would need ~55 members to bite — future-proofed here so
+  // it doesn't silently truncate if the league grows.
+  const results = await fetchAll(
+    supabase
+      .from('dfs_weekly_results')
+      .select('user_id, nfl_week, total_points, week_rank, is_week_winner, users(id, username, display_name, avatar_url, avatar_emoji)')
+      .eq('league_id', leagueId)
+      .order('nfl_week', { ascending: true })
+  )
 
   // Aggregate by user
   const userMap = {}

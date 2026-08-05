@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { fetchGameLog, calcWeightedFppg, fetchDefensiveRankings, applyDefensiveAdjustment } from '../utils/dfsAlgorithm.js'
 import { writeEspnBlurb } from './playerBlurbService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 // 2 G / 2 F / 1 C / 4 UTIL = 9 slots. Step-1 data verification (208
 // league-wide players) showed ESPN tags every WNBA player as exactly G,
@@ -199,13 +200,14 @@ export async function getWNBADFSStandings(leagueId) {
     .eq('league_id', leagueId)
     .single()
 
-  const { data: results, error } = await supabase
-    .from('wnba_dfs_nightly_results')
-    .select('user_id, game_date, total_points, night_rank, is_night_winner, users(id, username, display_name, avatar_url, avatar_emoji)')
-    .eq('league_id', leagueId)
-    .order('game_date', { ascending: true })
-
-  if (error) throw error
+  // fetchAll pages past the 1000-row cap. See NBA DFS note.
+  const results = await fetchAll(
+    supabase
+      .from('wnba_dfs_nightly_results')
+      .select('user_id, game_date, total_points, night_rank, is_night_winner, users(id, username, display_name, avatar_url, avatar_emoji)')
+      .eq('league_id', leagueId)
+      .order('game_date', { ascending: true })
+  )
 
   const userMap = {}
   for (const r of (results || [])) {
