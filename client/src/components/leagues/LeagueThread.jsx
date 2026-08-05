@@ -279,7 +279,7 @@ export default function LeagueThread({ league }) {
                     </div>
                   )}
                   <div className="flex items-baseline gap-2">
-                    <div className="text-sm text-text-primary leading-relaxed flex-1 min-w-0">
+                    <div className="text-sm text-text-primary leading-relaxed flex-1 min-w-0 whitespace-pre-wrap">
                       {msg.content && renderContent(msg.content, msg.tagged_users)}
                     </div>
                     {crossesDay && (
