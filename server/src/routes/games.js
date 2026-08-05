@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { supabase } from '../config/supabase.js'
 import { requireAuth } from '../middleware/auth.js'
 import { logger } from '../utils/logger.js'
+import { expandSportFamily, rollupSportKey } from '../utils/nflFamily.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 const ESPN_PATHS = {
@@ -27,7 +28,10 @@ router.get('/', requireAuth, async (req, res) => {
     .order('starts_at', { ascending: true })
 
   if (sport) {
-    query = query.eq('sports.key', sport)
+    // NFL rolls up regular + preseason so the picks board's NFL chip
+    // surfaces both under one tab.
+    const keys = expandSportFamily(sport)
+    query = keys.length === 1 ? query.eq('sports.key', keys[0]) : query.in('sports.key', keys)
   }
   if (status) {
     query = query.eq('status', status)
@@ -74,9 +78,13 @@ router.get('/active-sports', requireAuth, async (req, res) => {
   for (const game of data) {
     const gameDay = dayKey(new Date(game.starts_at))
     if (!validDays.has(gameDay)) continue
-    const key = game.sports.key
+    // Preseason rolls up under the regular NFL tab. Never surface a
+    // separate "NFL Preseason" chip — the client has no rendering path
+    // for it and it would require an App Store build to add one.
+    const key = rollupSportKey(game.sports.key)
+    const name = key === game.sports.key ? game.sports.name : 'NFL'
     if (!counts[key]) {
-      counts[key] = { key, name: game.sports.name, count: 0 }
+      counts[key] = { key, name, count: 0 }
     }
     counts[key].count++
   }

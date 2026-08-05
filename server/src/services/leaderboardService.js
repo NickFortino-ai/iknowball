@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { fetchAll } from '../utils/fetchAll.js'
+import { expandSportFamily } from '../utils/nflFamily.js'
 
 export async function getLeaderboard(scope = 'global', sportKey) {
   if (scope === 'global') {
@@ -107,31 +108,55 @@ export async function getLeaderboard(scope = 'global', sportKey) {
   }
 
   if (scope === 'sport' && sportKey) {
-    const { data: sport } = await supabase
+    // NFL rolls up regular + preseason into a single leaderboard.
+    // Everything else stays 1:1.
+    const familyKeys = expandSportFamily(sportKey)
+    const { data: sports } = await supabase
       .from('sports')
       .select('id')
-      .eq('key', sportKey)
-      .single()
+      .in('key', familyKeys)
 
-    if (!sport) return []
+    if (!sports || sports.length === 0) return []
+    const sportIds = sports.map((s) => s.id)
 
     const data = await fetchAll(
       supabase
         .from('user_sport_stats')
         .select('*, users(id, username, display_name, avatar_url, avatar_emoji, tier)')
-        .eq('sport_id', sport.id)
+        .in('sport_id', sportIds)
         .order('total_points', { ascending: false })
     )
 
-    return (data || []).map((s, i) => ({
-      ...s.users,
-      sport_points: s.total_points,
-      total_picks: s.total_picks,
-      correct_picks: s.correct_picks,
-      current_streak: s.current_streak,
-      best_streak: s.best_streak,
-      rank: i + 1,
-    }))
+    // For NFL, a user may have two rows (one per sport_id). Merge them
+    // per user so the leaderboard shows one entry per player with
+    // combined totals. Streaks pick the best of the two rows since
+    // there's no way to reconstruct a true unified streak from the
+    // aggregate tables.
+    const byUser = {}
+    for (const s of data || []) {
+      const uid = s.users?.id
+      if (!uid) continue
+      if (!byUser[uid]) {
+        byUser[uid] = {
+          ...s.users,
+          sport_points: 0,
+          total_picks: 0,
+          correct_picks: 0,
+          current_streak: 0,
+          best_streak: 0,
+        }
+      }
+      const row = byUser[uid]
+      row.sport_points += s.total_points || 0
+      row.total_picks += s.total_picks || 0
+      row.correct_picks += s.correct_picks || 0
+      row.current_streak = Math.max(row.current_streak, s.current_streak || 0)
+      row.best_streak = Math.max(row.best_streak, s.best_streak || 0)
+    }
+
+    return Object.values(byUser)
+      .sort((a, b) => b.sport_points - a.sport_points)
+      .map((row, i) => ({ ...row, rank: i + 1 }))
   }
 
   return []
@@ -164,6 +189,17 @@ export async function getUserRankOnLeaderboard(userId, scope = 'global', sportKe
   }
 
   if (scope === 'sport' && sportKey) {
+    // NFL rolls up regular + preseason. The O(1) COUNT-of-higher trick
+    // used elsewhere doesn't apply when a user can have two source rows
+    // for one bucket, so for the family case we reuse the full aggregated
+    // leaderboard (same shape) and pluck the user's row. Non-NFL sports
+    // keep the fast path.
+    const familyKeys = expandSportFamily(sportKey)
+    if (familyKeys.length > 1) {
+      const board = await getLeaderboard('sport', sportKey)
+      return board.find((r) => r.id === userId) || null
+    }
+
     const { data: sport } = await supabase
       .from('sports')
       .select('id')
@@ -306,6 +342,9 @@ export async function getAllCrownHolders() {
 
   const { data: sports } = await supabase.from('sports').select('key, name')
   for (const sport of sports || []) {
+    // Preseason rolls up under the regular NFL crown via expandSportFamily;
+    // don't emit a separate "NFL Preseason" crown.
+    if (sport.key === 'americanfootball_nfl_preseason') continue
     const sportBoard = await getLeaderboard('sport', sport.key)
     if (sportBoard.length > 0) {
       const u = sportBoard[0]
@@ -346,6 +385,9 @@ export async function getCrowns(userId) {
   // Check each sport leaderboard
   const { data: sports } = await supabase.from('sports').select('key, name')
   for (const sport of sports || []) {
+    // Preseason rolls up under the regular NFL leaderboard; skip it so
+    // we don't emit a duplicate "NFL Preseason" crown.
+    if (sport.key === 'americanfootball_nfl_preseason') continue
     const sportBoard = await getLeaderboard('sport', sport.key)
     if (sportBoard.length > 0 && sportBoard[0].id === userId) {
       crowns.push(sport.name)

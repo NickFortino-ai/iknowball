@@ -6,6 +6,9 @@ const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 // Map our sport keys to ESPN's {sport}/{league} path + optional query params
 const SPORT_TO_ESPN = {
   americanfootball_nfl: { path: 'football/nfl' },
+  // Preseason lives at the same ESPN path — ESPN's scoreboard returns
+  // whatever games are on the given date, regardless of seasontype.
+  americanfootball_nfl_preseason: { path: 'football/nfl' },
   americanfootball_ncaaf: { path: 'football/college-football', params: 'groups=80&limit=500' },
   basketball_nba: { path: 'basketball/nba' },
   basketball_ncaab: { path: 'basketball/mens-college-basketball', params: 'groups=50&limit=500' },
