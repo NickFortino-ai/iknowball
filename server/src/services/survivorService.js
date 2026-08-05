@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from './notificationService.js'
 import { checkRecordAfterSettle } from './recordService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 export async function submitSurvivorPick(leagueId, userId, weekId, gameId, pickedTeam) {
   // Check league state
@@ -401,11 +402,18 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
     .eq('league_id', leagueId)
     .order('is_alive', { ascending: false })
 
-  const { data: picks } = await supabase
-    .from('survivor_picks')
-    .select('*, league_weeks(week_number), games(starts_at)')
-    .eq('league_id', leagueId)
-    .order('league_weeks(week_number)', { ascending: true })
+  // fetchAll pages past the 1000-row cap. A long-running daily-period
+  // survivor league (e.g. all-sports "I WILL SURVIVE" with 200+ periods
+  // × several members) can cross 1000 total picks and a plain .select()
+  // would silently drop the oldest picks — showing users as never
+  // having picked in early weeks.
+  const picks = await fetchAll(
+    supabase
+      .from('survivor_picks')
+      .select('*, league_weeks(week_number), games(starts_at)')
+      .eq('league_id', leagueId)
+      .order('league_weeks(week_number)', { ascending: true })
+  )
 
   const { data: weeks } = await supabase
     .from('league_weeks')
@@ -549,10 +557,15 @@ export async function regenerateSurvivorPeriods(leagueId) {
   // Import generateLeagueWeeks lazily to avoid a cycle
   const { generateLeagueWeeks } = await import('./leagueService.js')
 
-  const { data: existingPicks } = await supabase
-    .from('survivor_picks')
-    .select('id, game_id, league_week_id, games!inner(starts_at)')
-    .eq('league_id', leagueId)
+  // fetchAll — a long-running survivor league can hold >1000 picks and
+  // a plain .select() would leave the oldest picks unremapped when we
+  // regenerate periods, silently orphaning them.
+  const existingPicks = await fetchAll(
+    supabase
+      .from('survivor_picks')
+      .select('id, game_id, league_week_id, games!inner(starts_at)')
+      .eq('league_id', leagueId)
+  )
 
   const { data: oldWeeks } = await supabase
     .from('league_weeks')

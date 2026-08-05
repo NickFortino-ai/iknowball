@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { calculateRiskPoints, calculateRewardPoints } from '../utils/scoring.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 export async function submitLeaguePick(leagueId, userId, weekId, gameId, pickedTeam) {
   // Verify membership
@@ -312,11 +313,17 @@ export async function getLeaguePickStandings(leagueId) {
 
   const useSubmissionOdds = league?.settings?.lock_odds_at === 'submission'
 
-  const { data: picks } = await supabase
-    .from('league_picks')
-    .select('user_id, is_correct, points_earned, reward_at_submission, risk_at_submission')
-    .eq('league_id', leagueId)
-    .eq('status', 'settled')
+  // fetchAll pages past the 1000-row cap. A season-long pickem league
+  // easily crosses 1000 total picks (e.g. NFL 18 weeks × 16 games ×
+  // 12 members = 3400+) and a plain .select() silently drops the oldest,
+  // undercounting every user's total_points.
+  const picks = await fetchAll(
+    supabase
+      .from('league_picks')
+      .select('user_id, is_correct, points_earned, reward_at_submission, risk_at_submission')
+      .eq('league_id', leagueId)
+      .eq('status', 'settled')
+  )
 
   const statsMap = {}
   for (const m of members) {
