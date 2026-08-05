@@ -792,10 +792,16 @@ async function getStrikeoutsStandings(league) {
 }
 
 async function getHRDerbyStandings(league) {
-  const { data: picks } = await supabase
-    .from('hr_derby_picks')
-    .select('user_id, home_runs')
-    .eq('league_id', league.id)
+  // fetchAll pages past the 1000-row cap — a full-season HR Derby with
+  // 6 members crosses 1000 picks mid-August and a plain .select() would
+  // silently drop the oldest rows, distorting final standings and the
+  // resulting bonus payouts.
+  const picks = await fetchAll(
+    supabase
+      .from('hr_derby_picks')
+      .select('user_id, home_runs')
+      .eq('league_id', league.id)
+  )
 
   if (!picks?.length) return []
 

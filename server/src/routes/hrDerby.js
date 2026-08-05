@@ -5,6 +5,7 @@ import { getMLBPlayerPool } from '../services/mlbDfsService.js'
 import { fetchESPNScoreboard } from '../services/espnService.js'
 import { leagueEndSportsDay } from '../utils/sportsDay.js'
 import { logger } from '../utils/logger.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -303,12 +304,20 @@ router.get('/standings', async (req, res) => {
 
   const allMemberIds = members.map((m) => m.user_id)
 
-  // Aggregate all picks with HRs + keep detail for dropdown
-  const { data: picks } = await supabase
-    .from('hr_derby_picks')
-    .select('user_id, player_name, team, headshot_url, home_runs, game_date, espn_player_id')
-    .eq('league_id', league_id)
-    .order('game_date', { ascending: false })
+  // Aggregate all picks with HRs + keep detail for dropdown.
+  // fetchAll pages past Supabase's default 1000-row response ceiling —
+  // once cumulative picks across all members crosses 1000 (mid-Aug of
+  // year 1), a plain .select() silently drops the oldest rows, which
+  // under-reports every user's HR total by the number of HRs in their
+  // dropped picks. See past incident: standings showed Nick at 58 when
+  // DB truth was 63.
+  const picks = await fetchAll(
+    supabase
+      .from('hr_derby_picks')
+      .select('user_id, player_name, team, headshot_url, home_runs, game_date, espn_player_id')
+      .eq('league_id', league_id)
+      .order('game_date', { ascending: false })
+  )
 
   // ET is the source of truth for US sports calendar dates — server runs in UTC
   // on Render so naive ambient-TZ would roll over at 8pm ET and miss today.
