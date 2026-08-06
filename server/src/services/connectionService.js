@@ -894,7 +894,11 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         },
       })
     } else if (fp.status === 'locked') {
-      // Pending futures pick — show that user made a bold call
+      // Pending futures picks are squad-only — the hub feed was getting
+      // saturated as new markets came online. Hits still surface to
+      // all-of-IKB via the +120-odds gate above.
+      if (isAll) continue
+      // Show that user made a bold call
       feed.push({
         type: 'futures_pick',
         id: fp.id,
