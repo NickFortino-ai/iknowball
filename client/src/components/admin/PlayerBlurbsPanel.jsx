@@ -46,6 +46,10 @@ export default function PlayerBlurbsPanel() {
   const [createContent, setCreateContent] = useState('')
   const [historyPlayerId, setHistoryPlayerId] = useState(null)
   const [history, setHistory] = useState([])
+  // Tap-to-preview the current blurb inline without opening the Edit
+  // textarea. Cuts a step for the common "just check what the note says"
+  // scan. Only active when the player has a blurb.
+  const [expandedId, setExpandedId] = useState(null)
   const [week, setWeek] = useState(1)
   const [search, setSearch] = useState('')
   const [injuryFilter, setInjuryFilter] = useState('all')
@@ -359,6 +363,10 @@ export default function PlayerBlurbsPanel() {
             const isEditing = editingId === blurb?.id
             const isCreating = creatingFor === player.id
             const showingHistory = historyPlayerId === player.id
+            const isExpanded = expandedId === player.id
+            // Only offer tap-to-expand when there's actually a blurb to
+            // preview. No blurb → nothing useful to reveal.
+            const canExpand = !!blurb?.content
 
             return (
               <div key={player.id} className="bg-bg-primary border border-text-primary/20 rounded-xl overflow-hidden">
@@ -370,7 +378,10 @@ export default function PlayerBlurbsPanel() {
                     onChange={() => toggleSelect(player.id)}
                     className="shrink-0 accent-accent"
                   />
-                  <div className="flex-1 min-w-0">
+                  <div
+                    className={`flex-1 min-w-0 ${canExpand ? 'cursor-pointer' : ''}`}
+                    onClick={canExpand ? () => setExpandedId(isExpanded ? null : player.id) : undefined}
+                  >
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-text-primary truncate">{player.full_name}</span>
                       <span className="text-[10px] text-text-muted">{player.position} · {player.team}</span>
@@ -453,6 +464,17 @@ export default function PlayerBlurbsPanel() {
                     </button>
                   </div>
                 </div>
+
+                {/* Tap-to-preview the current blurb. Read-only — hides
+                    when Edit is opened to avoid rendering the same
+                    content twice. */}
+                {isExpanded && !isEditing && blurb?.content && (
+                  <div className="px-3 pb-3">
+                    <div className="rounded-lg bg-bg-card border border-text-primary/10 px-3 py-2 text-sm text-text-primary whitespace-pre-wrap">
+                      {blurb.content}
+                    </div>
+                  </div>
+                )}
 
                 {/* Edit inline */}
                 {isEditing && (
