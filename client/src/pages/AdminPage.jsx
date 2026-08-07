@@ -16,6 +16,7 @@ import WnbaSalariesEditor from '../components/admin/WnbaSalariesEditor'
 import NbaSalariesEditor from '../components/admin/NbaSalariesEditor'
 import MlbSalariesEditor from '../components/admin/MlbSalariesEditor'
 import PlayerBlurbsPanel from '../components/admin/PlayerBlurbsPanel'
+import WritersPanel from '../components/admin/WritersPanel'
 import AdminToolsPanel from '../components/admin/AdminToolsPanel'
 import DashboardPanel from '../components/admin/DashboardPanel'
 import RichEmailEditor from '../components/admin/RichEmailEditor'
@@ -271,6 +272,7 @@ export default function AdminPage() {
           { key: 'backdrops', label: 'Backdrops', badge: pendingCounts?.backdrops },
           { key: 'positions', label: 'Positions' },
           { key: 'playerblurbs', label: 'Blurbs' },
+          { key: 'writers', label: 'Writers' },
           { key: 'seasons', label: 'Seasons' },
           { key: 'tools', label: 'Tools' },
           { key: 'overrides', label: 'Sync & Recompute' },
@@ -280,7 +282,7 @@ export default function AdminPage() {
           { key: 'wnbaSalaries', label: 'WNBA Salaries' },
           { key: 'surveys', label: 'Surveys' },
           { key: 'config', label: 'Config' },
-        ].filter((tab) => !(isHelperAdmin && (tab.key === 'dashboard' || tab.key === 'email'))).map((tab) => (
+        ].filter((tab) => !(isHelperAdmin && (tab.key === 'dashboard' || tab.key === 'email' || tab.key === 'writers'))).map((tab) => (
           <button
             key={tab.key}
             onClick={() => setAdminSection(tab.key)}
@@ -611,6 +613,7 @@ export default function AdminPage() {
       {adminSection === 'positions' && <PlayerPositionPanel />}
 
       {adminSection === 'playerblurbs' && <PlayerBlurbsPanel />}
+      {adminSection === 'writers' && <WritersPanel />}
 
       {adminSection === 'seasons' && <SeasonDatesPanel />}
 

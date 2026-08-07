@@ -1102,6 +1102,37 @@ router.post('/users/:id/unmute', async (req, res) => {
 })
 
 // ============================================
+// Writer Role (grant / revoke / list)
+// ============================================
+// Writer grants are full-admin-only — a helper admin shouldn't be able
+// to grant a delegated role. Writers themselves have no admin power.
+
+router.get('/writers', requireFullAdmin, async (req, res) => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, username, display_name, avatar_url, avatar_emoji, is_writer, is_admin')
+    .eq('is_writer', true)
+    .order('username', { ascending: true })
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data || [])
+})
+
+router.post('/users/:id/writer', requireFullAdmin, async (req, res) => {
+  const { is_writer } = req.body
+  if (typeof is_writer !== 'boolean') {
+    return res.status(400).json({ error: 'is_writer (boolean) required' })
+  }
+  const { data, error } = await supabase
+    .from('users')
+    .update({ is_writer })
+    .eq('id', req.params.id)
+    .select('id, username, is_writer')
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data)
+})
+
+// ============================================
 // Player Position Overrides
 // ============================================
 
