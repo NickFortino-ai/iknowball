@@ -507,7 +507,11 @@ export default function LeagueMockDraft({ league, fantasySettings }) {
       return adpScore(a, adpCtx) - adpScore(b, adpCtx)
     })
     .map((p, i) => ({ ...p, overall_rank: i + 1 }))
-  const filtered = rankedAll.filter((p) => !draftedIds.has(p.id)).filter((p) => posFilter === 'All' || p.position === posFilter).filter((p) => !searchQuery || p.full_name.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 60)
+  // No slice cap: the previous 60-row limit meant users hit an invisible
+  // wall around player #73 (60 shown after ~13 already-drafted). Position
+  // filters + search already keep the list short in practice, and even
+  // the full pool (~400) renders fine in the scroll container.
+  const filtered = rankedAll.filter((p) => !draftedIds.has(p.id)).filter((p) => posFilter === 'All' || p.position === posFilter).filter((p) => !searchQuery || p.full_name.toLowerCase().includes(searchQuery.toLowerCase()))
   const myPicks = picks.filter((p) => p.teamSlot === config.userSlot).map((p) => ({ id: p.player.id, name: p.player.full_name, position: p.player.position, team: p.player.team, headshot: p.player.headshot_url }))
   const slotPlan = buildSlotPlan(config.rosterSlots, myPicks)
 
