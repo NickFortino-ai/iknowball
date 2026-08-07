@@ -445,6 +445,28 @@ export async function updateFantasySettings(leagueId, updates) {
     // (Internal code paths like generateDraftOrder that overwrite
     // num_teams as a side effect deliberately do NOT touch this.)
     updates.initial_num_teams = updates.num_teams
+
+    // If bumping num_teams above the current member count re-opens a
+    // slot on a traditional-fantasy league that had already been
+    // flipped to status='active' by the fill logic in completeLeagues.js,
+    // demote it back to 'open'. Otherwise the client's join UI (which
+    // treats a fantasy active league with no joins_locked_at as closed)
+    // silently hides Join/Invite actions and the newly-opened seats
+    // stay unfillable until draft time.
+    const isTraditional = (current?.format || 'traditional') !== 'salary_cap'
+    if (isTraditional && (memberCount || 0) < updates.num_teams) {
+      const { data: leagueRow } = await supabase
+        .from('leagues')
+        .select('status')
+        .eq('id', leagueId)
+        .single()
+      if (leagueRow?.status === 'active' && current?.draft_status === 'pending') {
+        await supabase
+          .from('leagues')
+          .update({ status: 'open', updated_at: new Date().toISOString() })
+          .eq('id', leagueId)
+      }
+    }
   }
 
   // If playoff_teams or championship_week is being changed, recompute
