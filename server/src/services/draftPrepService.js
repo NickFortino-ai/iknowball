@@ -36,6 +36,67 @@ async function fetchPlayerPool() {
   return [...(offensiveResult.data || []), ...(kickerResult.data || []), ...(defResult.data || [])]
 }
 
+// When a user syncs a league whose roster config differs from any they've
+// customized before, we don't want to hand them a fresh ADP order — they
+// lose all the manual work they've done. Instead, copy their most-recently-
+// customized board with the same scoring format as the ordering skeleton,
+// then append any target-config players missing from that list by ADP so
+// new positions (extra DEF, extra flex) still appear at reasonable spots.
+// Returns true if a copy was written, false if there was nothing to copy.
+async function copyRankingsFromAnotherConfig(userId, targetConfigHash, targetScoringFormat, targetRosterSlots) {
+  const { data: candidates } = await supabase
+    .from('draft_prep_rankings')
+    .select('roster_config_hash, created_at')
+    .eq('user_id', userId)
+    .eq('scoring_format', targetScoringFormat)
+    .eq('is_customized', true)
+    .neq('roster_config_hash', targetConfigHash)
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  const sourceHash = candidates?.[0]?.roster_config_hash
+  if (!sourceHash) return false
+
+  const sourceRows = await fetchAll(
+    supabase
+      .from('draft_prep_rankings')
+      .select('player_id, rank')
+      .eq('user_id', userId)
+      .eq('roster_config_hash', sourceHash)
+      .eq('scoring_format', targetScoringFormat)
+      .order('rank', { ascending: true })
+  )
+  if (!sourceRows.length) return false
+
+  const orderedIds = sourceRows.map((r) => r.player_id)
+  const seenIds = new Set(orderedIds)
+
+  const isSuperflex = (targetRosterSlots?.superflex || targetRosterSlots?.sflex || 0) > 0 || (targetRosterSlots?.qb || 0) >= 2
+  const pool = await fetchPlayerPool()
+  const ranked = pool
+    .map((p) => ({ ...p, _adp: effectiveAdp(p, targetScoringFormat, isSuperflex) }))
+    .sort((a, b) => a._adp - b._adp)
+  for (const p of ranked) {
+    if (!seenIds.has(p.id)) {
+      orderedIds.push(p.id)
+      seenIds.add(p.id)
+    }
+  }
+
+  const capped = orderedIds.slice(0, RANKINGS_SEED_SIZE)
+  const rows = capped.map((pid, i) => ({
+    user_id: userId,
+    roster_config_hash: targetConfigHash,
+    scoring_format: targetScoringFormat,
+    player_id: pid,
+    rank: i,
+    is_customized: true,
+  }))
+  const { error } = await supabase.from('draft_prep_rankings').insert(rows)
+  if (error) throw error
+  return true
+}
+
 async function seedDraftPrepRankings(userId, configHash, scoringFormat, rosterSlots) {
   const isSuperflex = (rosterSlots?.superflex || rosterSlots?.sflex || 0) > 0 || (rosterSlots?.qb || 0) >= 2
   const pool = await fetchPlayerPool()
@@ -393,7 +454,15 @@ export async function syncLeague(userId, leagueId) {
       }))
       await supabase.from('draft_prep_rankings').insert(rows)
     } else {
-      await seedDraftPrepRankings(userId, configHash, scoringFormat, settings.roster_slots)
+      // Try to carry over the user's most-recent customized ranking from
+      // another roster config with the same scoring format first — that
+      // preserves the manual work they've done on their prep board even
+      // when the league's roster shape differs. Falls back to a pure ADP
+      // seed only when no prior customization exists.
+      const copied = await copyRankingsFromAnotherConfig(userId, configHash, scoringFormat, settings.roster_slots)
+      if (!copied) {
+        await seedDraftPrepRankings(userId, configHash, scoringFormat, settings.roster_slots)
+      }
     }
   }
 
