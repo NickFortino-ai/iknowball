@@ -453,7 +453,6 @@ export async function updateFantasySettings(leagueId, updates) {
     // treats a fantasy active league with no joins_locked_at as closed)
     // silently hides Join/Invite actions and the newly-opened seats
     // stay unfillable until draft time.
-    const isTraditional = (current?.format || 'traditional') !== 'salary_cap'
     if (isTraditional && (memberCount || 0) < updates.num_teams) {
       const { data: leagueRow } = await supabase
         .from('leagues')
