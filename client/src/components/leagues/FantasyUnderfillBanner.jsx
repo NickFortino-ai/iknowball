@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useFantasyUnderfillState, useResizeFantasyLeague, useCancelFantasyLeague, usePostponeFantasyDraft, useUpdateLeague } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
 import { useNavigate } from 'react-router-dom'
+import DraftTimezonePreview from './DraftTimezonePreview'
 
 /**
  * Commissioner-only banner that appears on a traditional fantasy league
@@ -161,8 +162,10 @@ export default function FantasyUnderfillBanner({ league, fantasySettings }) {
                 type="datetime-local"
                 value={postponeDate}
                 onChange={(e) => setPostponeDate(e.target.value)}
-                className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent mb-3"
+                className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent mb-2"
               />
+              <DraftTimezonePreview localValue={postponeDate} />
+              <div className="mb-3" />
               <button
                 onClick={handlePostpone}
                 disabled={postpone.isPending || !postponeDate}

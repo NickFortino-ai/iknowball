@@ -139,6 +139,7 @@ function getNotificationIcon(n) {
     case 'fantasy_draft_starting_soon': return '\u23F0' // ⏰
     case 'fantasy_draft_postponed': return '\u23F8\uFE0F' // ⏸️
     case 'fantasy_draft_order_set': return '\uD83D\uDCCB' // 📋
+    case 'fantasy_draft_scheduled': return '\uD83D\uDCC5' // 📅 (scheduled OR rescheduled/corrected)
     case 'fantasy_stat_correction': return '\uD83D\uDCDD' // 📝
     case 'fantasy_league_underfilled': return '\u26A0\uFE0F' // ⚠️
     case 'fantasy_league_member_dropped': return '\uD83D\uDC4B' // 👋

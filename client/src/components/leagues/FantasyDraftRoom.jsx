@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useReorderDraft, useStartDraft, useStartOfflineDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick, useUndoDraftPick, useMyRankings, useSetAutoDraft, useCancelAutoDraft, useUpdateFantasySettings, useFantasySettings } from '../../hooks/useLeagues'
 import DraftPlayerPreview from './DraftPlayerPreview'
+import DraftTimezonePreview from './DraftTimezonePreview'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -107,6 +108,7 @@ function toDateTimeLocalValue(isoStr) {
 // commissioner doesn't have to detour through gear settings. Members see
 // the placeholder note; commissioners get the input.
 function DraftDatePrompt({ league, settings, isCommissioner, updateFantasySettings }) {
+  const [localValue, setLocalValue] = useState(() => toDateTimeLocalValue(settings?.draft_date))
   if (!isCommissioner) {
     return (
       <div className="rounded-2xl border border-text-primary/15 bg-bg-primary/40 p-5 text-center">
@@ -121,7 +123,8 @@ function DraftDatePrompt({ league, settings, isCommissioner, updateFantasySettin
       <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-2">Schedule the Draft</div>
       <input
         type="datetime-local"
-        defaultValue={toDateTimeLocalValue(settings?.draft_date)}
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
         onBlur={(e) => {
           const v = e.target.value
           updateFantasySettings.mutateAsync({
@@ -132,8 +135,9 @@ function DraftDatePrompt({ league, settings, isCommissioner, updateFantasySettin
         }}
         className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
       />
+      <DraftTimezonePreview localValue={localValue} />
       <p className="text-[11px] text-text-secondary mt-2 leading-snug">
-        Shown in your local time. Every member sees it in their own timezone. Leave blank to start the draft manually.
+        Shown in your local time. Leave blank to start the draft manually.
       </p>
     </div>
   )
