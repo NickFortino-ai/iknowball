@@ -77,6 +77,12 @@ app.use('/api/mock-draft', mockDraftRouter)
 app.use('/api/draft-prep', draftPrepRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/blurbs', blurbsRouter)
+// Back-compat alias for native iOS builds shipped before the writer-role
+// refactor moved these routes off of /api/admin/blurbs. Removing this
+// would 404 every install of v1.1.3 and earlier; keep until we've had
+// a couple App Store releases past 1.1.3 and can confirm no clients
+// remain on the old bundle.
+app.use('/api/admin/blurbs', blurbsRouter)
 app.use('/api/app-settings', appSettingsRouter)
 app.use('/api/season-dates', seasonDatesRouter)
 app.use('/api/props', propsRouter)
