@@ -112,6 +112,11 @@ const SPORT_MAP = {
   basketball_nba: { abbrs: NBA_ABBRS, sport: 'nba' },
   baseball_mlb: { abbrs: MLB_ABBRS, sport: 'mlb' },
   americanfootball_nfl: { abbrs: NFL_ABBRS, sport: 'nfl' },
+  // Preseason NFL games use the same team abbreviations as the regular
+  // season — Panthers are Panthers either way — so we reuse NFL_ABBRS.
+  // Without this entry, preseason game cards would silently render
+  // without logos even though every other NFL/WNBA/MLB/NBA card has them.
+  americanfootball_nfl_preseason: { abbrs: NFL_ABBRS, sport: 'nfl' },
   basketball_wnba: { abbrs: WNBA_ABBRS, sport: 'wnba' },
   americanfootball_ufl: { abbrs: UFL_ABBRS, sport: 'ufl' },
   americanfootball_ncaaf: { ids: NCAAF_IDS, sport: 'ncaa' },
