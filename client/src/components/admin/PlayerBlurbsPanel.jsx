@@ -98,7 +98,7 @@ export default function PlayerBlurbsPanel() {
   const fetchPlayers = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await api.get(`/admin/blurbs/players?season=${season}&position=${position}&sport=${sport}`)
+      const data = await api.get(`/blurbs/players?season=${season}&position=${position}&sport=${sport}`)
       setPlayers(data)
     } catch (err) {
       toast(err.message, 'error')
@@ -136,7 +136,7 @@ export default function PlayerBlurbsPanel() {
     if (!selected.size) return toast('Select players first', 'error')
     setGenerating(true)
     try {
-      const result = await api.post('/admin/blurbs/generate', {
+      const result = await api.post('/blurbs/generate', {
         playerIds: [...selected],
         season,
         week: sport === 'nfl' ? week : null,
@@ -152,7 +152,7 @@ export default function PlayerBlurbsPanel() {
 
   const handlePublish = async (blurbId) => {
     try {
-      await api.post(`/admin/blurbs/${blurbId}/publish`)
+      await api.post(`/blurbs/${blurbId}/publish`)
       toast('Published', 'success')
       fetchPlayers()
     } catch (err) {
@@ -163,7 +163,7 @@ export default function PlayerBlurbsPanel() {
   const handlePublishAll = async () => {
     setPublishing(true)
     try {
-      const result = await api.post('/admin/blurbs/publish-all')
+      const result = await api.post('/blurbs/publish-all')
       toast(`Published ${result.published} blurbs`, 'success')
       fetchPlayers()
     } catch (err) {
@@ -174,7 +174,7 @@ export default function PlayerBlurbsPanel() {
 
   const handleEdit = async (blurbId) => {
     try {
-      await api.patch(`/admin/blurbs/${blurbId}`, { content: editContent })
+      await api.patch(`/blurbs/${blurbId}`, { content: editContent })
       toast('Updated', 'success')
       setEditingId(null)
       fetchPlayers()
@@ -185,7 +185,7 @@ export default function PlayerBlurbsPanel() {
 
   const handleCreate = async (playerId) => {
     try {
-      await api.post('/admin/blurbs', { player_id: playerId, content: createContent, season, week: sport === 'nfl' ? week : null, sport })
+      await api.post('/blurbs', { player_id: playerId, content: createContent, season, week: sport === 'nfl' ? week : null, sport })
       toast('Blurb created', 'success')
       setCreatingFor(null)
       setCreateContent('')
@@ -197,8 +197,8 @@ export default function PlayerBlurbsPanel() {
 
   const handleCreateAndPublish = async (playerId) => {
     try {
-      const created = await api.post('/admin/blurbs', { player_id: playerId, content: createContent, season, week: sport === 'nfl' ? week : null, sport })
-      await api.post(`/admin/blurbs/${created.id}/publish`)
+      const created = await api.post('/blurbs', { player_id: playerId, content: createContent, season, week: sport === 'nfl' ? week : null, sport })
+      await api.post(`/blurbs/${created.id}/publish`)
       toast('Published', 'success')
       setCreatingFor(null)
       setCreateContent('')
@@ -211,7 +211,7 @@ export default function PlayerBlurbsPanel() {
   const handleDelete = async (blurbId) => {
     if (!confirm('Delete this blurb?')) return
     try {
-      await api.delete(`/admin/blurbs/${blurbId}`)
+      await api.delete(`/blurbs/${blurbId}`)
       toast('Deleted', 'success')
       fetchPlayers()
       if (historyPlayerId) loadHistory(historyPlayerId)
@@ -224,7 +224,7 @@ export default function PlayerBlurbsPanel() {
     if (historyPlayerId === playerId) { setHistoryPlayerId(null); return }
     setHistoryPlayerId(playerId)
     try {
-      const data = await api.get(`/admin/blurbs/player/${playerId}/history`)
+      const data = await api.get(`/blurbs/player/${playerId}/history`)
       setHistory(data)
     } catch (err) {
       toast(err.message, 'error')
@@ -563,6 +563,7 @@ export default function PlayerBlurbsPanel() {
                                 <div className="flex items-center gap-2">
                                   <span className="text-text-muted">
                                     {sourceLabel}
+                                    {h.writer && ` · by ${h.writer.display_name || h.writer.username}`}
                                     {sport === 'nfl' && ` · W${h.week || '?'}`}
                                     {h.published_at && ` · ${new Date(h.published_at).toLocaleDateString()}`}
                                   </span>

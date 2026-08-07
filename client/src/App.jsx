@@ -22,6 +22,7 @@ import MockDraftPage from './pages/MockDraftPage'
 import DraftPrepPage from './pages/DraftPrepPage'
 import LeagueDetailPage from './pages/LeagueDetailPage'
 import AdminPage from './pages/AdminPage'
+import WriterPage from './pages/WriterPage'
 import PaymentPage from './pages/PaymentPage'
 import JoinPage from './pages/JoinPage'
 import PrivacyPage from './pages/PrivacyPage'
@@ -99,6 +100,7 @@ function AppRoutes() {
         <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
         <Route path="/messages/:partnerId" element={<ProtectedRoute><MessageThreadPage /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+        <Route path="/writer" element={<ProtectedRoute><WriterPage /></ProtectedRoute>} />
       </Routes>
     </AppShell>
   )

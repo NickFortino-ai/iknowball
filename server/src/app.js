@@ -12,6 +12,7 @@ import leaguesRouter from './routes/leagues.js'
 import mockDraftRouter from './routes/mockDraft.js'
 import draftPrepRouter from './routes/draftPrep.js'
 import adminRouter from './routes/admin.js'
+import blurbsRouter from './routes/blurbs.js'
 import propsRouter from './routes/props.js'
 import parlaysRouter from './routes/parlays.js'
 import paymentsRouter from './routes/payments.js'
@@ -75,6 +76,7 @@ app.use('/api/leagues', leaguesRouter)
 app.use('/api/mock-draft', mockDraftRouter)
 app.use('/api/draft-prep', draftPrepRouter)
 app.use('/api/admin', adminRouter)
+app.use('/api/blurbs', blurbsRouter)
 app.use('/api/app-settings', appSettingsRouter)
 app.use('/api/season-dates', seasonDatesRouter)
 app.use('/api/props', propsRouter)
