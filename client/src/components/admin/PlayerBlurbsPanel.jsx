@@ -195,6 +195,19 @@ export default function PlayerBlurbsPanel() {
     }
   }
 
+  const handleCreateAndPublish = async (playerId) => {
+    try {
+      const created = await api.post('/admin/blurbs', { player_id: playerId, content: createContent, season, week: sport === 'nfl' ? week : null, sport })
+      await api.post(`/admin/blurbs/${created.id}/publish`)
+      toast('Published', 'success')
+      setCreatingFor(null)
+      setCreateContent('')
+      fetchPlayers()
+    } catch (err) {
+      toast(err.message, 'error')
+    }
+  }
+
   const handleDelete = async (blurbId) => {
     if (!confirm('Delete this blurb?')) return
     try {
@@ -509,6 +522,11 @@ export default function PlayerBlurbsPanel() {
                         disabled={!createContent.trim()}
                         className="px-3 py-1 rounded-lg text-xs font-semibold bg-accent text-white disabled:opacity-50"
                       >Create Draft</button>
+                      <button
+                        onClick={() => handleCreateAndPublish(player.id)}
+                        disabled={!createContent.trim()}
+                        className="px-3 py-1 rounded-lg text-xs font-semibold bg-correct text-white disabled:opacity-50"
+                      >Publish</button>
                       <button onClick={() => setCreatingFor(null)} className="px-3 py-1 rounded-lg text-xs font-semibold text-text-muted">Cancel</button>
                     </div>
                   </div>
