@@ -2774,7 +2774,7 @@ export default function LeagueDetailPage() {
               <LeagueStartsBanner
                 countdownTo={countdownDate}
                 headline={fantasySettings?.draft_date
-                  ? `Drafts ${new Date(fantasySettings.draft_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`
+                  ? `Drafts ${new Date(fantasySettings.draft_date).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}`
                   : 'Starts with NFL Week 1'}
                 subtitle="You can mock draft right here in this league — it's already configured to your settings."
                 extra={mockDraftTabIndex !== -1 && (
