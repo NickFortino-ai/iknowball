@@ -52,7 +52,7 @@ export async function getConversations(userId) {
   // count-based cap, so chatty pairs can't push older partners off the
   // sidebar. Rows already come back ordered by last_message_at DESC.
   const { data: convoRows, error } = await supabase
-    .rpc('get_conversations_for_user', { u_id: userId })
+    .rpc('get_conversations_for_user', { p_user_id: userId })
 
   if (error) throw error
   if (!convoRows?.length) return []

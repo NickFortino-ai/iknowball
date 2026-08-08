@@ -8,27 +8,25 @@
 --
 -- The DISTINCT ON pattern lets Postgres pick the latest message per
 -- partner in one pass. Unread count is a separate CTE joined back on.
--- LATERAL alternative was rejected — DISTINCT ON is idiomatic here.
+-- Parameter is prefixed p_ to avoid any accidental column-name shadow
+-- with the RETURNS TABLE output columns.
 
-CREATE OR REPLACE FUNCTION get_conversations_for_user(u_id UUID)
+CREATE OR REPLACE FUNCTION get_conversations_for_user(p_user_id UUID)
 RETURNS TABLE (
   partner_id UUID,
   last_message TEXT,
   last_message_at TIMESTAMPTZ,
   unread_count BIGINT
-)
-LANGUAGE sql
-STABLE
-AS $$
+) AS $$
   WITH partners AS (
     SELECT
-      CASE WHEN sender_id = u_id THEN receiver_id ELSE sender_id END AS partner_id,
+      CASE WHEN sender_id = p_user_id THEN receiver_id ELSE sender_id END AS partner_id,
       content,
       created_at,
       receiver_id,
       read_at
     FROM direct_messages
-    WHERE sender_id = u_id OR receiver_id = u_id
+    WHERE sender_id = p_user_id OR receiver_id = p_user_id
   ),
   latest AS (
     SELECT DISTINCT ON (partner_id)
@@ -41,7 +39,7 @@ AS $$
   unread AS (
     SELECT partner_id, COUNT(*)::BIGINT AS unread_count
     FROM partners
-    WHERE receiver_id = u_id AND read_at IS NULL
+    WHERE receiver_id = p_user_id AND read_at IS NULL
     GROUP BY partner_id
   )
   SELECT
@@ -52,4 +50,4 @@ AS $$
   FROM latest l
   LEFT JOIN unread u USING (partner_id)
   ORDER BY l.last_message_at DESC;
-$$;
+$$ LANGUAGE sql STABLE;
