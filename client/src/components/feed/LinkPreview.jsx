@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLinkPreview } from '../../hooks/useLinkPreview'
 import { displayUrl } from '../../lib/urlUtils'
+import YouTubeEmbed from './YouTubeEmbed'
 
 function TweetEmbed({ tweetId, url }) {
   const containerRef = useRef(null)
@@ -107,28 +108,15 @@ export default function LinkPreview({ url }) {
     return <TweetEmbed tweetId={data.tweetId} url={url} />
   }
 
-  // YouTube embed
+  // YouTube: <YouTubeEmbed /> handles the web-vs-native split — iframe
+  // on web (which passes YouTube's origin check) and tap-to-open
+  // thumbnail on Capacitor (where capacitor://localhost is rejected
+  // with Error 153).
   if (data.youtubeVideoId) {
     const isShort = /\/shorts\//.test(url)
     return (
       <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-        <div
-          className={`relative rounded-lg overflow-hidden ${isShort ? 'max-w-[280px] mx-auto' : 'w-full'}`}
-          style={isShort ? { aspectRatio: '9/16' } : { paddingBottom: '56.25%' }}
-        >
-          <iframe
-            // No autoplay in Capacitor WebViews — iOS WKWebView's autoplay
-            // policy blocks the play attempt and YouTube reports the failure
-            // as Error 153. playsinline=1 keeps playback inside the card
-            // once the user taps (default behavior would fullscreen).
-            src={`https://www.youtube.com/embed/${data.youtubeVideoId}?playsinline=1&rel=0`}
-            title={data.title || 'YouTube video'}
-            className={isShort ? 'w-full h-full' : 'absolute inset-0 w-full h-full'}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            loading="lazy"
-          />
-        </div>
+        <YouTubeEmbed videoId={data.youtubeVideoId} title={data.title} isShort={isShort} />
         {data.title && (
           <a
             href={url}

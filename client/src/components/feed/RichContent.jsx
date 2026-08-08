@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { segmentContent, displayUrl } from '../../lib/urlUtils'
 import ImageLightbox from './ImageLightbox'
+import YouTubeEmbed from './YouTubeEmbed'
 
 const IMAGE_EXT_REGEX = /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i
 
@@ -17,19 +18,7 @@ export default function RichContent({ text, className }) {
       {segments.map((seg, i) =>
         seg.type === 'youtube_embed' ? (
           <div key={i} className="mt-2 mb-1" onClick={(e) => e.stopPropagation()}>
-            <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingBottom: '56.25%' }}>
-              <iframe
-                // No autoplay in Capacitor WebViews — iOS WKWebView blocks
-                // the play attempt and YouTube reports it as Error 153.
-                // User taps the play button. playsinline=1 keeps it inline.
-                src={`https://www.youtube.com/embed/${seg.videoId}?playsinline=1&rel=0`}
-                title="YouTube video"
-                className="absolute inset-0 w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                loading="lazy"
-              />
-            </div>
+            <YouTubeEmbed videoId={seg.videoId} />
           </div>
         ) : seg.type === 'url' && IMAGE_EXT_REGEX.test(seg.value) ? (
           <div key={i} className="mt-2 mb-1" onClick={(e) => { e.stopPropagation(); setLightboxSrc(normalizeUrl(seg.value)) }}>
