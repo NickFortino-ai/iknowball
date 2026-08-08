@@ -373,6 +373,197 @@ export async function getFantasySettings(leagueId) {
 }
 
 /**
+ * Renew a completed traditional fantasy league into a fresh next-season
+ * league. Copies settings (scoring, roster, waivers, playoff shape),
+ * name, backdrop, and commissioner_note; resets everything season-
+ * specific (draft state, current_week, matchups) and gets a fresh
+ * invite_code. New league starts at status='open' with just the
+ * commissioner as a member; invitedUserIds gets a pending invitation
+ * for each.
+ *
+ * Guarded to fantasy leagues only per the initial scope decision (see
+ * the renewal design conversation) — pickem/survivor/DFS renewal can
+ * follow later if there's demand.
+ *
+ * Not idempotent: the guard on line ~N below prevents renewing twice
+ * (a completed league with an existing child league throws). If the
+ * commish wants to re-renew, they can delete/complete the child first.
+ */
+export async function renewLeague(parentLeagueId, callerId, { invitedUserIds = [] } = {}) {
+  const { data: parent, error: parentErr } = await supabase
+    .from('leagues')
+    .select('id, name, format, sport, duration, visibility, max_members, commissioner_id, commissioner_note, backdrop_image, backdrop_y, status, use_league_picks, season_ordinal, survey_enabled')
+    .eq('id', parentLeagueId)
+    .single()
+  if (parentErr || !parent) {
+    const err = new Error('League not found')
+    err.status = 404
+    throw err
+  }
+  if (parent.commissioner_id !== callerId) {
+    const err = new Error('Only the commissioner can renew this league')
+    err.status = 403
+    throw err
+  }
+  if (parent.format !== 'fantasy') {
+    const err = new Error('Renewal is only supported for fantasy leagues right now')
+    err.status = 400
+    throw err
+  }
+  if (parent.status !== 'completed') {
+    const err = new Error('This league can only be renewed after it completes')
+    err.status = 400
+    throw err
+  }
+
+  // Idempotency: prevent double-renewal that would leave stray Season 2
+  // shells. If a child already exists, return it so the client can
+  // navigate there instead of minting a duplicate.
+  const { data: existingChild } = await supabase
+    .from('leagues')
+    .select('id, name, invite_code, season_ordinal')
+    .eq('parent_league_id', parentLeagueId)
+    .maybeSingle()
+  if (existingChild) {
+    return { league: existingChild, alreadyRenewed: true }
+  }
+
+  const parentSettings = await getFantasySettings(parentLeagueId)
+  if (!parentSettings) {
+    const err = new Error('Parent league has no fantasy_settings — cannot renew')
+    err.status = 500
+    throw err
+  }
+  // Salary cap fantasy is not in scope for renewal (different data model,
+  // no draft, weekly re-set of lineups).
+  if (parentSettings.format === 'salary_cap') {
+    const err = new Error('Salary cap fantasy renewal is not supported yet')
+    err.status = 400
+    throw err
+  }
+
+  // Generate a unique invite code (up to 10 tries). Same alphabet/length
+  // as leagueService.generateInviteCode — inlined rather than importing
+  // to avoid circular-dep risk (leagueService already imports from here).
+  const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const makeCode = () => {
+    let code = ''
+    for (let i = 0; i < 8; i++) code += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]
+    return code
+  }
+  let inviteCode
+  for (let i = 0; i < 10; i++) {
+    inviteCode = makeCode()
+    const { data: taken } = await supabase
+      .from('leagues')
+      .select('id')
+      .eq('invite_code', inviteCode)
+      .maybeSingle()
+    if (!taken) break
+  }
+
+  // 1) Insert the new leagues row. Season-specific fields (starts_at,
+  // ends_at, joins_locked_at) start null — the commish sets them when
+  // scheduling the draft. status='open' so the join UI is visible.
+  const { data: newLeague, error: leagueErr } = await supabase
+    .from('leagues')
+    .insert({
+      name: parent.name,
+      format: parent.format,
+      sport: parent.sport,
+      duration: parent.duration,
+      invite_code: inviteCode,
+      max_members: parent.max_members,
+      commissioner_id: parent.commissioner_id,
+      commissioner_note: parent.commissioner_note,
+      backdrop_image: parent.backdrop_image,
+      backdrop_y: parent.backdrop_y,
+      visibility: parent.visibility || 'closed',
+      status: 'open',
+      use_league_picks: parent.use_league_picks || false,
+      survey_enabled: parent.survey_enabled || false,
+      parent_league_id: parentLeagueId,
+      season_ordinal: (parent.season_ordinal || 1) + 1,
+    })
+    .select('id, name, invite_code, season_ordinal, parent_league_id')
+    .single()
+  if (leagueErr) throw leagueErr
+
+  // 2) Copy fantasy_settings. Scoring, roster, waivers, playoff shape
+  // carry over. Draft + week + season-specific fields reset.
+  const { error: settingsErr } = await supabase
+    .from('fantasy_settings')
+    .insert({
+      league_id: newLeague.id,
+      scoring_format: parentSettings.scoring_format,
+      scoring_rules: parentSettings.scoring_rules,
+      num_teams: parentSettings.num_teams,
+      initial_num_teams: parentSettings.num_teams,
+      roster_slots: parentSettings.roster_slots,
+      draft_pick_timer: parentSettings.draft_pick_timer,
+      draft_mode: parentSettings.draft_mode || 'live',
+      waiver_type: parentSettings.waiver_type,
+      faab_starting_budget: parentSettings.faab_starting_budget,
+      trade_review: parentSettings.trade_review,
+      playoff_teams: parentSettings.playoff_teams,
+      playoff_start_week: parentSettings.playoff_start_week,
+      championship_week: parentSettings.championship_week,
+      current_week: 1,
+      season: (parentSettings.season || new Date().getFullYear()) + 1,
+      draft_status: 'pending',
+    })
+  if (settingsErr) {
+    // Best-effort cleanup: drop the orphan league so a retry can succeed.
+    await supabase.from('leagues').delete().eq('id', newLeague.id)
+    throw settingsErr
+  }
+
+  // 3) Add the commissioner as a member so the standard "you're in the
+  // league" surfaces work.
+  await supabase.from('league_members').insert({
+    league_id: newLeague.id,
+    user_id: parent.commissioner_id,
+    role: 'commissioner',
+    lives_remaining: 1,
+  })
+
+  // 4) Fire invitations for every requested user. Best-effort: if one
+  // insert fails (e.g. FK missing), we log and continue — the commish
+  // can re-invite that user via the normal flow. Skip self.
+  const uniqueInvitees = [...new Set(invitedUserIds)].filter((id) => id && id !== parent.commissioner_id)
+  if (uniqueInvitees.length) {
+    const inviteRows = uniqueInvitees.map((uid) => ({
+      league_id: newLeague.id,
+      invited_by: parent.commissioner_id,
+      invited_user_id: uid,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    }))
+    const { error: invErr } = await supabase
+      .from('league_invitations')
+      .upsert(inviteRows, { onConflict: 'league_id,invited_user_id' })
+    if (invErr) logger.error({ err: invErr, leagueId: newLeague.id }, 'Renewal: partial invitation failure')
+
+    // Notify each invitee — mirror sendInvitation's copy.
+    try {
+      const { createNotification } = await import('./notificationService.js')
+      for (const uid of uniqueInvitees) {
+        await createNotification(
+          uid,
+          'league_invitation',
+          `You've been invited to ${parent.name} — Season ${newLeague.season_ordinal}`,
+          { leagueId: newLeague.id, leagueName: parent.name, isRenewal: true }
+        )
+      }
+    } catch (err) {
+      logger.error({ err, leagueId: newLeague.id }, 'Renewal: invitation notification failure')
+    }
+  }
+
+  return { league: newLeague, alreadyRenewed: false }
+}
+
+/**
  * Update fantasy settings (commissioner only, pre-draft).
  */
 // Fields that can only be changed before the draft completes

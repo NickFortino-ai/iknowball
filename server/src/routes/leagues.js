@@ -58,6 +58,7 @@ import {
   getUserEntriesForTemplate,
   updateBracketTournament,
 } from '../services/bracketService.js'
+import { renewLeague } from '../services/fantasyService.js'
 
 const router = Router()
 
@@ -1306,6 +1307,21 @@ router.post('/:id/fantasy/cancel', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Only the commissioner can cancel the league' })
     }
     const result = await cancelFantasyLeague(req.params.id, { reason: 'commissioner' })
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// Renew a completed fantasy league into a fresh next-season league.
+// Commissioner only. Body: { invitedUserIds: string[] } — user IDs to
+// send pending invitations to (typically the prior season's members
+// the commish wants back). Returns { league, alreadyRenewed } so the
+// client can redirect to the new league's page.
+router.post('/:id/fantasy/renew', requireAuth, async (req, res) => {
+  try {
+    const invitedUserIds = Array.isArray(req.body?.invitedUserIds) ? req.body.invitedUserIds : []
+    const result = await renewLeague(req.params.id, req.user.id, { invitedUserIds })
     res.json(result)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })
