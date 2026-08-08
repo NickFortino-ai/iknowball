@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import {
   useAvailablePlayers, useFantasyRoster, useAddDropPlayer,
   useFantasySettings, useWaiverState, useMyWaiverClaims, useSubmitWaiverClaim, useCancelWaiverClaim,
@@ -96,12 +96,14 @@ export default function FantasyPlayerBrowser({ league }) {
   const [posFilter, setPosFilter] = useState('All')
   const [sortKey, setSortKey] = useState('rank')
   const [sortDir, setSortDir] = useState('desc') // 'desc' = highest first, 'asc' = lowest first
+  const sortInitialized = useRef(false)
   const isIdpFilter = posFilter === 'DL' || posFilter === 'LB' || posFilter === 'DB' || posFilter === 'S'
   const statColumns = posFilter === 'DEF' ? DEF_STAT_COLUMNS
     : isIdpFilter ? IDP_STAT_COLUMNS
     : OFFENSE_STAT_COLUMNS
 
   function handleSort(key) {
+    sortInitialized.current = true
     if (key === sortKey && key !== 'rank') {
       setSortDir((d) => d === 'desc' ? 'asc' : 'desc')
     } else {
@@ -142,6 +144,22 @@ export default function FantasyPlayerBrowser({ league }) {
   }, [rawPlayers, sortKey, sortDir])
   const { data: roster } = useFantasyRoster(league.id)
   const { data: settings } = useFantasySettings(league.id)
+
+  // Post-draft, mirror Yahoo's default: list ranked by current-week
+  // projection (highest first). Pre-draft keeps the server-provided
+  // draft rank (#) since projections mean less for draft-order purposes.
+  // Runs once when settings first loads; user's manual sort is
+  // preserved via sortInitialized.
+  useEffect(() => {
+    if (sortInitialized.current) return
+    if (!settings) return
+    sortInitialized.current = true
+    if (settings.draft_status === 'completed') {
+      setSortKey('weekly_proj')
+      setSortDir('desc')
+    }
+  }, [settings])
+
   const { data: waiverData } = useWaiverState(league.id)
   const { data: myClaims } = useMyWaiverClaims(league.id)
   const addDrop = useAddDropPlayer(league.id)
