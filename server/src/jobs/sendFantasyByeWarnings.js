@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { getCurrentNflWeek } from '../services/tdPassService.js'
 import { createNotification } from '../services/notificationService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 /**
  * Fantasy bye-week warning.
@@ -33,22 +34,29 @@ export async function sendFantasyByeWarnings() {
     return { sent: 0 }
   }
 
-  // Find active traditional fantasy leagues for this season
-  const { data: leagues } = await supabase
-    .from('leagues')
-    .select('id, name')
-    .eq('format', 'fantasy')
-    .eq('status', 'active')
-  if (!leagues?.length) return { sent: 0 }
+  // Find active traditional fantasy leagues for this season. fetchAll:
+  // past 1000 leagues the tail silently misses bye warnings entirely.
+  const leagues = await fetchAll(
+    supabase
+      .from('leagues')
+      .select('id, name')
+      .eq('format', 'fantasy')
+      .eq('status', 'active')
+      .order('id')
+  )
+  if (!leagues.length) return { sent: 0 }
 
   // Filter to traditional (not salary cap), get settings batch
   const leagueIds = leagues.map((l) => l.id)
-  const { data: settings } = await supabase
-    .from('fantasy_settings')
-    .select('league_id, format, season, current_week, playoff_start_week')
-    .in('league_id', leagueIds)
+  const settings = await fetchAll(
+    supabase
+      .from('fantasy_settings')
+      .select('league_id, format, season, current_week, playoff_start_week')
+      .in('league_id', leagueIds)
+      .order('league_id')
+  )
   const settingsByLeague = {}
-  for (const s of settings || []) settingsByLeague[s.league_id] = s
+  for (const s of settings) settingsByLeague[s.league_id] = s
 
   const eligibleLeagues = leagues.filter((l) => {
     const s = settingsByLeague[l.id]
@@ -65,12 +73,16 @@ export async function sendFantasyByeWarnings() {
     return { sent: 0 }
   }
 
-  // For each eligible league, get rosters (joined to bye_week)
+  // For each eligible league, get rosters (joined to bye_week).
+  // fetchAll: leagues × ~200 rows/league blows past 1000 in weeks.
   const eligibleIds = eligibleLeagues.map((l) => l.id)
-  const { data: rosters } = await supabase
-    .from('fantasy_rosters')
-    .select('league_id, user_id, slot, player_id, nfl_players(full_name, bye_week, position)')
-    .in('league_id', eligibleIds)
+  const rosters = await fetchAll(
+    supabase
+      .from('fantasy_rosters')
+      .select('league_id, user_id, slot, player_id, nfl_players(full_name, bye_week, position)')
+      .in('league_id', eligibleIds)
+      .order('league_id')
+  )
 
   // Group bye-week starters per (league, user)
   const grouped = {} // `${leagueId}|${userId}` → { leagueId, leagueName, userId, players: [{name, position}] }

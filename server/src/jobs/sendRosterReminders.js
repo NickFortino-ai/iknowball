@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from '../services/notificationService.js'
 import { checkUserReadiness } from '../services/rosterReadinessService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 // Roster reminder cron. Runs every 30 minutes.
 //
@@ -44,12 +45,17 @@ export async function sendRosterReminders() {
   )
   if (etHour < 8 || etHour >= 23) return
 
-  const { data: leagues } = await supabase
-    .from('leagues')
-    .select('id, name, format, status, settings, joins_locked_at')
-    .in('status', ['upcoming', 'active'])
+  // fetchAll: every non-completed league in the DB — past 1000 the
+  // tail silently misses reminders. Order by id for stable pagination.
+  const leagues = await fetchAll(
+    supabase
+      .from('leagues')
+      .select('id, name, format, status, settings, joins_locked_at')
+      .in('status', ['upcoming', 'active'])
+      .order('id')
+  )
 
-  if (!leagues?.length) return
+  if (!leagues.length) return
 
   let totalSent = 0
   for (const league of leagues) {

@@ -5631,14 +5631,19 @@ export async function processLeagueWaivers(leagueId) {
  * Runs nightly at 3 AM ET. Only updates leagues whose current_week is behind.
  */
 export async function rolloverFantasyWeek(sleeperWeek, sleeperSeason) {
-  // Find all fantasy leagues that are in-season (draft completed, not yet finished)
-  const { data: leagues } = await supabase
-    .from('fantasy_settings')
-    .select('league_id, current_week, season')
-    .eq('draft_status', 'completed')
-    .eq('season', sleeperSeason)
+  // Find all fantasy leagues that are in-season (draft completed, not yet finished).
+  // fetchAll: past 1000 leagues, tail leagues silently stay stuck on the
+  // previous current_week — no rollover, no next-week matchups score.
+  const leagues = await fetchAll(
+    supabase
+      .from('fantasy_settings')
+      .select('league_id, current_week, season')
+      .eq('draft_status', 'completed')
+      .eq('season', sleeperSeason)
+      .order('league_id')
+  )
 
-  if (!leagues?.length) return { updated: 0 }
+  if (!leagues.length) return { updated: 0 }
 
   let updated = 0
   for (const league of leagues) {
@@ -7179,34 +7184,48 @@ export async function scoreFantasyMatchupsWeek(week, season) {
 
   const leagueIds = [...new Set(matchups.map((m) => m.league_id))]
 
-  // 2. Per-league scoring rules
-  const { data: settingsRows } = await supabase
-    .from('fantasy_settings')
-    .select('league_id, scoring_format, scoring_rules, format')
-    .in('league_id', leagueIds)
+  // 2. Per-league scoring rules. fetchAll: at scale leagueIds > 1000
+  // means late leagues fall past the silent cap and get scored with
+  // the default half-PPR preset instead of their real scoring_rules.
+  const settingsRows = await fetchAll(
+    supabase
+      .from('fantasy_settings')
+      .select('league_id, scoring_format, scoring_rules, format')
+      .in('league_id', leagueIds)
+      .order('league_id')
+  )
   const rulesByLeague = {}
   const isTraditional = {}
-  for (const s of settingsRows || []) {
+  for (const s of settingsRows) {
     rulesByLeague[s.league_id] = s.scoring_rules || buildScoringRulesFromPreset(s.scoring_format)
     isTraditional[s.league_id] = s.format !== 'salary_cap'
   }
 
   // 3. Get every active starting roster (slot in starter set, not bench/IR)
+  // fetchAll: leagues × users × ~200 rows per user easily blows past
+  // the 1000-row cap; truncated rows mean matchups scored 0-0.
   const userIds = [...new Set(matchups.flatMap((m) => [m.home_user_id, m.away_user_id]))]
-  const { data: rosterRows } = await supabase
-    .from('fantasy_rosters')
-    .select('league_id, user_id, player_id, slot')
-    .in('league_id', leagueIds)
-    .in('user_id', userIds)
+  const rosterRows = await fetchAll(
+    supabase
+      .from('fantasy_rosters')
+      .select('league_id, user_id, player_id, slot')
+      .in('league_id', leagueIds)
+      .in('user_id', userIds)
+      .order('league_id')
+  )
 
-  // 3a. Check for pre-set weekly lineups and override slots where applicable
-  const { data: weeklyRows } = await supabase
-    .from('fantasy_weekly_lineups')
-    .select('league_id, user_id, player_id, slot')
-    .in('league_id', leagueIds)
-    .in('user_id', userIds)
-    .eq('week', week)
-    .eq('season', season)
+  // 3a. Check for pre-set weekly lineups and override slots where applicable.
+  // Same cap risk — users can pre-set future weeks so volume adds up.
+  const weeklyRows = await fetchAll(
+    supabase
+      .from('fantasy_weekly_lineups')
+      .select('league_id, user_id, player_id, slot')
+      .in('league_id', leagueIds)
+      .in('user_id', userIds)
+      .eq('week', week)
+      .eq('season', season)
+      .order('league_id')
+  )
 
   if (weeklyRows?.length) {
     // Build lookup: league|user|player → weekly slot
