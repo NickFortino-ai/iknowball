@@ -47,36 +47,17 @@ export async function sendMessage(senderId, receiverId, content) {
 }
 
 export async function getConversations(userId) {
-  // Fetch recent messages involving this user
-  const { data: messages, error } = await supabase
-    .from('direct_messages')
-    .select('id, sender_id, receiver_id, content, read_at, created_at')
-    .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-    .order('created_at', { ascending: false })
-    .limit(500)
+  // Aggregation in the DB via the get_conversations_for_user RPC (see
+  // migration 263). Returns exactly one row per partner — no message-
+  // count-based cap, so chatty pairs can't push older partners off the
+  // sidebar. Rows already come back ordered by last_message_at DESC.
+  const { data: convoRows, error } = await supabase
+    .rpc('get_conversations_for_user', { u_id: userId })
 
   if (error) throw error
-  if (!messages?.length) return []
+  if (!convoRows?.length) return []
 
-  // Group by partner, keep latest message + unread count
-  const convos = {}
-  for (const m of messages) {
-    const partnerId = m.sender_id === userId ? m.receiver_id : m.sender_id
-    if (!convos[partnerId]) {
-      convos[partnerId] = {
-        partnerId,
-        lastMessage: m.content,
-        lastMessageAt: m.created_at,
-        unreadCount: 0,
-      }
-    }
-    if (m.receiver_id === userId && !m.read_at) {
-      convos[partnerId].unreadCount++
-    }
-  }
-
-  // Fetch partner profiles
-  const partnerIds = Object.keys(convos)
+  const partnerIds = convoRows.map((r) => r.partner_id)
   const { data: users } = await supabase
     .from('users')
     .select('id, username, display_name, avatar_url, avatar_emoji')
@@ -85,18 +66,19 @@ export async function getConversations(userId) {
   const userMap = {}
   for (const u of users || []) userMap[u.id] = u
 
-  return Object.values(convos)
-    .map((c) => {
-      const user = userMap[c.partnerId]
-      return {
-        ...c,
-        username: user?.username,
-        displayName: user?.display_name,
-        avatarUrl: user?.avatar_url,
-        avatarEmoji: user?.avatar_emoji,
-      }
-    })
-    .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt))
+  return convoRows.map((r) => {
+    const user = userMap[r.partner_id]
+    return {
+      partnerId: r.partner_id,
+      lastMessage: r.last_message,
+      lastMessageAt: r.last_message_at,
+      unreadCount: Number(r.unread_count) || 0,
+      username: user?.username,
+      displayName: user?.display_name,
+      avatarUrl: user?.avatar_url,
+      avatarEmoji: user?.avatar_emoji,
+    }
+  })
 }
 
 export async function getThread(userId, partnerId, before = null) {
