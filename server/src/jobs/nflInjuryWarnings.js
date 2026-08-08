@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from '../services/notificationService.js'
 import { getNFLState } from '../services/sleeperService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 /**
  * Send "your starter is OUT" warnings to fantasy team owners.
@@ -50,11 +51,17 @@ export async function sendNflInjuryWarnings() {
   // here = anything not bench / IR — config-agnostic so we don't have to
   // enumerate slot keys per league. Orphan slots get demoted to bench
   // upstream by fillEmptyStarterSlots, so they're filtered out here.
-  const { data: tradRosters } = await supabase
-    .from('fantasy_rosters')
-    .select('league_id, user_id, player_id, slot, leagues(name, format)')
-    .in('player_id', outIds)
-  const tradStarters = (tradRosters || []).filter((r) => {
+  // fetchAll: ~50-200 injured players × many leagues rostering them
+  // easily blows past 1000 → truncation means some starters miss the
+  // warning entirely.
+  const tradRosters = await fetchAll(
+    supabase
+      .from('fantasy_rosters')
+      .select('league_id, user_id, player_id, slot, leagues(name, format)')
+      .in('player_id', outIds)
+      .order('league_id')
+  )
+  const tradStarters = tradRosters.filter((r) => {
     const s = (r.slot || '').toLowerCase()
     if (!s) return false
     if (s === 'bench' || s.startsWith('bench')) return false
@@ -95,16 +102,22 @@ export async function sendNflInjuryWarnings() {
   if (!warnings.length) return
 
   // 5. Dedup: for each (user, player, week), check if a warning was already sent
-  // (We store player_id + week in notification metadata)
+  // (We store player_id + week in notification metadata).
+  // fetchAll: at scale this table row-count of nfl_injury_warning
+  // notifications over 14 days easily exceeds 1000 → truncation means
+  // we lose the sent record and fire duplicates.
   const dedupKeys = warnings.map((w) => `${w.user_id}|${w.player_id}|${w.league_id}|${week}`)
-  const { data: existingNotifs } = await supabase
-    .from('notifications')
-    .select('user_id, metadata')
-    .eq('type', 'nfl_injury_warning')
-    .gte('created_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString())
+  const existingNotifs = await fetchAll(
+    supabase
+      .from('notifications')
+      .select('user_id, metadata, id')
+      .eq('type', 'nfl_injury_warning')
+      .gte('created_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString())
+      .order('id')
+  )
 
   const sentSet = new Set()
-  for (const n of existingNotifs || []) {
+  for (const n of existingNotifs) {
     const md = n.metadata || {}
     if (md.player_id && md.league_id && md.week === week) {
       sentSet.add(`${n.user_id}|${md.player_id}|${md.league_id}|${md.week}`)

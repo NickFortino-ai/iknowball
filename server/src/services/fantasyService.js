@@ -4365,11 +4365,17 @@ export async function detectAndNotifyStatCorrections(week, season, newRows, oldS
   const nameById = {}
   for (const p of playerInfo || []) nameById[p.id] = p.full_name
 
-  // Traditional fantasy rosters (any slot — bench too)
-  const { data: tradRows } = await supabase
-    .from('fantasy_rosters')
-    .select('user_id, league_id, player_id, leagues(name, format)')
-    .in('player_id', playerIds)
+  // Traditional fantasy rosters (any slot — bench too).
+  // fetchAll: cross-league lookup for many corrected players easily
+  // exceeds 1000 → owners in leagues past the cap never get told the
+  // correction hit their score.
+  const tradRows = await fetchAll(
+    supabase
+      .from('fantasy_rosters')
+      .select('user_id, league_id, player_id, leagues(name, format)')
+      .in('player_id', playerIds)
+      .order('league_id')
+  )
 
   // Salary cap rosters for this week
   const { data: dfsSlots } = await supabase
@@ -4380,7 +4386,7 @@ export async function detectAndNotifyStatCorrections(week, season, newRows, oldS
     .eq('dfs_rosters.season', season)
 
   const ownerships = []
-  for (const r of tradRows || []) {
+  for (const r of tradRows) {
     if (r.leagues?.format !== 'fantasy') continue
     ownerships.push({
       user_id: r.user_id,
@@ -4401,15 +4407,20 @@ export async function detectAndNotifyStatCorrections(week, season, newRows, oldS
   if (!ownerships.length) return { detected: corrections.length, notified: 0 }
 
   // Dedup against existing stat-correction notifications already sent for the
-  // same player/week/season/new_pts (so the same correction never fires twice)
-  const { data: existingNotifs } = await supabase
-    .from('notifications')
-    .select('user_id, metadata')
-    .eq('type', 'fantasy_stat_correction')
-    .gte('created_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString())
+  // same player/week/season/new_pts (so the same correction never fires twice).
+  // fetchAll: stat-correction volume over 14 days easily exceeds 1000
+  // once the season is deep — truncated dedup lets duplicates ship.
+  const existingNotifs = await fetchAll(
+    supabase
+      .from('notifications')
+      .select('user_id, metadata, id')
+      .eq('type', 'fantasy_stat_correction')
+      .gte('created_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString())
+      .order('id')
+  )
 
   const sentSet = new Set()
-  for (const n of existingNotifs || []) {
+  for (const n of existingNotifs) {
     const md = n.metadata || {}
     if (md.player_id && md.week === week && md.season === season && md.new_pts != null) {
       sentSet.add(`${n.user_id}|${md.player_id}|${md.week}|${md.season}|${md.new_pts}`)
