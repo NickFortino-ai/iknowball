@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { fetchAll } from '../utils/fetchAll.js'
 import {
   createLeague,
   joinLeague,
@@ -802,14 +803,20 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
     if (g.away_team) teamsPlaying.add(g.away_team)
   }
 
-  // Aggregate season non-passing TDs (rush + receiving) per player
-  const { data: tdStats } = await supabase
-    .from('nfl_player_stats')
-    .select('player_id, rush_td, rec_td')
-    .eq('season', season)
+  // Aggregate season non-passing TDs (rush + receiving) per player.
+  // fetchAll: nfl_player_stats has ~one row per player per week (season
+  // ≈ 36k rows). Truncating at 1000 means every player past the cap
+  // shows season_tds = 0, corrupting the sort.
+  const tdStats = await fetchAll(
+    supabase
+      .from('nfl_player_stats')
+      .select('player_id, rush_td, rec_td')
+      .eq('season', season)
+      .order('id')
+  )
 
   const tdMap = {}
-  for (const s of (tdStats || [])) {
+  for (const s of tdStats) {
     tdMap[s.player_id] = (tdMap[s.player_id] || 0) + (s.rush_td || 0) + (s.rec_td || 0)
   }
   const hasStats = Object.values(tdMap).some((v) => v > 0)
@@ -1544,13 +1551,18 @@ router.get('/:id/fantasy/players', requireAuth, async (req, res) => {
   res.json(data)
 })
 
-// Get player IDs that have published blurbs (lightweight check for indicators)
+// Get player IDs that have published blurbs (lightweight check for indicators).
+// fetchAll: published-blurb count grows past 1000 over a season, and
+// truncation silently hides the blurb indicator on late players.
 router.get('/:id/fantasy/blurb-ids', requireAuth, async (req, res) => {
-  const { data } = await supabase
-    .from('player_blurbs')
-    .select('player_id')
-    .eq('status', 'published')
-  res.json((data || []).map((r) => r.player_id))
+  const data = await fetchAll(
+    supabase
+      .from('player_blurbs')
+      .select('player_id')
+      .eq('status', 'published')
+      .order('player_id')
+  )
+  res.json(data.map((r) => r.player_id))
 })
 
 // Set fantasy team name
@@ -1644,12 +1656,18 @@ router.get('/:id/fantasy/projections/week/:week', requireAuth, async (req, res) 
     const projCol = settings?.scoring_format === 'ppr' ? 'pts_ppr'
       : settings?.scoring_format === 'standard' ? 'pts_std'
       : 'pts_half_ppr'
-    const [projRes, schedRes] = await Promise.all([
-      supabase
-        .from('nfl_player_projections')
-        .select(`player_id, ${projCol}`)
-        .eq('season', season)
-        .eq('week', week),
+    // fetchAll on projections: ~2000+ rows per week (one per active
+    // NFL player), silently truncates at 1000. Players past the cap
+    // silently show 0 projection on the My Team weekly view.
+    const [projRows, schedRes] = await Promise.all([
+      fetchAll(
+        supabase
+          .from('nfl_player_projections')
+          .select(`player_id, ${projCol}`)
+          .eq('season', season)
+          .eq('week', week)
+          .order('player_id')
+      ),
       supabase
         .from('nfl_schedule')
         .select('home_team, away_team, game_date')
@@ -1657,7 +1675,7 @@ router.get('/:id/fantasy/projections/week/:week', requireAuth, async (req, res) 
         .eq('week', week),
     ])
     const projections = {}
-    for (const r of projRes.data || []) {
+    for (const r of projRows) {
       if (r[projCol] != null) projections[r.player_id] = Math.round(Number(r[projCol]) * 10) / 10
     }
     const opponents = {}

@@ -8,6 +8,7 @@ import { checkUserMuted, checkContent } from '../services/contentFilterService.j
 import { createNotification } from '../services/notificationService.js'
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { fetchAll } from '../utils/fetchAll.js'
 import { FALLBACK_TEAMS } from './teams.js'
 import { parseEmbedSource } from '../utils/embedParser.js'
 
@@ -388,13 +389,19 @@ router.post('/:id/vote', requireAuth, async (req, res) => {
     .eq('hot_take_id', req.params.id)
     .order('position')
 
-  const { data: votes } = await supabase
-    .from('poll_votes')
-    .select('option_id, user_id')
-    .eq('hot_take_id', req.params.id)
+  // fetchAll: a viral poll can rack up thousands of votes; truncating
+  // at 1000 makes per-option counts under-report for every viewer past
+  // the cap, and skews the ≥6-non-author-voters milestone check below.
+  const votes = await fetchAll(
+    supabase
+      .from('poll_votes')
+      .select('option_id, user_id, id')
+      .eq('hot_take_id', req.params.id)
+      .order('id')
+  )
 
   const voteCounts = {}
-  for (const v of (votes || [])) {
+  for (const v of votes) {
     voteCounts[v.option_id] = (voteCounts[v.option_id] || 0) + 1
   }
 
@@ -411,7 +418,7 @@ router.post('/:id/vote', requireAuth, async (req, res) => {
       .eq('id', req.params.id)
       .maybeSingle()
     if (hotTake && !hotTake.voters_notified_at) {
-      const nonAuthorCount = (votes || []).filter((v) => v.user_id !== hotTake.user_id).length
+      const nonAuthorCount = votes.filter((v) => v.user_id !== hotTake.user_id).length
       if (nonAuthorCount >= 6) {
         await supabase
           .from('hot_takes')
@@ -427,7 +434,7 @@ router.post('/:id/vote', requireAuth, async (req, res) => {
     logger.error({ err, hotTakeId: req.params.id }, 'Failed to fire poll milestone notification')
   }
 
-  res.json({ options: results, userVote: option_id, totalVotes: votes?.length || 0 })
+  res.json({ options: results, userVote: option_id, totalVotes: votes.length })
 })
 
 // Get poll results
@@ -438,24 +445,28 @@ router.get('/:id/poll', requireAuth, async (req, res) => {
     .eq('hot_take_id', req.params.id)
     .order('position')
 
-  const { data: votes } = await supabase
-    .from('poll_votes')
-    .select('option_id, user_id')
-    .eq('hot_take_id', req.params.id)
+  // fetchAll — same cap risk as the vote-submit endpoint above.
+  const votes = await fetchAll(
+    supabase
+      .from('poll_votes')
+      .select('option_id, user_id, id')
+      .eq('hot_take_id', req.params.id)
+      .order('id')
+  )
 
   const voteCounts = {}
-  for (const v of (votes || [])) {
+  for (const v of votes) {
     voteCounts[v.option_id] = (voteCounts[v.option_id] || 0) + 1
   }
 
-  const userVote = (votes || []).find((v) => v.user_id === req.user.id)?.option_id || null
+  const userVote = votes.find((v) => v.user_id === req.user.id)?.option_id || null
 
   const results = (options || []).map((o) => ({
     ...o,
     votes: voteCounts[o.id] || 0,
   }))
 
-  res.json({ options: results, userVote, totalVotes: votes?.length || 0 })
+  res.json({ options: results, userVote, totalVotes: votes.length })
 })
 
 router.post('/:id/remind', requireAuth, async (req, res) => {

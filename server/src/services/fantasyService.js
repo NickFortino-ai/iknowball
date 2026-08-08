@@ -4701,13 +4701,19 @@ export async function getPlayerDetail(leagueId, playerId) {
         .not('team', 'is', null)
       const posPlayerIds = (posPlayers || []).map((p) => p.id)
       if (posPlayerIds.length) {
-        const { data: posStats } = await supabase
-          .from('nfl_player_stats')
-          .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec')
-          .eq('season', season)
-          .in('player_id', posPlayerIds)
+        // fetchAll: position pool × 18 weeks quickly exceeds 1000
+        // (e.g. QBs ≈ 100 × 18 = 1800). Truncation silently distorts
+        // the position-rank shown in the player-detail modal.
+        const posStats = await fetchAll(
+          supabase
+            .from('nfl_player_stats')
+            .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec')
+            .eq('season', season)
+            .in('player_id', posPlayerIds)
+            .order('player_id')
+        )
         const totals = {}
-        for (const st of posStats || []) {
+        for (const st of posStats) {
           totals[st.player_id] = (totals[st.player_id] || 0) + applyScoringRules(st, leagueRules)
         }
         const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1])
