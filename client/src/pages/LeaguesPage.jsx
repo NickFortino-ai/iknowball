@@ -218,6 +218,7 @@ export default function LeaguesPage() {
   const { data: leagues, isLoading, isError, refetch } = useMyLeagues()
   const { data: appConfig } = useAppConfig()
   const [showCompleted, setShowCompleted] = useState(false)
+  const [completedSearch, setCompletedSearch] = useState('')
 
   const { active, completed } = useMemo(() => {
     if (!leagues) return { active: [], completed: [] }
@@ -295,9 +296,29 @@ export default function LeaguesPage() {
               </button>
               {showCompleted && (
                 <div className="space-y-3">
-                  {completed.map((league) => (
-                    <LeagueCard key={league.id} league={league} />
-                  ))}
+                  <input
+                    type="text"
+                    value={completedSearch}
+                    onChange={(e) => setCompletedSearch(e.target.value)}
+                    placeholder="Search completed leagues..."
+                    className="w-full bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                  {(() => {
+                    const q = completedSearch.trim().toLowerCase()
+                    const filtered = q
+                      ? completed.filter((l) => l.name?.toLowerCase().includes(q))
+                      : completed
+                    if (!filtered.length) {
+                      return (
+                        <div className="text-center text-sm text-text-muted py-6">
+                          No completed leagues match "{completedSearch}".
+                        </div>
+                      )
+                    }
+                    return filtered.map((league) => (
+                      <LeagueCard key={league.id} league={league} />
+                    ))
+                  })()}
                 </div>
               )}
             </div>
