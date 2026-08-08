@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useWnbaDfsLive, useLeagueBackdrops, useFantasyMatchupLive, useFantasyTrades, useJoinOpenLeague, useRequestInvite, useSurveyStatus, useFantasyWeekProjections } from '../hooks/useLeagues'
+import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useWnbaDfsLive, useLeagueBackdrops, useFantasyMatchupLive, useFantasyTrades, useJoinOpenLeague, useRequestInvite, useSurveyStatus, useFantasyWeekProjections, useLeagueHistory } from '../hooks/useLeagues'
 import SurveyModal from '../components/leagues/SurveyModal'
 import { useAcceptInvitation } from '../hooks/useInvitations'
 import { buildJoinLink } from '../lib/shareLink'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
 import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
+import RenewLeagueModal from '../components/leagues/RenewLeagueModal'
+import LeagueHistoryModal from '../components/leagues/LeagueHistoryModal'
 import PickemView from '../components/leagues/PickemView'
 import SurvivorView from '../components/leagues/SurvivorView'
 import SurvivorStandings from '../components/leagues/SurvivorStandings'
@@ -1750,6 +1752,11 @@ export default function LeagueDetailPage() {
   const navigate = useNavigate()
   const { data: league, isLoading } = useLeague(id)
   const { data: fantasySettings } = useFantasySettings(league?.format === 'fantasy' ? id : null)
+  // Lightweight lineage probe — only used to decide whether to show the
+  // "League History" button. Fetches nothing heavy: one leagues row per
+  // ancestor/descendant plus a champion snapshot per season.
+  const { data: leagueLineage } = useLeagueHistory(id)
+  const hasLineage = (leagueLineage?.length || 0) > 1
   // For salary cap leagues, drive Live-tab visibility on whether the
   // league's relevant week has any kicked-off game. Single-week leagues
   // scope to their single_week; full-season scope to the current week.
@@ -1783,6 +1790,8 @@ export default function LeagueDetailPage() {
   // ?invite=1 opens the modal; ?invite=<username> opens it pre-filled.
   const inviteParam = searchParams.get('invite')
   const [showInviteModal, setShowInviteModal] = useState(!!inviteParam)
+  const [showRenewModal, setShowRenewModal] = useState(false)
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
   const initialInviteUsername = inviteParam && inviteParam !== '1' ? inviteParam : null
   const [editingNote, setEditingNote] = useState(false)
   const [noteExpanded, setNoteExpanded] = useState(() => {
@@ -2150,6 +2159,34 @@ export default function LeagueDetailPage() {
               Commissioner
             </span>
           )}
+          {/* Renew League: visible only to commish on a completed traditional
+              fantasy league. Salary-cap format is out of scope for renewal
+              per the initial design. Opens a modal that lets the commish
+              pick which prior members to invite back. */}
+          {isCommissioner
+            && league.status === 'completed'
+            && league.format === 'fantasy'
+            && fantasySettings?.format !== 'salary_cap' && (
+            <button
+              onClick={() => setShowRenewModal(true)}
+              className="text-xs font-bold px-3 py-1 rounded-full bg-accent text-white hover:bg-accent-hover transition-colors"
+              title="Start next season with the same settings"
+            >
+              Renew League →
+            </button>
+          )}
+          {/* League History: any member sees this when the league has a
+              lineage (ancestor OR descendant). Panels through every
+              season with champion + full standings. */}
+          {hasLineage && (
+            <button
+              onClick={() => setShowHistoryModal(true)}
+              className="text-xs font-semibold px-3 py-1 rounded-full border border-text-primary/30 text-text-secondary hover:text-text-primary hover:border-text-primary/60 transition-colors"
+              title="Prior seasons of this league"
+            >
+              History
+            </button>
+          )}
           {/* Invite action icons. Any member can copy/share the invite link
               for open-visibility leagues (the banner explicitly tells them to);
               only the commissioner sees the "Invite Player" autocomplete that
@@ -2403,6 +2440,22 @@ export default function LeagueDetailPage() {
             setSearchParams(searchParams, { replace: true })
           }
         }} />
+      )}
+
+      {showRenewModal && (
+        <RenewLeagueModal
+          leagueId={league.id}
+          leagueName={league.name}
+          commissionerId={league.commissioner_id}
+          onClose={() => setShowRenewModal(false)}
+        />
+      )}
+
+      {showHistoryModal && (
+        <LeagueHistoryModal
+          leagueId={league.id}
+          onClose={() => setShowHistoryModal(false)}
+        />
       )}
 
       {isMember && surveyOpen && surveyStatus?.surveyType && (

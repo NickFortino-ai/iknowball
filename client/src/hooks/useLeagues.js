@@ -1781,6 +1781,40 @@ export function usePostponeFantasyDraft(leagueId) {
   })
 }
 
+// Renew a completed fantasy league into a fresh next-season league.
+// See server/src/services/fantasyService.js renewLeague for the copy /
+// reset rules. Returns { league: {id, name, invite_code, season_ordinal,
+// parent_league_id}, alreadyRenewed: bool }.
+export function useRenewFantasyLeague(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (invitedUserIds) =>
+      api.post(`/leagues/${leagueId}/fantasy/renew`, { invitedUserIds }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leagues'] })
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'history'] })
+    },
+  })
+}
+
+// Full lineage (ancestors + current + descendants) for the messages
+// history view.
+export function useLeagueHistory(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'history'],
+    queryFn: () => api.get(`/leagues/${leagueId}/history`),
+    enabled: !!leagueId,
+  })
+}
+
+export function useLineageSeasonStandings(currentLeagueId, seasonLeagueId, enabled = true) {
+  return useQuery({
+    queryKey: ['leagues', currentLeagueId, 'history', seasonLeagueId, 'standings'],
+    queryFn: () => api.get(`/leagues/${currentLeagueId}/history/${seasonLeagueId}/standings`),
+    enabled: enabled && !!currentLeagueId && !!seasonLeagueId,
+  })
+}
+
 export function useNflSeasonOpener() {
   return useQuery({
     queryKey: ['td-pass', 'season-opener'],

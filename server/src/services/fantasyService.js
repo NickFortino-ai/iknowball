@@ -564,6 +564,112 @@ export async function renewLeague(parentLeagueId, callerId, { invitedUserIds = [
 }
 
 /**
+ * Walk the parent_league_id chain from a given league both directions
+ * (ancestors + descendants) and return every league in the lineage,
+ * ordered oldest → newest. Each entry carries season_ordinal, name,
+ * status, and a champion snapshot { user_id, username, display_name }
+ * for the completed seasons.
+ *
+ * Any member of any league in the chain can call this — the visibility
+ * check upstream (route) verifies the caller is a member of the league
+ * they navigated from.
+ */
+export async function getLeagueLineage(leagueId) {
+  // Ancestors: walk parent_league_id upward.
+  const ancestors = []
+  let cursor = leagueId
+  const safety = new Set([leagueId])
+  while (cursor) {
+    const { data: row } = await supabase
+      .from('leagues')
+      .select('parent_league_id')
+      .eq('id', cursor)
+      .maybeSingle()
+    const parentId = row?.parent_league_id
+    if (!parentId || safety.has(parentId)) break
+    safety.add(parentId)
+    ancestors.unshift(parentId)
+    cursor = parentId
+  }
+
+  // Descendants: walk parent_league_id downward. A given league can have
+  // at most one child today (enforced in renewLeague) but keep the walk
+  // resilient by breaking on cycles.
+  const descendants = []
+  let child = leagueId
+  while (child) {
+    const { data: row } = await supabase
+      .from('leagues')
+      .select('id')
+      .eq('parent_league_id', child)
+      .maybeSingle()
+    if (!row?.id || safety.has(row.id)) break
+    safety.add(row.id)
+    descendants.push(row.id)
+    child = row.id
+  }
+
+  const orderedIds = [...ancestors, leagueId, ...descendants]
+  if (!orderedIds.length) return []
+
+  // Bulk load league metadata for the lineage.
+  const { data: leagues } = await supabase
+    .from('leagues')
+    .select('id, name, status, season_ordinal, parent_league_id')
+    .in('id', orderedIds)
+  const byId = Object.fromEntries((leagues || []).map((l) => [l.id, l]))
+
+  // Champion lookup: only completed leagues have a final_rank=1 member.
+  const { data: champRows } = await supabase
+    .from('league_members')
+    .select('league_id, user_id, users(username, display_name, avatar_url, avatar_emoji)')
+    .in('league_id', orderedIds)
+    .eq('final_rank', 1)
+  const champByLeague = {}
+  for (const c of champRows || []) champByLeague[c.league_id] = c
+
+  return orderedIds.map((id) => {
+    const l = byId[id]
+    const champ = champByLeague[id]
+    return {
+      id,
+      name: l?.name || 'Unknown',
+      status: l?.status || null,
+      season_ordinal: l?.season_ordinal || 1,
+      isCurrent: id === leagueId,
+      champion: champ ? {
+        user_id: champ.user_id,
+        username: champ.users?.username,
+        display_name: champ.users?.display_name,
+        avatar_url: champ.users?.avatar_url,
+        avatar_emoji: champ.users?.avatar_emoji,
+      } : null,
+    }
+  })
+}
+
+/**
+ * Full standings for a specific league in a lineage. Used by the league
+ * history view when a season row is expanded.
+ */
+export async function getLineageSeasonStandings(leagueId) {
+  const { data } = await supabase
+    .from('league_members')
+    .select('user_id, final_rank, users(username, display_name, avatar_url, avatar_emoji)')
+    .eq('league_id', leagueId)
+    .not('final_rank', 'is', null)
+    .order('final_rank', { ascending: true })
+  return (data || []).map((r) => ({
+    rank: r.final_rank,
+    user_id: r.user_id,
+    username: r.users?.username,
+    display_name: r.users?.display_name,
+    avatar_url: r.users?.avatar_url,
+    avatar_emoji: r.users?.avatar_emoji,
+  }))
+}
+
+/**
  * Update fantasy settings (commissioner only, pre-draft).
  */
 // Fields that can only be changed before the draft completes

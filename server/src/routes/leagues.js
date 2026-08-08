@@ -58,7 +58,7 @@ import {
   getUserEntriesForTemplate,
   updateBracketTournament,
 } from '../services/bracketService.js'
-import { renewLeague } from '../services/fantasyService.js'
+import { renewLeague, getLeagueLineage, getLineageSeasonStandings } from '../services/fantasyService.js'
 
 const router = Router()
 
@@ -1323,6 +1323,52 @@ router.post('/:id/fantasy/renew', requireAuth, async (req, res) => {
     const invitedUserIds = Array.isArray(req.body?.invitedUserIds) ? req.body.invitedUserIds : []
     const result = await renewLeague(req.params.id, req.user.id, { invitedUserIds })
     res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// League history: walk parent_league_id in both directions and return
+// every league in the lineage with its season ordinal, status, and
+// champion snapshot. Any member of the current league can view.
+router.get('/:id/history', requireAuth, async (req, res) => {
+  try {
+    // Verify caller is a member of this league (visibility guard).
+    const { data: membership } = await supabase
+      .from('league_members')
+      .select('id')
+      .eq('league_id', req.params.id)
+      .eq('user_id', req.user.id)
+      .maybeSingle()
+    if (!membership) return res.status(403).json({ error: 'League members only' })
+
+    const lineage = await getLeagueLineage(req.params.id)
+    res.json(lineage)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// Full final standings for one season in a lineage. Same visibility rule.
+router.get('/:id/history/:seasonLeagueId/standings', requireAuth, async (req, res) => {
+  try {
+    const { data: membership } = await supabase
+      .from('league_members')
+      .select('id')
+      .eq('league_id', req.params.id)
+      .eq('user_id', req.user.id)
+      .maybeSingle()
+    if (!membership) return res.status(403).json({ error: 'League members only' })
+
+    // Extra guard: the requested season league must be in the same lineage
+    // as the one the user is a member of (prevents lateral snooping).
+    const lineage = await getLeagueLineage(req.params.id)
+    if (!lineage.some((l) => l.id === req.params.seasonLeagueId)) {
+      return res.status(404).json({ error: 'Season not in this league\'s history' })
+    }
+
+    const standings = await getLineageSeasonStandings(req.params.seasonLeagueId)
+    res.json(standings)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })
   }
