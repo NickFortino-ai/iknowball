@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { createNotification } from './notificationService.js'
 import { checkUserMuted, checkContent } from './contentFilterService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 export async function assertConnected(actorId, ownerId) {
   // Allow self-interactions
@@ -268,38 +269,49 @@ export async function addComment(userId, targetType, targetId, content, parentId
 }
 
 export async function getComments(targetType, targetId, requestingUserId = null) {
-  const { data, error } = await supabase
-    .from('comments')
-    .select('id, content, created_at, user_id, target_type, target_id, parent_id, users(username, avatar_url, avatar_emoji)')
-    .eq('target_type', targetType)
-    .eq('target_id', targetId)
-    .order('created_at', { ascending: true })
-
-  if (error) throw error
-  const comments = data || []
+  // fetchAll: a viral post's comment thread can exceed 1000; without
+  // this the tail silently disappears and the like-count fetch below
+  // would also miss likes on comments past the cap.
+  const comments = await fetchAll(
+    supabase
+      .from('comments')
+      .select('id, content, created_at, user_id, target_type, target_id, parent_id, users(username, avatar_url, avatar_emoji)')
+      .eq('target_type', targetType)
+      .eq('target_id', targetId)
+      .order('created_at', { ascending: true })
+  )
   if (!comments.length) return comments
 
-  // Batch-fetch like counts
+  // Batch-fetch like counts. fetchAll same reasoning — viral thread's
+  // aggregate likes across all comments can top 1000.
   const commentIds = comments.map((c) => c.id)
-  const { data: likeCounts } = await supabase
-    .from('comment_likes')
-    .select('comment_id')
-    .in('comment_id', commentIds)
+  const likeCounts = await fetchAll(
+    supabase
+      .from('comment_likes')
+      .select('comment_id, id')
+      .in('comment_id', commentIds)
+      .order('id')
+  )
 
   const likeCountMap = {}
-  for (const row of likeCounts || []) {
+  for (const row of likeCounts) {
     likeCountMap[row.comment_id] = (likeCountMap[row.comment_id] || 0) + 1
   }
 
-  // Fetch user's own likes if requesting user provided
+  // Fetch user's own likes if requesting user provided.
+  // fetchAll for the same reason as above — a mega-thread where the
+  // user liked >1000 comments would truncate their like state.
   const userLikeSet = new Set()
   if (requestingUserId) {
-    const { data: userLikes } = await supabase
-      .from('comment_likes')
-      .select('comment_id')
-      .in('comment_id', commentIds)
-      .eq('user_id', requestingUserId)
-    for (const row of userLikes || []) {
+    const userLikes = await fetchAll(
+      supabase
+        .from('comment_likes')
+        .select('comment_id, id')
+        .in('comment_id', commentIds)
+        .eq('user_id', requestingUserId)
+        .order('id')
+    )
+    for (const row of userLikes) {
       userLikeSet.add(row.comment_id)
     }
   }

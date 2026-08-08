@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from './notificationService.js'
 import { SPORTS_TZ } from '../utils/sportsDay.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 // NFL division-winner futures keys carry the pattern `_(afc|nfc)_(east|west|
 // north|south)`. Division picks are quiet in the global feed — squad only.
@@ -389,14 +390,18 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   } else if (isHotTakes) {
     // Hot takes: handled specially below — no connections needed
   } else if (!isAll) {
-    // Get connected user IDs
-    const { data: connections } = await supabase
-      .from('connections')
-      .select('user_id_1, user_id_2')
-      .or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`)
-      .eq('status', 'connected')
+    // Get connected user IDs. fetchAll: a power-user with 1000+ squad
+    // connections would silently lose everyone past the cap.
+    const connections = await fetchAll(
+      supabase
+        .from('connections')
+        .select('user_id_1, user_id_2, id')
+        .or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`)
+        .eq('status', 'connected')
+        .order('id')
+    )
 
-    if (!connections?.length) return { items: [], nextCursor: null }
+    if (!connections.length) return { items: [], nextCursor: null }
 
     connectedIds = connections.map((c) =>
       c.user_id_1 === userId ? c.user_id_2 : c.user_id_1
@@ -1070,13 +1075,18 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       pairSet.add([a, b].sort().join('-'))
     }
 
-    const { data: allH2hPicks } = await supabase
-      .from('picks')
-      .select('user_id, game_id, picked_team, is_correct')
-      .in('user_id', [...h2hUserIds])
-      .eq('status', 'settled')
+    // fetchAll: cumulative settled picks across a squad with a couple
+    // power-users can top 1000; truncation under-counts h2h records.
+    const allH2hPicks = await fetchAll(
+      supabase
+        .from('picks')
+        .select('user_id, game_id, picked_team, is_correct, id')
+        .in('user_id', [...h2hUserIds])
+        .eq('status', 'settled')
+        .order('id')
+    )
 
-    if (allH2hPicks?.length) {
+    if (allH2hPicks.length) {
       const picksByGame = {}
       for (const p of allH2hPicks) {
         if (!p.game_id) continue
@@ -1208,12 +1218,18 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   for (const p of flexPicksRes.data || []) if (p.game_id) flexGameIds.add(p.game_id)
   const flexGamePickCounts = {}
   if (flexGameIds.size > 0) {
-    const { data: allPicksOnGames } = await supabase
-      .from('picks')
-      .select('game_id, picked_team')
-      .in('game_id', [...flexGameIds])
-      .eq('status', 'settled')
-    for (const p of allPicksOnGames || []) {
+    // fetchAll: marquee games can rack thousands of picks; truncation
+    // makes the flex card's "% picked this side" under-report the side
+    // that landed in the later rows.
+    const allPicksOnGames = await fetchAll(
+      supabase
+        .from('picks')
+        .select('game_id, picked_team, id')
+        .in('game_id', [...flexGameIds])
+        .eq('status', 'settled')
+        .order('id')
+    )
+    for (const p of allPicksOnGames) {
       if (!flexGamePickCounts[p.game_id]) flexGamePickCounts[p.game_id] = { home: 0, away: 0 }
       if (p.picked_team === 'home') flexGamePickCounts[p.game_id].home++
       else if (p.picked_team === 'away') flexGamePickCounts[p.game_id].away++
@@ -1298,14 +1314,20 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     const pollIds = feed.filter((f) => f.hot_take?.post_type === 'poll').map((f) => f.hot_take.id)
     if (pollIds.length > 0) {
       const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
-      const { data: recentVotes } = await supabase
-        .from('poll_votes')
-        .select('hot_take_id')
-        .in('hot_take_id', pollIds)
-        .gte('created_at', threeDaysAgo)
+      // fetchAll: one viral poll over 3 days can eclipse 1000 votes
+      // by itself and drown out the count for every other poll in the
+      // batch.
+      const recentVotes = await fetchAll(
+        supabase
+          .from('poll_votes')
+          .select('hot_take_id, id')
+          .in('hot_take_id', pollIds)
+          .gte('created_at', threeDaysAgo)
+          .order('id')
+      )
 
       const voteCountMap = {}
-      for (const v of (recentVotes || [])) {
+      for (const v of recentVotes) {
         voteCountMap[v.hot_take_id] = (voteCountMap[v.hot_take_id] || 0) + 1
       }
 

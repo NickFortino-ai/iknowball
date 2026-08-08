@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from '../services/notificationService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 // Squares is single-game and explicitly never awards a global bonus, so we
 // don't run the warning/auto-cancel flow on it.
@@ -32,21 +33,28 @@ export async function processSoloLeagueWarnings() {
   const now = new Date()
   const cutoff = new Date(now.getTime() + WARNING_LEAD_MS).toISOString()
 
-  const { data: leagues, error } = await supabase
-    .from('leagues')
-    .select('id, name, format, sport, visibility, starts_at, commissioner_id, solo_warning_sent_at, status')
-    .in('status', ['open', 'active'])
-    .is('solo_warning_sent_at', null)
-    .not('starts_at', 'is', null)
-    .lt('starts_at', cutoff)
-    .gt('starts_at', now.toISOString())
-
-  if (error) {
-    logger.error({ err: error }, 'Solo-league warning fetch failed')
+  // fetchAll: this catches up on next tick if truncated, but at scale
+  // the tail leagues can wait multiple ticks — pay the small cost of
+  // pagination to keep the warning window honest.
+  let leagues
+  try {
+    leagues = await fetchAll(
+      supabase
+        .from('leagues')
+        .select('id, name, format, sport, visibility, starts_at, commissioner_id, solo_warning_sent_at, status')
+        .in('status', ['open', 'active'])
+        .is('solo_warning_sent_at', null)
+        .not('starts_at', 'is', null)
+        .lt('starts_at', cutoff)
+        .gt('starts_at', now.toISOString())
+        .order('id')
+    )
+  } catch (err) {
+    logger.error({ err }, 'Solo-league warning fetch failed')
     return
   }
 
-  for (const league of leagues || []) {
+  for (const league of leagues) {
     if (EXEMPT_FORMATS.has(league.format)) continue
 
     const { count } = await supabase
@@ -99,19 +107,23 @@ export async function processSoloLeagueWarnings() {
 export async function autoCancelSoloLeagues() {
   const now = new Date().toISOString()
 
-  const { data: leagues, error } = await supabase
-    .from('leagues')
-    .select('id, name, format, commissioner_id, status')
-    .in('status', ['open', 'active'])
-    .not('starts_at', 'is', null)
-    .lte('starts_at', now)
-
-  if (error) {
-    logger.error({ err: error }, 'Solo-league auto-cancel fetch failed')
+  let leagues
+  try {
+    leagues = await fetchAll(
+      supabase
+        .from('leagues')
+        .select('id, name, format, commissioner_id, status')
+        .in('status', ['open', 'active'])
+        .not('starts_at', 'is', null)
+        .lte('starts_at', now)
+        .order('id')
+    )
+  } catch (err) {
+    logger.error({ err }, 'Solo-league auto-cancel fetch failed')
     return
   }
 
-  for (const league of leagues || []) {
+  for (const league of leagues) {
     if (EXEMPT_FORMATS.has(league.format)) continue
 
     const { count } = await supabase

@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { assertConnected } from './socialService.js'
 import { createNotification } from './notificationService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 export async function createHotTake(userId, content, teamTags, sportKey, imageUrl, userTags, videoUrl, imageUrls, postType = 'post', streamVideoUid = null, embed = null) {
   // Support both single image_url and multi image_urls
@@ -141,14 +142,16 @@ export async function createFlex(userId, { content, pickId, parlayId, propPickId
 }
 
 export async function getHotTakesByUser(userId) {
-  const { data, error } = await supabase
-    .from('hot_takes')
-    .select('id, content, team_tags, user_tags, created_at')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-
-  if (error) throw error
-  return data || []
+  // fetchAll: heavy posters' profile grid was silently capped at 1000
+  // hot-takes. The grid is user-navigated; return the full history so
+  // scrolling reaches the tail.
+  return fetchAll(
+    supabase
+      .from('hot_takes')
+      .select('id, content, team_tags, user_tags, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+  )
 }
 
 export async function createReminder(actorId, hotTakeId, comment) {
