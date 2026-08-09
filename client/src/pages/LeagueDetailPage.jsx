@@ -2274,11 +2274,13 @@ export default function LeagueDetailPage() {
         const mc = league.members?.length || 0
         const sport = league.sport
         const lid = league.id
-        // Keep in sync with TrophyCase.getTrophyImage — sport-specific
-        // large trophies land here for 12+ member leagues. Missing soccer
-        // meant the FIFA-style trophy in the trophy case didn't match the
-        // celebration card, which fell through to the basketball default.
-        const trophySrc = mc >= 14
+        // Thresholds MUST match TrophyCase.getTrophyImage (large=12+,
+        // medium=9+, small=5+, else medal). Previously used 14+ for
+        // large here, which meant a 12-13 member league showed the
+        // pillar-style large trophy on the trophy case but a golden cup
+        // (medium) on the championship card — same league, two
+        // different trophies.
+        const trophySrc = mc >= 12
           ? (['americanfootball_nfl', 'americanfootball_ncaaf'].includes(sport) ? '/trophies/large-football.webp'
               : ['baseball_mlb'].includes(sport) ? '/trophies/large-baseball.webp'
               : ['soccer_world_cup'].includes(sport) ? '/trophies/large-soccer.webp'
@@ -2287,7 +2289,7 @@ export default function LeagueDetailPage() {
           : mc >= 5 ? `/trophies/small-${(Math.abs([...lid].reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0)) % 3) + 1}.webp`
           : `/trophies/medal-${(Math.abs([...lid].reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0)) % 3) + 1}.webp`
         // Match TrophyCase proportions so trophies feel consistent across the app
-        const trophySizeClass = mc >= 14 ? 'w-36 h-44 md:w-56 md:h-64'
+        const trophySizeClass = mc >= 12 ? 'w-36 h-44 md:w-56 md:h-64'
           : mc >= 9 ? 'w-32 h-40 md:w-48 md:h-56'
           : mc >= 5 ? 'w-28 h-32 md:w-40 md:h-48'
           : 'w-20 h-20 md:w-32 md:h-32'
