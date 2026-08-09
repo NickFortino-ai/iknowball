@@ -87,3 +87,39 @@ export function leagueStartSportsDay(startsAt) {
   if (!startsAt) return null
   return new Date(startsAt).toLocaleDateString('en-CA', { timeZone: SPORTS_TZ })
 }
+
+/**
+ * UTC boundary ISO strings for a PT calendar day, DST-aware.
+ *
+ *   sportsDayBoundsUtc('2026-11-02') → { startUtc, endUtc }
+ *
+ * Uses a two-step offset probe (treat the input as if UTC, format that
+ * instant back into PT, take the delta as the offset for the target
+ * day) so PDT → PST transitions don't shift the window by an hour.
+ * This replaces the widespread pattern of hardcoding `-07:00` or
+ * `-08:00` in ISO strings, which silently wrong-shifts one half of the
+ * year.
+ */
+export function sportsDayBoundsUtc(dateStr) {
+  if (!dateStr) return { startUtc: null, endUtc: null }
+  const naive = new Date(`${dateStr}T00:00:00Z`)
+  if (isNaN(naive.getTime())) return { startUtc: null, endUtc: null }
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: SPORTS_TZ,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    }).formatToParts(naive).filter((p) => p.type !== 'literal').map((p) => [p.type, p.value])
+  )
+  const ptHour = parts.hour === '24' ? 0 : Number(parts.hour)
+  const ptAsIfUtcMs = Date.UTC(
+    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+    ptHour, Number(parts.minute), Number(parts.second)
+  )
+  const offsetMs = ptAsIfUtcMs - naive.getTime()
+  const startMs = naive.getTime() - offsetMs
+  return {
+    startUtc: new Date(startMs).toISOString(),
+    endUtc: new Date(startMs + 24 * 60 * 60 * 1000).toISOString(),
+  }
+}

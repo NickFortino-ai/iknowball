@@ -8,7 +8,7 @@ import { fetchCompletedGameStats as fetchNbaStatsFromEspn } from '../jobs/scoreN
 import { fetchCompletedGameStats as fetchMlbStatsFromEspn } from '../jobs/scoreMLBDFS.js'
 import { fetchCompletedWNBAGameStats as fetchWnbaStatsFromEspn } from '../jobs/scoreWNBADFS.js'
 import { normalizeName } from '../utils/name.js'
-import { todaySportsDay, yesterdaySportsDay } from '../utils/sportsDay.js'
+import { todaySportsDay, yesterdaySportsDay, sportsDayBoundsUtc } from '../utils/sportsDay.js'
 import { getPlayerHeadshotUrl, refreshPlayerHeadshotCache } from './espnService.js'
 
 // Short-key → full Odds API sport key. Short keys are what the admin
@@ -183,13 +183,26 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey) {
 
   if (!sport) return []
 
-  // Today's PT window as UTC boundaries. sportsDay is 'YYYY-MM-DD' anchored
-  // to America/Los_Angeles, so we bracket starts_at by the PT day's UTC
-  // boundaries. Includes both upcoming and live games so a user opening the
-  // tab mid-slate still sees the games in progress.
+  // Window of games to fetch props for. Daily-cadence sports (NBA/WNBA/
+  // MLB/NHL) show TODAY's PT slate — anything further out isn't relevant
+  // since the next day's card fills in overnight. Football sports run
+  // weekly with Thu/Sun/Mon games; anchoring to "today" hides Sunday's
+  // slate on Wed/Fri/Sat. For football we widen the window to a rolling
+  // 7 days so users browsing the tab mid-week actually see the coming
+  // weekend's props.
+  //
+  // sportsDayBoundsUtc handles DST correctly (PDT → PST would silently
+  // shift the previous `-07:00` hardcode by an hour once November hits).
+  const isFootball = fullSportKey === 'americanfootball_nfl'
+    || fullSportKey === 'americanfootball_ncaaf'
+    || fullSportKey === 'americanfootball_ufl'
+    || fullSportKey === 'americanfootball_nfl_preseason'
+
   const todayPt = todaySportsDay()
-  const startUtc = new Date(`${todayPt}T00:00:00-07:00`).toISOString()
-  const endUtc = new Date(new Date(`${todayPt}T00:00:00-07:00`).getTime() + 24 * 60 * 60 * 1000).toISOString()
+  const { startUtc } = sportsDayBoundsUtc(todayPt)
+  const endUtc = isFootball
+    ? new Date(new Date(startUtc).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    : sportsDayBoundsUtc(todayPt).endUtc
 
   const { data: games } = await supabase
     .from('games')
