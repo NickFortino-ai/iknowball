@@ -46,6 +46,15 @@ const SPORT_KEY_TO_ESPN_PATH = {
 const PROPS_LOAD_CACHE = new Map()
 const PROPS_LOAD_TTL_MS = 5 * 60 * 1000
 
+// Sports we deliberately do NOT support player props on, even though
+// odds sync + game finalization run against them. NFL preseason falls
+// here — no fantasy weight in preseason, and settleNFLProps only
+// grades regular NFL, so allowing syncs would create locked prop rows
+// that never settle.
+const PROPS_UNSUPPORTED_SPORT_KEYS = new Set([
+  'americanfootball_nfl_preseason',
+])
+
 export async function syncPropsForGame(gameId, markets) {
   // Get game details
   const { data: game, error: gameError } = await supabase
@@ -62,6 +71,12 @@ export async function syncPropsForGame(gameId, markets) {
 
   const sportKey = game.sports.key
   const eventId = game.external_id
+
+  if (PROPS_UNSUPPORTED_SPORT_KEYS.has(sportKey)) {
+    const err = new Error(`Player props are not supported for ${sportKey}`)
+    err.status = 400
+    throw err
+  }
 
   // Fetch props from Odds API
   let apiData
