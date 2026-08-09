@@ -223,9 +223,23 @@ export default function LeaguesPage() {
   const { active, completed } = useMemo(() => {
     if (!leagues) return { active: [], completed: [] }
     const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
+    // Completed leagues sort by 'most recently finished' — updated_at
+    // DESC — since 'completed' status is stamped on that column. The
+    // server returns leagues in created_at DESC order, which is what
+    // Active still uses (drag-reorderable via display_order); we sort
+    // Completed here on the client to swap in the more intuitive
+    // recency signal for that section.
+    const completedList = leagues
+      .filter((l) => l.status === 'completed' && (!l.updated_at || new Date(l.updated_at).getTime() <= oneDayAgo))
+      .slice()
+      .sort((a, b) => {
+        const at = a.updated_at ? new Date(a.updated_at).getTime() : 0
+        const bt = b.updated_at ? new Date(b.updated_at).getTime() : 0
+        return bt - at
+      })
     return {
       active: leagues.filter((l) => l.status !== 'completed' || (l.updated_at && new Date(l.updated_at).getTime() > oneDayAgo)),
-      completed: leagues.filter((l) => l.status === 'completed' && (!l.updated_at || new Date(l.updated_at).getTime() <= oneDayAgo)),
+      completed: completedList,
     }
   }, [leagues])
 
