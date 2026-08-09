@@ -18,6 +18,7 @@ export async function generateLeagueReport(league) {
   try {
     if (format === 'nba_dfs') return await generateNbaReport(leagueId)
     if (format === 'mlb_dfs') return await generateMlbReport(leagueId)
+    if (format === 'wnba_dfs') return await generateWnbaReport(leagueId)
     if (format === 'fantasy') {
       // NFL salary cap (DFS-style weekly contest)
       const { data: fs } = await supabase
@@ -132,6 +133,55 @@ async function generateMlbReport(leagueId) {
   }
 
   logger.info({ leagueId, contestDays: contestDays.length }, 'MLB league report generated')
+  return report
+}
+
+async function generateWnbaReport(leagueId) {
+  // Mirrors generateNbaReport — WNBA DFS shares the same roster/nightly
+  // schema shape, just with wnba_dfs_* tables. The slot count differs
+  // (2G/2F/1C/4UTIL vs NBA's setup) but buildReport is slot-agnostic;
+  // it walks whatever roster_slots come back.
+  const { data: rosters } = await supabase
+    .from('wnba_dfs_rosters')
+    .select('id, user_id, game_date, total_points, wnba_dfs_roster_slots(player_name, espn_player_id, salary, points_earned, roster_slot)')
+    .eq('league_id', leagueId)
+
+  if (!rosters?.length) return null
+
+  const contestDays = [...new Set(rosters.map((r) => r.game_date))]
+  if (contestDays.length < MIN_CONTEST_DAYS) {
+    logger.info({ leagueId, days: contestDays.length }, 'Not enough contest days for WNBA report')
+    return null
+  }
+
+  const allEspnIds = [...new Set(rosters.flatMap((r) => (r.wnba_dfs_roster_slots || []).map((s) => s.espn_player_id).filter(Boolean)))]
+  const headshotMap = await fetchWnbaHeadshots(allEspnIds, contestDays)
+
+  const { data: nightlyResults } = await supabase
+    .from('wnba_dfs_nightly_results')
+    .select('user_id, game_date, total_points, night_rank, is_night_winner')
+    .eq('league_id', leagueId)
+
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id, users(id, username, display_name, avatar_url, avatar_emoji)')
+    .eq('league_id', leagueId)
+
+  const userMap = {}
+  for (const m of members || []) userMap[m.user_id] = m.users
+
+  const report = buildReport(rosters, headshotMap, nightlyResults || [], userMap, contestDays, 'wnba_dfs_roster_slots')
+
+  const { error } = await supabase
+    .from('dfs_league_reports')
+    .upsert({ league_id: leagueId, report_data: report, generated_at: new Date().toISOString() }, { onConflict: 'league_id' })
+
+  if (error) {
+    logger.error({ error, leagueId }, 'Failed to store WNBA league report')
+    return null
+  }
+
+  logger.info({ leagueId, contestDays: contestDays.length }, 'WNBA league report generated')
   return report
 }
 
@@ -520,6 +570,38 @@ async function fetchMlbHeadshots(espnIds, dates) {
   if (missing.length) {
     const { data: older } = await supabase
       .from('mlb_dfs_salaries')
+      .select('espn_player_id, headshot_url')
+      .in('espn_player_id', missing)
+      .not('headshot_url', 'is', null)
+      .order('game_date', { ascending: false })
+      .limit(missing.length)
+
+    for (const row of older || []) {
+      if (row.headshot_url && !map[row.espn_player_id]) map[row.espn_player_id] = row.headshot_url
+    }
+  }
+
+  return map
+}
+
+async function fetchWnbaHeadshots(espnIds, dates) {
+  if (!espnIds.length) return {}
+  const latestDate = dates.sort().pop()
+  const { data } = await supabase
+    .from('wnba_dfs_salaries')
+    .select('espn_player_id, headshot_url')
+    .in('espn_player_id', espnIds)
+    .eq('game_date', latestDate)
+
+  const map = {}
+  for (const row of data || []) {
+    if (row.headshot_url) map[row.espn_player_id] = row.headshot_url
+  }
+
+  const missing = espnIds.filter((id) => !map[id])
+  if (missing.length) {
+    const { data: older } = await supabase
+      .from('wnba_dfs_salaries')
       .select('espn_player_id, headshot_url')
       .in('espn_player_id', missing)
       .not('headshot_url', 'is', null)
