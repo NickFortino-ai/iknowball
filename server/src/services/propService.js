@@ -7,7 +7,7 @@ import { checkRecordAfterSettle } from './recordService.js'
 import { fetchCompletedGameStats as fetchNbaStatsFromEspn } from '../jobs/scoreNBADFS.js'
 import { fetchCompletedGameStats as fetchMlbStatsFromEspn } from '../jobs/scoreMLBDFS.js'
 import { fetchCompletedWNBAGameStats as fetchWnbaStatsFromEspn } from '../jobs/scoreWNBADFS.js'
-import { normalizeName } from '../utils/name.js'
+import { normalizeName, stripAccents } from '../utils/name.js'
 import { todaySportsDay, yesterdaySportsDay, sportsDayBoundsUtc } from '../utils/sportsDay.js'
 import { getPlayerHeadshotUrl, refreshPlayerHeadshotCache } from './espnService.js'
 
@@ -766,11 +766,18 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
   if (!lockedPicks.length) return
 
   // Normalize names so "Jaime Jaquez Jr" matches "Jaime Jaquez Jr." etc.
-  // Strips trailing periods on suffixes (Jr/Sr/II/III/IV) and collapses
-  // whitespace. Also lowercases for case-insensitive joins.
+  // Strips diacritics (é→e — otherwise ESPN's "Ekéler" vs Sleeper's
+  // "Ekeler" silently miss), strips trailing periods on suffixes
+  // (Jr/Sr/II/III/IV), and collapses whitespace. Also lowercases for
+  // case-insensitive joins.
+  //
+  // Note: shadows the module-scoped normalizeName import (which is the
+  // shorter accent+lowercase-only version). This local override is
+  // deliberately kept because it also normalizes suffixes and periods
+  // that the DFS-salary rows carry inconsistently.
   function normalizeName(name) {
     if (!name) return ''
-    return String(name)
+    return stripAccents(String(name))
       .replace(/\./g, '')                 // strip all periods (C.J. → CJ, Jr. → Jr)
       .replace(/\s+(jr|sr|ii|iii|iv)\s*$/i, ' $1') // normalize suffix
       .replace(/\s+/g, ' ')

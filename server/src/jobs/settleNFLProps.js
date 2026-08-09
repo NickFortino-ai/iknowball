@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { settleProps } from '../services/propService.js'
 import { getCurrentNflWeek } from '../services/tdPassService.js'
+import { stripAccents } from '../utils/name.js'
 
 // Map prop market_key → actual value from an nfl_player_stats row (Sleeper
 // weekly stats). Keep in sync with the NFL branch of
@@ -22,7 +23,16 @@ const MARKET_STAT_MAP = {
 }
 
 function normalizePlayerName(name) {
-  return (name || '').toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim()
+  // stripAccents FIRST so diacritics collapse to their ASCII base
+  // (é→e, ć→c, ñ→n) before the [^a-z\s] regex would otherwise strip
+  // them entirely. Without this, Sleeper's "Ekéler" normalized to
+  // "ekler" while Odds-API's "Ekeler" normalized to "ekeler" — silent
+  // mismatch, prop never settles.
+  return stripAccents(name || '')
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 /**
