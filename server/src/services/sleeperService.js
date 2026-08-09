@@ -493,6 +493,20 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
         rec: s.rec || 0,
         rec_yd: s.rec_yd || 0,
         rec_td: s.rec_td || 0,
+        // Aggregate all non-offensive TDs a player scored — kick/punt
+        // returns (td_special / td_st), defensive INT returns (td_int),
+        // defensive fumble returns (td_fum / td_fum_rec). Books grade
+        // player_anytime_td on ANY touchdown, so leaving these out
+        // silently under-grades a WR who scored on a punt return.
+        // Defensive `|| 0` on every possible key so Sleeper naming
+        // drift (they've moved keys around historically) doesn't crash
+        // the sync.
+        return_td:
+          (s.td_special || 0) +
+          (s.td_st || 0) +
+          (s.td_int || 0) +
+          (s.td_fum || 0) +
+          (s.td_fum_rec || 0),
         fum_lost: s.fum_lost || 0,
         two_pt: (s.pass_2pt || 0) + (s.rush_2pt || 0) + (s.rec_2pt || 0),
         fgm: s.fgm || 0,

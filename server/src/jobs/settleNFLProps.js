@@ -17,9 +17,12 @@ const MARKET_STAT_MAP = {
   player_rush_attempts: (s) => s.rush_att,
   player_reception_yds: (s) => s.rec_yd,
   player_receptions: (s) => s.rec,
-  // Anytime TD = rushing or receiving TD (standard book definition; excludes
-  // passing TDs). Line is typically 0.5 so this resolves over/under cleanly.
-  player_anytime_td: (s) => (s.rush_td || 0) + (s.rec_td || 0),
+  // Anytime TD = ANY touchdown the player scored, excluding passing TDs
+  // (those are their own market). Books count returns — a WR who scores
+  // only on a punt return still cashes an OVER on anytime_td 0.5.
+  // return_td is Sleeper's aggregate of kick/punt/INT/fumble return TDs
+  // (see syncWeeklyStats).
+  player_anytime_td: (s) => (s.rush_td || 0) + (s.rec_td || 0) + (s.return_td || 0),
 }
 
 function normalizePlayerName(name) {
@@ -71,7 +74,7 @@ export async function settleNFLProps() {
   // (which only carry player_name) without a separate id map.
   const { data: stats } = await supabase
     .from('nfl_player_stats')
-    .select('player_id, pass_yd, pass_td, pass_cmp, pass_att, pass_int, rush_yd, rush_att, rec, rec_yd, rec_td, rush_td, nfl_players!inner(full_name)')
+    .select('player_id, pass_yd, pass_td, pass_cmp, pass_att, pass_int, rush_yd, rush_att, rec, rec_yd, rec_td, rush_td, return_td, nfl_players!inner(full_name)')
     .eq('season', season)
     .eq('week', week)
 

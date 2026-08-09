@@ -757,7 +757,10 @@ function mapNflStatToMarket(stats, marketKey) {
     player_rush_attempts: stats.rush_att,
     player_reception_yds: stats.rec_yd,
     player_receptions: stats.rec,
-    player_anytime_td: (stats.rush_td || 0) + (stats.rec_td || 0),
+    // Any TD counts (rush + rec + kick/punt/INT/fumble returns via
+    // return_td). Sportsbooks grade any touchdown; leaving returns out
+    // silently under-graded return specialists.
+    player_anytime_td: (stats.rush_td || 0) + (stats.rec_td || 0) + (stats.return_td || 0),
   }
   return STAT_MAP[marketKey] ?? null
 }
@@ -992,7 +995,7 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
         const { season, week } = await getCurrentNflWeek()
         const { data: nflStats } = await supabase
           .from('nfl_player_stats')
-          .select('player_id, pass_yd, pass_td, pass_cmp, pass_att, pass_int, rush_yd, rush_att, rec, rec_yd, rec_td, rush_td, nfl_players!inner(full_name)')
+          .select('player_id, pass_yd, pass_td, pass_cmp, pass_att, pass_int, rush_yd, rush_att, rec, rec_yd, rec_td, rush_td, return_td, nfl_players!inner(full_name)')
           .eq('season', season)
           .eq('week', week)
         for (const s of nflStats || []) {
