@@ -251,8 +251,32 @@ router.get('/open', requireAuth, async (req, res) => {
     .order('created_at', { ascending: false })
     .limit(100)
 
+  // Fantasy leagues use starts_at as a creation-time default that
+  // doesn't reflect when the league actually begins — the real signal
+  // is fantasy_settings.draft_status. A fantasy league is joinable
+  // until its draft starts, regardless of starts_at. Fetch draft_status
+  // for the fantasy candidates so the post-filter below can use it
+  // instead of the stale starts_at.
+  const fantasyIds = (rawLeagues || []).filter((l) => l.format === 'fantasy').map((l) => l.id)
+  const fantasyStatusForFilter = {}
+  if (fantasyIds.length) {
+    const { data: settings } = await supabase
+      .from('fantasy_settings')
+      .select('league_id, draft_status, format')
+      .in('league_id', fantasyIds)
+    for (const s of settings || []) fantasyStatusForFilter[s.league_id] = s
+  }
+
   const leagues = (rawLeagues || []).filter((l) => {
-    // Non-DFS formats: keep the starts_at-in-future guard.
+    if (l.format === 'fantasy') {
+      // Traditional fantasy: joinable until the draft leaves 'pending'.
+      // Salary cap fantasy has no draft — fall through to the DFS path.
+      const fs = fantasyStatusForFilter[l.id]
+      if (fs && fs.format !== 'salary_cap') {
+        return fs.draft_status === 'pending'
+      }
+      return true
+    }
     if (!DFS_STYLE_FORMATS.has(l.format)) {
       if (l.starts_at && l.starts_at <= now) return false
     }
