@@ -146,68 +146,14 @@ router.get('/strip', async (req, res) => {
 })
 
 // NFL schedule for the week scrubber. Returns the ordered week list
-// (preseason weeks from games table + regular from nfl_schedule) plus
-// the current NFL week + season_type. Client uses this to render
-// "PRE 1 / WEEK 1" buttons instead of daily date buttons.
+// (PRE 1-3 from ESPN's calendar + WEEK 1-18 from ESPN's calendar)
+// plus the current NFL week + season_type. Prior versions derived
+// preseason from the games table, but the odds API only publishes
+// ~1-2 weeks ahead so PRE 2/3 were missing until a few days out.
 router.get('/nfl-schedule', async (req, res) => {
-  const season = Number(req.query.season) || new Date().getFullYear()
-
-  // Regular season from nfl_schedule.
-  const { data: regRows } = await supabase
-    .from('nfl_schedule')
-    .select('week, game_date')
-    .eq('season', season)
-    .order('week', { ascending: true })
-
-  const byRegWeek = new Map()
-  for (const r of regRows || []) {
-    if (!byRegWeek.has(r.week)) byRegWeek.set(r.week, { week: r.week, start: r.game_date, end: r.game_date, season_type: 'regular' })
-    const b = byRegWeek.get(r.week)
-    if (r.game_date < b.start) b.start = r.game_date
-    if (r.game_date > b.end) b.end = r.game_date
-  }
-  const regularWeeks = [...byRegWeek.values()].sort((a, b) => a.week - b.week)
-
-  // Preseason weeks from the games table (Sleeper doesn't populate
-  // nfl_schedule for preseason). Group by NFL week anchor Tue → Mon
-  // and number sequentially by earliest start.
-  const { data: preSport } = await supabase.from('sports').select('id').eq('key', 'americanfootball_nfl_preseason').maybeSingle()
-  const preseasonWeeks = []
-  if (preSport?.id) {
-    const { data: preGames } = await supabase
-      .from('games')
-      .select('starts_at')
-      .eq('sport_id', preSport.id)
-      .gte('starts_at', `${season - 1}-07-01T00:00:00Z`)
-      .lte('starts_at', `${season}-10-01T00:00:00Z`)
-      .order('starts_at', { ascending: true })
-    // Bucket by football-week anchor (Tue in PT). Reuse a lightweight
-    // computation: date - ((day - 2 + 7) % 7) days = Tuesday anchor.
-    const buckets = new Map()
-    for (const g of preGames || []) {
-      const d = new Date(g.starts_at)
-      // Get PT calendar date.
-      const ptDateStr = d.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
-      const [y, m, dd] = ptDateStr.split('-').map(Number)
-      const noonUtc = new Date(Date.UTC(y, m - 1, dd, 12))
-      const day = noonUtc.getUTCDay() // 0=Sun..6=Sat
-      const daysBackToTue = (day - 2 + 7) % 7
-      noonUtc.setUTCDate(noonUtc.getUTCDate() - daysBackToTue)
-      const bucketKey = noonUtc.toISOString().slice(0, 10)
-      if (!buckets.has(bucketKey)) buckets.set(bucketKey, { start: ptDateStr, end: ptDateStr })
-      const b = buckets.get(bucketKey)
-      if (ptDateStr < b.start) b.start = ptDateStr
-      if (ptDateStr > b.end) b.end = ptDateStr
-    }
-    const sortedBuckets = [...buckets.entries()].sort(([a], [b]) => a.localeCompare(b))
-    for (let i = 0; i < sortedBuckets.length; i++) {
-      const [, b] = sortedBuckets[i]
-      preseasonWeeks.push({ week: i + 1, start: b.start, end: b.end, season_type: 'pre' })
-    }
-  }
-
-  // Preseason weeks precede regular weeks in the list.
-  const weeks = [...preseasonWeeks, ...regularWeeks]
+  const { getNflCalendar } = await import('../services/nflCalendarService.js')
+  const cal = await getNflCalendar()
+  const weeks = [...cal.preseason, ...cal.regular]
 
   // Current week + season_type.
   let current = null
@@ -215,81 +161,40 @@ router.get('/nfl-schedule', async (req, res) => {
     const { getCurrentNflWeek } = await import('../services/tdPassService.js')
     const state = await getCurrentNflWeek()
     current = {
-      season: state?.season || season,
+      season: state?.season || cal.season,
       week: state?.week || 1,
       season_type: state?.isPreSeason ? 'pre' : 'regular',
     }
   } catch {}
 
   res.set('Cache-Control', 'public, max-age=3600')
-  res.json({ season, current, weeks })
+  res.json({ season: cal.season, current, weeks })
 })
 
-// All games for one NFL (season, week). type=regular reads nfl_schedule
-// for the date window and queries games. type=pre uses game-derived
-// bucketing since Sleeper doesn't populate nfl_schedule for preseason.
+// All games for one NFL (season, week). Both regular and preseason
+// weeks pull their date window from ESPN's calendar (see
+// nflCalendarService); we then query the games table for anything
+// in that window. Games with no odds yet just won't appear, which
+// is fine — the scrubber button still shows so the user knows the
+// week exists.
 router.get('/nfl-week', async (req, res) => {
-  const season = Number(req.query.season) || new Date().getFullYear()
   const week = Number(req.query.week)
   const seasonType = String(req.query.type || 'regular').toLowerCase() // 'pre' | 'regular'
   if (!week) return res.status(400).json({ error: 'week required' })
 
-  let startUtc, endUtc, sportIds
+  const { getNflWeekWindow } = await import('../services/nflCalendarService.js')
+  const window = await getNflWeekWindow(week, seasonType)
+  if (!window) return res.json([])
 
-  if (seasonType === 'pre') {
-    // Reconstruct the same preseason week buckets computed by
-    // /nfl-schedule so week=N here matches week=N there.
-    const { data: preSport } = await supabase.from('sports').select('id').eq('key', 'americanfootball_nfl_preseason').maybeSingle()
-    if (!preSport?.id) return res.json([])
-    const { data: preGames } = await supabase
-      .from('games')
-      .select('starts_at')
-      .eq('sport_id', preSport.id)
-      .gte('starts_at', `${season - 1}-07-01T00:00:00Z`)
-      .lte('starts_at', `${season}-10-01T00:00:00Z`)
-      .order('starts_at', { ascending: true })
-    const buckets = new Map()
-    for (const g of preGames || []) {
-      const d = new Date(g.starts_at)
-      const ptDateStr = d.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
-      const [y, m, dd] = ptDateStr.split('-').map(Number)
-      const noonUtc = new Date(Date.UTC(y, m - 1, dd, 12))
-      const day = noonUtc.getUTCDay()
-      const daysBackToTue = (day - 2 + 7) % 7
-      noonUtc.setUTCDate(noonUtc.getUTCDate() - daysBackToTue)
-      const bucketKey = noonUtc.toISOString().slice(0, 10)
-      if (!buckets.has(bucketKey)) buckets.set(bucketKey, { start: ptDateStr, end: ptDateStr })
-      const b = buckets.get(bucketKey)
-      if (ptDateStr < b.start) b.start = ptDateStr
-      if (ptDateStr > b.end) b.end = ptDateStr
-    }
-    const sortedBuckets = [...buckets.entries()].sort(([a], [b]) => a.localeCompare(b))
-    const target = sortedBuckets[week - 1]
-    if (!target) return res.json([])
-    const [, b] = target
-    startUtc = `${b.start}T00:00:00Z`
-    const endD = new Date(`${b.end}T00:00:00Z`)
-    endD.setUTCDate(endD.getUTCDate() + 2)
-    endUtc = endD.toISOString()
-    sportIds = [preSport.id]
-  } else {
-    const { data: schedule } = await supabase
-      .from('nfl_schedule')
-      .select('game_date')
-      .eq('season', season)
-      .eq('week', week)
-      .order('game_date', { ascending: true })
-    if (!schedule?.length) return res.json([])
-    const startDate = schedule[0].game_date
-    const endDate = schedule[schedule.length - 1].game_date
-    startUtc = `${startDate}T00:00:00Z`
-    const endD = new Date(`${endDate}T00:00:00Z`)
-    endD.setUTCDate(endD.getUTCDate() + 2)
-    endUtc = endD.toISOString()
-    const { data: sports } = await supabase.from('sports').select('id, key').in('key', ['americanfootball_nfl'])
-    sportIds = (sports || []).map((s) => s.id)
-    if (!sportIds.length) return res.json([])
-  }
+  const startUtc = `${window.start}T00:00:00Z`
+  const endD = new Date(`${window.end}T00:00:00Z`)
+  endD.setUTCDate(endD.getUTCDate() + 2)
+  const endUtc = endD.toISOString()
+
+  const sportKeys = seasonType === 'pre' ? ['americanfootball_nfl_preseason'] : ['americanfootball_nfl']
+  const { data: sports } = await supabase.from('sports').select('id, key').in('key', sportKeys)
+  const sportIds = (sports || []).map((s) => s.id)
+  if (!sportIds.length) return res.json([])
 
   const liveStaleCutoff = new Date(Date.now() - LIVE_STALE_CUTOFF_MS).toISOString()
   const [liveRes, weekRes] = await Promise.all([
