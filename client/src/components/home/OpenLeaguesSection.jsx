@@ -126,7 +126,9 @@ export default function OpenLeaguesSection() {
   return (
     <div className="mb-8 xl:-mx-24" data-onboarding="open-leagues">
       <h2 className="font-display text-lg text-text-primary mb-3">Join an Open League</h2>
-      <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+      {/* See HomePage MyActiveLeagues for the mr-[calc(50%-50vw)]
+          rationale — infinity-pool right edge on desktop. */}
+      <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 lg:mr-[calc(50%-50vw)] scrollbar-hide">
         {sortedLeagues.map((league) => (
           <div
             key={league.id}

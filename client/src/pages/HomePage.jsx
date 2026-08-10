@@ -253,7 +253,13 @@ function MyActiveLeagues() {
   return (
     <div className="mb-8 xl:-mx-24">
       <h2 className="font-display text-xl mb-4">Your Leagues</h2>
-      <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+      {/* Infinity-pool right edge on desktop: extend the horizontal
+          scroll all the way to the viewport-right so a user with lots
+          of leagues gets a full-bleed scroll instead of the row being
+          clipped at the container's inner right border. Left edge
+          keeps its container alignment. mr-[calc(50%-50vw)] resolves
+          to a negative value equal to (viewport - container) / 2. */}
+      <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 lg:mr-[calc(50%-50vw)] scrollbar-hide">
         {active.map((league) => (
           <Link
             key={league.id}
