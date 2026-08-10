@@ -53,7 +53,11 @@ export default function SportsScoresStrip() {
   const gridClass = GRID_CLASSES[activeSports.length] || GRID_CLASSES[4]
 
   return (
-    <section className="mb-10">
+    // xl:-mx-24 mirrors the Status Tiers section below — pulls the
+    // strip wider than the default container at desktop breakpoints
+    // so 4 sport columns get real breathing room instead of getting
+    // squeezed into ~half the page width.
+    <section className="mb-10 xl:-mx-24">
       <h2 className="font-display text-2xl mb-4">Scoreboard</h2>
       <div className={`grid gap-4 ${gridClass}`}>
         {activeSports.map((sport) => (
@@ -120,7 +124,10 @@ function BucketSection({ label, games, sportFullKey, isLive, isFinal }) {
           {label}
         </span>
       </div>
-      <div>
+      {/* Thin, faint separator between each matchup so the games
+          within a bucket are visually distinct (previously they
+          blended into a wall of team names). */}
+      <div className="divide-y divide-white/5">
         {games.map((g) => (
           <GameRow key={g.id} game={g} sportFullKey={sportFullKey} isLive={isLive} isFinal={isFinal} />
         ))}
