@@ -1,6 +1,29 @@
 import { useMemo, useState } from 'react'
-import { useScoresStrip } from '../../hooks/useScoresStrip'
+import { useScoresStrip, useFinalsForDate } from '../../hooks/useScoresStrip'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
+
+// PT calendar date as YYYY-MM-DD — anchored to America/Los_Angeles so
+// it matches the server's sports-day convention. Every US pro sport
+// finishes within a PT calendar day, so bucketing by PT date is the
+// convention the whole codebase uses (see server/src/utils/sportsDay).
+function todayPT() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+}
+function shiftPTDate(dateStr, days) {
+  // Noon-anchored so DST transitions never flip the date.
+  const d = new Date(`${dateStr}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+function labelForPTDate(dateStr) {
+  const today = todayPT()
+  const yesterday = shiftPTDate(today, -1)
+  if (dateStr === today) return 'Today'
+  if (dateStr === yesterday) return 'Yesterday'
+  // Parse as PT-noon so display isn't off by a day for East-Coast browsers.
+  const d = new Date(`${dateStr}T12:00:00-07:00`)
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' })
+}
 
 // Landing-page scores strip modeled loosely on Sleeper's homepage —
 // four sport columns (NFL / MLB / WNBA / NBA) each showing what's live,
@@ -108,7 +131,65 @@ function SportColumn({ sport, data }) {
           <BucketSection label={live.length > 0 ? 'Coming up' : 'Upcoming'} games={upcoming} sportFullKey={sport.fullKey} />
         )}
         {recent.length > 0 && (
-          <BucketSection label="Final" games={recent} sportFullKey={sport.fullKey} isFinal />
+          <FinalSection sport={sport} todayRecent={recent} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Final section with a per-sport date navigator. Default is "today"
+// which uses the games already in the strip payload — free, no fetch.
+// Tapping the left arrow steps back one PT day and lazy-fetches that
+// day's finals via /api/scores/finals. Right arrow disabled once we're
+// back at today so users can't scroll into the future here.
+function FinalSection({ sport, todayRecent }) {
+  const today = todayPT()
+  const [date, setDate] = useState(today)
+  const isToday = date === today
+  const { data: fetched, isLoading } = useFinalsForDate(isToday ? null : sport.key, isToday ? null : date)
+  const games = isToday ? todayRecent : (fetched || [])
+
+  return (
+    <div>
+      <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Final</span>
+        <div className="flex items-center gap-1 ml-auto">
+          <button
+            type="button"
+            onClick={() => setDate((d) => shiftPTDate(d, -1))}
+            className="w-5 h-5 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors"
+            aria-label="Previous day"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <span className="text-[11px] font-semibold text-text-secondary min-w-[52px] text-center tabular-nums">
+            {labelForPTDate(date)}
+          </span>
+          <button
+            type="button"
+            onClick={() => setDate((d) => shiftPTDate(d, 1))}
+            disabled={isToday}
+            className="w-5 h-5 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+            aria-label="Next day"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div className="divide-y divide-white/5">
+        {isLoading && !isToday ? (
+          <div className="px-4 py-3 text-xs text-text-muted">Loading…</div>
+        ) : games.length === 0 ? (
+          <div className="px-4 py-3 text-xs text-text-muted">No games</div>
+        ) : (
+          games.map((g) => (
+            <GameRow key={g.id} game={g} sportFullKey={sport.fullKey} isFinal />
+          ))
         )}
       </div>
     </div>

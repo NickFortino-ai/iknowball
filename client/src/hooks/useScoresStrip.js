@@ -21,3 +21,16 @@ export function useScoresStrip() {
     retry: false,
   })
 }
+
+// Historical finals for a specific PT date + sport. Powers the Final
+// section's date scrubber — user clicks the left arrow, we fetch.
+// Finals for a past day never change so staleTime is generous.
+export function useFinalsForDate(sport, date) {
+  return useQuery({
+    queryKey: ['scoresFinals', sport, date],
+    queryFn: () => api.get(`/scores/finals?sport=${sport}&date=${date}`),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!sport && !!date,
+    retry: false,
+  })
+}

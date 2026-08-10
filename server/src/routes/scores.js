@@ -10,6 +10,7 @@
 import { Router } from 'express'
 import { supabase } from '../config/supabase.js'
 import { expandSportFamily } from '../utils/nflFamily.js'
+import { sportsDayBoundsUtc } from '../utils/sportsDay.js'
 import { getTeamRecords, lookupRecord } from '../services/teamRecordsService.js'
 
 const router = Router()
@@ -136,6 +137,43 @@ router.get('/strip', async (req, res) => {
   // landing-page hits from the same session/CDN.
   res.set('Cache-Control', 'public, max-age=15')
   res.json(out)
+})
+
+// Per-sport historical finals for a given PT calendar date. Powers
+// the Final section's date scrubber on the landing card — user taps
+// the left arrow, we hit this with date=YYYY-MM-DD.
+//
+// Cache header is generous (5min) because finals for a completed
+// past day never change — no reason to keep hitting the DB.
+router.get('/finals', async (req, res) => {
+  const shortSport = String(req.query.sport || '').toLowerCase()
+  const date = String(req.query.date || '')
+  const full = SHORT_TO_FULL[shortSport]
+  if (!full) return res.status(400).json({ error: 'sport must be one of nfl/nba/mlb/wnba' })
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' })
+
+  const { startUtc, endUtc } = sportsDayBoundsUtc(date)
+  if (!startUtc) return res.status(400).json({ error: 'invalid date' })
+
+  const keys = expandSportFamily(full)
+  const { data: sports } = await supabase.from('sports').select('id, key').in('key', keys)
+  const sportIds = (sports || []).map((s) => s.id)
+  if (!sportIds.length) return res.json([])
+
+  const { data: games, error } = await supabase
+    .from('games')
+    .select('id, sport_id, home_team, away_team, home_score, away_score, starts_at, status')
+    .in('sport_id', sportIds)
+    .eq('status', 'final')
+    .gte('starts_at', startUtc)
+    .lt('starts_at', endUtc)
+    .order('starts_at', { ascending: false })
+  if (error) return res.status(500).json({ error: error.message })
+
+  // Warm the record cache for the requested sport before mapping.
+  await getTeamRecords(full)
+  res.set('Cache-Control', 'public, max-age=300')
+  res.json((games || []).map((g) => shape(g, full)))
 })
 
 function emptyCol() {
