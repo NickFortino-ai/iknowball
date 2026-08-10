@@ -279,7 +279,7 @@ function MyActiveLeagues() {
                 <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/40 to-bg-primary/80 pointer-events-none" />
               </>
             )}
-            <div className="relative p-4">
+            <div className="relative p-5 min-h-36 flex flex-col">
               <div className="font-semibold text-sm text-white truncate mb-1">{league.name}</div>
               <div className="text-xs text-text-muted mb-2">{formatWithSport(league)}</div>
               <div className="flex items-center justify-between">
