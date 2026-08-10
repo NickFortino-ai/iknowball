@@ -223,7 +223,12 @@ function MyProfileRow({ profile }) {
 const SPORT_IN_FORMAT = { nba_dfs: true, wnba_dfs: true, mlb_dfs: true }
 
 function formatWithSport(league) {
-  const label = FORMAT_LABELS[league.format] || league.format
+  // TD Survivor is a subformat of Survivor (distinguished by
+  // settings.survivor_mode='touchdown'). Show 'TD Survivor' so it
+  // reads as its own thing on the mini card, not indistinguishable
+  // from a standard team-based Survivor pool.
+  const isTouchdown = league.format === 'survivor' && league.settings?.survivor_mode === 'touchdown'
+  const label = isTouchdown ? 'TD Survivor' : (FORMAT_LABELS[league.format] || league.format)
   if (SPORT_IN_FORMAT[league.format]) return label
   const sport = SPORT_LABELS[league.sport] || league.sport
   return `${label} · ${sport}`
