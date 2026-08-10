@@ -45,7 +45,11 @@ async function fetchOne(sportKey) {
     // layer inside each conference (e.g. "AFC East") — without it,
     // NFL/NBA/MLB return entries flat at the conference level and the
     // client's division tabs can't group anything.
-    const res = await fetch(`https://site.api.espn.com/apis/v2/sports/${path}/standings?level=3`)
+    // seasontype=2 = regular season only. Without it ESPN mixes
+    // preseason exhibition wins into the record (e.g. Panthers show
+    // 1-0 in August from a preseason W) which is not the record we
+    // want to display anywhere.
+    const res = await fetch(`https://site.api.espn.com/apis/v2/sports/${path}/standings?level=3&seasontype=2`)
     if (!res.ok) throw new Error(`ESPN ${res.status}`)
     const data = await res.json()
     const map = {}
