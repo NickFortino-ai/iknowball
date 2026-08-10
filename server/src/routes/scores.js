@@ -167,7 +167,7 @@ router.get('/nfl-schedule', async (req, res) => {
     }
   } catch {}
 
-  res.set('Cache-Control', 'public, max-age=3600')
+  res.set('Cache-Control', 'public, max-age=300')
   res.json({ season: cal.season, current, weeks })
 })
 
