@@ -49,11 +49,19 @@ async function fetchOne(sportKey) {
         for (const e of entries) {
           const team = e?.team
           if (!team) continue
-          const rec = { w: statNum(e, 'wins'), l: statNum(e, 'losses'), t: statNum(e, 'ties') }
+          // Store both record AND short name (Lions, Braves, Red Sox)
+          // in the same lookup so the scores endpoint can display the
+          // team without its city — Sleeper-style, less busy.
+          const info = {
+            w: statNum(e, 'wins'),
+            l: statNum(e, 'losses'),
+            t: statNum(e, 'ties'),
+            short: team.shortDisplayName || team.name || team.displayName,
+          }
           // Multiple key variants — however the games table spells
           // "San Francisco Giants" we still land a match.
           for (const key of [team.displayName, team.shortDisplayName, team.name, team.location, `${team.location} ${team.name}`]) {
-            if (key) map[normalize(key)] = rec
+            if (key) map[normalize(key)] = info
           }
         }
       }
@@ -80,4 +88,9 @@ export function lookupRecord(sportKey, teamName) {
   const cached = cache.get(sportKey)
   if (!cached) return null
   return cached.records[normalize(teamName)] || null
+}
+
+export function lookupShortName(sportKey, teamName) {
+  const info = lookupRecord(sportKey, teamName)
+  return info?.short || null
 }

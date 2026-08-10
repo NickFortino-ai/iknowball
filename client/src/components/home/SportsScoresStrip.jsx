@@ -222,10 +222,22 @@ function GameRow({ game, sportFullKey, isLive, isFinal }) {
   // Upcoming rows show a time/date pill on the right instead.
   const showScore = isLive || isFinal
   return (
-    <div className="px-4 py-2 flex items-center gap-3">
-      <div className="flex-1 min-w-0 space-y-1">
-        <TeamRow team={game.away_team} record={game.away_record} score={showScore ? game.away_score : null} sportFullKey={sportFullKey} isLive={isLive} />
-        <TeamRow team={game.home_team} record={game.home_record} score={showScore ? game.home_score : null} sportFullKey={sportFullKey} isLive={isLive} />
+    <div className="px-4 py-2.5 flex items-center gap-3">
+      <div className="flex-1 min-w-0 space-y-1.5">
+        <TeamRow
+          team={game.away_short || game.away_team}
+          logoLookupTeam={game.away_team}
+          record={game.away_record}
+          score={showScore ? game.away_score : null}
+          sportFullKey={sportFullKey} isLive={isLive}
+        />
+        <TeamRow
+          team={game.home_short || game.home_team}
+          logoLookupTeam={game.home_team}
+          record={game.home_record}
+          score={showScore ? game.home_score : null}
+          sportFullKey={sportFullKey} isLive={isLive}
+        />
       </div>
       {!showScore && (
         <div className="shrink-0">
@@ -236,17 +248,20 @@ function GameRow({ game, sportFullKey, isLive, isFinal }) {
   )
 }
 
-function TeamRow({ team, record, score, sportFullKey, isLive }) {
-  const logoUrl = getTeamLogoUrl(team, sportFullKey)
-  const fallbackUrl = getTeamLogoFallbackUrl(team, sportFullKey)
+function TeamRow({ team, logoLookupTeam, record, score, sportFullKey, isLive }) {
+  // Logo helper needs the FULL name (Detroit Lions, San Francisco
+  // Giants) since it's keyed by full name in the abbreviation map.
+  // Display name is the short version passed via `team`.
+  const logoUrl = getTeamLogoUrl(logoLookupTeam || team, sportFullKey)
+  const fallbackUrl = getTeamLogoFallbackUrl(logoLookupTeam || team, sportFullKey)
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2.5">
       {logoUrl ? (
         <img
           src={logoUrl}
           alt=""
-          width="20" height="20"
-          className="w-5 h-5 object-contain shrink-0"
+          width="28" height="28"
+          className="w-7 h-7 object-contain shrink-0"
           loading="lazy"
           onError={(e) => {
             if (fallbackUrl && e.currentTarget.src !== fallbackUrl) e.currentTarget.src = fallbackUrl
@@ -254,7 +269,7 @@ function TeamRow({ team, record, score, sportFullKey, isLive }) {
           }}
         />
       ) : (
-        <div className="w-5 h-5 rounded-full bg-bg-secondary shrink-0" />
+        <div className="w-7 h-7 rounded-full bg-bg-secondary shrink-0" />
       )}
       <div className="flex-1 min-w-0 text-sm text-text-primary truncate">{team}</div>
       {record && (

@@ -11,7 +11,7 @@ import { Router } from 'express'
 import { supabase } from '../config/supabase.js'
 import { expandSportFamily } from '../utils/nflFamily.js'
 import { sportsDayBoundsUtc } from '../utils/sportsDay.js'
-import { getTeamRecords, lookupRecord } from '../services/teamRecordsService.js'
+import { getTeamRecords, lookupRecord, lookupShortName } from '../services/teamRecordsService.js'
 
 const router = Router()
 
@@ -183,10 +183,19 @@ function emptyCol() {
 function shape(g, sportFullKey) {
   const homeRec = sportFullKey ? lookupRecord(sportFullKey, g.home_team) : null
   const awayRec = sportFullKey ? lookupRecord(sportFullKey, g.away_team) : null
+  const homeShort = sportFullKey ? lookupShortName(sportFullKey, g.home_team) : null
+  const awayShort = sportFullKey ? lookupShortName(sportFullKey, g.away_team) : null
   return {
     id: g.id,
+    // Full names retained so the client can fall back if a short
+    // name isn't in the record cache yet (first request per sport
+    // per server-restart).
     home_team: g.home_team,
     away_team: g.away_team,
+    // City-stripped display names (Lions, Braves, Red Sox) — nicer
+    // to render on the strip than 'Detroit Lions'.
+    home_short: homeShort,
+    away_short: awayShort,
     home_score: g.home_score,
     away_score: g.away_score,
     starts_at: g.starts_at,
