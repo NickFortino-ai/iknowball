@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom'
 import { useNbaDfsPlayerGamelog } from '../../hooks/useLeagues'
 import LoadingSpinner from './LoadingSpinner'
+import InjuryBadge from './InjuryBadge'
 
 // MLB two-way players appear in our salary table as two rows: one priced
 // off batting stats (UTIL) and one off pitching (SP, with -P suffix on
@@ -13,23 +14,9 @@ function twoWayPositionLabel(player) {
   return 'SP, DH'
 }
 
-function InjuryBadge({ status }) {
-  if (!status) return null
-  const colors = {
-    Out: 'text-incorrect',
-    IR: 'text-incorrect',
-    Questionable: 'text-yellow-400',
-    Doubtful: 'text-yellow-400',
-    Probable: 'text-correct',
-    'Day-To-Day': 'text-yellow-400',
-  }
-  const label = status === 'Day-To-Day' ? 'DTD' : status === 'IR' ? 'IR' : status.charAt(0)
-  return (
-    <span className={`text-[12px] font-mono font-bold shrink-0 ${colors[status] || 'text-text-muted'}`} title={status}>
-      {label}
-    </span>
-  )
-}
+// InjuryBadge moved to ui/InjuryBadge.jsx — the local copy here had
+// drifted from the canonical (missing PUP/SUS, case-sensitive lookup
+// that missed lowercase Sleeper variants).
 
 function NBAaverages({ averages }) {
   return (

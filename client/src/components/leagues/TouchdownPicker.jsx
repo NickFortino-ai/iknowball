@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTouchdownPlayers, useSubmitTouchdownPick } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import InjuryBadge from '../ui/InjuryBadge'
 
 const POSITION_FILTERS = ['All', 'RB', 'WR', 'TE']
 
@@ -95,15 +96,7 @@ export default function TouchdownPicker({ league, pickWeek, onPick }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm font-bold text-text-primary truncate">{player.full_name}</span>
-                  {player.injury_status && (
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                      player.injury_status === 'Out' ? 'bg-incorrect/20 text-incorrect'
-                      : player.injury_status === 'Questionable' ? 'bg-yellow-500/20 text-yellow-500'
-                      : 'bg-text-primary/10 text-text-muted'
-                    }`}>
-                      {player.injury_status === 'Day-To-Day' ? 'DTD' : player.injury_status === 'IR' ? 'IR' : player.injury_status.charAt(0)}
-                    </span>
-                  )}
+                  <InjuryBadge status={player.injury_status} />
                   {player.used && (
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-text-muted/20 text-text-muted">Used</span>
                   )}

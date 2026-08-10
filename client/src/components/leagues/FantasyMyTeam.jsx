@@ -8,6 +8,7 @@ import PlayerDetailModal from './PlayerDetailModal'
 import FantasyGlobalRankModal from './FantasyGlobalRankModal'
 import { ProposeTradeModal } from './FantasyTrades'
 import BlurbDot, { markBlurbSeen } from './BlurbDot'
+import InjuryBadge from '../ui/InjuryBadge'
 import { TradeDropModal } from './FantasyTrades'
 
 // Explicit past-tense map — templating `${action}ed` gives "declineed" and
@@ -22,14 +23,8 @@ function pastTense(action) {
   }[action] || `${action}d`
 }
 
-const INJURY_COLORS = {
-  Out: 'text-incorrect',
-  IR: 'text-incorrect',
-  Questionable: 'text-yellow-400',
-  Doubtful: 'text-yellow-400',
-  Probable: 'text-correct',
-  'Day-To-Day': 'text-yellow-400',
-}
+// InjuryBadge + colors moved to ui/InjuryBadge.jsx — local copy
+// was case-sensitive and missed PUP/SUS.
 
 // Build the starter slot list from the league's roster_slots config so leagues
 // with non-default lineups (e.g., 2 WR instead of 3) don't render extra empty
@@ -145,15 +140,7 @@ function formatSeasonStats(position, stats) {
   }).join(' · ')
 }
 
-function InjuryBadge({ status }) {
-  if (!status) return null
-  const label = status === 'Day-To-Day' ? 'DTD' : status === 'IR' ? 'IR' : status.charAt(0)
-  return (
-    <span className={`text-[12px] font-mono font-bold shrink-0 ${INJURY_COLORS[status] || 'text-text-muted'}`} title={status}>
-      {label}
-    </span>
-  )
-}
+// InjuryBadge imported at top of file (see ui/InjuryBadge.jsx).
 
 function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail, blurbIds, editMode, showSeasonStats = true, isDropTarget = false }) {
   const canIR = row?.nfl_players?.injury_status === 'Out' || row?.nfl_players?.injury_status === 'IR'

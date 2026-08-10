@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useMlbDfsPlayers, useMlbDfsRoster, useSaveMlbDfsRoster, useMlbDfsStandings, useMlbDfsLive, useFantasySettings } from '../../hooks/useLeagues'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
 import LineupBadge from '../ui/LineupBadge'
+import InjuryBadge from '../ui/InjuryBadge'
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -29,14 +30,6 @@ function matchesPositionFilter(playerPos, filter) {
   return playerPos === filter
 }
 
-const INJURY_COLORS = {
-  Out: 'text-incorrect',
-  IR: 'text-incorrect',
-  Questionable: 'text-yellow-400',
-  Probable: 'text-correct',
-  'Day-To-Day': 'text-yellow-400',
-}
-
 // Headshot with built-in error fallback. ESPN occasionally serves dead
 // links for rookies / late call-ups; the inline `onError=display:none`
 // pattern left a blank circle. State-based swap keeps the position
@@ -62,15 +55,8 @@ function HeadshotWithFallback({ url, position, className = 'w-10 h-10', textClas
   )
 }
 
-function InjuryBadge({ status }) {
-  if (!status) return null
-  const label = status === 'Day-To-Day' ? 'DTD' : status === 'IR' ? 'IR' : status.charAt(0)
-  return (
-    <span className={`text-[12px] font-mono font-bold ${INJURY_COLORS[status] || 'text-text-muted'}`} title={status}>
-      {label}
-    </span>
-  )
-}
+// InjuryBadge now imported from ui/InjuryBadge — the local copy
+// was case-sensitive and missed PUP/SUS/Doubtful.
 
 function getPlayerGameState(player) {
   if (!player?.game_starts_at) return 'upcoming'

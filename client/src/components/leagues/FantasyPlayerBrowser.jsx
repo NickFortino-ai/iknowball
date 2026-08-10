@@ -9,6 +9,7 @@ import PlayerDetailModal from './PlayerDetailModal'
 import BlurbDot, { markBlurbSeen } from './BlurbDot'
 import FantasyMyRankings from './FantasyMyRankings'
 import PlayerHeadshot from '../ui/PlayerHeadshot'
+import InjuryBadge from '../ui/InjuryBadge'
 
 const OFFENSE_POSITION_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'K']
 const IDP_POSITION_FILTERS = ['DL', 'LB', 'DB', 'S']
@@ -72,23 +73,8 @@ const IDP_STAT_COLUMNS = [
   { key: 'idp_fum_rec', label: 'FR' },
 ]
 
-const INJURY_COLORS = {
-  Out: 'text-incorrect',
-  IR: 'text-incorrect',
-  Questionable: 'text-yellow-400',
-  Probable: 'text-correct',
-  'Day-To-Day': 'text-yellow-400',
-}
-
-function InjuryBadge({ status }) {
-  if (!status) return null
-  const label = status === 'Day-To-Day' ? 'DTD' : status === 'IR' ? 'IR' : status.charAt(0)
-  return (
-    <span className={`text-[12px] font-mono font-bold ${INJURY_COLORS[status] || 'text-text-muted'}`} title={status}>
-      {label}
-    </span>
-  )
-}
+// InjuryBadge now imported from ui/InjuryBadge — the local copy
+// missed lowercase Sleeper variants + PUP/SUS/Doubtful.
 
 export default function FantasyPlayerBrowser({ league }) {
   const [playerView, setPlayerView] = useState('ADP') // 'ADP' | 'My Ranks'

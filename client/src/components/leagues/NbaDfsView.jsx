@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNbaDfsPlayers, useNbaDfsRoster, useSaveNbaDfsRoster, useNbaDfsStandings, useNbaDfsLive, useFantasySettings } from '../../hooks/useLeagues'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
+import InjuryBadge from '../ui/InjuryBadge'
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -43,23 +44,8 @@ function matchesPositionFilter(playerPos, filter) {
   return parts.includes(filter)
 }
 
-const INJURY_COLORS = {
-  Out: 'text-incorrect',
-  IR: 'text-incorrect',
-  Questionable: 'text-yellow-400',
-  Probable: 'text-correct',
-  'Day-To-Day': 'text-yellow-400',
-}
-
-function InjuryBadge({ status }) {
-  if (!status) return null
-  const label = status === 'Day-To-Day' ? 'DTD' : status === 'IR' ? 'IR' : status.charAt(0)
-  return (
-    <span className={`text-[12px] font-mono font-bold shrink-0 ${INJURY_COLORS[status] || 'text-text-muted'}`} title={status}>
-      {label}
-    </span>
-  )
-}
+// InjuryBadge now imported from ui/InjuryBadge — the local copy
+// was case-sensitive and missed PUP/SUS/Doubtful.
 
 // Get game state for a player: 'upcoming', 'live', or 'final'
 function getPlayerGameState(player) {
