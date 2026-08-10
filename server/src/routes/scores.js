@@ -59,7 +59,9 @@ router.get('/strip', async (req, res) => {
     else if (s.key === 'baseball_mlb') sportIdToShort[s.id] = 'mlb'
     else if (s.key === 'basketball_wnba') sportIdToShort[s.id] = 'wnba'
   }
-  const sportIds = Object.keys(sportIdToShort).map(Number)
+  // sport_ids are UUIDs — pass the map keys through as strings, NOT
+  // Number()-cast (that was returning NaN and blowing up the .in()).
+  const sportIds = Object.keys(sportIdToShort)
 
   // Three parallel queries — live, upcoming (windowed), recent finals
   // (windowed). Fewer queries than per-sport-per-bucket, and partitioned
