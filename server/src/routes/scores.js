@@ -30,6 +30,13 @@ const RECENT_LIMIT = 6
 // Recent-finals window: 30h covers overnight games that finished after
 // midnight but started yesterday.
 const RECENT_WINDOW_MS = 30 * 60 * 60 * 1000
+// Zombie-live guard: a real live game gets updated_at bumped every
+// 15-30s by the score-sync cron. If a row's status='live' but
+// updated_at is more than 6h stale, the sync stopped touching it —
+// almost always means the cron missed the transition to 'final' and
+// the game ended long ago. Excluding these keeps months-old ghosts
+// (see /server/scripts diagnostics) off the landing page.
+const LIVE_STALE_CUTOFF_MS = 6 * 60 * 60 * 1000
 // Upcoming window: 7 days lets the NFL column show the coming Sunday
 // slate even when browsing on Wednesday; MLB/NBA/WNBA still see ~2-3
 // days of games since their cadence is daily.
@@ -40,6 +47,7 @@ router.get('/strip', async (req, res) => {
   const nowIso = now.toISOString()
   const recentCutoff = new Date(now.getTime() - RECENT_WINDOW_MS).toISOString()
   const upcomingCutoff = new Date(now.getTime() + UPCOMING_WINDOW_MS).toISOString()
+  const liveStaleCutoff = new Date(now.getTime() - LIVE_STALE_CUTOFF_MS).toISOString()
 
   // Resolve all sport_ids we care about in one shot. Includes NFL
   // preseason as a distinct sports row so the NFL column captures both.
@@ -69,9 +77,10 @@ router.get('/strip', async (req, res) => {
   const [liveRes, upcomingRes, recentRes] = await Promise.all([
     supabase
       .from('games')
-      .select('id, sport_id, home_team, away_team, home_score, away_score, starts_at, status')
+      .select('id, sport_id, home_team, away_team, home_score, away_score, starts_at, status, updated_at')
       .in('sport_id', sportIds)
       .eq('status', 'live')
+      .gte('updated_at', liveStaleCutoff)
       .order('starts_at', { ascending: true }),
     supabase
       .from('games')

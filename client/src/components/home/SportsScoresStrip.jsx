@@ -21,14 +21,26 @@ const SPORTS = [
   { key: 'nba', label: 'NBA', fullKey: 'basketball_nba' },
 ]
 
+// Grid class per active-sport count. Static classes (not built via
+// string interpolation) so Tailwind's JIT picks them up at build
+// time. Missing sport columns just get the row width redistributed
+// instead of leaving a hollow slot for an offseason sport.
+const GRID_CLASSES = {
+  1: 'grid-cols-1',
+  2: 'grid-cols-1 sm:grid-cols-2',
+  3: 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3',
+  4: 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-4',
+}
+
 export default function SportsScoresStrip() {
   const { data, isLoading, error } = useScoresStrip()
 
-  // Only render when we have something to show — no empty shells
-  // above the fold on a slow-news day.
-  const hasAny = useMemo(() => {
-    if (!data) return false
-    return SPORTS.some((s) => {
+  // Only render sports with at least one game across any bucket. An
+  // offseason sport (NBA in August) drops its column entirely so the
+  // remaining columns widen to fill the row — no hollow slot.
+  const activeSports = useMemo(() => {
+    if (!data) return []
+    return SPORTS.filter((s) => {
       const col = data[s.key]
       return (col?.live?.length || 0) + (col?.upcoming?.length || 0) + (col?.recent?.length || 0) > 0
     })
@@ -36,7 +48,9 @@ export default function SportsScoresStrip() {
 
   if (isLoading) return null
   if (error) return null
-  if (!hasAny) return null
+  if (!activeSports.length) return null
+
+  const gridClass = GRID_CLASSES[activeSports.length] || GRID_CLASSES[4]
 
   return (
     <section className="mb-10">
@@ -44,8 +58,8 @@ export default function SportsScoresStrip() {
         <h2 className="font-display text-2xl">Scoreboard</h2>
         <span className="text-xs text-text-muted">Auto-updating</span>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {SPORTS.map((sport) => (
+      <div className={`grid gap-4 ${gridClass}`}>
+        {activeSports.map((sport) => (
           <SportColumn key={sport.key} sport={sport} data={data[sport.key]} />
         ))}
       </div>
@@ -54,32 +68,26 @@ export default function SportsScoresStrip() {
 }
 
 function SportColumn({ sport, data }) {
+  // Parent filters out sports with zero games across all buckets before
+  // mapping, so we're guaranteed at least one bucket has rows here.
   const live = data?.live || []
   const upcoming = data?.upcoming || []
   const recent = data?.recent || []
-  const totalGames = live.length + upcoming.length + recent.length
 
   return (
     <div className="rounded-xl border border-text-primary/15 bg-bg-primary/40 backdrop-blur-sm overflow-hidden">
-      <div className="px-4 py-3 border-b border-text-primary/10 flex items-center justify-between">
+      <div className="px-4 py-3 border-b border-text-primary/10">
         <h3 className="font-display text-lg text-text-primary">{sport.label}</h3>
-        {totalGames === 0 && <span className="text-[10px] text-text-muted uppercase tracking-wider">No games</span>}
       </div>
       <div className="divide-y divide-text-primary/10">
-        {totalGames === 0 ? (
-          <div className="px-4 py-6 text-xs text-text-muted text-center">Nothing scheduled right now.</div>
-        ) : (
-          <>
-            {live.length > 0 && (
-              <BucketSection label="Live" games={live} sportFullKey={sport.fullKey} isLive />
-            )}
-            {upcoming.length > 0 && (
-              <BucketSection label={live.length > 0 ? 'Coming up' : 'Upcoming'} games={upcoming} sportFullKey={sport.fullKey} />
-            )}
-            {recent.length > 0 && (
-              <BucketSection label="Final" games={recent} sportFullKey={sport.fullKey} isFinal />
-            )}
-          </>
+        {live.length > 0 && (
+          <BucketSection label="Live" games={live} sportFullKey={sport.fullKey} isLive />
+        )}
+        {upcoming.length > 0 && (
+          <BucketSection label={live.length > 0 ? 'Coming up' : 'Upcoming'} games={upcoming} sportFullKey={sport.fullKey} />
+        )}
+        {recent.length > 0 && (
+          <BucketSection label="Final" games={recent} sportFullKey={sport.fullKey} isFinal />
         )}
       </div>
     </div>
