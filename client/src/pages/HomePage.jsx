@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import InfoTooltip from '../components/ui/InfoTooltip'
 import OpenLeaguesSection from '../components/home/OpenLeaguesSection'
+import SportsScoresStrip from '../components/home/SportsScoresStrip'
 import TierUsersModal from '../components/home/TierUsersModal'
 import { useMyLeagues } from '../hooks/useLeagues'
 import { useMyPicks } from '../hooks/usePicks'
@@ -683,6 +684,13 @@ export default function HomePage() {
         </div>
         </>
       )}
+
+      {/* Live scoreboard — 4 sport columns of live / upcoming / recent
+          finals. Shown to logged-in AND logged-out users; the component
+          renders nothing when every sport is empty (offseason lull), so
+          it never leaves a hollow band on the page. Positioned above
+          Status Tiers per the landing revamp plan. */}
+      <SportsScoresStrip />
 
       {/* Tier Breakdown — always shown */}
       <div className="xl:-mx-24">

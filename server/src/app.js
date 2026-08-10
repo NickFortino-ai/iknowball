@@ -51,6 +51,7 @@ import messagesRouter from './routes/messages.js'
 import backdropSubmissionsRouter from './routes/backdropSubmissions.js'
 import newsRouter from './routes/news.js'
 import publicLandingRouter from './routes/publicLanding.js'
+import scoresRouter from './routes/scores.js'
 import surveysRouter from './routes/surveys.js'
 import appConfigRouter from './routes/appConfig.js'
 import appSettingsRouter from './routes/appSettings.js'
@@ -118,6 +119,7 @@ app.use('/api/receptions', receptionsRouter)
 app.use('/api/td-pass', tdPassRouter)
 app.use('/api/news', newsRouter)
 app.use('/api/public', publicLandingRouter)
+app.use('/api/scores', scoresRouter)
 app.use('/api/surveys', surveysRouter)
 app.use('/api/app-config', appConfigRouter)
 
