@@ -200,15 +200,23 @@ function DrillGameCard({ game, sportFullKey }) {
           {timeLabel}
         </span>
       </div>
+      {/* MLB R/H/E header when linescore is present */}
+      {game.linescore && (
+        <div className="flex justify-end gap-3 mb-1 pr-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted w-5 text-center">R</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted w-5 text-center">H</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted w-5 text-center">E</span>
+        </div>
+      )}
       <div className="space-y-1.5">
-        <DrillTeamRow team={game.away_short || game.away_team} fullTeam={game.away_team} record={game.away_record} score={showScore ? game.away_score : null} sportFullKey={sportFullKey} isLive={isLive} />
-        <DrillTeamRow team={game.home_short || game.home_team} fullTeam={game.home_team} record={game.home_record} score={showScore ? game.home_score : null} sportFullKey={sportFullKey} isLive={isLive} />
+        <DrillTeamRow team={game.away_short || game.away_team} fullTeam={game.away_team} record={game.away_record} score={showScore ? game.away_score : null} hits={game.linescore?.away?.h} errors={game.linescore?.away?.e} sportFullKey={sportFullKey} isLive={isLive} />
+        <DrillTeamRow team={game.home_short || game.home_team} fullTeam={game.home_team} record={game.home_record} score={showScore ? game.home_score : null} hits={game.linescore?.home?.h} errors={game.linescore?.home?.e} sportFullKey={sportFullKey} isLive={isLive} />
       </div>
     </div>
   )
 }
 
-function DrillTeamRow({ team, fullTeam, record, score, sportFullKey, isLive }) {
+function DrillTeamRow({ team, fullTeam, record, score, hits, errors, sportFullKey, isLive }) {
   const logoUrl = getTeamLogoUrl(fullTeam || team, sportFullKey)
   const fallbackUrl = getTeamLogoFallbackUrl(fullTeam || team, sportFullKey)
   return (
@@ -232,11 +240,19 @@ function DrillTeamRow({ team, fullTeam, record, score, sportFullKey, isLive }) {
         <span className="text-sm text-text-primary truncate">{team}</span>
         {record && <span className="text-[11px] text-text-muted tabular-nums shrink-0">{record}</span>}
       </div>
-      {score != null && (
+      {/* MLB R H E block (R bold, H/E lighter). Falls back to plain
+          score for non-MLB rows. */}
+      {score != null && (hits != null || errors != null) ? (
+        <div className="flex items-baseline gap-3 shrink-0 tabular-nums">
+          <span className={`w-5 text-center text-lg font-semibold ${isLive ? 'text-text-primary' : 'text-text-secondary'}`}>{score}</span>
+          <span className="w-5 text-center text-sm text-text-muted">{hits != null ? hits : ''}</span>
+          <span className="w-5 text-center text-sm text-text-muted">{errors != null ? errors : ''}</span>
+        </div>
+      ) : score != null ? (
         <div className={`text-lg font-semibold tabular-nums shrink-0 ${isLive ? 'text-text-primary' : 'text-text-secondary'}`}>
           {score}
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

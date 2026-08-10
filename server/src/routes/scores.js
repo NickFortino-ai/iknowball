@@ -10,8 +10,9 @@
 import { Router } from 'express'
 import { supabase } from '../config/supabase.js'
 import { expandSportFamily } from '../utils/nflFamily.js'
-import { sportsDayBoundsUtc } from '../utils/sportsDay.js'
+import { sportsDayBoundsUtc, toSportsDay } from '../utils/sportsDay.js'
 import { getTeamRecords, lookupRecord, lookupShortName } from '../services/teamRecordsService.js'
+import { warmMlbLinescores, getMlbLinescoreForGame } from '../services/mlbLinescoresService.js'
 
 const router = Router()
 
@@ -133,6 +134,9 @@ router.get('/strip', async (req, res) => {
     if (s && out[s].recent.length < RECENT_LIMIT) out[s].recent.push(attach(s, g))
   }
 
+  // MLB linescores for final games in the recent bucket
+  await attachMlbLinescores(out.mlb.recent, 'baseball_mlb')
+
   // Short cache header — clients also poll but this dampens repeat
   // landing-page hits from the same session/CDN.
   res.set('Cache-Control', 'public, max-age=15')
@@ -193,6 +197,8 @@ router.get('/day', async (req, res) => {
   for (const g of liveRes.data || []) { seen.add(g.id); out.push(shape(g, full)) }
   for (const g of dayRes.data || []) { if (!seen.has(g.id)) out.push(shape(g, full)) }
   out.sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
+
+  await attachMlbLinescores(out, full)
 
   res.set('Cache-Control', 'public, max-age=15')
   res.json(out)
@@ -261,8 +267,10 @@ router.get('/finals', async (req, res) => {
 
   // Warm the record cache for the requested sport before mapping.
   await getTeamRecords(full)
+  const shaped = (games || []).map((g) => shape(g, full))
+  await attachMlbLinescores(shaped, full)
   res.set('Cache-Control', 'public, max-age=300')
-  res.json((games || []).map((g) => shape(g, full)))
+  res.json(shaped)
 })
 
 function emptyCol() {
@@ -297,6 +305,25 @@ function shape(g, sportFullKey) {
 function formatRecord(r) {
   if (r.t > 0) return `${r.w}-${r.l}-${r.t}`
   return `${r.w}-${r.l}`
+}
+
+// For MLB finals, look up R/H/E from cached ESPN scoreboard data
+// (see mlbLinescoresService). One ESPN call per unique date; each
+// game's row gets a { home, away } { r, h, e } block attached.
+// Skips non-MLB and non-final games silently.
+async function attachMlbLinescores(games, sportFullKey) {
+  if (sportFullKey !== 'baseball_mlb') return
+  const dates = new Set()
+  for (const g of games) {
+    if (g.status === 'final') dates.add(toSportsDay(g.starts_at))
+  }
+  await Promise.all([...dates].map((d) => warmMlbLinescores(d)))
+  for (const g of games) {
+    if (g.status !== 'final') continue
+    const d = toSportsDay(g.starts_at)
+    const ls = await getMlbLinescoreForGame(d, g.away_team, g.home_team)
+    if (ls) g.linescore = ls
+  }
 }
 
 export default router

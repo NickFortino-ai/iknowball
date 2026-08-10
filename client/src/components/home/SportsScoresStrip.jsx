@@ -284,13 +284,25 @@ function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome }) {
         : 'border-incorrect/60 bg-incorrect/5')
     : 'border-text-primary/10 bg-bg-primary/20'
   return (
-    <div className={`rounded-lg border backdrop-blur-md px-4 py-2.5 flex items-center gap-3 ${outlineClass}`}>
+    <div className={`rounded-lg border backdrop-blur-md px-4 py-2.5 ${outlineClass}`}>
+      {/* MLB R/H/E header — only shown when linescore data is present.
+          Tiny uppercase labels align above the numeric R H E column. */}
+      {game.linescore && (
+        <div className="flex justify-end gap-2 mb-1 pr-1">
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted w-3 text-center">R</span>
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted w-3 text-center">H</span>
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted w-3 text-center">E</span>
+        </div>
+      )}
+      <div className="flex items-center gap-3">
       <div className="flex-1 min-w-0 space-y-1.5">
         <TeamRow
           team={game.away_short || game.away_team}
           logoLookupTeam={game.away_team}
           record={game.away_record}
           score={showScore ? game.away_score : null}
+          hits={game.linescore?.away?.h}
+          errors={game.linescore?.away?.e}
           sportFullKey={sportFullKey} isLive={isLive}
         />
         <TeamRow
@@ -298,6 +310,8 @@ function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome }) {
           logoLookupTeam={game.home_team}
           record={game.home_record}
           score={showScore ? game.home_score : null}
+          hits={game.linescore?.home?.h}
+          errors={game.linescore?.home?.e}
           sportFullKey={sportFullKey} isLive={isLive}
         />
       </div>
@@ -306,11 +320,12 @@ function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome }) {
           <TimeBox startsAt={game.starts_at} />
         </div>
       )}
+      </div>
     </div>
   )
 }
 
-function TeamRow({ team, logoLookupTeam, record, score, sportFullKey, isLive }) {
+function TeamRow({ team, logoLookupTeam, record, score, hits, errors, sportFullKey, isLive }) {
   // Logo helper needs the FULL name (Detroit Lions, San Francisco
   // Giants) since it's keyed by full name in the abbreviation map.
   // Display name is the short version passed via `team`.
@@ -343,11 +358,19 @@ function TeamRow({ team, logoLookupTeam, record, score, sportFullKey, isLive }) 
           <span className="text-[11px] text-text-muted tabular-nums shrink-0">{record}</span>
         )}
       </div>
-      {score != null && (
+      {/* MLB R/H/E: R bold, H/E lighter. Non-MLB rows fall through
+          to the plain-score render below. */}
+      {score != null && (hits != null || errors != null) ? (
+        <div className="flex items-baseline gap-2 shrink-0 tabular-nums">
+          <span className={`text-sm font-semibold ${isLive ? 'text-text-primary' : 'text-text-secondary'}`}>{score}</span>
+          {hits != null && <span className="text-[11px] text-text-muted">{hits}</span>}
+          {errors != null && <span className="text-[11px] text-text-muted">{errors}</span>}
+        </div>
+      ) : score != null ? (
         <div className={`text-sm font-semibold tabular-nums shrink-0 ${isLive ? 'text-text-primary' : 'text-text-secondary'}`}>
           {score}
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
