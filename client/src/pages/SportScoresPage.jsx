@@ -88,7 +88,11 @@ export default function SportScoresPage() {
       </Link>
       <h1 className="font-display text-3xl md:text-4xl text-text-primary mb-6">{config.label}</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+      {/* minmax(0,1fr) so the left column can shrink below its content
+          width — without it, the NFL week scrubber (18 buttons at
+          ~72px each) forced the whole grid wider than the viewport
+          and pushed the standings sidebar off the right edge. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6">
         {/* LEFT: Scores column */}
         <div>
           <h2 className="font-display text-xl text-text-primary mb-3">Scores</h2>
@@ -104,7 +108,7 @@ export default function SportScoresPage() {
               onPick={setNflWeek}
             />
           ) : (
-            <div className="flex items-stretch gap-1 mb-4">
+            <div className="flex items-stretch gap-1 mb-4 min-w-0">
               <button
                 onClick={() => setDate((d) => shiftPTDate(d, -1))}
                 className="shrink-0 w-9 flex items-center justify-center rounded-lg border border-text-primary/15 hover:bg-bg-secondary transition-colors"
@@ -114,7 +118,7 @@ export default function SportScoresPage() {
                   <polyline points="15 18 9 12 15 6" />
                 </svg>
               </button>
-              <div className="flex-1 flex gap-1 overflow-x-auto scrollbar-hide">
+              <div className="flex-1 min-w-0 flex gap-1 overflow-x-auto scrollbar-hide">
                 {stripDates.map((d) => {
                   const isSelected = d === date
                   const { day, md } = labelForPTDate(d)
@@ -156,7 +160,7 @@ export default function SportScoresPage() {
           ) : (
             <div className="space-y-2">
               {games.map((g) => (
-                <DrillGameCard key={g.id} game={g} sportFullKey={config.fullKey} />
+                <DrillGameCard key={g.id} game={g} sportFullKey={config.fullKey} showDate={isNfl} />
               ))}
             </div>
           )}
@@ -228,7 +232,7 @@ function NflWeekScrubber({ weeks, activeWeek, currentWeek, onPick }) {
   }
   const activeIdx = weeks.findIndex((w) => w.week === activeWeek)
   return (
-    <div className="flex items-stretch gap-1 mb-4">
+    <div className="flex items-stretch gap-1 mb-4 min-w-0">
       <button
         onClick={goPrev}
         disabled={activeIdx <= 0}
@@ -239,7 +243,7 @@ function NflWeekScrubber({ weeks, activeWeek, currentWeek, onPick }) {
           <polyline points="15 18 9 12 15 6" />
         </svg>
       </button>
-      <div className="flex-1 flex gap-1 overflow-x-auto scrollbar-hide">
+      <div className="flex-1 min-w-0 flex gap-1 overflow-x-auto scrollbar-hide">
         {weeks.map((w) => {
           const isSelected = w.week === activeWeek
           const isNow = w.week === currentWeek
@@ -288,12 +292,17 @@ function formatWeekRange(startStr, endStr) {
 
 // Drill-in game card — richer than the landing strip's compact rows.
 // Time / status pill top-left, teams stacked with logo + name + record
-// + score on the right.
-function DrillGameCard({ game, sportFullKey }) {
+// + score on the right. showDate adds a Day, Mon DD prefix — used
+// for NFL where a week bunches Thu/Sun/Mon games together so time
+// alone doesn't tell you which day the game is on.
+function DrillGameCard({ game, sportFullKey, showDate }) {
   const isLive = game.status === 'live'
   const isFinal = game.status === 'final'
   const showScore = isLive || isFinal
-  const timeLabel = isLive ? 'LIVE' : isFinal ? 'FINAL' : new Date(game.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  const timeStr = new Date(game.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  const dateStr = showDate ? new Date(game.starts_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : null
+  const timeLabel = isLive ? 'LIVE' : isFinal ? 'FINAL' : timeStr
+  const dateLabel = showDate && !isLive ? dateStr : null
 
   return (
     <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-3">
@@ -302,6 +311,9 @@ function DrillGameCard({ game, sportFullKey }) {
         <span className={`text-[11px] font-semibold uppercase tracking-wider ${isLive ? 'text-red-400' : isFinal ? 'text-text-muted' : 'text-text-secondary'}`}>
           {timeLabel}
         </span>
+        {dateLabel && (
+          <span className="text-[11px] text-text-muted">· {dateLabel}{isFinal ? '' : ` · ${timeStr}`}</span>
+        )}
       </div>
       {/* MLB R/H/E header when linescore is present */}
       {game.linescore && (
