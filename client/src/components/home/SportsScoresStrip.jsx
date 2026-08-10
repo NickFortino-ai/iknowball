@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useScoresStrip, useFinalsForDate } from '../../hooks/useScoresStrip'
+import { useAuthStore } from '../../stores/authStore'
+import { api } from '../../lib/api'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import StatLeadersBlock from './StatLeadersBlock'
 
@@ -59,6 +62,28 @@ const GRID_CLASSES = {
 
 export default function SportsScoresStrip() {
   const { data, isLoading, error } = useScoresStrip()
+  const isAuthenticated = useAuthStore((s) => !!s.session)
+  // Settled picks let us paint a green/red border on any Final game
+  // the current user picked. Only fetch for logged-in users — no need
+  // to burn a request on the public landing view. Uses useQuery
+  // directly rather than useMyPicks so we can gate on `enabled` and
+  // scope the cache key to the pick indicator use case.
+  const { data: settledPicks } = useQuery({
+    queryKey: ['scoreboardPickIndicators'],
+    queryFn: () => api.get('/picks/me?status=settled'),
+    enabled: isAuthenticated,
+    staleTime: 60 * 1000,
+    retry: false,
+  })
+  const pickOutcomeByGame = useMemo(() => {
+    const map = new Map()
+    for (const p of settledPicks || []) {
+      if (p.game_id && typeof p.is_correct === 'boolean') {
+        map.set(p.game_id, p.is_correct)
+      }
+    }
+    return map
+  }, [settledPicks])
 
   // Only render sports with at least one game across any bucket. An
   // offseason sport (NBA in August) drops its column entirely so the
@@ -86,14 +111,19 @@ export default function SportsScoresStrip() {
       <h2 className="font-display text-2xl mb-4">Scoreboard</h2>
       <div className={`grid gap-4 ${gridClass}`}>
         {activeSports.map((sport) => (
-          <SportColumn key={sport.key} sport={sport} data={data[sport.key]} />
+          <SportColumn
+            key={sport.key}
+            sport={sport}
+            data={data[sport.key]}
+            pickOutcomeByGame={pickOutcomeByGame}
+          />
         ))}
       </div>
     </section>
   )
 }
 
-function SportColumn({ sport, data }) {
+function SportColumn({ sport, data, pickOutcomeByGame }) {
   // Parent filters out sports with zero games across all buckets before
   // mapping, so we're guaranteed at least one bucket has rows here.
   const live = data?.live || []
@@ -143,7 +173,7 @@ function SportColumn({ sport, data }) {
           <BucketSection label="Live" games={live} sportFullKey={sport.fullKey} isLive />
         )}
         {recent.length > 0 && (
-          <FinalSection sport={sport} todayRecent={recent} />
+          <FinalSection sport={sport} todayRecent={recent} pickOutcomeByGame={pickOutcomeByGame} />
         )}
         {upcoming.length > 0 && (
           <BucketSection label={live.length > 0 ? 'Coming up' : 'Upcoming'} games={upcoming} sportFullKey={sport.fullKey} />
@@ -159,7 +189,7 @@ function SportColumn({ sport, data }) {
 // Tapping the left arrow steps back one PT day and lazy-fetches that
 // day's finals via /api/scores/finals. Right arrow disabled once we're
 // back at today so users can't scroll into the future here.
-function FinalSection({ sport, todayRecent }) {
+function FinalSection({ sport, todayRecent, pickOutcomeByGame }) {
   const today = todayPT()
   const [date, setDate] = useState(today)
   const isToday = date === today
@@ -204,7 +234,13 @@ function FinalSection({ sport, todayRecent }) {
           <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-3 text-xs text-text-muted">No games</div>
         ) : (
           games.map((g) => (
-            <GameCard key={g.id} game={g} sportFullKey={sport.fullKey} isFinal />
+            <GameCard
+              key={g.id}
+              game={g}
+              sportFullKey={sport.fullKey}
+              isFinal
+              pickOutcome={pickOutcomeByGame?.get(g.id)}
+            />
           ))
         )}
       </div>
@@ -230,14 +266,25 @@ function BucketSection({ label, games, sportFullKey, isLive, isFinal }) {
   )
 }
 
-function GameCard({ game, sportFullKey, isLive, isFinal }) {
+function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome }) {
   // Live + Final rows show the score inline next to each team.
   // Upcoming rows show a time/date pill on the right instead.
   // Sleeper-style: each matchup is its own subtle bordered card,
   // no outer container wrapping the sport list.
+  //
+  // Final games the user picked get a green (correct) or red (wrong)
+  // outline + faint tint. Only applied when pickOutcome is a bool
+  // (undefined = no pick / not authenticated) and we're in isFinal
+  // mode — Live/Upcoming don't render the outline.
   const showScore = isLive || isFinal
+  const hasPick = isFinal && typeof pickOutcome === 'boolean'
+  const outlineClass = hasPick
+    ? (pickOutcome
+        ? 'border-correct/60 bg-correct/5'
+        : 'border-incorrect/60 bg-incorrect/5')
+    : 'border-text-primary/10 bg-bg-primary/20'
   return (
-    <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-2.5 flex items-center gap-3">
+    <div className={`rounded-lg border backdrop-blur-md px-4 py-2.5 flex items-center gap-3 ${outlineClass}`}>
       <div className="flex-1 min-w-0 space-y-1.5">
         <TeamRow
           team={game.away_short || game.away_team}
