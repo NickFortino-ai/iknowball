@@ -21,7 +21,7 @@ export default function StatLeadersBlock({ sport, mode = 'full' }) {
   if (!cats.length) return null
 
   const active = cats[Math.min(activeIdx, cats.length - 1)]
-  const rowCount = mode === 'compact' ? 3 : 10
+  const rowCount = mode === 'compact' ? 5 : 10
   const rows = (active?.leaders || []).slice(0, rowCount)
 
   return (
