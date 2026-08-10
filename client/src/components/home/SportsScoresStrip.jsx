@@ -193,8 +193,15 @@ function FinalSection({ sport, todayRecent, pickOutcomeByGame }) {
   const today = todayPT()
   const [date, setDate] = useState(today)
   const isToday = date === today
-  const { data: fetched, isLoading } = useFinalsForDate(isToday ? null : sport.key, isToday ? null : date)
-  const games = isToday ? todayRecent : (fetched || [])
+  // Always fetch via the date-scoped endpoint so today and yesterday
+  // never overlap. Previously "today" reused the strip's last-30h
+  // recent bucket, which at 12am–3am PT bleeds heavily into
+  // yesterday's PT games — user saw the same finals under both
+  // "today" and "yesterday" arrows.
+  const { data: fetched, isLoading } = useFinalsForDate(sport.key, date)
+  // Fall back to strip's recent bucket on the initial paint before
+  // useFinalsForDate returns, so today's card doesn't flicker empty.
+  const games = fetched ?? (isToday ? todayRecent : [])
 
   return (
     <div>
@@ -286,12 +293,13 @@ function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome }) {
   return (
     <div className={`rounded-lg border backdrop-blur-md px-4 py-2.5 ${outlineClass}`}>
       {/* MLB R/H/E header — only shown when linescore data is present.
-          Tiny uppercase labels align above the numeric R H E column. */}
+          Fixed column widths so 2-digit H (12) doesn't push E out of
+          alignment. Matches TeamRow's R/H/E cell widths below. */}
       {game.linescore && (
-        <div className="flex justify-end gap-2 mb-1 pr-1">
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted w-3 text-center">R</span>
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted w-3 text-center">H</span>
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted w-3 text-center">E</span>
+        <div className="flex justify-end gap-1 mb-1">
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted w-6 text-center">R</span>
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted w-6 text-center">H</span>
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted w-6 text-center">E</span>
         </div>
       )}
       <div className="flex items-center gap-3">
@@ -358,13 +366,13 @@ function TeamRow({ team, logoLookupTeam, record, score, hits, errors, sportFullK
           <span className="text-[11px] text-text-muted tabular-nums shrink-0">{record}</span>
         )}
       </div>
-      {/* MLB R/H/E: R bold, H/E lighter. Non-MLB rows fall through
-          to the plain-score render below. */}
+      {/* MLB R/H/E: fixed-width cells matching the header widths above
+          so 12 hits doesn't shove E out of column. R bold, H/E lighter. */}
       {score != null && (hits != null || errors != null) ? (
-        <div className="flex items-baseline gap-2 shrink-0 tabular-nums">
-          <span className={`text-sm font-semibold ${isLive ? 'text-text-primary' : 'text-text-secondary'}`}>{score}</span>
-          {hits != null && <span className="text-[11px] text-text-muted">{hits}</span>}
-          {errors != null && <span className="text-[11px] text-text-muted">{errors}</span>}
+        <div className="flex items-baseline gap-1 shrink-0 tabular-nums">
+          <span className={`w-6 text-center text-sm font-semibold ${isLive ? 'text-text-primary' : 'text-text-secondary'}`}>{score}</span>
+          <span className="w-6 text-center text-[11px] text-text-muted">{hits != null ? hits : ''}</span>
+          <span className="w-6 text-center text-[11px] text-text-muted">{errors != null ? errors : ''}</span>
         </div>
       ) : score != null ? (
         <div className={`text-sm font-semibold tabular-nums shrink-0 ${isLive ? 'text-text-primary' : 'text-text-secondary'}`}>
