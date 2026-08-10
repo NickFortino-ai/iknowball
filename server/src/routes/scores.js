@@ -26,10 +26,12 @@ const SHORT_TO_FULL = {
   wnba: 'basketball_wnba',
 }
 
-// Per-bucket caps: keep the payload small even for a Sunday NFL slate
-// or a full MLB night.
-const UPCOMING_LIMIT = 8
-const RECENT_LIMIT = 6
+// Per-bucket caps: high enough to cover a full daily slate for any
+// sport we surface — MLB has 15 games some nights, NFL Sunday runs
+// 13 games. Previously capped at 8 which silently dropped a couple
+// per full MLB night ('why isn't Giants @ Padres showing?').
+const UPCOMING_LIMIT = 20
+const RECENT_LIMIT = 20
 // Recent-finals window: 30h covers overnight games that finished after
 // midnight but started yesterday.
 const RECENT_WINDOW_MS = 30 * 60 * 60 * 1000
