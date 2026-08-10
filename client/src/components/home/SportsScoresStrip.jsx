@@ -167,19 +167,29 @@ function SportColumn({ sport, data, pickOutcomeByGame }) {
       {/* Order: Live → Final → Upcoming → Leaders (top 3). Recent
           finals slot above upcoming so a user landing on a sport with
           a completed slate sees 'what just happened' first — matches
-          Sleeper's action-first hierarchy. */}
-      <div className={`space-y-4 ${collapsed ? 'hidden xl:block' : ''}`}>
-        {live.length > 0 && (
-          <BucketSection label="Live" games={live} sportFullKey={sport.fullKey} isLive />
-        )}
-        {recent.length > 0 && (
-          <FinalSection sport={sport} todayRecent={recent} pickOutcomeByGame={pickOutcomeByGame} />
-        )}
-        {upcoming.length > 0 && (
-          <BucketSection label={live.length > 0 ? 'Coming up' : 'Upcoming'} games={upcoming} sportFullKey={sport.fullKey} />
-        )}
-        <StatLeadersBlock sport={sport.key} mode="compact" />
-      </div>
+          Sleeper's action-first hierarchy.
+          Final section only shows when there's at least one final
+          from TODAY. Yesterday's finals live behind the drill-in
+          date scrubber — no need to render an empty Final block on
+          today when nothing has completed yet. */}
+      {(() => {
+        const todayStr = todayPT()
+        const todayRecent = recent.filter((g) => new Date(g.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) === todayStr)
+        return (
+          <div className={`space-y-4 ${collapsed ? 'hidden xl:block' : ''}`}>
+            {live.length > 0 && (
+              <BucketSection label="Live" games={live} sportFullKey={sport.fullKey} isLive />
+            )}
+            {todayRecent.length > 0 && (
+              <FinalSection sport={sport} todayRecent={todayRecent} pickOutcomeByGame={pickOutcomeByGame} />
+            )}
+            {upcoming.length > 0 && (
+              <BucketSection label={live.length > 0 ? 'Coming up' : 'Upcoming'} games={upcoming} sportFullKey={sport.fullKey} />
+            )}
+            <StatLeadersBlock sport={sport.key} mode="compact" />
+          </div>
+        )
+      })()}
     </div>
   )
 }
