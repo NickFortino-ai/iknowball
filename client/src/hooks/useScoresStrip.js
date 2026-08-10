@@ -83,11 +83,13 @@ export function useSportLeaders(sport) {
 // NFL-only: full season week list + current week for the /scores/nfl
 // drill-in's Week scrubber. Cached moderately — schedule doesn't
 // move but 'current week' rolls over and preseason/regular boundary
-// matters, so keep it fresh-ish.
+// matters, so keep it fresh-ish. The ?v= query param busts any
+// browser HTTP cache holding an older shape of this response; bump
+// it when the response schema meaningfully changes.
 export function useNflSchedule(enabled = true) {
   return useQuery({
-    queryKey: ['nflSchedule'],
-    queryFn: () => api.get('/scores/nfl-schedule'),
+    queryKey: ['nflSchedule', 'v2'],
+    queryFn: () => api.get('/scores/nfl-schedule?v=2'),
     staleTime: 5 * 60 * 1000,
     enabled,
     retry: false,
