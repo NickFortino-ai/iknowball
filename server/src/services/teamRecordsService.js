@@ -13,7 +13,10 @@ import { logger } from '../utils/logger.js'
 import { stripAccents } from '../utils/name.js'
 
 const CACHE_TTL_MS = 60 * 60 * 1000
-const cache = new Map() // sportKey → { records: {teamName: {w, l, t}}, expiresAt }
+// cache entries hold both the per-team lookup map (records) AND the
+// ordered standings table pre-built from the same ESPN response, so
+// callers get both without paying the fetch twice.
+const cache = new Map() // sportKey → { records, standings, expiresAt }
 
 // Sport keys we cover on the landing scoreboard + their ESPN path.
 const ESPN_PATH = {
@@ -43,35 +46,56 @@ async function fetchOne(sportKey) {
     if (!res.ok) throw new Error(`ESPN ${res.status}`)
     const data = await res.json()
     const map = {}
-    const walk = (node) => {
+    const standingsRows = []
+    const walk = (node, groupName = null) => {
       const entries = node?.standings?.entries
       if (Array.isArray(entries)) {
         for (const e of entries) {
           const team = e?.team
           if (!team) continue
-          // Store both record AND short name (Lions, Braves, Red Sox)
-          // in the same lookup so the scores endpoint can display the
-          // team without its city — Sleeper-style, less busy.
+          const w = statNum(e, 'wins')
+          const l = statNum(e, 'losses')
+          const t = statNum(e, 'ties')
+          const winPct = statNum(e, 'winPercent')
           const info = {
-            w: statNum(e, 'wins'),
-            l: statNum(e, 'losses'),
-            t: statNum(e, 'ties'),
+            w, l, t,
             short: team.shortDisplayName || team.name || team.displayName,
           }
-          // Multiple key variants — however the games table spells
+          // Multi-variant key lookup so however the games table spells
           // "San Francisco Giants" we still land a match.
           for (const key of [team.displayName, team.shortDisplayName, team.name, team.location, `${team.location} ${team.name}`]) {
             if (key) map[normalize(key)] = info
           }
+          // Full row for the standings table sidebar. Group name comes
+          // from the walking node's parent when it exists (e.g. 'AL East',
+          // 'NFC South') — falls back to null for a flat 'All' list.
+          standingsRows.push({
+            team_id: team.id || null,
+            team_name: team.displayName,
+            short_name: team.shortDisplayName || team.name || team.displayName,
+            logo: team.logos?.[0]?.href || null,
+            wins: w, losses: l, ties: t,
+            win_pct: winPct,
+            group: groupName,
+          })
         }
       }
-      for (const child of node?.children || []) walk(child)
+      // For MLB / NFL / NBA, standings nest under conferences → divisions.
+      // Track the deepest named group we can, since 'AL East' is what
+      // users actually want as the DIV grouping.
+      for (const child of node?.children || []) walk(child, child?.name || groupName)
     }
     walk(data)
-    return map
+    // Sort by wins desc, losses asc, win_pct desc (fallback for ties).
+    standingsRows.sort((a, b) => {
+      if (b.win_pct !== a.win_pct) return b.win_pct - a.win_pct
+      if (b.wins !== a.wins) return b.wins - a.wins
+      return a.losses - b.losses
+    })
+    return { map, standings: standingsRows }
   } catch (err) {
     logger.warn({ err: err.message, sportKey }, 'Team records fetch failed')
-    return {}
+    return { map: {}, standings: [] }
   }
 }
 
@@ -79,9 +103,18 @@ export async function getTeamRecords(sportKey) {
   const now = Date.now()
   const cached = cache.get(sportKey)
   if (cached && cached.expiresAt > now) return cached.records
-  const records = await fetchOne(sportKey)
-  cache.set(sportKey, { records, expiresAt: now + CACHE_TTL_MS })
-  return records
+  const { map, standings } = await fetchOne(sportKey)
+  cache.set(sportKey, { records: map, standings, expiresAt: now + CACHE_TTL_MS })
+  return map
+}
+
+export async function getStandingsTable(sportKey) {
+  const now = Date.now()
+  const cached = cache.get(sportKey)
+  if (cached && cached.expiresAt > now) return cached.standings
+  const { map, standings } = await fetchOne(sportKey)
+  cache.set(sportKey, { records: map, standings, expiresAt: now + CACHE_TTL_MS })
+  return standings
 }
 
 export function lookupRecord(sportKey, teamName) {

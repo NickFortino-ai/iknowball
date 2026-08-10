@@ -139,6 +139,80 @@ router.get('/strip', async (req, res) => {
   res.json(out)
 })
 
+// Per-sport ALL games for a given PT calendar date — powers the drill-
+// in `/scores/:sport` page's date scrubber. Returns upcoming, live,
+// and final together (unlike /finals which is finals-only for the
+// landing card's back-arrow). Same zombie-live filter as /strip so
+// month-old ghost games don't leak in.
+router.get('/day', async (req, res) => {
+  const shortSport = String(req.query.sport || '').toLowerCase()
+  const date = String(req.query.date || '')
+  const full = SHORT_TO_FULL[shortSport]
+  if (!full) return res.status(400).json({ error: 'sport must be one of nfl/nba/mlb/wnba' })
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' })
+
+  const { startUtc, endUtc } = sportsDayBoundsUtc(date)
+  if (!startUtc) return res.status(400).json({ error: 'invalid date' })
+
+  const keys = expandSportFamily(full)
+  const { data: sports } = await supabase.from('sports').select('id, key').in('key', keys)
+  const sportIds = (sports || []).map((s) => s.id)
+  if (!sportIds.length) return res.json([])
+
+  const liveStaleCutoff = new Date(Date.now() - LIVE_STALE_CUTOFF_MS).toISOString()
+
+  // Two parallel queries: live rows (with staleness guard) + non-live
+  // rows for the target PT day. Merge so a live game that started
+  // yesterday PT still shows up on today's slate.
+  const [liveRes, dayRes] = await Promise.all([
+    supabase
+      .from('games')
+      .select('id, home_team, away_team, home_score, away_score, starts_at, status')
+      .in('sport_id', sportIds)
+      .eq('status', 'live')
+      .gte('updated_at', liveStaleCutoff)
+      .order('starts_at', { ascending: true }),
+    supabase
+      .from('games')
+      .select('id, home_team, away_team, home_score, away_score, starts_at, status')
+      .in('sport_id', sportIds)
+      .in('status', ['upcoming', 'final'])
+      .gte('starts_at', startUtc)
+      .lt('starts_at', endUtc)
+      .order('starts_at', { ascending: true }),
+  ])
+
+  if (liveRes.error || dayRes.error) return res.status(500).json({ error: 'day fetch failed' })
+
+  await getTeamRecords(full)
+
+  // De-dupe: a live game will appear in liveRes AND possibly in dayRes
+  // if its starts_at is today. Prefer the live row.
+  const seen = new Set()
+  const out = []
+  for (const g of liveRes.data || []) { seen.add(g.id); out.push(shape(g, full)) }
+  for (const g of dayRes.data || []) { if (!seen.has(g.id)) out.push(shape(g, full)) }
+  out.sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
+
+  res.set('Cache-Control', 'public, max-age=15')
+  res.json(out)
+})
+
+// Full standings for a sport — powers the drill-in page's sidebar.
+// Uses the same ESPN standings feed that teamRecordsService caches;
+// this exposes the whole table (rank, team, W, L, PCT) instead of
+// just the per-team record lookup.
+router.get('/standings', async (req, res) => {
+  const shortSport = String(req.query.sport || '').toLowerCase()
+  const full = SHORT_TO_FULL[shortSport]
+  if (!full) return res.status(400).json({ error: 'sport must be one of nfl/nba/mlb/wnba' })
+
+  const { getStandingsTable } = await import('../services/teamRecordsService.js')
+  const standings = await getStandingsTable(full)
+  res.set('Cache-Control', 'public, max-age=300')
+  res.json(standings)
+})
+
 // Per-sport historical finals for a given PT calendar date. Powers
 // the Final section's date scrubber on the landing card — user taps
 // the left arrow, we hit this with date=YYYY-MM-DD.

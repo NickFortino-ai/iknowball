@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useScoresStrip, useFinalsForDate } from '../../hooks/useScoresStrip'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 
@@ -104,20 +105,32 @@ function SportColumn({ sport, data }) {
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={() => setCollapsed((c) => !c)}
-        className="w-full py-2 mb-2 flex items-center justify-between text-left xl:cursor-default"
-        aria-expanded={!collapsed}
-      >
-        <h3 className="font-display text-lg text-text-primary">{sport.label}</h3>
-        <svg
-          className={`w-4 h-4 text-text-muted transition-transform xl:hidden ${collapsed ? '' : 'rotate-180'}`}
-          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+      <div className="w-full py-2 mb-2 flex items-center justify-between">
+        {/* Sport label doubles as the drill-in link. On mobile, the
+            entire header area is a collapsible-toggle (the chevron
+            button on the right), keeping the drill-in link tappable
+            via the label itself. */}
+        <Link to={`/scores/${sport.key}`} className="font-display text-lg text-text-primary hover:text-accent transition-colors flex items-center gap-1 group">
+          {sport.label}
+          <svg className="w-4 h-4 text-text-muted group-hover:text-accent transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </Link>
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          className="xl:hidden text-text-muted"
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Expand' : 'Collapse'}
         >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
+          <svg
+            className={`w-4 h-4 transition-transform ${collapsed ? '' : 'rotate-180'}`}
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      </div>
       {/* Body is always rendered on desktop (xl+); mobile respects
           the collapsed toggle via a conditional className swap. */}
       {/* Order: Live → Final → Upcoming. Recent finals slot above

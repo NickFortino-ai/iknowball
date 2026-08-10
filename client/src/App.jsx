@@ -23,6 +23,7 @@ import DraftPrepPage from './pages/DraftPrepPage'
 import LeagueDetailPage from './pages/LeagueDetailPage'
 import AdminPage from './pages/AdminPage'
 import WriterPage from './pages/WriterPage'
+import SportScoresPage from './pages/SportScoresPage'
 import PaymentPage from './pages/PaymentPage'
 import JoinPage from './pages/JoinPage'
 import PrivacyPage from './pages/PrivacyPage'
@@ -86,6 +87,9 @@ function AppRoutes() {
         <Route path="/picks" element={<ProtectedRoute><PicksPage /></ProtectedRoute>} />
         <Route path="/results" element={<ProtectedRoute><ResultsPage /></ProtectedRoute>} />
         <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
+        {/* Scoreboard drill-in — public (no auth) so logged-out users can browse
+            the same sport scores they see on the landing card. */}
+        <Route path="/scores/:sport" element={<SportScoresPage />} />
         <Route path="/hub" element={<ProtectedRoute><HubPage /></ProtectedRoute>} />
         <Route path="/profile" element={<Navigate to="/hub" replace />} />
         <Route path="/connections" element={<Navigate to="/hub" replace />} />
