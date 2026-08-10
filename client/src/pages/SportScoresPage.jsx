@@ -256,23 +256,24 @@ function NflWeekScrubber({ weeks, activeSelection, current, onPick }) {
         {weeks.map((w) => {
           const key = `${w.season_type}-${w.week}`
           const isSelected = w.season_type === activeSelection.seasonType && w.week === activeSelection.week
-          const isNow = current && current.season_type === w.season_type && current.week === w.week
+          const isCurrent = current && current.season_type === w.season_type && current.week === w.week
           const label = w.season_type === 'pre' ? `PRE ${w.week}` : `WEEK ${w.week}`
+          // Current week gets a bolder outline; selected week gets the
+          // accent fill. When both apply (the default landing state),
+          // selected wins visually.
           return (
             <button
               key={key}
               onClick={() => onPick({ week: w.week, seasonType: w.season_type })}
-              className={`shrink-0 min-w-[72px] rounded-lg border py-2 px-2 flex flex-col items-center transition-colors ${
+              className={`shrink-0 min-w-[72px] rounded-lg py-2 px-2 flex flex-col items-center transition-colors ${
                 isSelected
-                  ? 'border-accent bg-accent/10 text-text-primary'
-                  : isNow
-                  ? 'border-text-primary/40 text-text-primary hover:bg-bg-secondary'
-                  : 'border-text-primary/15 text-text-secondary hover:bg-bg-secondary'
+                  ? 'border border-accent bg-accent/10 text-text-primary'
+                  : isCurrent
+                  ? 'border-2 border-text-primary/60 text-text-primary hover:bg-bg-secondary'
+                  : 'border border-text-primary/15 text-text-secondary hover:bg-bg-secondary'
               }`}
             >
-              <span className="text-[10px] font-semibold tracking-wider">
-                {label}{isNow ? ' · NOW' : ''}
-              </span>
+              <span className="text-[10px] font-semibold tracking-wider">{label}</span>
               <span className="text-[10px] text-text-muted tabular-nums mt-0.5">{formatWeekRange(w.start, w.end)}</span>
             </button>
           )
