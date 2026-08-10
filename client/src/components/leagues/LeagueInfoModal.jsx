@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { getBackdropUrl } from '../../lib/backdropUrl'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
-import { formatStartDateShort, formatEndDateShort } from '../../lib/leagueDate'
+import { formatStartDateShort, formatEndDateShort, formatDraftDateShort } from '../../lib/leagueDate'
 import Avatar from '../ui/Avatar'
 import TierBadge from '../ui/TierBadge'
 
@@ -157,8 +157,21 @@ export default function LeagueInfoModal({ league, onClose, onJoin, joining }) {
           <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs pt-3 border-t border-text-primary/10">
             <div><span className="text-text-muted">Format: </span><span className="text-text-primary font-semibold">{FORMAT_LABELS[league.format] || league.format}</span></div>
             <div><span className="text-text-muted">Sport: </span><span className="text-text-primary">{SPORT_LABELS[league.sport] || league.sport}</span></div>
-            {league.starts_at && (
-              <div><span className="text-text-muted">Starts: </span><span className="text-text-primary">{formatStartDateShort(league.starts_at)}</span></div>
+            {/* Fantasy: the meaningful "when does this start" is the
+                DRAFT date, not the creation-time starts_at placeholder.
+                Show the draft date when set; if the commish hasn't
+                scheduled one yet, say so. All other formats keep the
+                literal Starts date. */}
+            {league.format === 'fantasy' ? (
+              league.draft_date ? (
+                <div><span className="text-text-muted">Draft: </span><span className="text-text-primary">{formatDraftDateShort(league.draft_date)}</span></div>
+              ) : (
+                <div><span className="text-text-muted">Draft: </span><span className="text-text-primary">TBD</span></div>
+              )
+            ) : (
+              league.starts_at && (
+                <div><span className="text-text-muted">Starts: </span><span className="text-text-primary">{formatStartDateShort(league.starts_at)}</span></div>
+              )
             )}
             {runsUntil && (
               <div><span className="text-text-muted">Runs until: </span><span className="text-text-primary">{runsUntil}</span></div>
@@ -198,7 +211,7 @@ export default function LeagueInfoModal({ league, onClose, onJoin, joining }) {
           <div className="pt-3 border-t border-text-primary/10">
             <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">How winning pays</div>
             <p className="text-xs text-text-primary leading-relaxed">
-              The winner takes a global IKB bonus that scales with league size — <span className="text-accent font-semibold">the bigger the league, the bigger the bonus</span>. Every member's final standing also adjusts their global IKB score: top-half finishers earn positive points, bottom-half finishers lose points. The exact formula is <span className="text-text-secondary font-mono">N + 1 − 2 × rank</span>, where N is the final member count.
+              The winner takes a global IKB bonus that scales with league size — <span className="text-accent font-semibold">the bigger the league, the bigger the bonus</span>. Every member's final standing also adjusts their global IKB score: top-half finishers earn positive points, bottom-half finishers lose points.
             </p>
           </div>
         </div>

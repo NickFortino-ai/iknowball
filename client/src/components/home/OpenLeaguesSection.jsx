@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useOpenLeagues, useJoinOpenLeague } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
 import { getBackdropUrl } from '../../lib/backdropUrl'
-import { formatStartDateShort, formatEndDateShort } from '../../lib/leagueDate'
+import { formatStartDateShort, formatEndDateShort, formatDraftDateShort } from '../../lib/leagueDate'
 import LeagueInfoModal from '../leagues/LeagueInfoModal'
 
 const FORMAT_LABELS = {
@@ -67,6 +67,10 @@ function formatRunsUntil(league) {
 // Pre-start: "Runs May 17 – Last one standing" so users see the full window.
 // Already underway: just "Runs until Last one standing" — the start date stops
 // being useful once the league is rolling.
+//
+// Fantasy has its own rule (see formatFantasyTimeline): the draft date is
+// what a joiner actually cares about, and starts_at for fantasy is a
+// stale creation-time placeholder.
 function formatLeagueRuns(league) {
   const start = formatStartDateShort(league.starts_at)
   const end = formatRunsUntil(league)
@@ -75,6 +79,11 @@ function formatLeagueRuns(league) {
   if (notStartedYet && start) return `Starts ${start}`
   if (end) return `Runs until ${end}`
   return null
+}
+
+function formatFantasyTimeline(league) {
+  if (league.draft_date) return `Drafts ${formatDraftDateShort(league.draft_date)}`
+  return 'Draft TBD'
 }
 
 export default function OpenLeaguesSection() {
@@ -146,7 +155,14 @@ export default function OpenLeaguesSection() {
               <div className="text-xs text-text-muted mb-1">
                 {league.member_count}{league.max_members ? `/${league.max_members}` : ''} members
               </div>
-              {formatLeagueRuns(league) && (
+              {/* Fantasy leagues surface the draft date instead of the
+                  Runs window — draft is the actionable moment for a
+                  joiner deciding whether to sign up. */}
+              {league.format === 'fantasy' ? (
+                <div className="text-xs text-yellow-500 font-semibold mb-3">
+                  {formatFantasyTimeline(league)}
+                </div>
+              ) : formatLeagueRuns(league) && (
                 <div className="text-xs text-yellow-500 font-semibold mb-3">
                   {formatLeagueRuns(league)}
                 </div>
