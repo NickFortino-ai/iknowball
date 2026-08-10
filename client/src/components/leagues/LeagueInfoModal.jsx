@@ -158,7 +158,7 @@ export default function LeagueInfoModal({ league, onClose, onJoin, joining }) {
             <div><span className="text-text-muted">Format: </span><span className="text-text-primary font-semibold">{FORMAT_LABELS[league.format] || league.format}</span></div>
             <div><span className="text-text-muted">Sport: </span><span className="text-text-primary">{SPORT_LABELS[league.sport] || league.sport}</span></div>
             {league.starts_at && (
-              <div><span className="text-text-muted">Starts: </span><span className="text-text-primary">{formatStartDate(league.starts_at)}</span></div>
+              <div><span className="text-text-muted">Starts: </span><span className="text-text-primary">{formatStartDateShort(league.starts_at)}</span></div>
             )}
             {runsUntil && (
               <div><span className="text-text-muted">Runs until: </span><span className="text-text-primary">{runsUntil}</span></div>
