@@ -258,7 +258,7 @@ function MyActiveLeagues() {
           <Link
             key={league.id}
             to={`/leagues/${league.id}`}
-            className="relative flex-shrink-0 w-52 rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden hover:border-accent/40 transition-colors"
+            className="relative flex-shrink-0 w-64 rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden hover:border-accent/40 transition-colors"
           >
             {/* Readiness color clip */}
             {league.readiness && !league.survivor_eliminated && (
