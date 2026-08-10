@@ -49,14 +49,19 @@ export default function SportScoresPage() {
 
   // NFL uses week-based scrubbing (Thu/Sun/Mon cadence makes daily
   // dates feel wrong). All other sports keep the 7-day strip.
+  // The scrubber tracks BOTH week + season_type so preseason (Pre 1-3)
+  // and regular (Week 1-18) can coexist in the same strip without
+  // collision.
   const nflSchedule = useNflSchedule(isNfl)
-  const currentWeek = nflSchedule?.data?.current?.week || 1
-  const [nflWeek, setNflWeek] = useState(null)
-  const activeNflWeek = nflWeek ?? currentWeek
+  const current = nflSchedule?.data?.current
+  const defaultNflSelection = current ? { week: current.week, seasonType: current.season_type } : { week: 1, seasonType: 'pre' }
+  const [nflSelection, setNflSelection] = useState(null)
+  const activeSelection = nflSelection ?? defaultNflSelection
   const nflSeason = nflSchedule?.data?.season || new Date().getFullYear()
   const { data: nflGames, isLoading: nflGamesLoading } = useNflWeekGames(
     isNfl ? nflSeason : null,
-    isNfl ? activeNflWeek : null,
+    isNfl ? activeSelection.week : null,
+    activeSelection.seasonType,
   )
 
   const [date, setDate] = useState(todayPT())
@@ -103,9 +108,9 @@ export default function SportScoresPage() {
           {isNfl ? (
             <NflWeekScrubber
               weeks={nflSchedule?.data?.weeks || []}
-              activeWeek={activeNflWeek}
-              currentWeek={currentWeek}
-              onPick={setNflWeek}
+              activeSelection={activeSelection}
+              current={current}
+              onPick={setNflSelection}
             />
           ) : (
             <div className="flex items-stretch gap-1 mb-4 min-w-0">
@@ -217,20 +222,24 @@ function formatPct(v) {
   return v.toFixed(3).replace(/^0\./, '.')
 }
 
-// NFL week scrubber — horizontal strip of Week N buttons. Prev/next
-// arrows step one week. Current NFL week gets a subtle 'NOW' hint
-// even if the user has navigated to a different week; the selected
-// week keeps the accent border.
-function NflWeekScrubber({ weeks, activeWeek, currentWeek, onPick }) {
+// NFL week scrubber — horizontal strip mixing preseason (PRE 1-3)
+// and regular season (WEEK 1-18) buttons. Identity is (season_type,
+// week). 'NOW' badge only fires on the actually-current week (i.e.
+// during preseason, PRE 1 gets NOW; WEEK 1 does not).
+function NflWeekScrubber({ weeks, activeSelection, current, onPick }) {
+  const activeIdx = weeks.findIndex((w) => w.season_type === activeSelection.seasonType && w.week === activeSelection.week)
   const goPrev = () => {
-    const i = weeks.findIndex((w) => w.week === activeWeek)
-    if (i > 0) onPick(weeks[i - 1].week)
+    if (activeIdx > 0) {
+      const w = weeks[activeIdx - 1]
+      onPick({ week: w.week, seasonType: w.season_type })
+    }
   }
   const goNext = () => {
-    const i = weeks.findIndex((w) => w.week === activeWeek)
-    if (i >= 0 && i < weeks.length - 1) onPick(weeks[i + 1].week)
+    if (activeIdx >= 0 && activeIdx < weeks.length - 1) {
+      const w = weeks[activeIdx + 1]
+      onPick({ week: w.week, seasonType: w.season_type })
+    }
   }
-  const activeIdx = weeks.findIndex((w) => w.week === activeWeek)
   return (
     <div className="flex items-stretch gap-1 mb-4 min-w-0">
       <button
@@ -245,21 +254,26 @@ function NflWeekScrubber({ weeks, activeWeek, currentWeek, onPick }) {
       </button>
       <div className="flex-1 min-w-0 flex gap-1 overflow-x-auto scrollbar-hide">
         {weeks.map((w) => {
-          const isSelected = w.week === activeWeek
-          const isNow = w.week === currentWeek
+          const key = `${w.season_type}-${w.week}`
+          const isSelected = w.season_type === activeSelection.seasonType && w.week === activeSelection.week
+          const isNow = current && current.season_type === w.season_type && current.week === w.week
+          const label = w.season_type === 'pre' ? `PRE ${w.week}` : `WEEK ${w.week}`
           return (
             <button
-              key={w.week}
-              onClick={() => onPick(w.week)}
+              key={key}
+              onClick={() => onPick({ week: w.week, seasonType: w.season_type })}
               className={`shrink-0 min-w-[72px] rounded-lg border py-2 px-2 flex flex-col items-center transition-colors ${
                 isSelected
                   ? 'border-accent bg-accent/10 text-text-primary'
+                  : isNow
+                  ? 'border-text-primary/40 text-text-primary hover:bg-bg-secondary'
                   : 'border-text-primary/15 text-text-secondary hover:bg-bg-secondary'
               }`}
             >
-              <span className="text-[10px] font-semibold tracking-wider">{isNow ? 'NOW' : `WEEK ${w.week}`}</span>
-              {isNow && <span className="text-xs font-semibold tabular-nums mt-0.5">W{w.week}</span>}
-              {!isNow && <span className="text-[10px] text-text-muted tabular-nums mt-0.5">{formatWeekRange(w.start, w.end)}</span>}
+              <span className="text-[10px] font-semibold tracking-wider">
+                {label}{isNow ? ' · NOW' : ''}
+              </span>
+              <span className="text-[10px] text-text-muted tabular-nums mt-0.5">{formatWeekRange(w.start, w.end)}</span>
             </button>
           )
         })}

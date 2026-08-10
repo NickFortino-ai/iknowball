@@ -92,12 +92,12 @@ export function useNflSchedule(enabled = true) {
   })
 }
 
-// NFL games for a specific season+week. Poll cadence adaptive to
-// whether any game in the week is live.
-export function useNflWeekGames(season, week) {
+// NFL games for a specific (season, week, season_type). Poll cadence
+// adaptive to whether any game in the week is live.
+export function useNflWeekGames(season, week, seasonType = 'regular') {
   return useQuery({
-    queryKey: ['nflWeekGames', season, week],
-    queryFn: () => api.get(`/scores/nfl-week?season=${season}&week=${week}`),
+    queryKey: ['nflWeekGames', season, week, seasonType],
+    queryFn: () => api.get(`/scores/nfl-week?season=${season}&week=${week}&type=${seasonType}`),
     staleTime: 15 * 1000,
     enabled: !!season && !!week,
     refetchInterval: (query) => {
