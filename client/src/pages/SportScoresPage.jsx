@@ -3,6 +3,7 @@ import { useParams, Link, Navigate } from 'react-router-dom'
 import { useScoresForDay, useSportStandings } from '../hooks/useScoresStrip'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../lib/teamLogos'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
+import StatLeadersBlock from '../components/home/StatLeadersBlock'
 
 // /scores/:sport — Sleeper-style drill-in for one sport: date scrubber
 // + full day's scores on the left, standings sidebar on the right.
@@ -126,8 +127,9 @@ export default function SportScoresPage() {
           )}
         </div>
 
-        {/* RIGHT: Standings sidebar */}
-        <div>
+        {/* RIGHT: Standings sidebar + Stat leaders */}
+        <div className="space-y-6">
+          <div>
           <h2 className="font-display text-xl text-text-primary mb-3">Standings</h2>
           {standingsLoading ? (
             <LoadingSpinner />
@@ -162,6 +164,9 @@ export default function SportScoresPage() {
               </div>
             </div>
           )}
+          </div>
+          {/* Stat Leaders block — full top-10 with headshots */}
+          <StatLeadersBlock sport={sport} mode="full" />
         </div>
       </div>
     </div>

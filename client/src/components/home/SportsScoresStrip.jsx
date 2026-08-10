@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useScoresStrip, useFinalsForDate } from '../../hooks/useScoresStrip'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
+import StatLeadersBlock from './StatLeadersBlock'
 
 // PT calendar date as YYYY-MM-DD — anchored to America/Los_Angeles so
 // it matches the server's sports-day convention. Every US pro sport
@@ -133,11 +134,10 @@ function SportColumn({ sport, data }) {
       </div>
       {/* Body is always rendered on desktop (xl+); mobile respects
           the collapsed toggle via a conditional className swap. */}
-      {/* Order: Live → Final → Upcoming. Recent finals slot above
-          upcoming so a user landing on a sport with a completed slate
-          sees "what just happened" first — matches Sleeper's action-
-          first hierarchy and reads better than making them scroll
-          past tomorrow's schedule to find today's result. */}
+      {/* Order: Live → Final → Upcoming → Leaders (top 3). Recent
+          finals slot above upcoming so a user landing on a sport with
+          a completed slate sees 'what just happened' first — matches
+          Sleeper's action-first hierarchy. */}
       <div className={`space-y-4 ${collapsed ? 'hidden xl:block' : ''}`}>
         {live.length > 0 && (
           <BucketSection label="Live" games={live} sportFullKey={sport.fullKey} isLive />
@@ -148,6 +148,7 @@ function SportColumn({ sport, data }) {
         {upcoming.length > 0 && (
           <BucketSection label={live.length > 0 ? 'Coming up' : 'Upcoming'} games={upcoming} sportFullKey={sport.fullKey} />
         )}
+        <StatLeadersBlock sport={sport.key} mode="compact" />
       </div>
     </div>
   )

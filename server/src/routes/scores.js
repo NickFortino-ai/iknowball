@@ -213,6 +213,21 @@ router.get('/standings', async (req, res) => {
   res.json(standings)
 })
 
+// Per-sport stat leaders — top 10 per category, categories tailored
+// per sport (see statLeadersService.SPORT_CONFIG). Powers the landing
+// card's top-3 preview and the drill-in page's full leaders block.
+// 5-min cache header; ESPN data underneath is refreshed once an hour
+// per sport by the service's in-memory cache.
+router.get('/leaders', async (req, res) => {
+  const shortSport = String(req.query.sport || '').toLowerCase()
+  const full = SHORT_TO_FULL[shortSport]
+  if (!full) return res.status(400).json({ error: 'sport must be one of nfl/nba/mlb/wnba' })
+  const { getStatLeaders } = await import('../services/statLeadersService.js')
+  const data = await getStatLeaders(full)
+  res.set('Cache-Control', 'public, max-age=300')
+  res.json(data)
+})
+
 // Per-sport historical finals for a given PT calendar date. Powers
 // the Final section's date scrubber on the landing card — user taps
 // the left arrow, we hit this with date=YYYY-MM-DD.

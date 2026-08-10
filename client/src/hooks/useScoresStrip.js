@@ -67,3 +67,15 @@ export function useSportStandings(sport) {
     retry: false,
   })
 }
+
+// Categorized season stat leaders for a sport (top 10 per category).
+// Offseason sports fall back to prior season server-side.
+export function useSportLeaders(sport) {
+  return useQuery({
+    queryKey: ['sportLeaders', sport],
+    queryFn: () => api.get(`/scores/leaders?sport=${sport}`),
+    staleTime: 10 * 60 * 1000,
+    enabled: !!sport,
+    retry: false,
+  })
+}
