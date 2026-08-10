@@ -99,18 +99,15 @@ function SportColumn({ sport, data }) {
   const recent = data?.recent || []
 
   // Mobile-only collapsibility. Desktop (xl+) always shows expanded —
-  // there's plenty of room in the 3-4 column grid. Collapsed default
-  // on mobile would hide too much on first load; default to open so
-  // the strip is immediately useful, and users can collapse to
-  // deprioritize a sport they don't follow.
+  // there's plenty of room in the 3-4 column grid.
   const [collapsed, setCollapsed] = useState(false)
 
   return (
-    <div className="rounded-xl border border-text-primary/15 bg-bg-primary/20 backdrop-blur-md overflow-hidden">
+    <div>
       <button
         type="button"
         onClick={() => setCollapsed((c) => !c)}
-        className="w-full px-4 py-3 border-b border-text-primary/10 flex items-center justify-between text-left xl:cursor-default"
+        className="w-full py-2 mb-2 flex items-center justify-between text-left xl:cursor-default"
         aria-expanded={!collapsed}
       >
         <h3 className="font-display text-lg text-text-primary">{sport.label}</h3>
@@ -123,7 +120,7 @@ function SportColumn({ sport, data }) {
       </button>
       {/* Body is always rendered on desktop (xl+); mobile respects
           the collapsed toggle via a conditional className swap. */}
-      <div className={`divide-y divide-text-primary/10 ${collapsed ? 'hidden xl:block' : ''}`}>
+      <div className={`space-y-4 ${collapsed ? 'hidden xl:block' : ''}`}>
         {live.length > 0 && (
           <BucketSection label="Live" games={live} sportFullKey={sport.fullKey} isLive />
         )}
@@ -152,7 +149,7 @@ function FinalSection({ sport, todayRecent }) {
 
   return (
     <div>
-      <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+      <div className="mb-1.5 flex items-center gap-2">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Final</span>
         <div className="flex items-center gap-1 ml-auto">
           <button
@@ -181,14 +178,14 @@ function FinalSection({ sport, todayRecent }) {
           </button>
         </div>
       </div>
-      <div className="divide-y divide-white/5">
+      <div className="space-y-1.5">
         {isLoading && !isToday ? (
-          <div className="px-4 py-3 text-xs text-text-muted">Loading…</div>
+          <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-3 text-xs text-text-muted">Loading…</div>
         ) : games.length === 0 ? (
-          <div className="px-4 py-3 text-xs text-text-muted">No games</div>
+          <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-3 text-xs text-text-muted">No games</div>
         ) : (
           games.map((g) => (
-            <GameRow key={g.id} game={g} sportFullKey={sport.fullKey} isFinal />
+            <GameCard key={g.id} game={g} sportFullKey={sport.fullKey} isFinal />
           ))
         )}
       </div>
@@ -199,30 +196,29 @@ function FinalSection({ sport, todayRecent }) {
 function BucketSection({ label, games, sportFullKey, isLive, isFinal }) {
   return (
     <div>
-      <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+      <div className="mb-1.5 flex items-center gap-2">
         {isLive && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />}
         <span className={`text-[10px] font-semibold uppercase tracking-wider ${isLive ? 'text-red-400' : 'text-text-muted'}`}>
           {label}
         </span>
       </div>
-      {/* Thin, faint separator between each matchup so the games
-          within a bucket are visually distinct (previously they
-          blended into a wall of team names). */}
-      <div className="divide-y divide-white/5">
+      <div className="space-y-1.5">
         {games.map((g) => (
-          <GameRow key={g.id} game={g} sportFullKey={sportFullKey} isLive={isLive} isFinal={isFinal} />
+          <GameCard key={g.id} game={g} sportFullKey={sportFullKey} isLive={isLive} isFinal={isFinal} />
         ))}
       </div>
     </div>
   )
 }
 
-function GameRow({ game, sportFullKey, isLive, isFinal }) {
+function GameCard({ game, sportFullKey, isLive, isFinal }) {
   // Live + Final rows show the score inline next to each team.
   // Upcoming rows show a time/date pill on the right instead.
+  // Sleeper-style: each matchup is its own subtle bordered card,
+  // no outer container wrapping the sport list.
   const showScore = isLive || isFinal
   return (
-    <div className="px-4 py-2.5 flex items-center gap-3">
+    <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-2.5 flex items-center gap-3">
       <div className="flex-1 min-w-0 space-y-1.5">
         <TeamRow
           team={game.away_short || game.away_team}
