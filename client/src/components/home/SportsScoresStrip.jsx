@@ -272,10 +272,16 @@ function TeamRow({ team, logoLookupTeam, record, score, sportFullKey, isLive }) 
       ) : (
         <div className="w-7 h-7 rounded-full bg-bg-secondary shrink-0" />
       )}
-      <div className="flex-1 min-w-0 text-sm text-text-primary truncate">{team}</div>
-      {record && (
-        <div className="text-[11px] text-text-muted tabular-nums shrink-0">{record}</div>
-      )}
+      {/* Team name + record share a row that hugs the left. Sleeper
+          renders "Red Sox 64-53" with the record right next to the
+          team name (not right-aligned), which reads as one unit
+          instead of two separate columns. */}
+      <div className="flex-1 min-w-0 flex items-baseline gap-2">
+        <span className="text-sm text-text-primary truncate">{team}</span>
+        {record && (
+          <span className="text-[11px] text-text-muted tabular-nums shrink-0">{record}</span>
+        )}
+      </div>
       {score != null && (
         <div className={`text-sm font-semibold tabular-nums shrink-0 ${isLive ? 'text-text-primary' : 'text-text-secondary'}`}>
           {score}
