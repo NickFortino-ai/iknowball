@@ -54,10 +54,7 @@ export default function SportsScoresStrip() {
 
   return (
     <section className="mb-10">
-      <div className="flex items-baseline justify-between mb-4">
-        <h2 className="font-display text-2xl">Scoreboard</h2>
-        <span className="text-xs text-text-muted">Auto-updating</span>
-      </div>
+      <h2 className="font-display text-2xl mb-4">Scoreboard</h2>
       <div className={`grid gap-4 ${gridClass}`}>
         {activeSports.map((sport) => (
           <SportColumn key={sport.key} sport={sport} data={data[sport.key]} />
