@@ -814,24 +814,65 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
 
   const usedIds = new Set((usedPicks || []).map((p) => p.player_id).filter(Boolean))
 
-  // Find teams with games this week to identify bye-week players
-  const { getCurrentNflWeek } = await import('../services/tdPassService.js')
-  const { season, week } = await getCurrentNflWeek()
-  const { data: weekGames } = await supabase
-    .from('nfl_schedule')
-    .select('home_team, away_team')
-    .eq('season', season)
-    .eq('week', week)
-  const teamsPlaying = new Set()
-  for (const g of (weekGames || [])) {
-    if (g.home_team) teamsPlaying.add(g.home_team)
-    if (g.away_team) teamsPlaying.add(g.away_team)
+  // Determine which NFL week the LEAGUE is currently pickable for.
+  // Previously this used getCurrentNflWeek() (real-world week) which
+  // broke for leagues starting later in the season — a TD Survivor
+  // league opening on Sep 8 (NFL Week 1) but browsed in August was
+  // showing preseason games, and every pick server-rejected as
+  // 'game predates the league.' Now we walk the league's own
+  // league_weeks to find the current or next-upcoming period, then
+  // match against nfl_schedule using that period's date range.
+  const { data: leagueWeeks } = await supabase
+    .from('league_weeks')
+    .select('id, week_number, starts_at, ends_at')
+    .eq('league_id', req.params.id)
+    .order('week_number', { ascending: true })
+
+  const nowIso = new Date().toISOString()
+  const activePeriod = (leagueWeeks || []).find((w) => w.starts_at <= nowIso && w.ends_at > nowIso)
+  const nextPeriod = activePeriod || (leagueWeeks || []).find((w) => w.starts_at > nowIso)
+
+  // Pre-league state: no active period AND the next period is in the
+  // future. Server returns an empty player list + opens_at so the
+  // client can show a friendly 'opens Sep 8' message instead of a
+  // list the user can't pick from.
+  if (!activePeriod && nextPeriod) {
+    return res.json({
+      not_open_yet: true,
+      opens_at: nextPeriod.starts_at,
+      players: [],
+    })
+  }
+  // No periods at all (league schedule not generated). Return empty
+  // gracefully — same shape as pre-league.
+  if (!activePeriod && !nextPeriod) {
+    return res.json({ not_open_yet: true, opens_at: null, players: [] })
   }
 
-  // Aggregate season non-passing TDs (rush + receiving) per player.
-  // fetchAll: nfl_player_stats has ~one row per player per week (season
-  // ≈ 36k rows). Truncating at 1000 means every player past the cap
-  // shows season_tds = 0, corrupting the sort.
+  // Find the NFL games happening during this period. Match by
+  // game_date between the period's start and end.
+  const startDate = activePeriod.starts_at.slice(0, 10)
+  const endDate = activePeriod.ends_at.slice(0, 10)
+  const { data: weekGames } = await supabase
+    .from('nfl_schedule')
+    .select('home_team, away_team, game_date')
+    .gte('game_date', startDate)
+    .lte('game_date', endDate)
+
+  // Build per-team matchup info so each player row can show their
+  // opponent + home/away + kickoff.
+  const matchupByTeam = {}
+  for (const g of weekGames || []) {
+    if (g.home_team) matchupByTeam[g.home_team] = { opponent: g.away_team, is_home: true, game_date: g.game_date }
+    if (g.away_team) matchupByTeam[g.away_team] = { opponent: g.home_team, is_home: false, game_date: g.game_date }
+  }
+
+  // Derive the NFL season from the period's start (nfl_player_stats
+  // is keyed by season year).
+  const season = new Date(activePeriod.starts_at).getUTCFullYear()
+
+  // Season TD aggregation for the leaderboard sort. fetchAll bypasses
+  // the 1000-row cap on nfl_player_stats (~36k rows across a season).
   const tdStats = await fetchAll(
     supabase
       .from('nfl_player_stats')
@@ -846,12 +887,16 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
   }
   const hasStats = Object.values(tdMap).some((v) => v > 0)
 
-  const players = (data || []).map((p) => ({
-    ...p,
-    used: usedIds.has(p.id),
-    on_bye: !teamsPlaying.has(p.team),
-    season_tds: tdMap[p.id] || 0,
-  }))
+  const players = (data || []).map((p) => {
+    const matchup = matchupByTeam[p.team] || null
+    return {
+      ...p,
+      used: usedIds.has(p.id),
+      on_bye: !matchup,
+      matchup,
+      season_tds: tdMap[p.id] || 0,
+    }
+  })
 
   // Sort: bye-week to bottom, then by season TDs (if stats exist) or search_rank
   players.sort((a, b) => {
@@ -860,7 +905,7 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
     return (a.search_rank || 999) - (b.search_rank || 999)
   })
 
-  res.json(players)
+  res.json({ players, period: { id: activePeriod.id, week_number: activePeriod.week_number, ends_at: activePeriod.ends_at } })
 })
 
 router.get('/:id/survivor/board', requireAuth, async (req, res) => {
