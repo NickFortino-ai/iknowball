@@ -41,8 +41,11 @@ async function fetchOne(sportKey) {
   try {
     // /apis/v2/... (not /apis/site/v2/) for the standings endpoint —
     // path is different from /teams. Response nests standings under
-    // children (conferences / leagues).
-    const res = await fetch(`https://site.api.espn.com/apis/v2/sports/${path}/standings`)
+    // children (conferences / leagues). ?level=3 unlocks the division
+    // layer inside each conference (e.g. "AFC East") — without it,
+    // NFL/NBA/MLB return entries flat at the conference level and the
+    // client's division tabs can't group anything.
+    const res = await fetch(`https://site.api.espn.com/apis/v2/sports/${path}/standings?level=3`)
     if (!res.ok) throw new Error(`ESPN ${res.status}`)
     const data = await res.json()
     const map = {}

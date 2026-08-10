@@ -241,7 +241,7 @@ function StandingsTable({ rows, showRank = true }) {
 // grouped into its four divisional mini-tables.
 const NFL_DIVISIONS = ['East', 'North', 'South', 'West']
 function NflStandings({ standings }) {
-  const [conf, setConf] = useState('AFC')
+  const [conf, setConf] = useState('All')
   const [div, setDiv] = useState('Divisions')
 
   const scoped = useMemo(() => {
@@ -272,7 +272,7 @@ function NflStandings({ standings }) {
     <div>
       {/* Conference tabs */}
       <div className="flex gap-1 mb-2">
-        {['AFC', 'NFC', 'All'].map((c) => (
+        {['All', 'AFC', 'NFC'].map((c) => (
           <button
             key={c}
             onClick={() => setConf(c)}
