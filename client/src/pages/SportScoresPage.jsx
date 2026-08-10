@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
-import { useScoresForDay, useSportStandings } from '../hooks/useScoresStrip'
+import { useScoresForDay, useSportStandings, useNflSchedule, useNflWeekGames } from '../hooks/useScoresStrip'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../lib/teamLogos'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import StatLeadersBlock from '../components/home/StatLeadersBlock'
@@ -45,12 +45,31 @@ export default function SportScoresPage() {
   const { sport } = useParams()
   const config = SPORTS[sport?.toLowerCase()]
   if (!config) return <Navigate to="/" replace />
+  const isNfl = sport?.toLowerCase() === 'nfl'
+
+  // NFL uses week-based scrubbing (Thu/Sun/Mon cadence makes daily
+  // dates feel wrong). All other sports keep the 7-day strip.
+  const nflSchedule = useNflSchedule(isNfl)
+  const currentWeek = nflSchedule?.data?.current?.week || 1
+  const [nflWeek, setNflWeek] = useState(null)
+  const activeNflWeek = nflWeek ?? currentWeek
+  const nflSeason = nflSchedule?.data?.season || new Date().getFullYear()
+  const { data: nflGames, isLoading: nflGamesLoading } = useNflWeekGames(
+    isNfl ? nflSeason : null,
+    isNfl ? activeNflWeek : null,
+  )
 
   const [date, setDate] = useState(todayPT())
-  const { data: games, isLoading: gamesLoading } = useScoresForDay(sport, date)
+  const { data: dailyGames, isLoading: dailyLoading } = useScoresForDay(
+    isNfl ? null : sport,
+    isNfl ? null : date,
+  )
   const { data: standings, isLoading: standingsLoading } = useSportStandings(sport)
 
-  // 7-day strip centered on the selected date: 3 back, current, 3 forward.
+  const games = isNfl ? nflGames : dailyGames
+  const gamesLoading = isNfl ? nflGamesLoading : dailyLoading
+
+  // 7-day strip for date-based sports.
   const stripDates = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => shiftPTDate(date, i - 3))
   }, [date])
@@ -74,54 +93,65 @@ export default function SportScoresPage() {
         <div>
           <h2 className="font-display text-xl text-text-primary mb-3">Scores</h2>
 
-          {/* Date scrubber */}
-          <div className="flex items-stretch gap-1 mb-4">
-            <button
-              onClick={() => setDate((d) => shiftPTDate(d, -1))}
-              className="shrink-0 w-9 flex items-center justify-center rounded-lg border border-text-primary/15 hover:bg-bg-secondary transition-colors"
-              aria-label="Previous day"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-            <div className="flex-1 flex gap-1 overflow-x-auto scrollbar-hide">
-              {stripDates.map((d) => {
-                const isSelected = d === date
-                const { day, md } = labelForPTDate(d)
-                return (
-                  <button
-                    key={d}
-                    onClick={() => setDate(d)}
-                    className={`flex-1 min-w-[60px] rounded-lg border py-2 px-2 flex flex-col items-center transition-colors ${
-                      isSelected
-                        ? 'border-accent bg-accent/10 text-text-primary'
-                        : 'border-text-primary/15 text-text-secondary hover:bg-bg-secondary'
-                    }`}
-                  >
-                    <span className="text-[10px] font-semibold tracking-wider">{day}</span>
-                    <span className="text-xs font-semibold tabular-nums mt-0.5">{md}</span>
-                  </button>
-                )
-              })}
+          {/* Scrubber: NFL uses week buttons, everyone else uses a
+              7-day date strip. NFL plays 3 days per week so a daily
+              strip felt wrong (empty Wed/Thu/Fri buttons). */}
+          {isNfl ? (
+            <NflWeekScrubber
+              weeks={nflSchedule?.data?.weeks || []}
+              activeWeek={activeNflWeek}
+              currentWeek={currentWeek}
+              onPick={setNflWeek}
+            />
+          ) : (
+            <div className="flex items-stretch gap-1 mb-4">
+              <button
+                onClick={() => setDate((d) => shiftPTDate(d, -1))}
+                className="shrink-0 w-9 flex items-center justify-center rounded-lg border border-text-primary/15 hover:bg-bg-secondary transition-colors"
+                aria-label="Previous day"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+              <div className="flex-1 flex gap-1 overflow-x-auto scrollbar-hide">
+                {stripDates.map((d) => {
+                  const isSelected = d === date
+                  const { day, md } = labelForPTDate(d)
+                  return (
+                    <button
+                      key={d}
+                      onClick={() => setDate(d)}
+                      className={`flex-1 min-w-[60px] rounded-lg border py-2 px-2 flex flex-col items-center transition-colors ${
+                        isSelected
+                          ? 'border-accent bg-accent/10 text-text-primary'
+                          : 'border-text-primary/15 text-text-secondary hover:bg-bg-secondary'
+                      }`}
+                    >
+                      <span className="text-[10px] font-semibold tracking-wider">{day}</span>
+                      <span className="text-xs font-semibold tabular-nums mt-0.5">{md}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <button
+                onClick={() => setDate((d) => shiftPTDate(d, 1))}
+                className="shrink-0 w-9 flex items-center justify-center rounded-lg border border-text-primary/15 hover:bg-bg-secondary transition-colors"
+                aria-label="Next day"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
             </div>
-            <button
-              onClick={() => setDate((d) => shiftPTDate(d, 1))}
-              className="shrink-0 w-9 flex items-center justify-center rounded-lg border border-text-primary/15 hover:bg-bg-secondary transition-colors"
-              aria-label="Next day"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-          </div>
+          )}
 
           {/* Scores list */}
           {gamesLoading ? (
             <LoadingSpinner />
           ) : !games?.length ? (
             <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-6 text-sm text-text-muted text-center">
-              No {config.label} games on {formatMd(date)}.
+              {isNfl ? `No games this NFL week yet.` : `No ${config.label} games on ${formatMd(date)}.`}
             </div>
           ) : (
             <div className="space-y-2">
@@ -181,6 +211,79 @@ export default function SportScoresPage() {
 function formatPct(v) {
   if (v == null || isNaN(v)) return '—'
   return v.toFixed(3).replace(/^0\./, '.')
+}
+
+// NFL week scrubber — horizontal strip of Week N buttons. Prev/next
+// arrows step one week. Current NFL week gets a subtle 'NOW' hint
+// even if the user has navigated to a different week; the selected
+// week keeps the accent border.
+function NflWeekScrubber({ weeks, activeWeek, currentWeek, onPick }) {
+  const goPrev = () => {
+    const i = weeks.findIndex((w) => w.week === activeWeek)
+    if (i > 0) onPick(weeks[i - 1].week)
+  }
+  const goNext = () => {
+    const i = weeks.findIndex((w) => w.week === activeWeek)
+    if (i >= 0 && i < weeks.length - 1) onPick(weeks[i + 1].week)
+  }
+  const activeIdx = weeks.findIndex((w) => w.week === activeWeek)
+  return (
+    <div className="flex items-stretch gap-1 mb-4">
+      <button
+        onClick={goPrev}
+        disabled={activeIdx <= 0}
+        className="shrink-0 w-9 flex items-center justify-center rounded-lg border border-text-primary/15 hover:bg-bg-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        aria-label="Previous week"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+      </button>
+      <div className="flex-1 flex gap-1 overflow-x-auto scrollbar-hide">
+        {weeks.map((w) => {
+          const isSelected = w.week === activeWeek
+          const isNow = w.week === currentWeek
+          return (
+            <button
+              key={w.week}
+              onClick={() => onPick(w.week)}
+              className={`shrink-0 min-w-[72px] rounded-lg border py-2 px-2 flex flex-col items-center transition-colors ${
+                isSelected
+                  ? 'border-accent bg-accent/10 text-text-primary'
+                  : 'border-text-primary/15 text-text-secondary hover:bg-bg-secondary'
+              }`}
+            >
+              <span className="text-[10px] font-semibold tracking-wider">{isNow ? 'NOW' : `WEEK ${w.week}`}</span>
+              {isNow && <span className="text-xs font-semibold tabular-nums mt-0.5">W{w.week}</span>}
+              {!isNow && <span className="text-[10px] text-text-muted tabular-nums mt-0.5">{formatWeekRange(w.start, w.end)}</span>}
+            </button>
+          )
+        })}
+      </div>
+      <button
+        onClick={goNext}
+        disabled={activeIdx < 0 || activeIdx >= weeks.length - 1}
+        className="shrink-0 w-9 flex items-center justify-center rounded-lg border border-text-primary/15 hover:bg-bg-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        aria-label="Next week"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
+function formatWeekRange(startStr, endStr) {
+  if (!startStr) return ''
+  const s = new Date(`${startStr}T12:00:00Z`)
+  const e = endStr ? new Date(`${endStr}T12:00:00Z`) : s
+  const sMonth = s.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })
+  const eMonth = e.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })
+  const sDay = s.getUTCDate()
+  const eDay = e.getUTCDate()
+  if (sMonth === eMonth) return `${sMonth} ${sDay}–${eDay}`
+  return `${sMonth} ${sDay}–${eMonth} ${eDay}`
 }
 
 // Drill-in game card — richer than the landing strip's compact rows.

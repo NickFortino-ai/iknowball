@@ -143,6 +143,100 @@ router.get('/strip', async (req, res) => {
   res.json(out)
 })
 
+// NFL schedule for the week scrubber. Returns the ordered week list
+// (from nfl_schedule) + the current NFL week + preseason flag. Client
+// uses this to render "Week N" buttons instead of daily date buttons
+// (NFL plays 3 days a week; per-date scrubbing feels wrong).
+router.get('/nfl-schedule', async (req, res) => {
+  const season = Number(req.query.season) || new Date().getFullYear()
+  const { data } = await supabase
+    .from('nfl_schedule')
+    .select('week, game_date')
+    .eq('season', season)
+    .order('week', { ascending: true })
+
+  const byWeek = new Map()
+  for (const r of data || []) {
+    if (!byWeek.has(r.week)) byWeek.set(r.week, { week: r.week, start: r.game_date, end: r.game_date })
+    const b = byWeek.get(r.week)
+    if (r.game_date < b.start) b.start = r.game_date
+    if (r.game_date > b.end) b.end = r.game_date
+  }
+  const weeks = [...byWeek.values()].sort((a, b) => a.week - b.week)
+
+  // Current week: use tdPassService.getCurrentNflWeek if available.
+  let current = null
+  try {
+    const { getCurrentNflWeek } = await import('../services/tdPassService.js')
+    current = await getCurrentNflWeek()
+  } catch {}
+
+  res.set('Cache-Control', 'public, max-age=3600')
+  res.json({ season, current, weeks })
+})
+
+// All games for one NFL (season, week). Reads nfl_schedule to bound
+// the date window, then queries games by that range for NFL sports
+// (regular + preseason via expandSportFamily). MLB linescore attach
+// is a no-op for football but the shared helper handles the guard.
+router.get('/nfl-week', async (req, res) => {
+  const season = Number(req.query.season) || new Date().getFullYear()
+  const week = Number(req.query.week)
+  if (!week) return res.status(400).json({ error: 'week required' })
+
+  const { data: schedule } = await supabase
+    .from('nfl_schedule')
+    .select('game_date')
+    .eq('season', season)
+    .eq('week', week)
+    .order('game_date', { ascending: true })
+
+  if (!schedule?.length) return res.json([])
+  const startDate = schedule[0].game_date
+  const endDate = schedule[schedule.length - 1].game_date
+  // Widen by a day on each side to catch late West Coast games and
+  // Thursday openers that might store as prior-PT-day boundaries.
+  const startUtc = `${startDate}T00:00:00Z`
+  const endUtcDate = new Date(`${endDate}T00:00:00Z`)
+  endUtcDate.setUTCDate(endUtcDate.getUTCDate() + 2)
+  const endUtc = endUtcDate.toISOString()
+
+  const keys = expandSportFamily('americanfootball_nfl')
+  const { data: sports } = await supabase.from('sports').select('id, key').in('key', keys)
+  const sportIds = (sports || []).map((s) => s.id)
+  if (!sportIds.length) return res.json([])
+
+  const liveStaleCutoff = new Date(Date.now() - LIVE_STALE_CUTOFF_MS).toISOString()
+  const [liveRes, weekRes] = await Promise.all([
+    supabase
+      .from('games')
+      .select('id, home_team, away_team, home_score, away_score, starts_at, status')
+      .in('sport_id', sportIds)
+      .eq('status', 'live')
+      .gte('updated_at', liveStaleCutoff)
+      .order('starts_at', { ascending: true }),
+    supabase
+      .from('games')
+      .select('id, home_team, away_team, home_score, away_score, starts_at, status')
+      .in('sport_id', sportIds)
+      .in('status', ['upcoming', 'final'])
+      .gte('starts_at', startUtc)
+      .lt('starts_at', endUtc)
+      .order('starts_at', { ascending: true }),
+  ])
+  if (liveRes.error || weekRes.error) return res.status(500).json({ error: 'nfl-week fetch failed' })
+
+  await getTeamRecords('americanfootball_nfl')
+  const seen = new Set()
+  const out = []
+  for (const g of liveRes.data || []) { seen.add(g.id); out.push(shape(g, 'americanfootball_nfl')) }
+  for (const g of weekRes.data || []) { if (!seen.has(g.id)) out.push(shape(g, 'americanfootball_nfl')) }
+  out.sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
+
+  res.set('Cache-Control', 'public, max-age=15')
+  res.json(out)
+})
+
 // Per-sport ALL games for a given PT calendar date — powers the drill-
 // in `/scores/:sport` page's date scrubber. Returns upcoming, live,
 // and final together (unlike /finals which is finals-only for the

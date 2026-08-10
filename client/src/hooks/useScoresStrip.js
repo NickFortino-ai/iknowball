@@ -79,3 +79,34 @@ export function useSportLeaders(sport) {
     retry: false,
   })
 }
+
+// NFL-only: full season week list + current week for the /scores/nfl
+// drill-in's Week scrubber. Cached generously — schedule doesn't move.
+export function useNflSchedule(enabled = true) {
+  return useQuery({
+    queryKey: ['nflSchedule'],
+    queryFn: () => api.get('/scores/nfl-schedule'),
+    staleTime: 60 * 60 * 1000,
+    enabled,
+    retry: false,
+  })
+}
+
+// NFL games for a specific season+week. Poll cadence adaptive to
+// whether any game in the week is live.
+export function useNflWeekGames(season, week) {
+  return useQuery({
+    queryKey: ['nflWeekGames', season, week],
+    queryFn: () => api.get(`/scores/nfl-week?season=${season}&week=${week}`),
+    staleTime: 15 * 1000,
+    enabled: !!season && !!week,
+    refetchInterval: (query) => {
+      const data = query.state.data
+      if (!Array.isArray(data)) return 60 * 1000
+      const anyLive = data.some((g) => g.status === 'live')
+      return anyLive ? 20 * 1000 : 5 * 60 * 1000
+    },
+    refetchIntervalInBackground: false,
+    retry: false,
+  })
+}
