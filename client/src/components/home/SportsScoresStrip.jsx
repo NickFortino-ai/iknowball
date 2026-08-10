@@ -75,7 +75,7 @@ function SportColumn({ sport, data }) {
   const recent = data?.recent || []
 
   return (
-    <div className="rounded-xl border border-text-primary/15 bg-bg-primary/40 backdrop-blur-sm overflow-hidden">
+    <div className="rounded-xl border border-text-primary/15 bg-bg-primary/20 backdrop-blur-md overflow-hidden">
       <div className="px-4 py-3 border-b border-text-primary/10">
         <h3 className="font-display text-lg text-text-primary">{sport.label}</h3>
       </div>
