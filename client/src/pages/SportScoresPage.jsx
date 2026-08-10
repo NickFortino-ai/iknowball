@@ -236,24 +236,18 @@ function StandingsTable({ rows, showRank = true }) {
 
 // NFL standings are always examined by conference (AFC/NFC), and
 // within a conference by division (East/North/South/West). Top tabs
-// pick the conference (or All for the full 32-team list), sub-tabs
-// pick a division. Default 'Divisions' sub-tab shows the conference
-// grouped into its four divisional mini-tables.
+// pick the conference; AFC/NFC always render the four divisional
+// mini-tables (no further tabbing needed — the four groups are the
+// canonical way to look at a conference).
 const NFL_DIVISIONS = ['East', 'North', 'South', 'West']
 function NflStandings({ standings }) {
   const [conf, setConf] = useState('All')
-  const [div, setDiv] = useState('Divisions')
-
-  const scoped = useMemo(() => {
-    if (conf === 'All') return standings
-    return standings.filter((r) => (r.group || '').startsWith(conf))
-  }, [standings, conf])
 
   const divisionSections = useMemo(() => {
     if (conf === 'All') return null
     return NFL_DIVISIONS.map((d) => ({
       name: d,
-      rows: scoped
+      rows: standings
         .filter((r) => r.group === `${conf} ${d}`)
         .sort((a, b) => {
           if (b.win_pct !== a.win_pct) return b.win_pct - a.win_pct
@@ -261,17 +255,11 @@ function NflStandings({ standings }) {
           return a.losses - b.losses
         }),
     })).filter((s) => s.rows.length)
-  }, [scoped, conf])
-
-  const filteredForDivTab = useMemo(() => {
-    if (conf === 'All' || div === 'Divisions') return null
-    return scoped.filter((r) => r.group === `${conf} ${div}`)
-  }, [scoped, conf, div])
+  }, [standings, conf])
 
   return (
     <div>
-      {/* Conference tabs */}
-      <div className="flex gap-1 mb-2">
+      <div className="flex gap-1 mb-3">
         {['All', 'AFC', 'NFC'].map((c) => (
           <button
             key={c}
@@ -284,29 +272,13 @@ function NflStandings({ standings }) {
           </button>
         ))}
       </div>
-      {/* Division sub-tabs (hidden for All-conferences view) */}
-      {conf !== 'All' && (
-        <div className="flex gap-1 mb-3 overflow-x-auto scrollbar-hide">
-          {['Divisions', ...NFL_DIVISIONS].map((d) => (
-            <button
-              key={d}
-              onClick={() => setDiv(d)}
-              className={`shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-semibold transition-colors ${
-                div === d
-                  ? 'bg-accent/15 text-text-primary border border-accent/60'
-                  : 'bg-bg-secondary text-text-muted hover:text-text-primary border border-transparent'
-              }`}
-            >
-              {d}
-            </button>
-          ))}
-        </div>
-      )}
-      {/* Body: All → flat 32-team; conference + Divisions → grouped;
-          conference + specific division → single 4-team table. */}
       {conf === 'All' ? (
-        <StandingsTable rows={scoped} />
-      ) : div === 'Divisions' ? (
+        <StandingsTable rows={standings} />
+      ) : divisionSections.length === 0 ? (
+        <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-6 text-sm text-text-muted text-center">
+          {conf} standings loading…
+        </div>
+      ) : (
         <div className="space-y-3">
           {divisionSections.map((s) => (
             <div key={s.name}>
@@ -315,8 +287,6 @@ function NflStandings({ standings }) {
             </div>
           ))}
         </div>
-      ) : (
-        <StandingsTable rows={filteredForDivTab || []} showRank={false} />
       )}
     </div>
   )
