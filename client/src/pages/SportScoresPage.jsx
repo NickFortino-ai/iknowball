@@ -181,32 +181,10 @@ export default function SportScoresPage() {
             <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-6 text-sm text-text-muted text-center">
               Standings not available.
             </div>
+          ) : isNfl ? (
+            <NflStandings standings={standings} />
           ) : (
-            <div className="rounded-xl border border-text-primary/15 bg-bg-primary/20 backdrop-blur-md overflow-hidden">
-              <div className="grid grid-cols-[28px_1fr_38px_38px_54px] gap-2 px-3 py-2 border-b border-text-primary/10 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                <span className="text-center">#</span>
-                <span>Team</span>
-                <span className="text-right">W</span>
-                <span className="text-right">L</span>
-                <span className="text-right">PCT</span>
-              </div>
-              <div className="divide-y divide-text-primary/5">
-                {standings.map((row, i) => (
-                  <div key={row.team_id || row.team_name} className="grid grid-cols-[28px_1fr_38px_38px_54px] gap-2 px-3 py-2 items-center">
-                    <span className="text-center text-xs text-text-muted tabular-nums">{i + 1}</span>
-                    <div className="flex items-center gap-2 min-w-0">
-                      {row.logo ? (
-                        <img src={row.logo} alt="" width="18" height="18" className="w-4 h-4 object-contain shrink-0" loading="lazy" onError={(e) => e.currentTarget.style.visibility = 'hidden'} />
-                      ) : <span className="w-4 h-4 shrink-0" />}
-                      <span className="text-sm text-text-primary truncate">{row.short_name}</span>
-                    </div>
-                    <span className="text-right text-sm text-text-primary tabular-nums">{row.wins}</span>
-                    <span className="text-right text-sm text-text-primary tabular-nums">{row.losses}</span>
-                    <span className="text-right text-sm text-text-muted tabular-nums">{formatPct(row.win_pct)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <StandingsTable rows={standings} />
           )}
           </div>
           {/* Stat Leaders block — full top-10 with headshots */}
@@ -220,6 +198,128 @@ export default function SportScoresPage() {
 function formatPct(v) {
   if (v == null || isNaN(v)) return '—'
   return v.toFixed(3).replace(/^0\./, '.')
+}
+
+// Bare rows renderer — used by both NFL (per-division sections) and
+// the non-NFL sports (single flat table). `showRank` numbers rows;
+// off for divisional splits where the ranks aren't meaningful.
+function StandingsTable({ rows, showRank = true }) {
+  const gridCols = showRank ? 'grid-cols-[28px_1fr_38px_38px_54px]' : 'grid-cols-[1fr_38px_38px_54px]'
+  return (
+    <div className="rounded-xl border border-text-primary/15 bg-bg-primary/20 backdrop-blur-md overflow-hidden">
+      <div className={`grid ${gridCols} gap-2 px-3 py-2 border-b border-text-primary/10 text-[10px] font-semibold uppercase tracking-wider text-text-muted`}>
+        {showRank && <span className="text-center">#</span>}
+        <span>Team</span>
+        <span className="text-right">W</span>
+        <span className="text-right">L</span>
+        <span className="text-right">PCT</span>
+      </div>
+      <div className="divide-y divide-text-primary/5">
+        {rows.map((row, i) => (
+          <div key={row.team_id || row.team_name} className={`grid ${gridCols} gap-2 px-3 py-2 items-center`}>
+            {showRank && <span className="text-center text-xs text-text-muted tabular-nums">{i + 1}</span>}
+            <div className="flex items-center gap-2 min-w-0">
+              {row.logo ? (
+                <img src={row.logo} alt="" width="18" height="18" className="w-4 h-4 object-contain shrink-0" loading="lazy" onError={(e) => e.currentTarget.style.visibility = 'hidden'} />
+              ) : <span className="w-4 h-4 shrink-0" />}
+              <span className="text-sm text-text-primary truncate">{row.short_name}</span>
+            </div>
+            <span className="text-right text-sm text-text-primary tabular-nums">{row.wins}</span>
+            <span className="text-right text-sm text-text-primary tabular-nums">{row.losses}</span>
+            <span className="text-right text-sm text-text-muted tabular-nums">{formatPct(row.win_pct)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// NFL standings are always examined by conference (AFC/NFC), and
+// within a conference by division (East/North/South/West). Top tabs
+// pick the conference (or All for the full 32-team list), sub-tabs
+// pick a division. Default 'Divisions' sub-tab shows the conference
+// grouped into its four divisional mini-tables.
+const NFL_DIVISIONS = ['East', 'North', 'South', 'West']
+function NflStandings({ standings }) {
+  const [conf, setConf] = useState('AFC')
+  const [div, setDiv] = useState('Divisions')
+
+  const scoped = useMemo(() => {
+    if (conf === 'All') return standings
+    return standings.filter((r) => (r.group || '').startsWith(conf))
+  }, [standings, conf])
+
+  const divisionSections = useMemo(() => {
+    if (conf === 'All') return null
+    return NFL_DIVISIONS.map((d) => ({
+      name: d,
+      rows: scoped
+        .filter((r) => r.group === `${conf} ${d}`)
+        .sort((a, b) => {
+          if (b.win_pct !== a.win_pct) return b.win_pct - a.win_pct
+          if (b.wins !== a.wins) return b.wins - a.wins
+          return a.losses - b.losses
+        }),
+    })).filter((s) => s.rows.length)
+  }, [scoped, conf])
+
+  const filteredForDivTab = useMemo(() => {
+    if (conf === 'All' || div === 'Divisions') return null
+    return scoped.filter((r) => r.group === `${conf} ${div}`)
+  }, [scoped, conf, div])
+
+  return (
+    <div>
+      {/* Conference tabs */}
+      <div className="flex gap-1 mb-2">
+        {['AFC', 'NFC', 'All'].map((c) => (
+          <button
+            key={c}
+            onClick={() => setConf(c)}
+            className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors ${
+              conf === c ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+      {/* Division sub-tabs (hidden for All-conferences view) */}
+      {conf !== 'All' && (
+        <div className="flex gap-1 mb-3 overflow-x-auto scrollbar-hide">
+          {['Divisions', ...NFL_DIVISIONS].map((d) => (
+            <button
+              key={d}
+              onClick={() => setDiv(d)}
+              className={`shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-semibold transition-colors ${
+                div === d
+                  ? 'bg-accent/15 text-text-primary border border-accent/60'
+                  : 'bg-bg-secondary text-text-muted hover:text-text-primary border border-transparent'
+              }`}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Body: All → flat 32-team; conference + Divisions → grouped;
+          conference + specific division → single 4-team table. */}
+      {conf === 'All' ? (
+        <StandingsTable rows={scoped} />
+      ) : div === 'Divisions' ? (
+        <div className="space-y-3">
+          {divisionSections.map((s) => (
+            <div key={s.name}>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1 px-1">{conf} {s.name}</div>
+              <StandingsTable rows={s.rows} showRank={false} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <StandingsTable rows={filteredForDivTab || []} showRank={false} />
+      )}
+    </div>
+  )
 }
 
 // NFL week scrubber — horizontal strip mixing preseason (PRE 1-3)
