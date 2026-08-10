@@ -57,11 +57,16 @@ export default function SportScoresPage() {
 
   return (
     <div className="mx-auto max-w-6xl py-4 px-4">
-      {/* Breadcrumb */}
-      <div className="text-xs text-text-muted mb-2">
-        <Link to="/" className="hover:text-text-primary transition-colors">Scores</Link>
-        <span className="mx-1.5">/</span>
-      </div>
+      {/* Back link to the landing scoreboard */}
+      <Link
+        to="/"
+        className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-text-primary transition-colors mb-2"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+        Scores
+      </Link>
       <h1 className="font-display text-3xl md:text-4xl text-text-primary mb-6">{config.label}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">

@@ -92,7 +92,32 @@ async function fetchCategoriesForSport(espnPath, categoryNames, season = CURRENT
   return { categories: picked, season }
 }
 
-async function dereferenceLeader(entry) {
+// Format the numeric `value` per category type. ESPN's displayValue
+// for a leader entry is the FULL stat line ('137-426, 35 HR, 24 2B,
+// 86 RBI, ...') — using that would clutter the leader row. We want
+// just the number for the category the user is looking at, formatted
+// to convention (AVG/OBP/SLG/PCT etc. as .321; ERA as 2.78; counts
+// as integer).
+function formatCategoryValue(categoryName, value) {
+  if (value == null) return '—'
+  const n = Number(value)
+  if (isNaN(n)) return String(value)
+  const lower = String(categoryName).toLowerCase()
+  // Rate stats — three decimals, drop the leading 0
+  const isRate = ['avg', 'obp', 'slg', 'ops', 'onbasepct', 'slugavg', 'winpct', 'fieldgoalpct'].some((k) => lower.includes(k))
+  if (isRate) {
+    const s = n.toFixed(3)
+    return s.startsWith('0') ? s.slice(1) : s
+  }
+  // Per-game / ratio stats — one decimal
+  const isPerGame = lower.includes('pergame') || lower.includes('era') || lower.includes('whip') || lower.includes('avg')
+  if (isPerGame) return n.toFixed(2)
+  // Counts — integer, thousands-separated for readability
+  if (Number.isInteger(n)) return n.toLocaleString()
+  return n.toFixed(1)
+}
+
+async function dereferenceLeader(entry, categoryName) {
   // Athlete + team come as $ref URLs. Fetch in parallel and unwrap.
   const [athleteRes, teamRes] = await Promise.allSettled([
     entry.athlete?.$ref ? fetchJson(entry.athlete.$ref) : Promise.resolve(null),
@@ -102,9 +127,9 @@ async function dereferenceLeader(entry) {
   const team = teamRes.status === 'fulfilled' ? teamRes.value : null
   return {
     value: entry.value,
-    display_value: entry.displayValue,
+    display_value: formatCategoryValue(categoryName, entry.value),
     athlete_id: athlete?.id || null,
-    athlete_name: athlete?.displayName || athlete?.fullName || null,
+    athlete_name: athlete?.displayName || athlete?.fullName || athlete?.shortName || null,
     headshot: athlete?.headshot?.href || null,
     position: athlete?.position?.abbreviation || null,
     team_id: team?.id || null,
@@ -126,7 +151,7 @@ async function fetchOne(sportKey) {
   const results = await Promise.all(rawCats.map(async (cat) => {
     const label = config.categories.find((c) => c.name === cat.name)?.label || cat.displayName
     const topN = (cat.leaders || []).slice(0, 10)
-    const leaders = await Promise.all(topN.map((l) => dereferenceLeader(l).catch(() => null)))
+    const leaders = await Promise.all(topN.map((l) => dereferenceLeader(l, cat.name).catch(() => null)))
     return {
       name: cat.name,
       label,
