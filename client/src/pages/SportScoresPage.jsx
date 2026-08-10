@@ -181,8 +181,8 @@ export default function SportScoresPage() {
             <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-6 text-sm text-text-muted text-center">
               Standings not available.
             </div>
-          ) : isNfl ? (
-            <NflStandings standings={standings} />
+          ) : STANDINGS_CONFIG[sport?.toLowerCase()] ? (
+            <GroupedStandings standings={standings} config={STANDINGS_CONFIG[sport.toLowerCase()]} />
           ) : (
             <StandingsTable rows={standings} />
           )}
@@ -234,33 +234,55 @@ function StandingsTable({ rows, showRank = true }) {
   )
 }
 
-// NFL standings are always examined by conference (AFC/NFC), and
-// within a conference by division (East/North/South/West). Top tabs
-// pick the conference; AFC/NFC always render the four divisional
-// mini-tables (no further tabbing needed — the four groups are the
-// canonical way to look at a conference).
-const NFL_DIVISIONS = ['East', 'North', 'South', 'West']
-function NflStandings({ standings }) {
+// Per-sport standings config for the conference/division tabs.
+// Each conference has a short label (e.g. 'AFC', 'AL'), the full
+// group prefix ESPN returns ('AFC', 'American League'), and the list
+// of division short names in that conference. A short label is shown
+// in each divisional mini-table's header (e.g. 'AL East') to keep
+// the sidebar tight.
+const STANDINGS_CONFIG = {
+  nfl: {
+    conferences: [
+      { tab: 'AFC', prefix: 'AFC', divisions: ['East', 'North', 'South', 'West'] },
+      { tab: 'NFC', prefix: 'NFC', divisions: ['East', 'North', 'South', 'West'] },
+    ],
+  },
+  mlb: {
+    conferences: [
+      { tab: 'AL', prefix: 'American League', divisions: ['East', 'Central', 'West'] },
+      { tab: 'NL', prefix: 'National League', divisions: ['East', 'Central', 'West'] },
+    ],
+  },
+}
+
+// Standings with All + per-conference tabs. Each conference renders
+// its divisions as separate mini-tables — the canonical way MLB (AL/
+// NL East/Central/West) and NFL (AFC/NFC East/North/South/West) are
+// always examined. Config-driven so a new sport just needs an entry
+// in STANDINGS_CONFIG.
+function GroupedStandings({ standings, config }) {
   const [conf, setConf] = useState('All')
 
+  const activeConf = config.conferences.find((c) => c.tab === conf)
+
   const divisionSections = useMemo(() => {
-    if (conf === 'All') return null
-    return NFL_DIVISIONS.map((d) => ({
+    if (!activeConf) return null
+    return activeConf.divisions.map((d) => ({
       name: d,
       rows: standings
-        .filter((r) => r.group === `${conf} ${d}`)
+        .filter((r) => r.group === `${activeConf.prefix} ${d}`)
         .sort((a, b) => {
           if (b.win_pct !== a.win_pct) return b.win_pct - a.win_pct
           if (b.wins !== a.wins) return b.wins - a.wins
           return a.losses - b.losses
         }),
     })).filter((s) => s.rows.length)
-  }, [standings, conf])
+  }, [standings, activeConf])
 
   return (
     <div>
       <div className="flex gap-1 mb-3">
-        {['All', 'AFC', 'NFC'].map((c) => (
+        {['All', ...config.conferences.map((c) => c.tab)].map((c) => (
           <button
             key={c}
             onClick={() => setConf(c)}
@@ -272,17 +294,17 @@ function NflStandings({ standings }) {
           </button>
         ))}
       </div>
-      {conf === 'All' ? (
+      {!activeConf ? (
         <StandingsTable rows={standings} />
       ) : divisionSections.length === 0 ? (
         <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-6 text-sm text-text-muted text-center">
-          {conf} standings loading…
+          {activeConf.tab} standings loading…
         </div>
       ) : (
         <div className="space-y-3">
           {divisionSections.map((s) => (
             <div key={s.name}>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1 px-1">{conf} {s.name}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1 px-1">{activeConf.tab} {s.name}</div>
               <StandingsTable rows={s.rows} showRank={false} />
             </div>
           ))}
