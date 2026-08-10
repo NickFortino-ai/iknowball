@@ -379,24 +379,39 @@ export async function generateSalaries(week, season) {
   // Pull every player we might price. Filter on team IS NOT NULL so retired
   // players (their team is nulled by the Sleeper sync) drop out; keep IR/PUP
   // so the slate surfaces them with their injury_status flagged.
-  const { data: players, error } = await supabase
-    .from('nfl_players')
-    .select('id, position, team, injury_status, depth_chart_order')
-    .not('team', 'is', null)
-    .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
-
-  if (error) throw error
+  //
+  // fetchAll: without pagination Supabase silently caps at 1000 rows —
+  // the NFL player pool (with IDPs) exceeds 1000, and losing the tail
+  // means some rostered players never get priced and their DFS slots
+  // read as invalid.
+  const players = await fetchAll(
+    supabase
+      .from('nfl_players')
+      .select('id, position, team, injury_status, depth_chart_order')
+      .not('team', 'is', null)
+      .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
+      .order('id')
+  )
 
   // Sleeper weekly projections for THIS (season, week). This is the entire
   // pricing signal — no gamelog blend, no staleness discount, no defensive
   // multiplier. Sleeper already bakes in matchup, opponent, usage, snap share.
-  const { data: projectionRows } = await supabase
-    .from('nfl_player_projections')
-    .select('player_id, pts_half_ppr')
-    .eq('season', season)
-    .eq('week', week)
+  //
+  // fetchAll: nfl_player_projections has one row per player per week
+  // (~2000+ rows). Without pagination, the 1000-row cap silently drops
+  // ~half the projection map, which makes the VBD replacement rank
+  // land on a much lower value than intended (30th-ranked QB reads as
+  // ~7pts instead of ~13pts, blowing every starter's VBD past the cap).
+  const projectionRows = await fetchAll(
+    supabase
+      .from('nfl_player_projections')
+      .select('player_id, pts_half_ppr')
+      .eq('season', season)
+      .eq('week', week)
+      .order('player_id')
+  )
   const projectionMap = new Map(
-    (projectionRows || []).map((r) => [r.player_id, Number(r.pts_half_ppr) || 0])
+    projectionRows.map((r) => [r.player_id, Number(r.pts_half_ppr) || 0])
   )
   logger.info(
     { projections_loaded: projectionMap.size, week, season },
