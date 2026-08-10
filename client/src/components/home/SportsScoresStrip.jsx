@@ -120,15 +120,20 @@ function SportColumn({ sport, data }) {
       </button>
       {/* Body is always rendered on desktop (xl+); mobile respects
           the collapsed toggle via a conditional className swap. */}
+      {/* Order: Live → Final → Upcoming. Recent finals slot above
+          upcoming so a user landing on a sport with a completed slate
+          sees "what just happened" first — matches Sleeper's action-
+          first hierarchy and reads better than making them scroll
+          past tomorrow's schedule to find today's result. */}
       <div className={`space-y-4 ${collapsed ? 'hidden xl:block' : ''}`}>
         {live.length > 0 && (
           <BucketSection label="Live" games={live} sportFullKey={sport.fullKey} isLive />
         )}
-        {upcoming.length > 0 && (
-          <BucketSection label={live.length > 0 ? 'Coming up' : 'Upcoming'} games={upcoming} sportFullKey={sport.fullKey} />
-        )}
         {recent.length > 0 && (
           <FinalSection sport={sport} todayRecent={recent} />
+        )}
+        {upcoming.length > 0 && (
+          <BucketSection label={live.length > 0 ? 'Coming up' : 'Upcoming'} games={upcoming} sportFullKey={sport.fullKey} />
         )}
       </div>
     </div>
