@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useScoresStrip } from '../../hooks/useScoresStrip'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 
@@ -71,12 +71,32 @@ function SportColumn({ sport, data }) {
   const upcoming = data?.upcoming || []
   const recent = data?.recent || []
 
+  // Mobile-only collapsibility. Desktop (xl+) always shows expanded —
+  // there's plenty of room in the 3-4 column grid. Collapsed default
+  // on mobile would hide too much on first load; default to open so
+  // the strip is immediately useful, and users can collapse to
+  // deprioritize a sport they don't follow.
+  const [collapsed, setCollapsed] = useState(false)
+
   return (
     <div className="rounded-xl border border-text-primary/15 bg-bg-primary/20 backdrop-blur-md overflow-hidden">
-      <div className="px-4 py-3 border-b border-text-primary/10">
+      <button
+        type="button"
+        onClick={() => setCollapsed((c) => !c)}
+        className="w-full px-4 py-3 border-b border-text-primary/10 flex items-center justify-between text-left xl:cursor-default"
+        aria-expanded={!collapsed}
+      >
         <h3 className="font-display text-lg text-text-primary">{sport.label}</h3>
-      </div>
-      <div className="divide-y divide-text-primary/10">
+        <svg
+          className={`w-4 h-4 text-text-muted transition-transform xl:hidden ${collapsed ? '' : 'rotate-180'}`}
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {/* Body is always rendered on desktop (xl+); mobile respects
+          the collapsed toggle via a conditional className swap. */}
+      <div className={`divide-y divide-text-primary/10 ${collapsed ? 'hidden xl:block' : ''}`}>
         {live.length > 0 && (
           <BucketSection label="Live" games={live} sportFullKey={sport.fullKey} isLive />
         )}
@@ -116,8 +136,8 @@ function GameRow({ game, sportFullKey, isLive, isFinal }) {
   return (
     <div className="px-4 py-2 flex items-center gap-3">
       <div className="flex-1 min-w-0 space-y-1">
-        <TeamRow team={game.away_team} score={showScore ? game.away_score : null} sportFullKey={sportFullKey} isLive={isLive} />
-        <TeamRow team={game.home_team} score={showScore ? game.home_score : null} sportFullKey={sportFullKey} isLive={isLive} />
+        <TeamRow team={game.away_team} record={game.away_record} score={showScore ? game.away_score : null} sportFullKey={sportFullKey} isLive={isLive} />
+        <TeamRow team={game.home_team} record={game.home_record} score={showScore ? game.home_score : null} sportFullKey={sportFullKey} isLive={isLive} />
       </div>
       {!showScore && (
         <div className="shrink-0">
@@ -128,7 +148,7 @@ function GameRow({ game, sportFullKey, isLive, isFinal }) {
   )
 }
 
-function TeamRow({ team, score, sportFullKey, isLive }) {
+function TeamRow({ team, record, score, sportFullKey, isLive }) {
   const logoUrl = getTeamLogoUrl(team, sportFullKey)
   const fallbackUrl = getTeamLogoFallbackUrl(team, sportFullKey)
   return (
@@ -149,8 +169,11 @@ function TeamRow({ team, score, sportFullKey, isLive }) {
         <div className="w-5 h-5 rounded-full bg-bg-secondary shrink-0" />
       )}
       <div className="flex-1 min-w-0 text-sm text-text-primary truncate">{team}</div>
+      {record && (
+        <div className="text-[11px] text-text-muted tabular-nums shrink-0">{record}</div>
+      )}
       {score != null && (
-        <div className={`text-sm font-semibold tabular-nums ${isLive ? 'text-text-primary' : 'text-text-secondary'}`}>
+        <div className={`text-sm font-semibold tabular-nums shrink-0 ${isLive ? 'text-text-primary' : 'text-text-secondary'}`}>
           {score}
         </div>
       )}

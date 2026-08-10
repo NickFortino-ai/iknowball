@@ -10,6 +10,7 @@
 import { Router } from 'express'
 import { supabase } from '../config/supabase.js'
 import { expandSportFamily } from '../utils/nflFamily.js'
+import { getTeamRecords, lookupRecord } from '../services/teamRecordsService.js'
 
 const router = Router()
 
@@ -103,19 +104,32 @@ router.get('/strip', async (req, res) => {
     return res.status(500).json({ error: 'scores fetch failed' })
   }
 
+  // Warm per-sport team-record caches in parallel with the DB queries
+  // above (which already ran). First hit per sport per server-restart
+  // takes ~500ms; subsequent hits are instant (1h TTL). Safe to run
+  // as fire-and-forget from the request path — if a record is missing,
+  // the team just renders without one.
+  const recordSportKeys = ['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'basketball_wnba']
+  await Promise.all(recordSportKeys.map((k) => getTeamRecords(k)))
+
   // Bucket by short sport key.
+  const shortToFullForRecords = {
+    nfl: 'americanfootball_nfl', nba: 'basketball_nba',
+    mlb: 'baseball_mlb', wnba: 'basketball_wnba',
+  }
   const out = { nfl: emptyCol(), nba: emptyCol(), mlb: emptyCol(), wnba: emptyCol() }
+  const attach = (s, g) => shape(g, shortToFullForRecords[s])
   for (const g of liveRes.data || []) {
     const s = sportIdToShort[g.sport_id]
-    if (s) out[s].live.push(shape(g))
+    if (s) out[s].live.push(attach(s, g))
   }
   for (const g of upcomingRes.data || []) {
     const s = sportIdToShort[g.sport_id]
-    if (s && out[s].upcoming.length < UPCOMING_LIMIT) out[s].upcoming.push(shape(g))
+    if (s && out[s].upcoming.length < UPCOMING_LIMIT) out[s].upcoming.push(attach(s, g))
   }
   for (const g of recentRes.data || []) {
     const s = sportIdToShort[g.sport_id]
-    if (s && out[s].recent.length < RECENT_LIMIT) out[s].recent.push(shape(g))
+    if (s && out[s].recent.length < RECENT_LIMIT) out[s].recent.push(attach(s, g))
   }
 
   // Short cache header — clients also poll but this dampens repeat
@@ -128,7 +142,9 @@ function emptyCol() {
   return { live: [], upcoming: [], recent: [] }
 }
 
-function shape(g) {
+function shape(g, sportFullKey) {
+  const homeRec = sportFullKey ? lookupRecord(sportFullKey, g.home_team) : null
+  const awayRec = sportFullKey ? lookupRecord(sportFullKey, g.away_team) : null
   return {
     id: g.id,
     home_team: g.home_team,
@@ -137,7 +153,14 @@ function shape(g) {
     away_score: g.away_score,
     starts_at: g.starts_at,
     status: g.status,
+    home_record: homeRec ? formatRecord(homeRec) : null,
+    away_record: awayRec ? formatRecord(awayRec) : null,
   }
+}
+
+function formatRecord(r) {
+  if (r.t > 0) return `${r.w}-${r.l}-${r.t}`
+  return `${r.w}-${r.l}`
 }
 
 export default router
