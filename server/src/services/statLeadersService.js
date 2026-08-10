@@ -23,9 +23,10 @@ const SPORT_CONFIG = {
   americanfootball_nfl: {
     espnPath: 'football/leagues/nfl',
     categories: [
-      { name: 'passingYards', label: 'Pass Yards' },
-      { name: 'rushingYards', label: 'Rush Yards' },
-      { name: 'receivingYards', label: 'Rec Yards' },
+      { name: 'passingYards', label: 'Pass Yds' },
+      { name: 'passingTouchdowns', label: 'Pass TD' },
+      { name: 'rushingYards', label: 'Rush Yds' },
+      { name: 'receivingYards', label: 'Rec Yds' },
       { name: 'totalTouchdowns', label: 'TDs' },
     ],
   },
