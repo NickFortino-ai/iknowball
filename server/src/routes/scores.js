@@ -82,14 +82,14 @@ router.get('/strip', async (req, res) => {
   const [liveRes, upcomingRes, recentRes] = await Promise.all([
     supabase
       .from('games')
-      .select('id, sport_id, home_team, away_team, home_score, away_score, starts_at, status, updated_at')
+      .select('id, sport_id, home_team, away_team, home_score, away_score, live_home_score, live_away_score, period, clock, starts_at, status, updated_at')
       .in('sport_id', sportIds)
       .eq('status', 'live')
       .gte('updated_at', liveStaleCutoff)
       .order('starts_at', { ascending: true }),
     supabase
       .from('games')
-      .select('id, sport_id, home_team, away_team, home_score, away_score, starts_at, status')
+      .select('id, sport_id, home_team, away_team, home_score, away_score, live_home_score, live_away_score, period, clock, starts_at, status')
       .in('sport_id', sportIds)
       .eq('status', 'upcoming')
       .gte('starts_at', nowIso)
@@ -97,7 +97,7 @@ router.get('/strip', async (req, res) => {
       .order('starts_at', { ascending: true }),
     supabase
       .from('games')
-      .select('id, sport_id, home_team, away_team, home_score, away_score, starts_at, status')
+      .select('id, sport_id, home_team, away_team, home_score, away_score, live_home_score, live_away_score, period, clock, starts_at, status')
       .in('sport_id', sportIds)
       .eq('status', 'final')
       .gte('starts_at', recentCutoff)
@@ -200,14 +200,14 @@ router.get('/nfl-week', async (req, res) => {
   const [liveRes, weekRes] = await Promise.all([
     supabase
       .from('games')
-      .select('id, home_team, away_team, home_score, away_score, starts_at, status')
+      .select('id, home_team, away_team, home_score, away_score, live_home_score, live_away_score, period, clock, starts_at, status')
       .in('sport_id', sportIds)
       .eq('status', 'live')
       .gte('updated_at', liveStaleCutoff)
       .order('starts_at', { ascending: true }),
     supabase
       .from('games')
-      .select('id, home_team, away_team, home_score, away_score, starts_at, status')
+      .select('id, home_team, away_team, home_score, away_score, live_home_score, live_away_score, period, clock, starts_at, status')
       .in('sport_id', sportIds)
       .in('status', ['upcoming', 'final'])
       .gte('starts_at', startUtc)
@@ -255,14 +255,14 @@ router.get('/day', async (req, res) => {
   const [liveRes, dayRes] = await Promise.all([
     supabase
       .from('games')
-      .select('id, home_team, away_team, home_score, away_score, starts_at, status')
+      .select('id, home_team, away_team, home_score, away_score, live_home_score, live_away_score, period, clock, starts_at, status')
       .in('sport_id', sportIds)
       .eq('status', 'live')
       .gte('updated_at', liveStaleCutoff)
       .order('starts_at', { ascending: true }),
     supabase
       .from('games')
-      .select('id, home_team, away_team, home_score, away_score, starts_at, status')
+      .select('id, home_team, away_team, home_score, away_score, live_home_score, live_away_score, period, clock, starts_at, status')
       .in('sport_id', sportIds)
       .in('status', ['upcoming', 'final'])
       .gte('starts_at', startUtc)
@@ -341,7 +341,7 @@ router.get('/finals', async (req, res) => {
 
   const { data: games, error } = await supabase
     .from('games')
-    .select('id, sport_id, home_team, away_team, home_score, away_score, starts_at, status')
+    .select('id, sport_id, home_team, away_team, home_score, away_score, live_home_score, live_away_score, period, clock, starts_at, status')
     .in('sport_id', sportIds)
     .eq('status', 'final')
     .gte('starts_at', startUtc)
@@ -366,6 +366,17 @@ function shape(g, sportFullKey) {
   const awayRec = sportFullKey ? lookupRecord(sportFullKey, g.away_team) : null
   const homeShort = sportFullKey ? lookupShortName(sportFullKey, g.home_team) : null
   const awayShort = sportFullKey ? lookupShortName(sportFullKey, g.away_team) : null
+  // syncLiveScores writes in-progress scores to live_home_score /
+  // live_away_score (a shadow column), and only copies them into
+  // home_score / away_score when the game finalizes. So for live
+  // games, prefer the live_* column; for finals, prefer home_score.
+  const isLive = g.status === 'live'
+  const homeScore = isLive
+    ? (g.live_home_score ?? g.home_score)
+    : (g.home_score ?? g.live_home_score)
+  const awayScore = isLive
+    ? (g.live_away_score ?? g.away_score)
+    : (g.away_score ?? g.live_away_score)
   return {
     id: g.id,
     // Full names retained so the client can fall back if a short
@@ -377,10 +388,12 @@ function shape(g, sportFullKey) {
     // to render on the strip than 'Detroit Lions'.
     home_short: homeShort,
     away_short: awayShort,
-    home_score: g.home_score,
-    away_score: g.away_score,
+    home_score: homeScore,
+    away_score: awayScore,
     starts_at: g.starts_at,
     status: g.status,
+    period: g.period ?? null,
+    clock: g.clock ?? null,
     home_record: homeRec ? formatRecord(homeRec) : null,
     away_record: awayRec ? formatRecord(awayRec) : null,
   }
