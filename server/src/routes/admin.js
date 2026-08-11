@@ -989,7 +989,7 @@ router.post('/futures/create', async (req, res) => {
   const {
     sport_key, title, outcomes,
     resolution_type, stat_category, stat_direction, close_at,
-    team_key, line,
+    team_key, line, player_id,
   } = req.body
   if (!sport_key || !title || !outcomes?.length) {
     return res.status(400).json({ error: 'sport_key, title, and outcomes array required' })
@@ -1008,7 +1008,19 @@ router.post('/futures/create', async (req, res) => {
       return res.status(400).json({ error: 'team_win_total markets need exactly two outcomes named Over and Under' })
     }
   }
+  if (resolution_type === 'player_stat_over_under') {
+    if (!player_id) return res.status(400).json({ error: 'player_id required for player_stat_over_under markets' })
+    if (!stat_category) return res.status(400).json({ error: 'stat_category required for player_stat_over_under markets' })
+    if (line == null || isNaN(Number(line))) return res.status(400).json({ error: 'numeric line required for player_stat_over_under markets' })
+    const names = outcomes.map((o) => o.name)
+    if (!names.includes('Over') || !names.includes('Under')) {
+      return res.status(400).json({ error: 'player_stat_over_under markets need exactly two outcomes named Over and Under' })
+    }
+  }
 
+  const isStatLeader = resolution_type === 'stat_leader'
+  const isTeamWinTotal = resolution_type === 'team_win_total'
+  const isPlayerStatOU = resolution_type === 'player_stat_over_under'
   const { data, error } = await supabase
     .from('futures_markets')
     .insert({
@@ -1019,10 +1031,11 @@ router.post('/futures/create', async (req, res) => {
       outcomes,
       status: 'active',
       resolution_type: resolution_type || 'manual',
-      stat_category: resolution_type === 'stat_leader' ? stat_category : null,
-      stat_direction: resolution_type === 'stat_leader' ? (stat_direction || 'max') : null,
-      team_key: resolution_type === 'team_win_total' ? team_key : null,
-      line: resolution_type === 'team_win_total' ? Number(line) : null,
+      stat_category: (isStatLeader || isPlayerStatOU) ? stat_category : null,
+      stat_direction: isStatLeader ? (stat_direction || 'max') : null,
+      team_key: isTeamWinTotal ? team_key : null,
+      player_id: isPlayerStatOU ? player_id : null,
+      line: (isTeamWinTotal || isPlayerStatOU) ? Number(line) : null,
       close_at: close_at || null,
       updated_at: new Date().toISOString(),
     })
@@ -1038,7 +1051,7 @@ router.post('/futures/create', async (req, res) => {
 router.patch('/futures/markets/:marketId', async (req, res) => {
   const {
     title, outcomes, resolution_type, stat_category, stat_direction, close_at,
-    team_key, line,
+    team_key, line, player_id,
   } = req.body
   const updates = { updated_at: new Date().toISOString() }
   if (title) updates.title = title
@@ -1047,6 +1060,7 @@ router.patch('/futures/markets/:marketId', async (req, res) => {
   if (stat_category !== undefined) updates.stat_category = stat_category
   if (stat_direction !== undefined) updates.stat_direction = stat_direction
   if (team_key !== undefined) updates.team_key = team_key
+  if (player_id !== undefined) updates.player_id = player_id
   if (line !== undefined) updates.line = line == null ? null : Number(line)
   if (close_at !== undefined) updates.close_at = close_at
 
@@ -1101,6 +1115,17 @@ router.post('/futures/markets/:marketId/resolve-team-win-total', async (req, res
   const { resolveTeamWinTotalFuture } = await import('../services/teamWinTotalFuturesService.js')
   try {
     const result = await resolveTeamWinTotalFuture(req.params.marketId)
+    res.json(result)
+  } catch (err) {
+    res.status(400).json({ error: err.message })
+  }
+})
+
+// Manually trigger auto-resolution for a single player-stat-O/U market.
+router.post('/futures/markets/:marketId/resolve-player-stat-over-under', async (req, res) => {
+  const { resolvePlayerStatOverUnderFuture } = await import('../services/playerStatOverUnderFuturesService.js')
+  try {
+    const result = await resolvePlayerStatOverUnderFuture(req.params.marketId)
     res.json(result)
   } catch (err) {
     res.status(400).json({ error: err.message })

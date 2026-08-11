@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { useSyncFutures, useAdminFuturesMarkets, useCloseFuturesMarket, useSettleFuturesMarket, useCreateFuturesMarket, useUpdateFuturesMarket, useResolveStatLeaderFuture, useResolveTeamWinTotalFuture } from '../../hooks/useAdmin'
+import { useSyncFutures, useAdminFuturesMarkets, useCloseFuturesMarket, useSettleFuturesMarket, useCreateFuturesMarket, useUpdateFuturesMarket, useResolveStatLeaderFuture, useResolveTeamWinTotalFuture, useResolvePlayerStatOverUnderFuture } from '../../hooks/useAdmin'
 import { useAppConfig, useUpdateAppConfig } from '../../hooks/useAppConfig'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
@@ -43,9 +43,21 @@ export default function FuturesAdminPanel() {
   const [twtLine, setTwtLine] = useState('')
   const [twtOverOdds, setTwtOverOdds] = useState('-110')
   const [twtUnderOdds, setTwtUnderOdds] = useState('-110')
+  // Player-stat-O/U-only fields. Player is picked via search that
+  // returns { id, full_name, position, team } — same endpoint as the
+  // stat-leader outcome picker.
+  const [psPlayer, setPsPlayer] = useState(null) // { id, full_name, position, team }
+  const [psPlayerQuery, setPsPlayerQuery] = useState('')
+  const [psPlayerResults, setPsPlayerResults] = useState([])
+  const [psPlayerOpen, setPsPlayerOpen] = useState(false)
+  const psPlayerDebounceRef = useRef()
+  const [psLine, setPsLine] = useState('')
+  const [psOverOdds, setPsOverOdds] = useState('-110')
+  const [psUnderOdds, setPsUnderOdds] = useState('-110')
   const isNflSport = newSport === 'americanfootball_nfl'
   const statLeaderMode = autoMode === 'stat_leader'
   const teamWinTotalMode = autoMode === 'team_win_total'
+  const playerStatOUMode = autoMode === 'player_stat_over_under'
 
   // Fetch teams AND players in parallel for autocomplete. Merged so the
   // admin can type either a team name (championship markets) or a player
@@ -130,6 +142,14 @@ export default function FuturesAdminPanel() {
         { name: 'Over', odds: parseInt(twtOverOdds) || -110, line: Number(twtLine) },
         { name: 'Under', odds: parseInt(twtUnderOdds) || -110, line: Number(twtLine) },
       ]
+    } else if (playerStatOUMode) {
+      if (!psPlayer?.id) return toast('Pick a player', 'error')
+      if (!statCategory) return toast('Pick a stat category', 'error')
+      if (!psLine || isNaN(Number(psLine))) return toast('Enter a numeric line', 'error')
+      outcomes = [
+        { name: 'Over', odds: parseInt(psOverOdds) || -110, line: Number(psLine) },
+        { name: 'Under', odds: parseInt(psUnderOdds) || -110, line: Number(psLine) },
+      ]
     } else {
       // Stat-leader outcomes must carry player_id; manual outcomes are
       // freeform text. Odds still apply either way (used for scoring).
@@ -163,6 +183,11 @@ export default function FuturesAdminPanel() {
         payload.team_key = twtTeam
         payload.line = Number(twtLine)
       }
+      if (playerStatOUMode) {
+        payload.player_id = psPlayer.id
+        payload.stat_category = statCategory
+        payload.line = Number(psLine)
+      }
       if (closeAt) payload.close_at = new Date(closeAt).toISOString()
 
       await createMarket.mutateAsync(payload)
@@ -174,6 +199,8 @@ export default function FuturesAdminPanel() {
       setStatCategory('')
       setCloseAt('')
       setTwtTeam(''); setTwtLine(''); setTwtOverOdds('-110'); setTwtUnderOdds('-110')
+      setPsPlayer(null); setPsPlayerQuery(''); setPsPlayerResults([]); setPsLine('')
+      setPsOverOdds('-110'); setPsUnderOdds('-110')
     } catch (err) {
       toast(err.message || 'Failed to create market', 'error')
     }
@@ -198,6 +225,29 @@ export default function FuturesAdminPanel() {
     } catch (err) {
       toast(err.message || 'Resolve failed', 'error')
     }
+  }
+
+  const resolvePlayerStatOU = useResolvePlayerStatOverUnderFuture()
+  async function handleResolvePlayerStatOU(marketId) {
+    if (!confirm('Auto-resolve now using current season stats?')) return
+    try {
+      const result = await resolvePlayerStatOU.mutateAsync(marketId)
+      toast(`Resolved — scored ${result.scored} picks`, 'success')
+    } catch (err) {
+      toast(err.message || 'Resolve failed', 'error')
+    }
+  }
+
+  // Player search for the player-stat-O/U form. Debounced to avoid
+  // hammering the endpoint on every keystroke.
+  function searchPsPlayer(q) {
+    clearTimeout(psPlayerDebounceRef.current)
+    if (!q || q.trim().length < 2) { setPsPlayerResults([]); return }
+    psPlayerDebounceRef.current = setTimeout(() => {
+      api.get(`/admin/futures/nfl-players/search?q=${encodeURIComponent(q.trim())}`)
+        .then((r) => setPsPlayerResults(Array.isArray(r) ? r : []))
+        .catch(() => setPsPlayerResults([]))
+    }, 200)
   }
 
   const grouped = useMemo(() => {
@@ -289,13 +339,14 @@ export default function FuturesAdminPanel() {
           {isNflSport && (
             <div className="bg-bg-secondary/50 border border-border rounded-lg p-3 space-y-2">
               <label className="text-xs text-text-muted">Auto-resolve mode (NFL only)</label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {[
                   { value: 'manual', label: 'Manual' },
                   { value: 'stat_leader', label: 'Player Stat Leader' },
                   { value: 'team_win_total', label: 'Team Win Total' },
+                  { value: 'player_stat_over_under', label: 'Player Stat O/U' },
                 ].map((opt) => (
-                  <label key={opt.value} className={`flex-1 px-2 py-1.5 rounded-lg border text-center text-xs font-semibold cursor-pointer transition-colors ${
+                  <label key={opt.value} className={`flex-1 min-w-[110px] px-2 py-1.5 rounded-lg border text-center text-xs font-semibold cursor-pointer transition-colors ${
                     autoMode === opt.value
                       ? 'border-accent bg-accent/10 text-text-primary'
                       : 'border-border bg-bg-primary text-text-secondary hover:text-text-primary'
@@ -339,6 +390,103 @@ export default function FuturesAdminPanel() {
                     className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary"
                     title="Auto-resolve after this time (leave blank for admin-only)"
                   />
+                </div>
+              )}
+              {playerStatOUMode && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="relative sm:col-span-2">
+                      <input
+                        type="text"
+                        value={psPlayer ? psPlayer.full_name : psPlayerQuery}
+                        onChange={(e) => {
+                          setPsPlayer(null)
+                          setPsPlayerQuery(e.target.value)
+                          searchPsPlayer(e.target.value)
+                          setPsPlayerOpen(true)
+                        }}
+                        onFocus={() => setPsPlayerOpen(true)}
+                        onBlur={() => setTimeout(() => setPsPlayerOpen(false), 150)}
+                        placeholder="Search player…"
+                        className="w-full bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted"
+                      />
+                      {psPlayer && (
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-text-muted pointer-events-none">
+                          {psPlayer.position}{psPlayer.team ? ` · ${psPlayer.team}` : ''}
+                        </span>
+                      )}
+                      {psPlayerOpen && psPlayerResults.length > 0 && (
+                        <div className="absolute z-30 left-0 right-0 top-full mt-1 bg-bg-card border border-border rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                          {psPlayerResults.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                setPsPlayer(p)
+                                setPsPlayerQuery(p.full_name)
+                                setPsPlayerOpen(false)
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-primary hover:bg-accent/10 transition-colors text-left"
+                            >
+                              {p.headshot_url ? (
+                                <img src={p.headshot_url} alt="" width="20" height="20" className="w-5 h-5 rounded-full bg-bg-secondary shrink-0" loading="lazy" />
+                              ) : <span className="w-5 h-5 rounded-full bg-bg-secondary shrink-0" />}
+                              <span className="flex-1 truncate">{p.full_name}</span>
+                              <span className="text-[10px] text-text-muted shrink-0">{p.position}{p.team ? ` · ${p.team}` : ''}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <select
+                      value={statCategory}
+                      onChange={(e) => setStatCategory(e.target.value)}
+                      className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary"
+                    >
+                      <option value="">-- Stat category --</option>
+                      {nflCategories.map((c) => (
+                        <option key={c.slug} value={c.slug}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={psLine}
+                      onChange={(e) => setPsLine(e.target.value)}
+                      placeholder="Line (4250.5)"
+                      className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary"
+                    />
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-text-muted w-14 shrink-0">Over odds</span>
+                      <input
+                        type="number"
+                        value={psOverOdds}
+                        onChange={(e) => setPsOverOdds(e.target.value)}
+                        placeholder="-110"
+                        className="flex-1 bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-text-muted w-14 shrink-0">Under odds</span>
+                      <input
+                        type="number"
+                        value={psUnderOdds}
+                        onChange={(e) => setPsUnderOdds(e.target.value)}
+                        placeholder="-110"
+                        className="flex-1 bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary"
+                      />
+                    </div>
+                    <input
+                      type="datetime-local"
+                      value={closeAt}
+                      onChange={(e) => setCloseAt(e.target.value)}
+                      className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary"
+                      title="Auto-resolve after this time (typically end of NFL Week 18)"
+                    />
+                  </div>
                 </div>
               )}
               {teamWinTotalMode && (
@@ -396,7 +544,7 @@ export default function FuturesAdminPanel() {
               )}
             </div>
           )}
-          <div className={`space-y-1.5 ${teamWinTotalMode ? 'hidden' : ''}`}>
+          <div className={`space-y-1.5 ${teamWinTotalMode || playerStatOUMode ? 'hidden' : ''}`}>
             <label className="text-xs text-text-muted">
               {statLeaderMode ? 'Player candidates (search + odds)' : 'Outcomes (name + American odds)'}
             </label>
@@ -498,6 +646,16 @@ export default function FuturesAdminPanel() {
                             disabled={resolveTeamWinTotal.isPending}
                             className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors disabled:opacity-50"
                             title="Auto-resolve via current season standings"
+                          >
+                            Resolve
+                          </button>
+                        )}
+                        {market.resolution_type === 'player_stat_over_under' && (
+                          <button
+                            onClick={() => handleResolvePlayerStatOU(market.id)}
+                            disabled={resolvePlayerStatOU.isPending}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors disabled:opacity-50"
+                            title="Auto-resolve via current season stats"
                           >
                             Resolve
                           </button>
@@ -623,6 +781,7 @@ function MarketRow({ market, actions, settleUI, editUI }) {
 
   const isStatLeader = market.resolution_type === 'stat_leader'
   const isTeamWinTotal = market.resolution_type === 'team_win_total'
+  const isPlayerStatOU = market.resolution_type === 'player_stat_over_under'
   return (
     <div className="bg-bg-card rounded-xl border border-border p-3">
       <div className="flex items-center justify-between gap-3">
@@ -637,6 +796,11 @@ function MarketRow({ market, actions, settleUI, editUI }) {
             {isTeamWinTotal && (
               <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">
                 AUTO · WIN TOTAL {market.line}
+              </span>
+            )}
+            {isPlayerStatOU && (
+              <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">
+                AUTO · {market.stat_category} O/U {market.line}
               </span>
             )}
           </div>

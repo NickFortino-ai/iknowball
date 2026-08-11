@@ -450,6 +450,18 @@ export function useResolveTeamWinTotalFuture() {
   })
 }
 
+export function useResolvePlayerStatOverUnderFuture() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (marketId) => api.post(`/admin/futures/markets/${marketId}/resolve-player-stat-over-under`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminFuturesMarkets'] })
+      queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] })
+      queryClient.invalidateQueries({ queryKey: ['futuresPicks'] })
+    },
+  })
+}
+
 // Team names for bracket autocomplete
 export function useTeamsForSport(sport) {
   return useQuery({

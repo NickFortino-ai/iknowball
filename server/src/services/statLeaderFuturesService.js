@@ -40,7 +40,7 @@ export function getNflStatCategories() {
 // Returns Map<player_id, number>. Uses supabase's simple select-then-
 // sum-in-JS approach — nfl_player_stats has ~1-2k rows per season
 // per player set which is trivial to sum client-side.
-async function sumSeasonStats(playerIds, season, columns) {
+export async function sumSeasonStats(playerIds, season, columns) {
   if (!playerIds?.length) return new Map()
   const selectCols = ['player_id', ...columns].join(', ')
   const { data, error } = await supabase

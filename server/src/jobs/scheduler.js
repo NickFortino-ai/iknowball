@@ -86,8 +86,14 @@ export function startScheduler() {
       } catch (err) {
         logger.error({ err }, 'Team-win-total futures auto-resolve job failed')
       }
+      try {
+        const { autoResolveDuePlayerStatOverUnderFutures } = await import('../services/playerStatOverUnderFuturesService.js')
+        await autoResolveDuePlayerStatOverUnderFutures()
+      } catch (err) {
+        logger.error({ err }, 'Player-stat-O/U futures auto-resolve job failed')
+      }
     }, { timezone: 'America/New_York' })
-    logger.info('Auto-resolving futures scheduled: nightly 4:30 AM ET (stat-leader + team-win-total)')
+    logger.info('Auto-resolving futures scheduled: nightly 4:30 AM ET (stat-leader + team-win-total + player-stat-O/U)')
   }
 
   if (env.ENABLE_LIVE_SCORES) {
