@@ -58,6 +58,7 @@ const FORMAT_DESCRIPTIONS = {
   ints: 'Pick 3 NFL defenders per week. Most interceptions across the season wins.',
   tackles: 'Pick 3 NFL defenders per week. Most tackles across the season wins.',
   receptions: 'Pick 3 NFL pass catchers per week. Most receptions across the season wins.',
+  td_pass: 'Pick 1 QB per week. Most passing touchdowns across the season wins. You can only pick each QB once.',
   squares: 'Pick a square on the grid. When the score lands on your row + column at the end of any quarter, you win that quarter.',
 }
 
