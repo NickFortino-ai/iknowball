@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useSyncFutures, useAdminFuturesMarkets, useCloseFuturesMarket, useSettleFuturesMarket, useCreateFuturesMarket, useUpdateFuturesMarket, useResolveStatLeaderFuture, useResolveTeamWinTotalFuture } from '../../hooks/useAdmin'
+import { useAppConfig, useUpdateAppConfig } from '../../hooks/useAppConfig'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
 import { formatOdds } from '../../lib/scoring'
@@ -260,6 +261,9 @@ export default function FuturesAdminPanel() {
           {showCreate ? 'Cancel' : '+ Custom Market'}
         </button>
       </div>
+
+      <SportOrderPanel sportTabs={sportTabs.filter((t) => t.key)} />
+
 
       {showCreate && (
         <div className="bg-bg-primary border border-text-primary/20 rounded-xl p-4 mb-4 space-y-3">
@@ -767,6 +771,83 @@ function SettleUI({ market, winnerInput, setWinnerInput, onSettle, onCancel, isP
           Cancel
         </button>
       </div>
+    </div>
+  )
+}
+
+// Reorder futures sport groups on the public futures page. Reads the
+// current order from app_config.futures_sport_order and writes changes
+// through the same key. Uses simple up/down arrows — 9 sports fit
+// vertically, no drag lib needed. Falls back to sportTabs order if the
+// config row is missing (first load after migration seed).
+function SportOrderPanel({ sportTabs }) {
+  const { data: appConfig } = useAppConfig()
+  const updateConfig = useUpdateAppConfig()
+  const [collapsed, setCollapsed] = useState(true)
+
+  const configured = Array.isArray(appConfig?.futures_sport_order)
+    ? appConfig.futures_sport_order
+    : null
+  const allKeys = sportTabs.map((t) => t.key)
+  // Merge: configured order first (only keys we still know), then any
+  // sport not yet in the config appended at the end so nothing goes
+  // missing when the sport list expands.
+  const order = (() => {
+    if (!configured) return allKeys
+    const inConfig = configured.filter((k) => allKeys.includes(k))
+    const rest = allKeys.filter((k) => !inConfig.includes(k))
+    return [...inConfig, ...rest]
+  })()
+  const labelFor = (k) => sportTabs.find((t) => t.key === k)?.label || k
+
+  async function move(i, delta) {
+    const target = i + delta
+    if (target < 0 || target >= order.length) return
+    const next = [...order]
+    const [item] = next.splice(i, 1)
+    next.splice(target, 0, item)
+    try {
+      await updateConfig.mutateAsync({ key: 'futures_sport_order', value: next })
+      toast('Order updated', 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to update order', 'error')
+    }
+  }
+
+  return (
+    <div className="bg-bg-primary border border-text-primary/20 rounded-xl mb-4">
+      <button
+        onClick={() => setCollapsed((c) => !c)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left"
+      >
+        <span className="font-display text-sm text-text-primary">Sport display order</span>
+        <span className="text-xs text-text-muted">{collapsed ? 'Show' : 'Hide'}</span>
+      </button>
+      {!collapsed && (
+        <div className="px-4 pb-4 space-y-1.5">
+          <p className="text-[11px] text-text-muted mb-2">
+            Controls the order of sport groups on the public Futures page. Drag not needed — use the arrows.
+          </p>
+          {order.map((key, i) => (
+            <div key={key} className="flex items-center gap-2 bg-bg-secondary/50 border border-border rounded-lg px-3 py-1.5">
+              <span className="w-6 text-center text-xs text-text-muted tabular-nums shrink-0">{i + 1}</span>
+              <span className="flex-1 text-sm text-text-primary truncate">{labelFor(key)}</span>
+              <button
+                onClick={() => move(i, -1)}
+                disabled={i === 0 || updateConfig.isPending}
+                className="w-7 h-7 flex items-center justify-center rounded-md text-text-secondary hover:bg-bg-card-hover disabled:opacity-30"
+                title="Move up"
+              >&uarr;</button>
+              <button
+                onClick={() => move(i, 1)}
+                disabled={i === order.length - 1 || updateConfig.isPending}
+                className="w-7 h-7 flex items-center justify-center rounded-md text-text-secondary hover:bg-bg-card-hover disabled:opacity-30"
+                title="Move down"
+              >&darr;</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

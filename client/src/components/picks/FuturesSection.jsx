@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useFuturesMarkets, useMyFuturesPicks, useSubmitFuturesPick } from '../../hooks/useFutures'
+import { useAppConfig } from '../../hooks/useAppConfig'
 import FuturesMarketCard from './FuturesMarketCard'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
@@ -25,8 +26,16 @@ function sportLabel(key) {
 export default function FuturesSection() {
   const { data: markets, isLoading } = useFuturesMarkets()
   const { data: myPicks } = useMyFuturesPicks()
+  const { data: appConfig } = useAppConfig()
   const submitPick = useSubmitFuturesPick()
   const [expanded, setExpanded] = useState({})
+
+  // Admin-configurable sport order (via /admin/app-config →
+  // futures_sport_order). Any sport not in the array falls to the end
+  // in SPORT_DISPLAY order so a new sport doesn't disappear.
+  const configuredOrder = Array.isArray(appConfig?.futures_sport_order)
+    ? appConfig.futures_sport_order
+    : null
 
   const picksMap = useMemo(() => {
     if (!myPicks) return {}
@@ -62,12 +71,18 @@ export default function FuturesSection() {
         return (a.title || '').localeCompare(b.title || '')
       })
     }
-    // Sort sports by SPORT_DISPLAY order
-    const order = Object.keys(SPORT_DISPLAY)
-    return Object.entries(map).sort(
-      ([a], [b]) => (order.indexOf(a) === -1 ? 99 : order.indexOf(a)) - (order.indexOf(b) === -1 ? 99 : order.indexOf(b))
-    )
-  }, [markets])
+    // Sort sports by admin-configured order (with SPORT_DISPLAY as the
+    // fallback tail so any sport not in the config still sorts sanely).
+    const primary = configuredOrder || Object.keys(SPORT_DISPLAY)
+    const fallback = Object.keys(SPORT_DISPLAY)
+    const idx = (k) => {
+      const p = primary.indexOf(k)
+      if (p !== -1) return p
+      const f = fallback.indexOf(k)
+      return f !== -1 ? primary.length + f : primary.length + fallback.length
+    }
+    return Object.entries(map).sort(([a], [b]) => idx(a) - idx(b))
+  }, [markets, configuredOrder])
 
   async function handlePick(marketId, outcomeName) {
     if (!confirm(`Lock in "${outcomeName}"? This cannot be changed.`)) return
