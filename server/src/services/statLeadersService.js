@@ -28,6 +28,9 @@ const SPORT_CONFIG = {
       { name: 'rushingYards', label: 'Rush Yds' },
       { name: 'receivingYards', label: 'Rec Yds' },
       { name: 'totalTouchdowns', label: 'TDs' },
+      { name: 'sacks', label: 'Sacks' },
+      { name: 'interceptions', label: 'INTs' },
+      { name: 'totalTackles', label: 'Tackles' },
     ],
   },
   basketball_nba: {
