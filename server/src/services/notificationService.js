@@ -4,7 +4,7 @@ import { sendPushNotification } from './pushService.js'
 import { sendApnsToUser, sendApnsBadgeUpdate } from './apnsService.js'
 import { sendFcmToUser } from './fcmService.js'
 
-const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_result', 'squares_quarter_win', 'record_broken', 'survivor_result', 'survivor_win', 'survivor_pick_reminder', 'roster_reminder', 'league_win', 'league_invitation', 'direct_message', 'league_thread_mention', 'league_report', 'nfl_injury_warning', 'fantasy_trade_proposed', 'fantasy_trade_accepted', 'fantasy_trade_declined', 'fantasy_waiver_awarded', 'fantasy_stat_correction', 'fantasy_draft_starting_soon', 'poll_response_milestone', 'og_welcome', 'bracket_published', 'commissioner_report_reply']
+const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_result', 'squares_quarter_win', 'record_broken', 'survivor_result', 'survivor_win', 'survivor_pick_reminder', 'roster_reminder', 'league_win', 'league_invitation', 'direct_message', 'league_thread_mention', 'league_report', 'nfl_injury_warning', 'fantasy_trade_proposed', 'fantasy_trade_accepted', 'fantasy_trade_declined', 'fantasy_waiver_awarded', 'fantasy_stat_correction', 'fantasy_draft_starting_soon', 'poll_response_milestone', 'og_welcome', 'bracket_published', 'commissioner_report_reply', 'writer_granted']
 
 // Types that respect quiet hours (10 PM – 8 AM PT). The DB row is still
 // written so the user sees the notification in-app when they open the

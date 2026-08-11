@@ -1182,6 +1182,15 @@ router.post('/users/:id/writer', requireFullAdmin, async (req, res) => {
   if (typeof is_writer !== 'boolean') {
     return res.status(400).json({ error: 'is_writer (boolean) required' })
   }
+  // Peek prior state so we only notify on a false → true transition.
+  // Re-granting an already-granted user shouldn't ping them again;
+  // revoking shouldn't ping either.
+  const { data: prior } = await supabase
+    .from('users')
+    .select('is_writer')
+    .eq('id', req.params.id)
+    .single()
+
   const { data, error } = await supabase
     .from('users')
     .update({ is_writer })
@@ -1189,6 +1198,20 @@ router.post('/users/:id/writer', requireFullAdmin, async (req, res) => {
     .select('id, username, is_writer')
     .single()
   if (error) return res.status(500).json({ error: error.message })
+
+  if (is_writer && !prior?.is_writer) {
+    try {
+      const { createNotification } = await import('../services/notificationService.js')
+      await createNotification(
+        req.params.id,
+        'writer_granted',
+        '✏️ You\'ve been granted Writer access — you can now author player blurbs and other editorial content across IKB.',
+        {},
+      )
+    } catch (err) {
+      logger.warn({ err: err.message, userId: req.params.id }, 'writer_granted notification failed')
+    }
+  }
   res.json(data)
 })
 
