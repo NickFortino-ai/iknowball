@@ -107,7 +107,7 @@ export default function SportsScoresStrip() {
     // strip wider than the default container at desktop breakpoints
     // so 4 sport columns get real breathing room instead of getting
     // squeezed into ~half the page width.
-    <section className="mb-10 xl:-mx-24">
+    <section className="mb-10 xl:-mx-24" data-onboarding="scoreboard">
       <h2 className="font-display text-2xl mb-4">Scoreboard</h2>
       <div className={`grid gap-4 ${gridClass}`}>
         {activeSports.map((sport) => (
