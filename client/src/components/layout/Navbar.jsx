@@ -106,6 +106,7 @@ function getNotificationIcon(n) {
     case 'commissioner_report_reply': return '📨' // 📨
     case 'commissioner_lineup_forced': return '🔧' // 🔧
     case 'commissioner_add_drop': return '➕' // ➕
+    case 'writer_granted': return '✏️' // ✏️
     // "You didn't submit a roster in time" removal notifications and other
     // administrative league updates. Falling through to the trophy default
     // was misreading as a win.
