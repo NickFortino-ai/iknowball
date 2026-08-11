@@ -68,10 +68,11 @@ export function startScheduler() {
     })
     logger.info('Futures sync scheduled: every 6 hours')
 
-    // Auto-resolve stat-leader futures whose close_at has passed. Runs
-    // at 4:30 AM ET nightly — after the NFL stat sync loop has stored
-    // the final week's numbers and after the daily record recalc so
-    // the resolved picks feed into fresh standings on next paint.
+    // Auto-resolve stat-leader + team-win-total futures whose close_at
+    // has passed. Runs at 4:30 AM ET nightly — after the NFL stat sync
+    // loop has stored the final week's numbers and after the daily
+    // record recalc so the resolved picks feed into fresh standings
+    // on next paint.
     cron.schedule('30 4 * * *', async () => {
       try {
         const { autoResolveDueStatLeaderFutures } = await import('../services/statLeaderFuturesService.js')
@@ -79,8 +80,14 @@ export function startScheduler() {
       } catch (err) {
         logger.error({ err }, 'Stat-leader futures auto-resolve job failed')
       }
+      try {
+        const { autoResolveDueTeamWinTotalFutures } = await import('../services/teamWinTotalFuturesService.js')
+        await autoResolveDueTeamWinTotalFutures()
+      } catch (err) {
+        logger.error({ err }, 'Team-win-total futures auto-resolve job failed')
+      }
     }, { timezone: 'America/New_York' })
-    logger.info('Stat-leader futures auto-resolve scheduled: nightly 4:30 AM ET')
+    logger.info('Auto-resolving futures scheduled: nightly 4:30 AM ET (stat-leader + team-win-total)')
   }
 
   if (env.ENABLE_LIVE_SCORES) {

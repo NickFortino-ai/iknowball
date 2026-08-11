@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { useSyncFutures, useAdminFuturesMarkets, useCloseFuturesMarket, useSettleFuturesMarket, useCreateFuturesMarket, useUpdateFuturesMarket, useResolveStatLeaderFuture } from '../../hooks/useAdmin'
+import { useSyncFutures, useAdminFuturesMarkets, useCloseFuturesMarket, useSettleFuturesMarket, useCreateFuturesMarket, useUpdateFuturesMarket, useResolveStatLeaderFuture, useResolveTeamWinTotalFuture } from '../../hooks/useAdmin'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
 import { formatOdds } from '../../lib/scoring'
@@ -28,16 +28,23 @@ export default function FuturesAdminPanel() {
   const [teamSuggestions, setTeamSuggestions] = useState([])
   const [focusedOutcome, setFocusedOutcome] = useState(null)
 
-  // Stat-leader auto-resolve state. Only meaningful when newSport is
-  // an NFL key (only sport wired to the resolver in v1). When the
-  // toggle is on, outcomes become player picks (name + player_id +
-  // team + position) instead of freeform text.
-  const [statLeaderMode, setStatLeaderMode] = useState(false)
+  // Auto-resolve mode. 'manual' = current freeform behavior; NFL-only
+  // options: 'stat_leader' (per-player season leader) and 'team_win_total'
+  // (team season wins O/U).
+  const [autoMode, setAutoMode] = useState('manual')
   const [statCategory, setStatCategory] = useState('')
   const [statDirection, setStatDirection] = useState('max')
   const [closeAt, setCloseAt] = useState('')
   const [nflCategories, setNflCategories] = useState([])
+  const [nflTeams, setNflTeams] = useState([])
+  // Team-win-total-only fields.
+  const [twtTeam, setTwtTeam] = useState('')
+  const [twtLine, setTwtLine] = useState('')
+  const [twtOverOdds, setTwtOverOdds] = useState('-110')
+  const [twtUnderOdds, setTwtUnderOdds] = useState('-110')
   const isNflSport = newSport === 'americanfootball_nfl'
+  const statLeaderMode = autoMode === 'stat_leader'
+  const teamWinTotalMode = autoMode === 'team_win_total'
 
   // Fetch teams AND players in parallel for autocomplete. Merged so the
   // admin can type either a team name (championship markets) or a player
@@ -54,20 +61,24 @@ export default function FuturesAdminPanel() {
     })
   }, [newSport, showCreate])
 
-  // Load NFL stat categories once when NFL is selected + create panel
-  // is open. Cheap enough to re-hit but no reason to.
+  // Load NFL stat categories + team list once when NFL is selected +
+  // create panel is open. Cheap enough to re-hit but no reason to.
   useEffect(() => {
     if (!showCreate || !isNflSport) return
-    if (nflCategories.length) return
-    api.get('/admin/futures/stat-categories?sport=nfl').then(setNflCategories).catch(() => {})
-  }, [showCreate, isNflSport, nflCategories.length])
+    if (!nflCategories.length) {
+      api.get('/admin/futures/stat-categories?sport=nfl').then(setNflCategories).catch(() => {})
+    }
+    if (!nflTeams.length) {
+      api.get('/admin/futures/nfl-teams').then(setNflTeams).catch(() => {})
+    }
+  }, [showCreate, isNflSport, nflCategories.length, nflTeams.length])
 
-  // Switching away from NFL forces stat-leader mode off — the resolver
-  // is NFL-only for v1. Handled in the sport select's onChange rather
+  // Switching away from NFL forces auto-modes off — resolvers are
+  // NFL-only for v1. Handled in the sport select's onChange rather
   // than an effect to avoid a cascading render.
   function pickSport(sport) {
     setNewSport(sport)
-    if (sport !== 'americanfootball_nfl') setStatLeaderMode(false)
+    if (sport !== 'americanfootball_nfl') setAutoMode('manual')
   }
 
   const { data: markets, isLoading } = useAdminFuturesMarkets(sportFilter || undefined)
@@ -109,43 +120,59 @@ export default function FuturesAdminPanel() {
   }
 
   async function handleCreate() {
-    // Stat-leader outcomes must carry player_id; manual outcomes are
-    // freeform text. Odds still apply either way (used for scoring).
-    const outcomes = newOutcomes.filter((o) => o.name.trim()).map((o) => {
-      const base = { name: o.name.trim(), odds: parseInt(o.odds) || 100 }
-      if (statLeaderMode && o.player_id) {
-        return { ...base, player_id: o.player_id, position: o.position, team: o.team }
+    let outcomes
+    if (teamWinTotalMode) {
+      // Two auto-generated Over/Under outcomes carrying the line.
+      if (!twtTeam) return toast('Pick a team', 'error')
+      if (!twtLine || isNaN(Number(twtLine))) return toast('Enter a numeric line', 'error')
+      outcomes = [
+        { name: 'Over', odds: parseInt(twtOverOdds) || -110, line: Number(twtLine) },
+        { name: 'Under', odds: parseInt(twtUnderOdds) || -110, line: Number(twtLine) },
+      ]
+    } else {
+      // Stat-leader outcomes must carry player_id; manual outcomes are
+      // freeform text. Odds still apply either way (used for scoring).
+      outcomes = newOutcomes.filter((o) => o.name.trim()).map((o) => {
+        const base = { name: o.name.trim(), odds: parseInt(o.odds) || 100 }
+        if (statLeaderMode && o.player_id) {
+          return { ...base, player_id: o.player_id, position: o.position, team: o.team }
+        }
+        return base
+      })
+      if (outcomes.length < 2) return toast('Need at least 2 outcomes', 'error')
+      if (statLeaderMode) {
+        if (!statCategory) return toast('Pick a stat category', 'error')
+        if (outcomes.some((o) => !o.player_id)) return toast('Every outcome needs a player selected', 'error')
       }
-      return base
-    })
-    if (!newTitle.trim() || outcomes.length < 2) {
-      toast('Need a title and at least 2 outcomes', 'error')
-      return
     }
-    if (statLeaderMode) {
-      if (!statCategory) return toast('Pick a stat category', 'error')
-      if (outcomes.some((o) => !o.player_id)) return toast('Every outcome needs a player selected', 'error')
-    }
+    if (!newTitle.trim()) return toast('Need a title', 'error')
+
     try {
       const payload = {
         sport_key: newSport,
         title: newTitle.trim(),
         outcomes,
-        resolution_type: statLeaderMode ? 'stat_leader' : 'manual',
+        resolution_type: autoMode,
       }
       if (statLeaderMode) {
         payload.stat_category = statCategory
         payload.stat_direction = statDirection
-        if (closeAt) payload.close_at = new Date(closeAt).toISOString()
       }
+      if (teamWinTotalMode) {
+        payload.team_key = twtTeam
+        payload.line = Number(twtLine)
+      }
+      if (closeAt) payload.close_at = new Date(closeAt).toISOString()
+
       await createMarket.mutateAsync(payload)
       toast('Custom market created!', 'success')
       setShowCreate(false)
       setNewTitle('')
       setNewOutcomes([{ name: '', odds: '' }])
-      setStatLeaderMode(false)
+      setAutoMode('manual')
       setStatCategory('')
       setCloseAt('')
+      setTwtTeam(''); setTwtLine(''); setTwtOverOdds('-110'); setTwtUnderOdds('-110')
     } catch (err) {
       toast(err.message || 'Failed to create market', 'error')
     }
@@ -155,6 +182,17 @@ export default function FuturesAdminPanel() {
     if (!confirm('Auto-resolve now using current season stats?')) return
     try {
       const result = await resolveStatLeader.mutateAsync(marketId)
+      toast(`Resolved — scored ${result.scored} picks`, 'success')
+    } catch (err) {
+      toast(err.message || 'Resolve failed', 'error')
+    }
+  }
+
+  const resolveTeamWinTotal = useResolveTeamWinTotalFuture()
+  async function handleResolveTeamWinTotal(marketId) {
+    if (!confirm('Auto-resolve now using current season standings?')) return
+    try {
+      const result = await resolveTeamWinTotal.mutateAsync(marketId)
       toast(`Resolved — scored ${result.scored} picks`, 'success')
     } catch (err) {
       toast(err.message || 'Resolve failed', 'error')
@@ -246,14 +284,30 @@ export default function FuturesAdminPanel() {
           </div>
           {isNflSport && (
             <div className="bg-bg-secondary/50 border border-border rounded-lg p-3 space-y-2">
-              <label className="flex items-center gap-2 text-xs text-text-primary cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={statLeaderMode}
-                  onChange={(e) => setStatLeaderMode(e.target.checked)}
-                />
-                Auto-resolve via stat leader (NFL only)
-              </label>
+              <label className="text-xs text-text-muted">Auto-resolve mode (NFL only)</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'manual', label: 'Manual' },
+                  { value: 'stat_leader', label: 'Player Stat Leader' },
+                  { value: 'team_win_total', label: 'Team Win Total' },
+                ].map((opt) => (
+                  <label key={opt.value} className={`flex-1 px-2 py-1.5 rounded-lg border text-center text-xs font-semibold cursor-pointer transition-colors ${
+                    autoMode === opt.value
+                      ? 'border-accent bg-accent/10 text-text-primary'
+                      : 'border-border bg-bg-primary text-text-secondary hover:text-text-primary'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="autoMode"
+                      value={opt.value}
+                      checked={autoMode === opt.value}
+                      onChange={() => setAutoMode(opt.value)}
+                      className="hidden"
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
               {statLeaderMode && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <select
@@ -283,9 +337,62 @@ export default function FuturesAdminPanel() {
                   />
                 </div>
               )}
+              {teamWinTotalMode && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <select
+                      value={twtTeam}
+                      onChange={(e) => setTwtTeam(e.target.value)}
+                      className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary sm:col-span-2"
+                    >
+                      <option value="">-- Team --</option>
+                      {nflTeams.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={twtLine}
+                      onChange={(e) => setTwtLine(e.target.value)}
+                      placeholder="Line (10.5)"
+                      className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary"
+                    />
+                    <input
+                      type="datetime-local"
+                      value={closeAt}
+                      onChange={(e) => setCloseAt(e.target.value)}
+                      className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary"
+                      title="Auto-resolve after this time (typically end of NFL Week 18)"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-text-muted w-14 shrink-0">Over odds</span>
+                      <input
+                        type="number"
+                        value={twtOverOdds}
+                        onChange={(e) => setTwtOverOdds(e.target.value)}
+                        placeholder="-110"
+                        className="flex-1 bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-text-muted w-14 shrink-0">Under odds</span>
+                      <input
+                        type="number"
+                        value={twtUnderOdds}
+                        onChange={(e) => setTwtUnderOdds(e.target.value)}
+                        placeholder="-110"
+                        className="flex-1 bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
-          <div className="space-y-1.5">
+          <div className={`space-y-1.5 ${teamWinTotalMode ? 'hidden' : ''}`}>
             <label className="text-xs text-text-muted">
               {statLeaderMode ? 'Player candidates (search + odds)' : 'Outcomes (name + American odds)'}
             </label>
@@ -377,6 +484,16 @@ export default function FuturesAdminPanel() {
                             disabled={resolveStatLeader.isPending}
                             className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors disabled:opacity-50"
                             title="Auto-resolve via current season stats"
+                          >
+                            Resolve
+                          </button>
+                        )}
+                        {market.resolution_type === 'team_win_total' && (
+                          <button
+                            onClick={() => handleResolveTeamWinTotal(market.id)}
+                            disabled={resolveTeamWinTotal.isPending}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors disabled:opacity-50"
+                            title="Auto-resolve via current season standings"
                           >
                             Resolve
                           </button>
@@ -501,6 +618,7 @@ function MarketRow({ market, actions, settleUI, editUI }) {
     : 'Never'
 
   const isStatLeader = market.resolution_type === 'stat_leader'
+  const isTeamWinTotal = market.resolution_type === 'team_win_total'
   return (
     <div className="bg-bg-card rounded-xl border border-border p-3">
       <div className="flex items-center justify-between gap-3">
@@ -510,6 +628,11 @@ function MarketRow({ market, actions, settleUI, editUI }) {
             {isStatLeader && (
               <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">
                 AUTO · {market.stat_category}
+              </span>
+            )}
+            {isTeamWinTotal && (
+              <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">
+                AUTO · WIN TOTAL {market.line}
               </span>
             )}
           </div>

@@ -438,6 +438,18 @@ export function useResolveStatLeaderFuture() {
   })
 }
 
+export function useResolveTeamWinTotalFuture() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (marketId) => api.post(`/admin/futures/markets/${marketId}/resolve-team-win-total`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminFuturesMarkets'] })
+      queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] })
+      queryClient.invalidateQueries({ queryKey: ['futuresPicks'] })
+    },
+  })
+}
+
 // Team names for bracket autocomplete
 export function useTeamsForSport(sport) {
   return useQuery({

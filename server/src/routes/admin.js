@@ -986,7 +986,11 @@ router.post('/bracket-templates/:id/championship-score', async (req, res) => {
 // 'stat_leader', outcomes should carry player_id per row so the
 // resolver can look up season totals.
 router.post('/futures/create', async (req, res) => {
-  const { sport_key, title, outcomes, resolution_type, stat_category, stat_direction, close_at } = req.body
+  const {
+    sport_key, title, outcomes,
+    resolution_type, stat_category, stat_direction, close_at,
+    team_key, line,
+  } = req.body
   if (!sport_key || !title || !outcomes?.length) {
     return res.status(400).json({ error: 'sport_key, title, and outcomes array required' })
   }
@@ -994,6 +998,14 @@ router.post('/futures/create', async (req, res) => {
     if (!stat_category) return res.status(400).json({ error: 'stat_category required for stat_leader markets' })
     if (outcomes.some((o) => !o.player_id)) {
       return res.status(400).json({ error: 'every outcome needs a player_id for stat_leader markets' })
+    }
+  }
+  if (resolution_type === 'team_win_total') {
+    if (!team_key) return res.status(400).json({ error: 'team_key required for team_win_total markets' })
+    if (line == null || isNaN(Number(line))) return res.status(400).json({ error: 'numeric line required for team_win_total markets' })
+    const names = outcomes.map((o) => o.name)
+    if (!names.includes('Over') || !names.includes('Under')) {
+      return res.status(400).json({ error: 'team_win_total markets need exactly two outcomes named Over and Under' })
     }
   }
 
@@ -1009,6 +1021,8 @@ router.post('/futures/create', async (req, res) => {
       resolution_type: resolution_type || 'manual',
       stat_category: resolution_type === 'stat_leader' ? stat_category : null,
       stat_direction: resolution_type === 'stat_leader' ? (stat_direction || 'max') : null,
+      team_key: resolution_type === 'team_win_total' ? team_key : null,
+      line: resolution_type === 'team_win_total' ? Number(line) : null,
       close_at: close_at || null,
       updated_at: new Date().toISOString(),
     })
@@ -1022,13 +1036,18 @@ router.post('/futures/create', async (req, res) => {
 // Update outcomes/odds on an existing futures market. Stat-leader
 // fields can also be edited here.
 router.patch('/futures/markets/:marketId', async (req, res) => {
-  const { title, outcomes, resolution_type, stat_category, stat_direction, close_at } = req.body
+  const {
+    title, outcomes, resolution_type, stat_category, stat_direction, close_at,
+    team_key, line,
+  } = req.body
   const updates = { updated_at: new Date().toISOString() }
   if (title) updates.title = title
   if (outcomes) updates.outcomes = outcomes
   if (resolution_type) updates.resolution_type = resolution_type
   if (stat_category !== undefined) updates.stat_category = stat_category
   if (stat_direction !== undefined) updates.stat_direction = stat_direction
+  if (team_key !== undefined) updates.team_key = team_key
+  if (line !== undefined) updates.line = line == null ? null : Number(line)
   if (close_at !== undefined) updates.close_at = close_at
 
   const { data, error } = await supabase
@@ -1068,6 +1087,24 @@ router.get('/futures/nfl-players/search', async (req, res) => {
     .limit(20)
   if (error) return res.status(500).json({ error: error.message })
   res.json(data || [])
+})
+
+// NFL team names for the team-win-total admin dropdown. Full names
+// so they match the standings cache lookup.
+router.get('/futures/nfl-teams', async (req, res) => {
+  const { NFL_TEAMS } = await import('../services/teamWinTotalFuturesService.js')
+  res.json(NFL_TEAMS)
+})
+
+// Manually trigger auto-resolution for a single team-win-total market.
+router.post('/futures/markets/:marketId/resolve-team-win-total', async (req, res) => {
+  const { resolveTeamWinTotalFuture } = await import('../services/teamWinTotalFuturesService.js')
+  try {
+    const result = await resolveTeamWinTotalFuture(req.params.marketId)
+    res.json(result)
+  } catch (err) {
+    res.status(400).json({ error: err.message })
+  }
 })
 
 // Manually trigger auto-resolution for a single stat-leader market.
