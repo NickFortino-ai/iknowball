@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { useSyncFutures, useAdminFuturesMarkets, useCloseFuturesMarket, useSettleFuturesMarket, useCreateFuturesMarket, useUpdateFuturesMarket } from '../../hooks/useAdmin'
+import { useSyncFutures, useAdminFuturesMarkets, useCloseFuturesMarket, useSettleFuturesMarket, useCreateFuturesMarket, useUpdateFuturesMarket, useResolveStatLeaderFuture } from '../../hooks/useAdmin'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
 import { formatOdds } from '../../lib/scoring'
@@ -28,6 +28,17 @@ export default function FuturesAdminPanel() {
   const [teamSuggestions, setTeamSuggestions] = useState([])
   const [focusedOutcome, setFocusedOutcome] = useState(null)
 
+  // Stat-leader auto-resolve state. Only meaningful when newSport is
+  // an NFL key (only sport wired to the resolver in v1). When the
+  // toggle is on, outcomes become player picks (name + player_id +
+  // team + position) instead of freeform text.
+  const [statLeaderMode, setStatLeaderMode] = useState(false)
+  const [statCategory, setStatCategory] = useState('')
+  const [statDirection, setStatDirection] = useState('max')
+  const [closeAt, setCloseAt] = useState('')
+  const [nflCategories, setNflCategories] = useState([])
+  const isNflSport = newSport === 'americanfootball_nfl'
+
   // Fetch teams AND players in parallel for autocomplete. Merged so the
   // admin can type either a team name (championship markets) or a player
   // name (MVP / award markets) and get matching suggestions.
@@ -43,12 +54,29 @@ export default function FuturesAdminPanel() {
     })
   }, [newSport, showCreate])
 
+  // Load NFL stat categories once when NFL is selected + create panel
+  // is open. Cheap enough to re-hit but no reason to.
+  useEffect(() => {
+    if (!showCreate || !isNflSport) return
+    if (nflCategories.length) return
+    api.get('/admin/futures/stat-categories?sport=nfl').then(setNflCategories).catch(() => {})
+  }, [showCreate, isNflSport, nflCategories.length])
+
+  // Switching away from NFL forces stat-leader mode off — the resolver
+  // is NFL-only for v1. Handled in the sport select's onChange rather
+  // than an effect to avoid a cascading render.
+  function pickSport(sport) {
+    setNewSport(sport)
+    if (sport !== 'americanfootball_nfl') setStatLeaderMode(false)
+  }
+
   const { data: markets, isLoading } = useAdminFuturesMarkets(sportFilter || undefined)
   const syncFutures = useSyncFutures()
   const closeMarket = useCloseFuturesMarket()
   const settleMarket = useSettleFuturesMarket()
   const createMarket = useCreateFuturesMarket()
   const updateMarket = useUpdateFuturesMarket()
+  const resolveStatLeader = useResolveStatLeaderFuture()
 
   // Inline edit state — the row being edited and a draft of its outcomes/title.
   const [editingId, setEditingId] = useState(null)
@@ -81,22 +109,55 @@ export default function FuturesAdminPanel() {
   }
 
   async function handleCreate() {
-    const outcomes = newOutcomes.filter((o) => o.name.trim()).map((o) => ({
-      name: o.name.trim(),
-      odds: parseInt(o.odds) || 100,
-    }))
+    // Stat-leader outcomes must carry player_id; manual outcomes are
+    // freeform text. Odds still apply either way (used for scoring).
+    const outcomes = newOutcomes.filter((o) => o.name.trim()).map((o) => {
+      const base = { name: o.name.trim(), odds: parseInt(o.odds) || 100 }
+      if (statLeaderMode && o.player_id) {
+        return { ...base, player_id: o.player_id, position: o.position, team: o.team }
+      }
+      return base
+    })
     if (!newTitle.trim() || outcomes.length < 2) {
       toast('Need a title and at least 2 outcomes', 'error')
       return
     }
+    if (statLeaderMode) {
+      if (!statCategory) return toast('Pick a stat category', 'error')
+      if (outcomes.some((o) => !o.player_id)) return toast('Every outcome needs a player selected', 'error')
+    }
     try {
-      await createMarket.mutateAsync({ sport_key: newSport, title: newTitle.trim(), outcomes })
+      const payload = {
+        sport_key: newSport,
+        title: newTitle.trim(),
+        outcomes,
+        resolution_type: statLeaderMode ? 'stat_leader' : 'manual',
+      }
+      if (statLeaderMode) {
+        payload.stat_category = statCategory
+        payload.stat_direction = statDirection
+        if (closeAt) payload.close_at = new Date(closeAt).toISOString()
+      }
+      await createMarket.mutateAsync(payload)
       toast('Custom market created!', 'success')
       setShowCreate(false)
       setNewTitle('')
       setNewOutcomes([{ name: '', odds: '' }])
+      setStatLeaderMode(false)
+      setStatCategory('')
+      setCloseAt('')
     } catch (err) {
       toast(err.message || 'Failed to create market', 'error')
+    }
+  }
+
+  async function handleResolveStatLeader(marketId) {
+    if (!confirm('Auto-resolve now using current season stats?')) return
+    try {
+      const result = await resolveStatLeader.mutateAsync(marketId)
+      toast(`Resolved — scored ${result.scored} picks`, 'success')
+    } catch (err) {
+      toast(err.message || 'Resolve failed', 'error')
     }
   }
 
@@ -168,7 +229,7 @@ export default function FuturesAdminPanel() {
           <div className="flex gap-2">
             <select
               value={newSport}
-              onChange={(e) => setNewSport(e.target.value)}
+              onChange={(e) => pickSport(e.target.value)}
               className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
             >
               {sportTabs.filter((t) => t.key).map((t) => (
@@ -183,69 +244,83 @@ export default function FuturesAdminPanel() {
               className="flex-1 bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted"
             />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-xs text-text-muted">Outcomes (name + American odds)</label>
-            {newOutcomes.map((o, i) => {
-              const query = o.name.toLowerCase()
-              const filtered = focusedOutcome === i && query.length >= 1
-                ? teamSuggestions.filter((t) => t.toLowerCase().includes(query)).slice(0, 8)
-                : []
-              return (
-              <div key={i} className="flex gap-2">
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    value={o.name}
-                    onChange={(e) => {
-                      const updated = [...newOutcomes]
-                      updated[i].name = e.target.value
-                      setNewOutcomes(updated)
-                    }}
-                    onFocus={() => setFocusedOutcome(i)}
-                    onBlur={() => setTimeout(() => setFocusedOutcome(null), 150)}
-                    placeholder="Team or player name"
-                    className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted"
-                  />
-                  {filtered.length > 0 && (
-                    <div className="absolute z-30 left-0 right-0 top-full mt-1 bg-bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                      {filtered.map((team) => (
-                        <button
-                          key={team}
-                          type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => {
-                            const updated = [...newOutcomes]
-                            updated[i].name = team
-                            setNewOutcomes(updated)
-                            setFocusedOutcome(null)
-                          }}
-                          className="w-full text-left px-3 py-2 text-sm text-text-primary hover:bg-accent/10 transition-colors"
-                        >
-                          {team}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+          {isNflSport && (
+            <div className="bg-bg-secondary/50 border border-border rounded-lg p-3 space-y-2">
+              <label className="flex items-center gap-2 text-xs text-text-primary cursor-pointer">
                 <input
-                  type="number"
-                  value={o.odds}
-                  onChange={(e) => {
+                  type="checkbox"
+                  checked={statLeaderMode}
+                  onChange={(e) => setStatLeaderMode(e.target.checked)}
+                />
+                Auto-resolve via stat leader (NFL only)
+              </label>
+              {statLeaderMode && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <select
+                    value={statCategory}
+                    onChange={(e) => setStatCategory(e.target.value)}
+                    className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary"
+                  >
+                    <option value="">-- Stat category --</option>
+                    {nflCategories.map((c) => (
+                      <option key={c.slug} value={c.slug}>{c.label}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={statDirection}
+                    onChange={(e) => setStatDirection(e.target.value)}
+                    className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary"
+                  >
+                    <option value="max">Most (leader wins)</option>
+                    <option value="min">Fewest (min wins)</option>
+                  </select>
+                  <input
+                    type="datetime-local"
+                    value={closeAt}
+                    onChange={(e) => setCloseAt(e.target.value)}
+                    className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary"
+                    title="Auto-resolve after this time (leave blank for admin-only)"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <label className="text-xs text-text-muted">
+              {statLeaderMode ? 'Player candidates (search + odds)' : 'Outcomes (name + American odds)'}
+            </label>
+            {newOutcomes.map((o, i) => (
+              statLeaderMode ? (
+                <StatLeaderOutcomeRow
+                  key={i}
+                  outcome={o}
+                  canRemove={newOutcomes.length > 1}
+                  onChange={(next) => {
                     const updated = [...newOutcomes]
-                    updated[i].odds = e.target.value
+                    updated[i] = next
                     setNewOutcomes(updated)
                   }}
-                  placeholder="+150"
-                  className="w-24 bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted"
+                  onRemove={() => setNewOutcomes(newOutcomes.filter((_, j) => j !== i))}
                 />
-                {newOutcomes.length > 1 && (
-                  <button
-                    onClick={() => setNewOutcomes(newOutcomes.filter((_, j) => j !== i))}
-                    className="text-text-muted hover:text-incorrect text-lg"
-                  >&times;</button>
-                )}
-              </div>)
-            })}
+              ) : (
+                <ManualOutcomeRow
+                  key={i}
+                  outcome={o}
+                  index={i}
+                  focused={focusedOutcome === i}
+                  suggestions={teamSuggestions}
+                  canRemove={newOutcomes.length > 1}
+                  onFocus={() => setFocusedOutcome(i)}
+                  onBlur={() => setTimeout(() => setFocusedOutcome(null), 150)}
+                  onChange={(next) => {
+                    const updated = [...newOutcomes]
+                    updated[i] = next
+                    setNewOutcomes(updated)
+                  }}
+                  onRemove={() => setNewOutcomes(newOutcomes.filter((_, j) => j !== i))}
+                />
+              )
+            ))}
             <button
               onClick={() => setNewOutcomes([...newOutcomes, { name: '', odds: '' }])}
               className="text-xs text-accent hover:text-accent-hover"
@@ -296,6 +371,16 @@ export default function FuturesAdminPanel() {
                     market={market}
                     actions={
                       <div className="flex gap-2">
+                        {market.resolution_type === 'stat_leader' && (
+                          <button
+                            onClick={() => handleResolveStatLeader(market.id)}
+                            disabled={resolveStatLeader.isPending}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors disabled:opacity-50"
+                            title="Auto-resolve via current season stats"
+                          >
+                            Resolve
+                          </button>
+                        )}
                         <button
                           onClick={() => startEdit(market)}
                           className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 transition-colors"
@@ -415,11 +500,19 @@ function MarketRow({ market, actions, settleUI, editUI }) {
     ? new Date(market.last_synced_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
     : 'Never'
 
+  const isStatLeader = market.resolution_type === 'stat_leader'
   return (
     <div className="bg-bg-card rounded-xl border border-border p-3">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-sm font-semibold truncate">{market.title}</div>
+          <div className="text-sm font-semibold truncate flex items-center gap-2">
+            {market.title}
+            {isStatLeader && (
+              <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">
+                AUTO · {market.stat_category}
+              </span>
+            )}
+          </div>
           <div className="text-xs text-text-muted">
             {market.sport_key} &middot; {outcomes.length} outcomes &middot; Synced: {synced}
           </div>
@@ -551,6 +644,142 @@ function SettleUI({ market, winnerInput, setWinnerInput, onSettle, onCancel, isP
           Cancel
         </button>
       </div>
+    </div>
+  )
+}
+
+// Extracted from the create form. Handles the freeform name + autocomplete
+// from teamSuggestions for non-stat-leader markets.
+function ManualOutcomeRow({ outcome, focused, suggestions, canRemove, onFocus, onBlur, onChange, onRemove }) {
+  const query = (outcome.name || '').toLowerCase()
+  const filtered = focused && query.length >= 1
+    ? suggestions.filter((t) => t.toLowerCase().includes(query)).slice(0, 8)
+    : []
+  return (
+    <div className="flex gap-2">
+      <div className="flex-1 relative">
+        <input
+          type="text"
+          value={outcome.name}
+          onChange={(e) => onChange({ ...outcome, name: e.target.value })}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          placeholder="Team or player name"
+          className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted"
+        />
+        {filtered.length > 0 && (
+          <div className="absolute z-30 left-0 right-0 top-full mt-1 bg-bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            {filtered.map((team) => (
+              <button
+                key={team}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => onChange({ ...outcome, name: team })}
+                className="w-full text-left px-3 py-2 text-sm text-text-primary hover:bg-accent/10 transition-colors"
+              >
+                {team}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <input
+        type="number"
+        value={outcome.odds}
+        onChange={(e) => onChange({ ...outcome, odds: e.target.value })}
+        placeholder="+150"
+        className="w-24 bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted"
+      />
+      {canRemove && (
+        <button onClick={onRemove} className="text-text-muted hover:text-incorrect text-lg">&times;</button>
+      )}
+    </div>
+  )
+}
+
+// Stat-leader outcome: search NFL players by name, pick one to lock
+// in a player_id on the outcome so the resolver can look up season
+// stats. Shows position + team as a chip once selected.
+function StatLeaderOutcomeRow({ outcome, canRemove, onChange, onRemove }) {
+  const [results, setResults] = useState([])
+  const [open, setOpen] = useState(false)
+  const debounceRef = useRef()
+
+  function search(q) {
+    clearTimeout(debounceRef.current)
+    if (!q || q.trim().length < 2) { setResults([]); return }
+    debounceRef.current = setTimeout(() => {
+      api.get(`/admin/futures/nfl-players/search?q=${encodeURIComponent(q.trim())}`)
+        .then((r) => setResults(Array.isArray(r) ? r : []))
+        .catch(() => setResults([]))
+    }, 200)
+  }
+
+  function pickPlayer(p) {
+    onChange({
+      ...outcome,
+      name: p.full_name,
+      player_id: p.id,
+      position: p.position,
+      team: p.team,
+    })
+    setOpen(false)
+  }
+
+  return (
+    <div className="flex gap-2">
+      <div className="flex-1 relative">
+        <input
+          type="text"
+          value={outcome.name || ''}
+          onChange={(e) => {
+            const val = e.target.value
+            // Editing after a pick clears the player_id so we can't
+            // submit an outcome with a name that no longer matches.
+            onChange({ ...outcome, name: val, player_id: undefined, position: undefined, team: undefined })
+            search(val)
+            setOpen(true)
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="Search player…"
+          className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted"
+        />
+        {outcome.player_id && (
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-text-muted pointer-events-none">
+            {outcome.position || ''}{outcome.team ? ` · ${outcome.team}` : ''}
+          </span>
+        )}
+        {open && results.length > 0 && (
+          <div className="absolute z-30 left-0 right-0 top-full mt-1 bg-bg-card border border-border rounded-lg shadow-lg max-h-56 overflow-y-auto">
+            {results.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => pickPlayer(p)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-primary hover:bg-accent/10 transition-colors text-left"
+              >
+                {p.headshot_url ? (
+                  <img src={p.headshot_url} alt="" width="20" height="20" className="w-5 h-5 rounded-full bg-bg-secondary shrink-0" loading="lazy" />
+                ) : <span className="w-5 h-5 rounded-full bg-bg-secondary shrink-0" />}
+                <span className="flex-1 truncate">{p.full_name}</span>
+                <span className="text-[10px] text-text-muted shrink-0">{p.position}{p.team ? ` · ${p.team}` : ''}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <input
+        type="number"
+        value={outcome.odds}
+        onChange={(e) => onChange({ ...outcome, odds: e.target.value })}
+        placeholder="+150"
+        className="w-24 bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted"
+      />
+      {canRemove && (
+        <button onClick={onRemove} className="text-text-muted hover:text-incorrect text-lg">&times;</button>
+      )}
     </div>
   )
 }

@@ -416,11 +416,24 @@ export function useCreateFuturesMarket() {
 export function useUpdateFuturesMarket() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ marketId, title, outcomes }) =>
-      api.patch(`/admin/futures/markets/${marketId}`, { title, outcomes }),
+    mutationFn: ({ marketId, ...rest }) =>
+      api.patch(`/admin/futures/markets/${marketId}`, rest),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminFuturesMarkets'] })
       queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] })
+    },
+  })
+}
+
+// Trigger stat-leader auto-resolution for a single market.
+export function useResolveStatLeaderFuture() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (marketId) => api.post(`/admin/futures/markets/${marketId}/resolve-stat-leader`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminFuturesMarkets'] })
+      queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] })
+      queryClient.invalidateQueries({ queryKey: ['futuresPicks'] })
     },
   })
 }

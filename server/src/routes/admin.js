@@ -980,11 +980,21 @@ router.post('/bracket-templates/:id/championship-score', async (req, res) => {
 // Futures
 // ============================================
 
-// Create a custom futures market (conference, division, MVP, etc.)
+// Create a custom futures market (conference, division, MVP, stat
+// leader, etc.). Optional stat-leader fields: resolution_type,
+// stat_category, stat_direction, close_at. When resolution_type is
+// 'stat_leader', outcomes should carry player_id per row so the
+// resolver can look up season totals.
 router.post('/futures/create', async (req, res) => {
-  const { sport_key, title, outcomes } = req.body
+  const { sport_key, title, outcomes, resolution_type, stat_category, stat_direction, close_at } = req.body
   if (!sport_key || !title || !outcomes?.length) {
     return res.status(400).json({ error: 'sport_key, title, and outcomes array required' })
+  }
+  if (resolution_type === 'stat_leader') {
+    if (!stat_category) return res.status(400).json({ error: 'stat_category required for stat_leader markets' })
+    if (outcomes.some((o) => !o.player_id)) {
+      return res.status(400).json({ error: 'every outcome needs a player_id for stat_leader markets' })
+    }
   }
 
   const { data, error } = await supabase
@@ -996,6 +1006,10 @@ router.post('/futures/create', async (req, res) => {
       title,
       outcomes,
       status: 'active',
+      resolution_type: resolution_type || 'manual',
+      stat_category: resolution_type === 'stat_leader' ? stat_category : null,
+      stat_direction: resolution_type === 'stat_leader' ? (stat_direction || 'max') : null,
+      close_at: close_at || null,
       updated_at: new Date().toISOString(),
     })
     .select()
@@ -1005,12 +1019,17 @@ router.post('/futures/create', async (req, res) => {
   res.status(201).json(data)
 })
 
-// Update outcomes/odds on an existing futures market
+// Update outcomes/odds on an existing futures market. Stat-leader
+// fields can also be edited here.
 router.patch('/futures/markets/:marketId', async (req, res) => {
-  const { title, outcomes } = req.body
+  const { title, outcomes, resolution_type, stat_category, stat_direction, close_at } = req.body
   const updates = { updated_at: new Date().toISOString() }
   if (title) updates.title = title
   if (outcomes) updates.outcomes = outcomes
+  if (resolution_type) updates.resolution_type = resolution_type
+  if (stat_category !== undefined) updates.stat_category = stat_category
+  if (stat_direction !== undefined) updates.stat_direction = stat_direction
+  if (close_at !== undefined) updates.close_at = close_at
 
   const { data, error } = await supabase
     .from('futures_markets')
@@ -1021,6 +1040,47 @@ router.patch('/futures/markets/:marketId', async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
+})
+
+// List the stat categories a stat-leader NFL future can resolve
+// against. Powers the admin UI's category dropdown.
+router.get('/futures/stat-categories', async (req, res) => {
+  const { getNflStatCategories } = await import('../services/statLeaderFuturesService.js')
+  const sport = String(req.query.sport || 'nfl').toLowerCase()
+  if (sport === 'nfl' || sport === 'americanfootball_nfl') {
+    return res.json(getNflStatCategories())
+  }
+  res.json([])
+})
+
+// Search NFL players by name for the stat-leader outcome picker.
+// Returns id + name + position + team so the admin can disambiguate
+// duplicate names (e.g. two Josh Allens).
+router.get('/futures/nfl-players/search', async (req, res) => {
+  const q = String(req.query.q || '').trim()
+  if (q.length < 2) return res.json([])
+  const { data, error } = await supabase
+    .from('nfl_players')
+    .select('id, full_name, position, team, headshot_url')
+    .ilike('full_name', `%${q}%`)
+    .in('position', ['QB', 'RB', 'WR', 'TE'])
+    .order('search_rank', { ascending: true, nullsFirst: false })
+    .limit(20)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data || [])
+})
+
+// Manually trigger auto-resolution for a single stat-leader market.
+// Convenience for admin; the daily cron would pick it up anyway if
+// close_at is in the past.
+router.post('/futures/markets/:marketId/resolve-stat-leader', async (req, res) => {
+  const { resolveStatLeaderFuture } = await import('../services/statLeaderFuturesService.js')
+  try {
+    const result = await resolveStatLeaderFuture(req.params.marketId)
+    res.json(result)
+  } catch (err) {
+    res.status(400).json({ error: err.message })
+  }
 })
 
 router.post('/futures/sync', async (req, res) => {
