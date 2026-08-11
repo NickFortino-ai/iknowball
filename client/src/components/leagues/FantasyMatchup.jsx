@@ -544,14 +544,17 @@ export default function FantasyMatchup({ league, fantasySettings }) {
   const [expandedMatchups, setExpandedMatchups] = useState(new Set())
   const [detailPlayerId, setDetailPlayerId] = useState(null)
   const { data: blurbIdsList } = useBlurbPlayerIds(league.id)
-  const blurbIds = useMemo(() => new Set(blurbIdsList || []), [blurbIdsList])
+  const blurbIds = useMemo(
+    () => new Map((blurbIdsList || []).map((r) => [r.player_id, r.latest_id])),
+    [blurbIdsList],
+  )
   const { starterSet, slotLabels } = useMemo(
     () => buildSlotMeta(fantasySettings?.roster_slots),
     [fantasySettings?.roster_slots]
   )
 
   function openPlayerDetail(id) {
-    if (id) markBlurbSeen(id)
+    if (id) markBlurbSeen(id, blurbIds.get(id))
     setDetailPlayerId(id)
   }
   const isCurrent = viewWeek === currentWeek

@@ -102,10 +102,13 @@ export default function FantasyPlayerBrowser({ league }) {
   const [bidAmount, setBidAmount] = useState(0)
   const [detailPlayerId, setDetailPlayerId] = useState(null)
   const { data: blurbIdsList } = useBlurbPlayerIds(league.id)
-  const blurbIds = useMemo(() => new Set(blurbIdsList || []), [blurbIdsList])
+  const blurbIds = useMemo(
+    () => new Map((blurbIdsList || []).map((r) => [r.player_id, r.latest_id])),
+    [blurbIdsList],
+  )
 
   function openPlayerDetail(id) {
-    if (id) markBlurbSeen(id)
+    if (id) markBlurbSeen(id, blurbIds.get(id))
     setDetailPlayerId(id)
   }
 

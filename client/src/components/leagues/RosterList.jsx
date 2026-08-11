@@ -73,7 +73,10 @@ export default function RosterList({ league, userId }) {
   const [detailPlayerId, setDetailPlayerId] = useState(null)
   const [tradePlayerId, setTradePlayerId] = useState(null)
   const { data: blurbIdsList } = useBlurbPlayerIds(leagueId)
-  const blurbIds = useMemo(() => new Set(blurbIdsList || []), [blurbIdsList])
+  const blurbIds = useMemo(
+    () => new Map((blurbIdsList || []).map((r) => [r.player_id, r.latest_id])),
+    [blurbIdsList],
+  )
   const isMe = userId === profile?.id
 
   const { keys: starterKeys, labels: starterLabels } = useMemo(
@@ -84,7 +87,7 @@ export default function RosterList({ league, userId }) {
   const SLOT_LABELS = useMemo(() => ({ ...starterLabels, bench: 'BN', ir: 'IR' }), [starterLabels])
 
   function openPlayerDetail(id) {
-    if (id) markBlurbSeen(id)
+    if (id) markBlurbSeen(id, blurbIds.get(id))
     setDetailPlayerId(id)
   }
 

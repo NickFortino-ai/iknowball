@@ -307,7 +307,10 @@ export default function FantasyMyTeam({ league }) {
   const setWeeklyLineup = useSetFantasyWeeklyLineup(league.id)
   const { data: trades } = useFantasyTrades(league.id)
   const { data: blurbIdsList } = useBlurbPlayerIds(league.id)
-  const blurbIds = useMemo(() => new Set(blurbIdsList || []), [blurbIdsList])
+  const blurbIds = useMemo(
+    () => new Map((blurbIdsList || []).map((r) => [r.player_id, r.latest_id])),
+    [blurbIdsList],
+  )
   const respond = useRespondToTrade(league.id)
   const setLineup = useSetFantasyLineup(league.id)
   const dropPlayer = useDropRosterPlayer(league.id)
@@ -384,7 +387,7 @@ export default function FantasyMyTeam({ league }) {
   const displayRoster = applyWeekOverlay(baseDisplayRoster)
 
   function openPlayerDetail(playerId) {
-    if (playerId) markBlurbSeen(playerId)
+    if (playerId) markBlurbSeen(playerId, blurbIds.get(playerId))
     setDetailPlayerId(playerId)
   }
 

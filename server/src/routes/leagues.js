@@ -1682,18 +1682,26 @@ router.get('/:id/fantasy/players', requireAuth, async (req, res) => {
   res.json(data)
 })
 
-// Get player IDs that have published blurbs (lightweight check for indicators).
+// Player IDs that have published blurbs + the id of each player's
+// LATEST published blurb. The client uses latest_id as the "seen"
+// key so a newly published blurb re-triggers the unread indicator
+// even if the user already opened the player's prior blurb.
 // fetchAll: published-blurb count grows past 1000 over a season, and
 // truncation silently hides the blurb indicator on late players.
 router.get('/:id/fantasy/blurb-ids', requireAuth, async (req, res) => {
   const data = await fetchAll(
     supabase
       .from('player_blurbs')
-      .select('player_id')
+      .select('id, player_id, created_at')
       .eq('status', 'published')
-      .order('player_id')
+      .order('created_at', { ascending: false })
   )
-  res.json(data.map((r) => r.player_id))
+  // First occurrence per player wins (rows are already newest-first).
+  const seen = new Map()
+  for (const r of data) {
+    if (!seen.has(r.player_id)) seen.set(r.player_id, r.id)
+  }
+  res.json([...seen.entries()].map(([player_id, latest_id]) => ({ player_id, latest_id })))
 })
 
 // Set fantasy team name
