@@ -300,16 +300,27 @@ function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome }) {
         ? 'border-correct/60 bg-correct/5'
         : 'border-incorrect/60 bg-incorrect/5')
     : 'border-text-primary/10 bg-bg-primary/20'
+  // Live game clock / inning label — Sleeper/ESPN-style "Bot 7th" for
+  // MLB, "Q3 · 4:32" for football/basketball. Data comes from ESPN
+  // via syncLiveScores (period + clock columns on games).
+  const liveLabel = isLive ? formatLiveLabel(game.period, game.clock) : null
   return (
     <div className={`rounded-lg border backdrop-blur-md px-4 py-2.5 ${outlineClass}`}>
-      {/* MLB R/H/E header — only shown when linescore data is present.
-          Fixed column widths so 2-digit H (12) doesn't push E out of
-          alignment. Matches TeamRow's R/H/E cell widths below. */}
-      {game.linescore && (
-        <div className="flex justify-end gap-1 mb-1">
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted w-6 text-center">R</span>
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted w-6 text-center">H</span>
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted w-6 text-center">E</span>
+      {/* Live-state header (Bot 7th / Q3 · 4:32) OR MLB R/H/E header.
+          Both live in the same top row: state on the left, R/H/E on
+          the right, so a live MLB game shows "Bot 7th" + R H E. */}
+      {(liveLabel || game.linescore) && (
+        <div className="flex items-center justify-between gap-2 mb-1">
+          {liveLabel ? (
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-red-400">{liveLabel}</span>
+          ) : <span />}
+          {game.linescore && (
+            <div className="flex gap-1">
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted w-6 text-center">R</span>
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted w-6 text-center">H</span>
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted w-6 text-center">E</span>
+            </div>
+          )}
         </div>
       )}
       <div className="flex items-center gap-3">
@@ -391,6 +402,21 @@ function TeamRow({ team, logoLookupTeam, record, score, hits, errors, sportFullK
       ) : null}
     </div>
   )
+}
+
+// Format the live-game state label. MLB's period from ESPN is already
+// a friendly string ("Top 5th" / "Bot 7th" / "Mid 3rd"), so we pass
+// it through. For football / basketball, period is a quarter number
+// and clock is a display clock like "4:32" — join as "Q3 · 4:32".
+function formatLiveLabel(period, clock) {
+  if (!period) return clock || null
+  const p = String(period)
+  // MLB style — already contains letters (Top/Bot/Mid) so hand it back verbatim.
+  if (/[a-zA-Z]/.test(p)) return p.toUpperCase()
+  const num = parseInt(p, 10)
+  if (isNaN(num)) return clock ? `${p} · ${clock}` : p
+  const quarter = `Q${num}`
+  return clock ? `${quarter} · ${clock}` : quarter
 }
 
 function TimeBox({ startsAt }) {
