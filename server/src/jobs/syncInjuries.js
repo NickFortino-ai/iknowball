@@ -50,8 +50,12 @@ async function fetchWnbaInjuriesByTeamId() {
 }
 
 // WNBA starters: depth charts are empty, so derive the starting 5 from
-// the team's most recent completed game's box score (athletes with
-// starter: true).
+// the team's recent completed game box scores (athletes with
+// starter: true). Walks the last few games newest → oldest so a
+// player who rested / missed the most recent game (e.g. A'ja Wilson
+// on a DNP) still shows up if she started earlier. Positions are
+// pulled from whichever game the player first appears as a starter.
+const WNBA_GAMES_TO_SCAN = 5
 async function fetchWnbaTeamStarters(espnTeamId) {
   try {
     const scheduleUrl = `https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/teams/${espnTeamId}/schedule`
@@ -62,31 +66,39 @@ async function fetchWnbaTeamStarters(espnTeamId) {
     const completed = (schedule.events || [])
       .filter((ev) => ev.competitions?.[0]?.status?.type?.completed)
       .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, WNBA_GAMES_TO_SCAN)
     if (!completed.length) return []
 
-    const lastGameId = completed[0].id
-    const summaryRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/summary?event=${lastGameId}`)
-    if (!summaryRes.ok) return []
-    const summary = await summaryRes.json()
+    const byName = new Map() // name → starter object, first-seen wins
+    for (const game of completed) {
+      if (byName.size >= 5) break
+      let summary
+      try {
+        const summaryRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/summary?event=${game.id}`)
+        if (!summaryRes.ok) continue
+        summary = await summaryRes.json()
+      } catch { continue }
 
-    const teamEntry = (summary.boxscore?.players || []).find((t) => String(t.team?.id) === String(espnTeamId))
-    if (!teamEntry) return []
+      const teamEntry = (summary.boxscore?.players || []).find((t) => String(t.team?.id) === String(espnTeamId))
+      if (!teamEntry) continue
 
-    const starters = []
-    for (const statGroup of teamEntry.statistics || []) {
-      for (const a of statGroup.athletes || []) {
-        if (!a.starter || !a.athlete?.displayName) continue
-        starters.push({
-          position: a.athlete?.position?.abbreviation?.toUpperCase() || '',
-          name: a.athlete.displayName,
-          shortName: a.athlete.shortName,
-          depth: [{ name: a.athlete.displayName, shortName: a.athlete.shortName }],
-        })
-        if (starters.length === 5) break
+      for (const statGroup of teamEntry.statistics || []) {
+        for (const a of statGroup.athletes || []) {
+          if (!a.starter || !a.athlete?.displayName) continue
+          const name = a.athlete.displayName
+          if (byName.has(name)) continue
+          byName.set(name, {
+            position: a.athlete?.position?.abbreviation?.toUpperCase() || '',
+            name,
+            shortName: a.athlete.shortName,
+            depth: [{ name, shortName: a.athlete.shortName }],
+          })
+          if (byName.size >= 5) break
+        }
+        if (byName.size >= 5) break
       }
-      if (starters.length === 5) break
     }
-    return starters
+    return [...byName.values()].slice(0, 5)
   } catch {
     return []
   }
