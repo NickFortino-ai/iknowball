@@ -29,6 +29,15 @@ const SPORT_KEY_TO_STANDINGS = {
   // resolver.
 }
 
+// Minimum games each team plays in a full regular season. Guards
+// against the resolver firing mid-season and marking every 'Over'
+// pick as an early loss just because the team has W+L+T < line.
+const MIN_GAMES_BY_SPORT = {
+  americanfootball_nfl: 17,
+  // basketball_nba: 82, baseball_mlb: 162, basketball_wnba: 44 — add as
+  // those sports' resolvers come online.
+}
+
 export async function resolveTeamWinTotalFuture(marketId) {
   const { data: market, error } = await supabase
     .from('futures_markets')
@@ -53,6 +62,20 @@ export async function resolveTeamWinTotalFuture(marketId) {
   if (!rec) throw new Error(`No standings record for team '${market.team_key}' in ${standingsKey}`)
 
   const wins = Number(rec.w) || 0
+  const losses = Number(rec.l) || 0
+  const ties = Number(rec.t) || 0
+  const gamesPlayed = wins + losses + ties
+  const minGames = MIN_GAMES_BY_SPORT[market.sport_key]
+
+  // Bail out if the team hasn't finished its regular season. Without
+  // this, an admin setting close_at to end-of-Week-1 would settle
+  // every 'Over N' pick as a loss the moment the team is 1-0.
+  if (minGames && gamesPlayed < minGames) {
+    throw new Error(
+      `${market.team_key} has played ${gamesPlayed}/${minGames} games — refusing to resolve win total until the regular season is complete`,
+    )
+  }
+
   const line = Number(market.line)
   let winner
   if (wins > line) winner = 'Over'
