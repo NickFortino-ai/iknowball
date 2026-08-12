@@ -43,15 +43,17 @@ export default function SportBackdrop({ sportKey }) {
   const url = `/backdrops/props/${filename}`
   return (
     <>
+      {/* Mobile: bg-contain so the whole image fits inside the tall
+          portrait viewport (no aggressive crop) — dark background
+          + scrim fills the empty top/bottom bands, which reads as
+          a hero letterbox rather than empty space. Desktop: bg-cover
+          since wide viewports don't crop the image awkwardly. */}
       <div
         aria-hidden
-        className="fixed inset-0 z-0 pointer-events-none bg-center bg-cover"
+        className="fixed inset-0 z-0 pointer-events-none bg-center bg-no-repeat bg-contain sm:bg-cover bg-black"
         style={{
           backgroundImage: `url(${url})`,
-          // Subtle blur so the image reads as ambience, not focus.
-          filter: 'blur(2px) saturate(0.85)',
-          // Scale up slightly to hide blur edges at the viewport rim.
-          transform: 'scale(1.05)',
+          filter: 'blur(1px) saturate(0.85)',
         }}
       />
       {/* Scrim for readability. Slightly stronger at the bottom so
