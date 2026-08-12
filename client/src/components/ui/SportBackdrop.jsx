@@ -49,13 +49,20 @@ export default function SportBackdrop({ sportKey }) {
           portrait viewport (no aggressive crop) — dark background
           + scrim fills the empty top/bottom bands, which reads as
           a hero letterbox rather than empty space. Desktop: bg-cover
-          since wide viewports don't crop the image awkwardly. */}
+          since wide viewports don't crop the image awkwardly.
+          The mask-image gradient fades the div (and therefore the
+          background image's bottom edge) into transparency so the
+          letterbox transition on mobile isn't a stark cut. On
+          desktop bg-cover fills to the viewport edge and the scrim
+          takes over readability from there. */}
       <div
         aria-hidden
         className="fixed inset-0 z-0 pointer-events-none bg-center bg-no-repeat bg-contain sm:bg-cover bg-black"
         style={{
           backgroundImage: `url(${url})`,
           filter: 'blur(1px) saturate(0.85)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 92%)',
+          maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 92%)',
         }}
       />
       {/* Scrim for readability. Slightly stronger at the bottom so
