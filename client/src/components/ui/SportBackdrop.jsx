@@ -61,8 +61,8 @@ export default function SportBackdrop({ sportKey }) {
         style={{
           backgroundImage: `url(${url})`,
           filter: 'blur(1px) saturate(0.85)',
-          WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 92%)',
-          maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 92%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%)',
+          maskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%)',
         }}
       />
       {/* Scrim for readability. Slightly stronger at the bottom so
