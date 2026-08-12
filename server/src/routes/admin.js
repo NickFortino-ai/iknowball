@@ -1267,7 +1267,7 @@ router.post('/users/:id/writer', requireFullAdmin, async (req, res) => {
       await createNotification(
         req.params.id,
         'writer_granted',
-        '✏️ You\'ve been granted Writer access — you can now author player blurbs and other editorial content across IKB.',
+        'You\'ve been granted Writer access — you can now author player blurbs and other editorial content across IKB.',
         {},
       )
     } catch (err) {
