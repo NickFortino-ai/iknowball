@@ -306,6 +306,10 @@ function getNotificationRoute(notification) {
     case 'league_at_risk':
       // Commissioner → open the league so they can edit start date / visibility
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
+    case 'writer_granted':
+      // Newly-minted writer → drop them into the writer tools so they
+      // can start authoring player blurbs immediately.
+      return '/writer'
     case 'league_canceled_solo':
       // League is deleted — land on the home page so they can create another
       return '/'

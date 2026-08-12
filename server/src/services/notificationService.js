@@ -103,6 +103,9 @@ export async function createNotification(userId, type, message, metadata = {}) {
         // the Commish tab (fantasy) or settings modal report view (others).
         : (type === 'commissioner_report_reply' && metadata.leagueId)
           ? `/leagues/${metadata.leagueId}?openReport=1`
+        // Newly-minted writers land on the writer tools so they can start
+        // authoring blurbs immediately.
+        : type === 'writer_granted' ? '/writer'
         : metadata.leagueId ? `/leagues/${metadata.leagueId}` : '/results'
         // Fan out to all three transports. Web push → desktop PWA and
         // Safari users, APNs → native iOS app, FCM → native Android app.
