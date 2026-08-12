@@ -1,11 +1,14 @@
 // Fixed-position, sport-specific hero backdrop for the Picks and
-// Results pages. Reuses the same /backdrops/props/{sport}.{ext}
-// images that power the props tile grid so a single asset set drives
-// both surfaces.
+// Results pages. Prefers a vertically-composed image at
+// /backdrops/hero/{sport}.{ext} (better for tall portrait viewports),
+// falling back to the props-tile image at /backdrops/props/{sport}.{ext}
+// so nothing goes empty while we're still adding hero art.
 //
 // Layered:
-//   1) The image itself, cover-fitted, fixed, blurred slightly for
-//      a hero-vibe rather than a distracting focus.
+//   1) The image itself, contain-fitted on mobile / cover-fitted on
+//      desktop, fixed, blurred slightly for a hero vibe rather than
+//      a distracting focus. Mask-image fades top and bottom edges to
+//      transparent so the mobile letterbox blends smoothly.
 //   2) A dark bottom-to-top gradient scrim so page content stays
 //      readable regardless of the image's palette.
 //
@@ -42,24 +45,30 @@ export default function SportBackdrop({ sportKey }) {
   const short = FULL_KEY_TO_SHORT[sportKey] || sportKey
   const filename = BACKDROP_FILENAME[short]
   if (!filename) return null
-  const url = `/backdrops/props/${filename}`
+  const heroUrl = `/backdrops/hero/${filename}`
+  const propsUrl = `/backdrops/props/${filename}`
   return (
     <>
-      {/* Mobile: bg-contain so the whole image fits inside the tall
-          portrait viewport (no aggressive crop) — dark background
-          + scrim fills the empty top/bottom bands, which reads as
-          a hero letterbox rather than empty space. Desktop: bg-cover
-          since wide viewports don't crop the image awkwardly.
-          The mask-image gradient fades the div (and therefore the
-          background image's bottom edge) into transparency so the
-          letterbox transition on mobile isn't a stark cut. On
-          desktop bg-cover fills to the viewport edge and the scrim
-          takes over readability from there. */}
-      <div
+      {/* Mobile: object-contain so the whole image fits inside the
+          tall portrait viewport (no aggressive crop). Desktop:
+          object-cover since wide viewports don't crop awkwardly.
+          The mask-image gradient softens the top+bottom edges so
+          the mobile letterbox blends smoothly instead of a stark
+          cut. onError falls back from /hero/ to /props/ so as long
+          as one exists, the backdrop renders. */}
+      <img
+        src={heroUrl}
+        alt=""
         aria-hidden
-        className="fixed inset-0 z-0 pointer-events-none bg-center bg-no-repeat bg-contain sm:bg-cover bg-black"
+        onError={(e) => {
+          if (e.currentTarget.src !== window.location.origin + propsUrl && !e.currentTarget.src.endsWith(propsUrl)) {
+            e.currentTarget.src = propsUrl
+          } else {
+            e.currentTarget.style.display = 'none'
+          }
+        }}
+        className="fixed inset-0 z-0 pointer-events-none w-full h-full object-center object-contain sm:object-cover bg-black"
         style={{
-          backgroundImage: `url(${url})`,
           filter: 'blur(1px) saturate(0.85)',
           WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%)',
           maskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%)',
