@@ -23,6 +23,7 @@ const FULL_KEY_TO_SHORT = {
   americanfootball_nfl_preseason: 'nfl',
   americanfootball_ncaaf: 'ncaaf',
   basketball_ncaab: 'ncaab',
+  soccer_usa_mls: 'mls',
 }
 
 // Same file extensions as PropsSection's SPORTS list.
@@ -33,6 +34,7 @@ const BACKDROP_FILENAME = {
   nfl: 'nfl.jpg',
   ncaaf: 'ncaaf.jpg',
   ncaab: 'ncaab.webp',
+  mls: 'mls.jpg',
 }
 
 export default function SportBackdrop({ sportKey }) {

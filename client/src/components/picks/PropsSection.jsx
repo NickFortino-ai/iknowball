@@ -25,7 +25,7 @@ const SPORT_TILES = [
   { key: 'wncaab', label: 'WNCAAB', backdrop: null },
   { key: 'nhl',    label: 'NHL',    backdrop: null },
   { key: 'ufl',    label: 'UFL',    backdrop: null },
-  { key: 'mls',    label: 'MLS',    backdrop: null },
+  { key: 'mls',    label: 'MLS',    backdrop: 'mls.jpg' },
   { key: 'wc',     label: 'WC',     backdrop: null },
 ]
 
