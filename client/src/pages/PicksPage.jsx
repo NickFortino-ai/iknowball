@@ -16,6 +16,7 @@ import GameIntelModal from '../components/picks/GameIntelModal'
 import GameDetailModal from '../components/picks/GameDetailModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
+import SportBackdrop from '../components/ui/SportBackdrop'
 import { toast } from '../components/ui/Toast'
 import InfoTooltip from '../components/ui/InfoTooltip'
 import { triggerHaptic } from '../lib/haptics'
@@ -233,7 +234,9 @@ export default function PicksPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 pb-32">
+    <>
+      <SportBackdrop sportKey={sportKey} />
+      <div className="relative z-10 max-w-2xl mx-auto px-4 py-6 pb-32">
       <h1 className="font-display text-3xl mb-6">
         Make Your Picks
         <InfoTooltip text="Risk → Reward: You risk the red number on every pick. If you're right, you win the green number. If you're wrong, you lose the red number. Higher odds = higher reward but less likely to hit. Example: -10 → +19 means you risk 10 points to win 19 points." />
@@ -401,6 +404,7 @@ export default function PicksPage() {
 
       <GameIntelModal gameId={injuryGameId} onClose={() => setInjuryGameId(null)} />
       <GameDetailModal gameId={detailGameId} onClose={() => setDetailGameId(null)} />
-    </div>
+      </div>
+    </>
   )
 }
