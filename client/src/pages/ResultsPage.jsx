@@ -12,7 +12,6 @@ import PropCard from '../components/picks/PropCard'
 import FuturesPickCard from '../components/picks/FuturesPickCard'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
-import SportBackdrop from '../components/ui/SportBackdrop'
 import PickDetailModal from '../components/social/PickDetailModal'
 
 function getParlayGameDate(parlay) {
@@ -184,18 +183,8 @@ export default function ResultsPage() {
 
   if (isLoading || parlaysLoading || propsLoading || futuresLoading) return <LoadingSpinner />
 
-  // Results is cross-sport, so seed the backdrop from the most recent
-  // pick's sport — makes the hero feel tied to what the user was just
-  // doing. Falls back to NBA if there's no history yet.
-  const heroSportKey = picks?.[0]?.games?.sports?.key
-    || parlays?.[0]?.parlay_legs?.[0]?.games?.sports?.key
-    || propPicks?.[0]?.player_props?.games?.sports?.key
-    || 'basketball_nba'
-
   return (
-    <>
-      <SportBackdrop sportKey={heroSportKey} />
-      <div className="relative z-10 max-w-2xl mx-auto px-4 py-6">
+    <div className="max-w-2xl mx-auto px-4 py-6">
       <h1 className="font-display text-3xl mb-6">Results</h1>
 
       {weeklyStats && (
@@ -399,7 +388,6 @@ export default function ResultsPage() {
         </>
       )}
       <PickDetailModal pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />
-      </div>
-    </>
+    </div>
   )
 }
