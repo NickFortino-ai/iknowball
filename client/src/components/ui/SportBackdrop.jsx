@@ -74,13 +74,17 @@ export default function SportBackdrop({ sportKey }) {
           maskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%)',
         }}
       />
-      {/* Scrim for readability. Slightly stronger at the bottom so
-          the pinned parlay slip / navbar area stays legible. */}
+      {/* Scrim: dark at both top and bottom, softer in the middle
+          where the image sits. This intentionally obscures the
+          letterbox transition on mobile (where object-contain leaves
+          black bands top+bottom) so the image bleeds into darkness
+          instead of showing a stark cut. Bottom is slightly darker
+          than top so the parlay slip / navbar area stays legible. */}
       <div
         aria-hidden
         className="fixed inset-0 z-0 pointer-events-none"
         style={{
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.75) 60%, rgba(0,0,0,0.9) 100%)',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.55) 25%, rgba(0,0,0,0.55) 65%, rgba(0,0,0,0.95) 100%)',
         }}
       />
     </>
