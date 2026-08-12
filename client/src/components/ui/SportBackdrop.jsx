@@ -1,23 +1,20 @@
 // Fixed-position, sport-specific hero backdrop for the Picks and
-// Results pages. Prefers a vertically-composed image at
-// /backdrops/hero/{sport}.{ext} (better for tall portrait viewports),
-// falling back to the props-tile image at /backdrops/props/{sport}.{ext}
-// so nothing goes empty while we're still adding hero art.
+// Results pages. Reuses the /backdrops/props/ image library.
 //
-// Layered:
-//   1) The image itself, contain-fitted on mobile / cover-fitted on
-//      desktop, fixed, blurred slightly for a hero vibe rather than
-//      a distracting focus. Mask-image fades top and bottom edges to
-//      transparent so the mobile letterbox blends smoothly.
-//   2) A dark bottom-to-top gradient scrim so page content stays
-//      readable regardless of the image's palette.
+// Two modes per sport:
+//   heroFit=true  — vertical composition, fills the mobile viewport
+//                   edge-to-edge (object-cover on all sizes). No
+//                   letterbox to hide, so the scrim is a normal
+//                   bottom-heavier gradient.
+//   heroFit=false — horizontal props-tile image. On mobile we use
+//                   object-contain so the ball isn't cropped, and
+//                   the scrim goes dark at BOTH edges to hide the
+//                   letterbox transition. Desktop uses object-cover
+//                   since wide viewports don't crop awkwardly.
 //
-// Sits behind page content via z-index; page content itself is
-// unchanged. Renders nothing if the sport has no backdrop art yet.
+// Sits behind page content via z-index. Renders nothing if the
+// sport has no backdrop art.
 
-// Maps the odds-API full sport key (basketball_nba) to the short
-// key used in the props backdrop filenames (nba). Keys not in this
-// map render no backdrop — falls through to the app's default bg.
 const FULL_KEY_TO_SHORT = {
   basketball_nba: 'nba',
   basketball_wnba: 'wnba',
@@ -29,63 +26,59 @@ const FULL_KEY_TO_SHORT = {
   soccer_usa_mls: 'mls',
 }
 
-// Same file extensions as PropsSection's SPORTS list.
-const BACKDROP_FILENAME = {
-  nba: 'nba.webp',
-  wnba: 'wnba.jpg',
-  mlb: 'mlb.jpg',
-  nfl: 'nfl.jpg',
-  ncaaf: 'ncaaf.jpg',
-  ncaab: 'ncaab.webp',
-  mls: 'mls.jpg',
+// Per-sport backdrop config. heroFit flips mobile fit + scrim style
+// based on whether the image is vertically composed for full-screen
+// fill. Add heroFit:true as you swap in vertical versions per sport.
+const BACKDROPS = {
+  nba:   { url: '/backdrops/props/nba.webp',           heroFit: false },
+  wnba:  { url: '/backdrops/props/wnba.jpg',           heroFit: false },
+  mlb:   { url: '/backdrops/props/mlb.jpg',            heroFit: false },
+  nfl:   { url: '/backdrops/props/nfl%20football.webp', heroFit: true },
+  ncaaf: { url: '/backdrops/props/ncaaf.jpg',          heroFit: false },
+  ncaab: { url: '/backdrops/props/ncaab.webp',         heroFit: false },
+  mls:   { url: '/backdrops/props/mls.jpg',            heroFit: false },
 }
 
+// Symmetric dark-at-edges scrim: used for letterboxed (contain)
+// backdrops to hide the top+bottom letterbox transition regardless
+// of where the image edges fall for a given aspect ratio.
+const SCRIM_LETTERBOX = 'linear-gradient(to bottom, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.55) 25%, rgba(0,0,0,0.55) 65%, rgba(0,0,0,0.95) 100%)'
+// Bottom-heavier scrim: used for hero-fit backdrops where the image
+// fills the viewport. Keeps the parlay slip / navbar area readable
+// without over-darkening the top of the image.
+const SCRIM_HERO = 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.9) 100%)'
+
 export default function SportBackdrop({ sportKey }) {
-  // Accept either short ('nba') or full ('basketball_nba') keys.
   const short = FULL_KEY_TO_SHORT[sportKey] || sportKey
-  const filename = BACKDROP_FILENAME[short]
-  if (!filename) return null
-  const heroUrl = `/backdrops/hero/${filename}`
-  const propsUrl = `/backdrops/props/${filename}`
+  const cfg = BACKDROPS[short]
+  if (!cfg) return null
+
+  const fitClass = cfg.heroFit
+    ? 'object-cover'
+    : 'object-contain sm:object-cover'
+  const scrim = cfg.heroFit ? SCRIM_HERO : SCRIM_LETTERBOX
+
   return (
     <>
-      {/* Mobile: object-contain so the whole image fits inside the
-          tall portrait viewport (no aggressive crop). Desktop:
-          object-cover since wide viewports don't crop awkwardly.
-          The mask-image gradient softens the top+bottom edges so
-          the mobile letterbox blends smoothly instead of a stark
-          cut. onError falls back from /hero/ to /props/ so as long
-          as one exists, the backdrop renders. */}
       <img
-        src={heroUrl}
+        src={cfg.url}
         alt=""
         aria-hidden
-        onError={(e) => {
-          if (e.currentTarget.src !== window.location.origin + propsUrl && !e.currentTarget.src.endsWith(propsUrl)) {
-            e.currentTarget.src = propsUrl
-          } else {
-            e.currentTarget.style.display = 'none'
-          }
-        }}
-        className="fixed inset-0 z-0 pointer-events-none w-full h-full object-center object-contain sm:object-cover bg-black"
+        onError={(e) => { e.currentTarget.style.display = 'none' }}
+        className={`fixed inset-0 z-0 pointer-events-none w-full h-full object-center ${fitClass} bg-black`}
         style={{
           filter: 'blur(1px) saturate(0.85)',
-          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%)',
-          maskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%)',
+          // Softens the image's top+bottom edges so hero-fit backdrops
+          // (which reach viewport edges) don't butt against the header
+          // or bottom nav in a hard line.
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
+          maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
         }}
       />
-      {/* Scrim: dark at both top and bottom, softer in the middle
-          where the image sits. This intentionally obscures the
-          letterbox transition on mobile (where object-contain leaves
-          black bands top+bottom) so the image bleeds into darkness
-          instead of showing a stark cut. Bottom is slightly darker
-          than top so the parlay slip / navbar area stays legible. */}
       <div
         aria-hidden
         className="fixed inset-0 z-0 pointer-events-none"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.55) 25%, rgba(0,0,0,0.55) 65%, rgba(0,0,0,0.95) 100%)',
-        }}
+        style={{ background: scrim }}
       />
     </>
   )
