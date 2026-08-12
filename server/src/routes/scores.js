@@ -136,7 +136,9 @@ router.get('/strip', async (req, res) => {
     if (s && out[s].recent.length < RECENT_LIMIT) out[s].recent.push(attach(s, g))
   }
 
-  // MLB linescores for final games in the recent bucket
+  // MLB linescores for both live + final buckets. Live cache is
+  // short-TTL inside the service so in-progress hits/errors stay fresh.
+  await attachMlbLinescores(out.mlb.live, 'baseball_mlb')
   await attachMlbLinescores(out.mlb.recent, 'baseball_mlb')
 
   // Short cache header — clients also poll but this dampens repeat
@@ -404,19 +406,20 @@ function formatRecord(r) {
   return `${r.w}-${r.l}`
 }
 
-// For MLB finals, look up R/H/E from cached ESPN scoreboard data
+// For MLB games, look up R/H/E from cached ESPN scoreboard data
 // (see mlbLinescoresService). One ESPN call per unique date; each
 // game's row gets a { home, away } { r, h, e } block attached.
-// Skips non-MLB and non-final games silently.
+// Applies to both live and final games — the linescore service
+// short-TTLs today's cache so live hits/errors stay fresh.
 async function attachMlbLinescores(games, sportFullKey) {
   if (sportFullKey !== 'baseball_mlb') return
   const dates = new Set()
   for (const g of games) {
-    if (g.status === 'final') dates.add(toSportsDay(g.starts_at))
+    if (g.status === 'final' || g.status === 'live') dates.add(toSportsDay(g.starts_at))
   }
   await Promise.all([...dates].map((d) => warmMlbLinescores(d)))
   for (const g of games) {
-    if (g.status !== 'final') continue
+    if (g.status !== 'final' && g.status !== 'live') continue
     const d = toSportsDay(g.starts_at)
     const ls = await getMlbLinescoreForGame(d, g.away_team, g.home_team)
     if (ls) g.linescore = ls

@@ -11,8 +11,18 @@
 import { logger } from '../utils/logger.js'
 import { stripAccents } from '../utils/name.js'
 
-const CACHE_TTL_MS = 12 * 60 * 60 * 1000
+// Past dates never change → cache all day. Today's date can have
+// live games whose R/H/E ticks every batter, so cap at 30s so the
+// scoreboard reflects hits/errors near-real-time. Strip endpoint's
+// own 15s HTTP cache dampens the ESPN hit rate on top of this.
+const CACHE_TTL_PAST_MS = 12 * 60 * 60 * 1000
+const CACHE_TTL_TODAY_MS = 30 * 1000
 const cache = new Map() // dateStr → { byMatchup: Map, expiresAt }
+
+function ttlFor(dateStr) {
+  const todayPt = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+  return dateStr === todayPt ? CACHE_TTL_TODAY_MS : CACHE_TTL_PAST_MS
+}
 
 function normalize(name) {
   return stripAccents(name || '').toLowerCase().trim()
@@ -69,7 +79,7 @@ export async function getMlbLinescoreForGame(dateStr, awayTeam, homeTeam) {
   let cached = cache.get(dateStr)
   if (!cached || cached.expiresAt <= now) {
     const byMatchup = await fetchOne(dateStr)
-    cached = { byMatchup, expiresAt: now + CACHE_TTL_MS }
+    cached = { byMatchup, expiresAt: now + ttlFor(dateStr) }
     cache.set(dateStr, cached)
   }
   const key = `${normalize(awayTeam)}@${normalize(homeTeam)}`
@@ -84,5 +94,5 @@ export async function warmMlbLinescores(dateStr) {
   const cached = cache.get(dateStr)
   if (cached && cached.expiresAt > now) return
   const byMatchup = await fetchOne(dateStr)
-  cache.set(dateStr, { byMatchup, expiresAt: now + CACHE_TTL_MS })
+  cache.set(dateStr, { byMatchup, expiresAt: now + ttlFor(dateStr) })
 }
