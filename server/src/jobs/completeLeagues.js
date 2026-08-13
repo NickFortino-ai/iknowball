@@ -924,7 +924,7 @@ export async function completeLeagues() {
       if (league.format === 'fantasy') {
         const { data: fs } = await supabase
           .from('fantasy_settings')
-          .select('format, num_teams')
+          .select('format, num_teams, season, single_week, season_type')
           .eq('league_id', league.id)
           .maybeSingle()
         if (fs && fs.format !== 'salary_cap') {
@@ -934,6 +934,34 @@ export async function completeLeagues() {
             .eq('league_id', league.id)
           const targetCount = fs.num_teams || 10
           if ((memberCount || 0) < targetCount) continue
+        }
+        // Salary cap fantasy: gate on the target NFL week's first game
+        // rather than the league's synthetic starts_at (which defaults
+        // to createLeague's `new Date()` and would flip the league to
+        // 'active' immediately). Single-week leagues use their chosen
+        // week; full-season salary cap starts at Week 1. Missing
+        // schedule rows fall through (rare pre-schedule edge) so a
+        // stalled ingest can't strand the league in 'open' forever.
+        if (fs && fs.format === 'salary_cap') {
+          const targetWeek = fs.single_week || 1
+          const targetSeason = fs.season
+          if (targetSeason) {
+            const { data: schedRows } = await supabase
+              .from('nfl_schedule')
+              .select('game_date')
+              .eq('season', targetSeason)
+              .eq('week', targetWeek)
+              .order('game_date', { ascending: true })
+              .limit(1)
+            const firstGameDate = schedRows?.[0]?.game_date
+            if (firstGameDate) {
+              // Interpret game_date as start-of-day ET (10:00 UTC ≈ 6 AM ET)
+              // so a Thursday-night game still gates activation to that
+              // Thursday, not the Monday of the week.
+              const gateTs = new Date(`${firstGameDate}T10:00:00Z`).getTime()
+              if (gateTs > nowMs) continue
+            }
+          }
         }
       }
       // Survivor: stay 'open' until the first real game of period 1
