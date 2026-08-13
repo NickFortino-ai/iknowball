@@ -50,9 +50,9 @@ function getLeagueHeadline(league) {
   const formatLabel = FORMAT_LABELS[league.format] || league.format
   const sportLabel = SPORT_LABELS[league.sport] || league.sport
   if (PREFIX_SPORT_FORMATS.has(league.format) && sportLabel && league.sport !== 'all') {
-    return `${sportLabel} ${formatLabel} League`
+    return `${sportLabel} ${formatLabel}`
   }
-  return `${formatLabel} League`
+  return formatLabel
 }
 
 function formatRunsUntil(league) {
