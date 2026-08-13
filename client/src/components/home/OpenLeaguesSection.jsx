@@ -52,6 +52,13 @@ function getLeagueHeadline(league) {
   if (league.format === 'fantasy' && league.fantasy_format === 'salary_cap') {
     return 'Salary Cap Fantasy Football'
   }
+  // Touchdown Survivor is a different game from standard Survivor
+  // (pick a player to score a non-passing TD each week, not a team
+  // to win). Different card treatment so joiners aren't surprised.
+  if (league.format === 'survivor' && league.settings?.survivor_mode === 'touchdown') {
+    const sportLabel = SPORT_LABELS[league.sport] || league.sport
+    return sportLabel && league.sport !== 'all' ? `${sportLabel} TD Survivor` : 'TD Survivor'
+  }
   const formatLabel = FORMAT_LABELS[league.format] || league.format
   const sportLabel = SPORT_LABELS[league.sport] || league.sport
   if (PREFIX_SPORT_FORMATS.has(league.format) && sportLabel && league.sport !== 'all') {

@@ -204,7 +204,9 @@ export default function JoinLeaguePage() {
                           <span className="text-sm font-semibold text-accent">
                             {league.format === 'fantasy' && league.fantasy_format === 'salary_cap'
                               ? 'Salary Cap Fantasy Football'
-                              : (FORMAT_LABELS[league.format] || league.format)}
+                              : (league.format === 'survivor' && league.settings?.survivor_mode === 'touchdown')
+                                ? 'TD Survivor'
+                                : (FORMAT_LABELS[league.format] || league.format)}
                           </span>
                           <span className="text-xs text-text-secondary">{SPORT_LABELS[league.sport] || league.sport}</span>
                           <span className="text-xs text-text-secondary">
