@@ -31,7 +31,13 @@ export async function assertLeagueJoinable(league) {
       // time placeholder (createLeague uses `new Date()`) that's
       // ~always in the past — so falling through to the generic
       // starts_at gate would reject every join with "already started."
-      // Real start is Week 1 (or single_week) kickoff from nfl_schedule.
+      // Join is open until the ACTUAL first kickoff of the target
+      // week (full-season → Week 1, this-week → single_week). We
+      // look up nfl_schedule.game_date to know the date, then query
+      // the games table for the true kickoff timestamp on that date.
+      // Fallback (games not yet ingested for that week): allow joins
+      // through end-of-day UTC so a stalled odds sync doesn't strand
+      // late joiners.
       const targetWeek = fs.single_week || 1
       const targetSeason = fs.season
       if (targetSeason) {
@@ -44,10 +50,35 @@ export async function assertLeagueJoinable(league) {
           .limit(1)
         const firstGameDate = schedRows?.[0]?.game_date
         if (firstGameDate) {
-          // 10:00 UTC (~6 AM ET) start-of-day threshold — same anchor
-          // completeLeagues.js uses to activate the league. Both agree
-          // on "the league begins here."
-          const gateTs = new Date(`${firstGameDate}T10:00:00Z`).getTime()
+          const nflFamily = ['americanfootball_nfl', 'americanfootball_nfl_preseason']
+          const { data: nflSports } = await supabase
+            .from('sports')
+            .select('id')
+            .in('key', nflFamily)
+          const nflSportIds = (nflSports || []).map((s) => s.id)
+          let gateTs = null
+          if (nflSportIds.length) {
+            const dayStart = `${firstGameDate}T00:00:00Z`
+            const dayEndD = new Date(`${firstGameDate}T00:00:00Z`)
+            dayEndD.setUTCDate(dayEndD.getUTCDate() + 1)
+            const { data: firstGame } = await supabase
+              .from('games')
+              .select('starts_at')
+              .in('sport_id', nflSportIds)
+              .gte('starts_at', dayStart)
+              .lt('starts_at', dayEndD.toISOString())
+              .order('starts_at', { ascending: true })
+              .limit(1)
+              .maybeSingle()
+            if (firstGame?.starts_at) gateTs = new Date(firstGame.starts_at).getTime()
+          }
+          // Fallback: end of game_date if we can't find the actual
+          // kickoff in games (e.g. odds sync hasn't loaded Week N yet).
+          if (!gateTs) {
+            const endOfDay = new Date(`${firstGameDate}T00:00:00Z`)
+            endOfDay.setUTCDate(endOfDay.getUTCDate() + 1)
+            gateTs = endOfDay.getTime()
+          }
           if (gateTs <= Date.now()) {
             const err = new Error('This league has already started')
             err.status = 400
@@ -55,7 +86,7 @@ export async function assertLeagueJoinable(league) {
           }
         }
       }
-      return // joinable — Week 1 hasn't kicked off yet (or schedule missing → be permissive)
+      return // joinable — first kickoff hasn't passed (or schedule missing → be permissive)
     } else {
       // Traditional: allow joining until draft starts
       if (fs && fs.draft_status !== 'pending') {
