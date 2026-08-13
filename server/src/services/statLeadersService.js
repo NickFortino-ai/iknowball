@@ -40,6 +40,11 @@ const SPORT_CONFIG = {
       { name: 'reboundsPerGame', label: 'RPG' },
       { name: 'assistsPerGame', label: 'APG' },
       { name: 'threePointFieldGoalsMade', label: '3PM' },
+      // Same story as WNBA: ESPN only ranks per-game for NBA steals /
+      // blocks, so we fetch the per-game list, dereference each
+      // athlete's season statistics for the raw total, and re-rank.
+      { name: 'steals', label: 'STL', totalFromPerGame: { source: 'stealsPerGame', statName: 'steals' } },
+      { name: 'blocks', label: 'BLK', totalFromPerGame: { source: 'blocksPerGame', statName: 'blocks' } },
     ],
   },
   baseball_mlb: {
