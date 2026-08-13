@@ -303,6 +303,16 @@ export default function GameIntelModal({ gameId, onClose }) {
               </div>
             </div>
 
+            {/* Preseason lineups are ad-hoc — starters typically play a
+                series or sit entirely, and ESPN's depth chart is a
+                season-level snapshot. Flag it so users don't assume a
+                Q1 Burrow appearance in a preseason opener. */}
+            {data.sportKey?.endsWith('_preseason') && (
+              <div className="mb-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-[11px] text-yellow-500/90 leading-snug">
+                Preseason: shown lineups reflect the season depth chart. Actual preseason usage varies by team — starters may sit or play limited snaps.
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <TeamSection
                 teamName={data.away_team}
