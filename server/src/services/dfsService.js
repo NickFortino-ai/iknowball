@@ -385,6 +385,18 @@ const SALARY_PER_VBD = { QB: 400, RB: 650, WR: 650, TE: 700, K: 650, DEF: 650 }
 export async function generateSalaries(week, season) {
   logger.info({ week, season }, 'Generating DFS salaries')
 
+  // Pre-fetch existing rows so we can distinguish INSERTs from UPDATEs.
+  // Auto-hide rules (bye week, deep-bench QB) should only apply on the
+  // FIRST insert for a (player, week, season) — otherwise regenerating
+  // a week (Wed 3 AM cron running for a week the admin pre-generated
+  // Tuesday and un-hid players in) would re-hide the admin's un-hides.
+  const { data: existingRows } = await supabase
+    .from('dfs_weekly_salaries')
+    .select('player_id')
+    .eq('season', season)
+    .eq('nfl_week', week)
+  const existingPlayerIds = new Set((existingRows || []).map((r) => r.player_id))
+
   // Pull every player we might price. Filter on team IS NOT NULL so retired
   // players (their team is nulled by the Sleeper sync) drop out; keep IR/PUP
   // so the slate surfaces them with their injury_status flagged.
@@ -466,12 +478,17 @@ export async function generateSalaries(week, season) {
       salary = player.depth_chart_order === 2 ? 5000 : 4000
     }
 
-    // Auto-hide bye-week players from the user-visible pool. Row is
-    // still written so admins can un-hide edge cases from the editor.
-    // Only set on INSERT (see the manual/hidden preservation pass
-    // below); UPSERT leaves `hidden` alone on UPDATE unless we
-    // explicitly send it.
+    // Auto-hide criteria — only applied on INSERT (see existingPlayerIds
+    // above). Includes:
+    //   - Bye-week players (team on bye this week)
+    //   - Deep-bench QBs (salary at or below $5,500 — third-stringers
+    //     Sleeper occasionally projects generously; users shouldn't
+    //     see them unless admin explicitly un-hides for a spot start)
+    // Rows already in the table keep their existing `hidden` state so
+    // admin un-hides survive regens.
+    const isNew = !existingPlayerIds.has(player.id)
     const onBye = player.bye_week != null && player.bye_week === week
+    const isDeepBenchQB = pos === 'QB' && salary <= 5500
     const row = {
       player_id: player.id,
       nfl_week: week,
@@ -479,7 +496,7 @@ export async function generateSalaries(week, season) {
       salary,
       algorithm_salary: salary,
     }
-    if (onBye) row.hidden = true
+    if (isNew && (onBye || isDeepBenchQB)) row.hidden = true
     salaries.push(row)
   }
 
