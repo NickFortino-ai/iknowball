@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../config/supabase.js'
 import { INJURY_SPORTS } from '../config/espnTeamMap.js'
+import { rollupSportKey } from '../utils/nflFamily.js'
 import { logger } from '../utils/logger.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
@@ -89,14 +90,21 @@ router.get('/:game_id', requireAuth, async (req, res) => {
 
   const empty = { starters: [], injuries: [] }
 
-  if (!supportedSports.has(game.sports?.key)) {
+  // NFL preseason games have sport_key = 'americanfootball_nfl_preseason'
+  // but team_intel is written under the regular NFL key (rosters + injuries
+  // are the same league). Roll preseason up to the canonical key before
+  // reading + looking up ESPN paths, so preseason games actually surface
+  // starters and injuries in the modal.
+  const canonicalSportKey = rollupSportKey(game.sports?.key)
+
+  if (!supportedSports.has(canonicalSportKey)) {
     return res.json({ home_team: game.home_team, away_team: game.away_team, home: empty, away: empty })
   }
 
   const { data: intel } = await supabase
     .from('team_intel')
     .select('team_name, starters, injuries')
-    .eq('sport_key', game.sports.key)
+    .eq('sport_key', canonicalSportKey)
     .in('team_name', [game.home_team, game.away_team])
 
   const homeData = intel?.find((r) => r.team_name === game.home_team)
@@ -104,7 +112,7 @@ router.get('/:game_id', requireAuth, async (req, res) => {
 
   // Fetch team records and L10 from ESPN scoreboard
   let homeRecord = null, awayRecord = null, homeLast10 = null, awayLast10 = null
-  const espnPath = ESPN_PATHS[game.sports.key]
+  const espnPath = ESPN_PATHS[canonicalSportKey]
   if (espnPath && game.id) {
     try {
       const { data: gameRow } = await supabase.from('games').select('starts_at').eq('id', game_id).single()
@@ -113,7 +121,11 @@ router.get('/:game_id', requireAuth, async (req, res) => {
         const d = new Date(gameRow.starts_at)
         const etDate = new Date(d.toLocaleString('en-US', { timeZone: 'America/New_York' }))
         const dateStr = `${etDate.getFullYear()}${String(etDate.getMonth() + 1).padStart(2, '0')}${String(etDate.getDate()).padStart(2, '0')}`
-        const espnRes = await fetch(`${ESPN_BASE}/${espnPath}/scoreboard?dates=${dateStr}`)
+        // NFL's default scoreboard filters to regular season; preseason
+        // games need seasontype=1 or the event lookup returns nothing
+        // (and records/L10 stay null).
+        const isPreseason = game.sports?.key?.endsWith('_preseason')
+        const espnRes = await fetch(`${ESPN_BASE}/${espnPath}/scoreboard?dates=${dateStr}${isPreseason ? '&seasontype=1' : ''}`)
         if (espnRes.ok) {
           const espnData = await espnRes.json()
           const normalize = (name) => name.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim()

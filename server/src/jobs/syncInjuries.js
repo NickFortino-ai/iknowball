@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { fetchAll } from '../utils/fetchAll.js'
 import { ODDS_TO_ESPN, INJURY_SPORTS, BASKETBALL_SPORTS } from '../config/espnTeamMap.js'
+import { expandSportFamily } from '../utils/nflFamily.js'
 import { writeEspnBlurb } from '../services/playerBlurbService.js'
 import { todaySportsDay } from '../utils/sportsDay.js'
 
@@ -293,13 +294,19 @@ function extractFootballStarters(data) {
 }
 
 async function getUpcomingTeams(sportKey) {
-  const { data: sport } = await supabase
+  // NFL preseason games have their own sport_id ('americanfootball_nfl_preseason')
+  // so a filter on the regular NFL sport row would miss them entirely and
+  // team_intel would never refresh for teams playing preseason games.
+  // expandSportFamily returns both keys for NFL and passes everything else
+  // through unchanged.
+  const familyKeys = expandSportFamily(sportKey)
+  const { data: sports } = await supabase
     .from('sports')
     .select('id')
-    .eq('key', sportKey)
-    .single()
+    .in('key', familyKeys)
 
-  if (!sport) return []
+  const sportIds = (sports || []).map((s) => s.id)
+  if (!sportIds.length) return []
 
   const now = new Date()
   // WNBA games are typically 2-3 days apart, so a 24h window means we
@@ -311,7 +318,7 @@ async function getUpcomingTeams(sportKey) {
   const { data: games } = await supabase
     .from('games')
     .select('home_team, away_team')
-    .eq('sport_id', sport.id)
+    .in('sport_id', sportIds)
     .eq('status', 'upcoming')
     .gte('starts_at', now.toISOString())
     .lte('starts_at', cutoff.toISOString())

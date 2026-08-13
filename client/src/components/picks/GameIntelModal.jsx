@@ -286,22 +286,22 @@ export default function GameIntelModal({ gameId, onClose }) {
           <p className="text-text-muted text-center">No data available</p>
         ) : (
           <>
-            {/* Team records */}
-            {(data.homeRecord || data.awayRecord) && (
-              <div className="flex items-center justify-between mb-4 px-2">
-                <div className="text-center flex-1">
-                  <TeamLogo team={data.away_team} sportKey={data.sportKey} />
-                  <div className="text-sm font-bold text-text-primary">{data.awayRecord || '—'}</div>
-                  {data.awayLast10 && <div className="text-[10px] text-text-muted">L10: {data.awayLast10}</div>}
-                </div>
-                <div className="text-xs text-text-muted font-semibold">vs</div>
-                <div className="text-center flex-1">
-                  <TeamLogo team={data.home_team} sportKey={data.sportKey} />
-                  <div className="text-sm font-bold text-text-primary">{data.homeRecord || '—'}</div>
-                  {data.homeLast10 && <div className="text-[10px] text-text-muted">L10: {data.homeLast10}</div>}
-                </div>
+            {/* Team logos + records. Logos always show so the modal has
+                identity even during preseason / offseason when records
+                are null. Record + L10 lines render only when present. */}
+            <div className="flex items-center justify-between mb-4 px-2">
+              <div className="text-center flex-1">
+                <TeamLogo team={data.away_team} sportKey={data.sportKey} />
+                {data.awayRecord && <div className="text-sm font-bold text-text-primary">{data.awayRecord}</div>}
+                {data.awayLast10 && <div className="text-[10px] text-text-muted">L10: {data.awayLast10}</div>}
               </div>
-            )}
+              <div className="text-xs text-text-muted font-semibold">vs</div>
+              <div className="text-center flex-1">
+                <TeamLogo team={data.home_team} sportKey={data.sportKey} />
+                {data.homeRecord && <div className="text-sm font-bold text-text-primary">{data.homeRecord}</div>}
+                {data.homeLast10 && <div className="text-[10px] text-text-muted">L10: {data.homeLast10}</div>}
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <TeamSection
