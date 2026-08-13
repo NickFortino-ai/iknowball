@@ -22,12 +22,40 @@ export async function assertLeagueJoinable(league) {
   if (league.format === 'fantasy') {
     const { data: fs } = await supabase
       .from('fantasy_settings')
-      .select('draft_status, format')
+      .select('draft_status, format, season, single_week')
       .eq('league_id', league.id)
       .maybeSingle()
 
     if (fs?.format === 'salary_cap') {
-      // NFL salary cap falls through to last-game-on-start-date logic below
+      // Salary cap has no draft, and league.starts_at is a creation-
+      // time placeholder (createLeague uses `new Date()`) that's
+      // ~always in the past — so falling through to the generic
+      // starts_at gate would reject every join with "already started."
+      // Real start is Week 1 (or single_week) kickoff from nfl_schedule.
+      const targetWeek = fs.single_week || 1
+      const targetSeason = fs.season
+      if (targetSeason) {
+        const { data: schedRows } = await supabase
+          .from('nfl_schedule')
+          .select('game_date')
+          .eq('season', targetSeason)
+          .eq('week', targetWeek)
+          .order('game_date', { ascending: true })
+          .limit(1)
+        const firstGameDate = schedRows?.[0]?.game_date
+        if (firstGameDate) {
+          // 10:00 UTC (~6 AM ET) start-of-day threshold — same anchor
+          // completeLeagues.js uses to activate the league. Both agree
+          // on "the league begins here."
+          const gateTs = new Date(`${firstGameDate}T10:00:00Z`).getTime()
+          if (gateTs <= Date.now()) {
+            const err = new Error('This league has already started')
+            err.status = 400
+            throw err
+          }
+        }
+      }
+      return // joinable — Week 1 hasn't kicked off yet (or schedule missing → be permissive)
     } else {
       // Traditional: allow joining until draft starts
       if (fs && fs.draft_status !== 'pending') {
