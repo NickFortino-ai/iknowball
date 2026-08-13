@@ -1338,7 +1338,7 @@ router.delete('/player-position-overrides/:id', async (req, res) => {
 // ============================================
 
 import { syncPlayers, syncSchedule, syncWeeklyStats, syncProjections, syncWeeklyProjections, syncByeWeeks, getNFLState, enrichEspnIds } from '../services/sleeperService.js'
-import { generateSalaries, setSalaries } from '../services/dfsService.js'
+import { generateSalaries, setSalaries, publishSalaries, getUnpublishedSalaryCount } from '../services/dfsService.js'
 import { generateNBASalaries, setNBASalaries } from '../services/nbaDfsService.js'
 import { generateWNBASalaries, setWNBASalaries } from '../services/wnbaDfsService.js'
 import { generateMLBSalaries, setMLBSalaries } from '../services/mlbDfsService.js'
@@ -1492,9 +1492,38 @@ router.get('/fantasy/nfl-state', async (req, res) => {
 // DFS Salary Management
 router.post('/dfs/generate-salaries', async (req, res) => {
   const { week = 1, season = 2026 } = req.body
-  // Run in background — too many ESPN API calls to complete in request timeout
+  // Run in background — too many ESPN API calls to complete in request timeout.
+  // New rows insert with published=false so admins can preview + tweak
+  // before users see them. Auto cron path chains publishSalaries after
+  // generateSalaries so the automatic behavior is unchanged.
   res.json({ message: 'NFL salary generation started', week, season })
   generateSalaries(week, season).catch((err) => logger.error({ err, week, season }, 'Background NFL salary generation failed'))
+})
+
+// Publish all draft rows for a (week, season) so users can see them.
+router.post('/dfs/publish-salaries', async (req, res) => {
+  const { week, season } = req.body
+  if (!week || !season) return res.status(400).json({ error: 'week and season required' })
+  try {
+    const result = await publishSalaries(week, season)
+    res.json(result)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Draft count for the given (week, season) — powers the "N unpublished"
+// status label + Publish button in the NFL salaries editor.
+router.get('/dfs/unpublished-count', async (req, res) => {
+  const week = parseInt(req.query.week, 10)
+  const season = parseInt(req.query.season, 10)
+  if (!week || !season) return res.status(400).json({ error: 'week and season required' })
+  try {
+    const count = await getUnpublishedSalaryCount(week, season)
+    res.json({ count })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // List NFL DFS salaries for a given week with player names/positions/teams.

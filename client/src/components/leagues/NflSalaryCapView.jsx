@@ -311,7 +311,9 @@ export default function NflSalaryCapView({ league }) {
 
         {!available.length ? (
           <div className="px-4 py-6 text-center text-xs text-text-muted">
-            {!players?.length ? `Player salaries for Week ${currentWeek} haven't been generated yet. They'll be available closer to game time.` : 'No players match your filters.'}
+            {!players?.length
+              ? `Players and salaries for Week ${currentWeek} will be available no later than Wednesday morning.`
+              : 'No players match your filters.'}
           </div>
         ) : (
           <div className="max-h-[50vh] lg:max-h-none overflow-y-auto">

@@ -15,6 +15,11 @@ export async function getPlayerPool(week, season, position = null) {
     .select('salary, nfl_players(id, full_name, position, team, headshot_url, injury_status)')
     .eq('nfl_week', week)
     .eq('season', season)
+    // Draft rows (algorithm run but admin hasn't published yet) are
+    // hidden from users so admins can preview + tweak prices before
+    // the pool goes live. Auto cron path publishes immediately after
+    // generation, so this only gates the manual "generate early" flow.
+    .eq('published', true)
     .order('salary', { ascending: false })
 
   if (position) {
@@ -505,6 +510,37 @@ export async function generateSalaries(week, season) {
 
   logger.info({ upserted, total: salaries.length, week, season }, 'DFS salary generation complete')
   return { upserted, total: salaries.length, manual_preserved: manualRows?.length || 0 }
+}
+
+// Flip published=true for every row in a given (week, season). Called
+// automatically by the nightly cron after generateSalaries so the auto
+// path is unchanged from a user's POV. Admin manual flow: call
+// generateSalaries alone, tweak prices in the editor, then invoke this
+// when ready for users to see the pool.
+export async function publishSalaries(week, season) {
+  const { data, error } = await supabase
+    .from('dfs_weekly_salaries')
+    .update({ published: true, updated_at: new Date().toISOString() })
+    .eq('nfl_week', week)
+    .eq('season', season)
+    .eq('published', false)
+    .select('id')
+  if (error) throw error
+  const count = data?.length || 0
+  logger.info({ week, season, count }, 'Published DFS salaries')
+  return { published: count }
+}
+
+// Draft count for a given (week, season) — powers the "N unpublished"
+// status label in the admin editor.
+export async function getUnpublishedSalaryCount(week, season) {
+  const { count } = await supabase
+    .from('dfs_weekly_salaries')
+    .select('id', { count: 'exact', head: true })
+    .eq('nfl_week', week)
+    .eq('season', season)
+    .eq('published', false)
+  return count || 0
 }
 
 /**

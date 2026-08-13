@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { useAdminDFSSalaries, useUpdateDFSSalary, useResetDFSSalary } from '../../hooks/useAdmin'
+import { useState } from 'react'
+import { useAdminDFSSalaries, useUpdateDFSSalary, useResetDFSSalary, useSyncNFLSalaries, usePublishNFLSalaries, useAdminDFSUnpublishedCount } from '../../hooks/useAdmin'
 import { toast } from '../ui/Toast'
 
 const POSITION_FILTERS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'DEF']
@@ -23,9 +23,35 @@ export default function NFLSalariesEditor() {
   const [position, setPosition] = useState('ALL')
   const [search, setSearch] = useState('')
 
-  const { data, isLoading, error } = useAdminDFSSalaries({ week, season, position, search })
+  const { data, isLoading, error, refetch } = useAdminDFSSalaries({ week, season, position, search })
   const updateSalary = useUpdateDFSSalary()
   const resetSalary = useResetDFSSalary()
+  const generateSalaries = useSyncNFLSalaries()
+  const publishSalaries = usePublishNFLSalaries()
+  const { data: unpubData, refetch: refetchUnpub } = useAdminDFSUnpublishedCount({ week, season })
+  const unpubCount = unpubData?.count ?? 0
+  const hasDrafts = unpubCount > 0
+
+  async function handleGenerate() {
+    if (!confirm(`Generate algorithmic salaries for Week ${week}, ${season}?\n\nNew rows start as drafts — users won't see them until you Publish. Manually-edited rows are preserved on future regens.`)) return
+    try {
+      await generateSalaries.mutateAsync({ week, season })
+      toast(`Started generation for Week ${week}. Refresh in a few seconds — this runs in the background.`, 'success')
+      setTimeout(() => { refetch(); refetchUnpub() }, 3000)
+    } catch (err) {
+      toast(err.message || 'Failed to start generation', 'error')
+    }
+  }
+
+  async function handlePublish() {
+    if (!confirm(`Publish ${unpubCount} draft ${unpubCount === 1 ? 'row' : 'rows'} for Week ${week}?\n\nUsers will immediately see these prices in the salary cap lineup builder.`)) return
+    try {
+      const result = await publishSalaries.mutateAsync({ week, season })
+      toast(`Published ${result.published} price${result.published === 1 ? '' : 's'} for Week ${week}.`, 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to publish', 'error')
+    }
+  }
 
   const rows = data?.rows || []
   const totalCount = data?.count || 0
@@ -92,8 +118,33 @@ export default function NFLSalariesEditor() {
             className="w-full rounded-md border border-text-primary/20 bg-bg-primary px-2 py-1 text-sm"
           />
         </label>
-        <div className="text-xs text-text-muted ml-auto">
-          {isLoading ? 'Loading…' : `${totalCount} player${totalCount === 1 ? '' : 's'}`}
+        <div className="ml-auto flex items-center gap-3">
+          {hasDrafts && (
+            <span className="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-yellow-500">
+              {unpubCount} draft{unpubCount === 1 ? '' : 's'} — users can't see
+            </span>
+          )}
+          <button
+            onClick={handleGenerate}
+            disabled={generateSalaries.isPending}
+            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+            title="Force-generate algorithmic salaries for the selected week. New rows start as drafts. Preserves any manual edits already saved for that week."
+          >
+            {generateSalaries.isPending ? 'Starting…' : `Generate Week ${week}`}
+          </button>
+          {hasDrafts && (
+            <button
+              onClick={handlePublish}
+              disabled={publishSalaries.isPending}
+              className="rounded-lg bg-correct px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-correct/90 disabled:opacity-50"
+              title="Publish all draft prices for this week so users can see them in the salary cap lineup builder."
+            >
+              {publishSalaries.isPending ? 'Publishing…' : `Publish Week ${week}`}
+            </button>
+          )}
+          <div className="text-xs text-text-muted">
+            {isLoading ? 'Loading…' : `${totalCount} player${totalCount === 1 ? '' : 's'}`}
+          </div>
         </div>
       </div>
 
@@ -105,7 +156,7 @@ export default function NFLSalariesEditor() {
 
       {!isLoading && rows.length === 0 && (
         <div className="rounded-md border border-text-primary/10 bg-bg-primary/40 p-6 text-center text-sm text-text-muted">
-          No salary rows for week {week}, season {season}. Generate salaries first from the admin panel.
+          No salary rows for week {week}, season {season}. Click <span className="font-semibold text-accent">Generate Week {week}</span> above to create them.
         </div>
       )}
 

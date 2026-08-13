@@ -145,6 +145,29 @@ export function useSyncNFLSalaries() {
   })
 }
 
+// Publish draft rows for a (week, season) so users can see the pool.
+export function usePublishNFLSalaries() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ week, season }) => api.post('/admin/dfs/publish-salaries', { week, season }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminDFSSalaries'] })
+      queryClient.invalidateQueries({ queryKey: ['adminDFSUnpublishedCount'] })
+    },
+  })
+}
+
+// Draft-row count for the currently-selected (week, season). Powers
+// the "N unpublished" status label + Publish button visibility.
+export function useAdminDFSUnpublishedCount({ week, season }) {
+  return useQuery({
+    queryKey: ['adminDFSUnpublishedCount', week, season],
+    queryFn: () => api.get(`/admin/dfs/unpublished-count?week=${week}&season=${season}`),
+    enabled: !!week && !!season,
+    staleTime: 15 * 1000,
+  })
+}
+
 export function useEnrichEspnIds() {
   return useMutation({
     mutationFn: () => api.post('/admin/fantasy/enrich-espn-ids'),
