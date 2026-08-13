@@ -17,7 +17,6 @@ import LoadingSpinner from '../components/ui/LoadingSpinner'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import { toast } from '../components/ui/Toast'
 import InfoTooltip from '../components/ui/InfoTooltip'
-import SocialLinks from '../components/ui/SocialLinks'
 import ActivityFeed from '../components/feed/ActivityFeed'
 import TeamFeed from '../components/feed/TeamFeed'
 import { useTeamsForSport } from '../hooks/useHotTakes'
@@ -25,44 +24,7 @@ import ReceiptsTab from '../components/feed/ReceiptsTab'
 import UserFeedTab from '../components/feed/UserFeedTab'
 import NewsFeed from '../components/feed/NewsFeed'
 import Avatar from '../components/ui/Avatar'
-import { getBackdropUrl } from '../lib/backdropUrl'
-
-function MyProfileBanner({ profile, onTap }) {
-  const tier = getTier(profile.total_points)
-
-  const hasBackdrop = !!profile.backdrop_image
-
-  return (
-    <div
-      onClick={onTap}
-      className={`relative bg-bg-primary border border-text-primary/20 rounded-2xl mb-6 cursor-pointer hover:bg-text-primary/5 transition-colors overflow-hidden lg:max-w-2xl lg:mx-auto ${hasBackdrop ? 'p-5 lg:py-8' : 'p-5'}`}
-    >
-      {hasBackdrop && (
-        <>
-          <img
-            src={getBackdropUrl(profile.backdrop_image)}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover opacity-40 pointer-events-none"
-            style={{ objectPosition: `center ${profile.backdrop_y ?? 50}%` }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-bg-primary/70 via-bg-primary/40 to-bg-primary/70 pointer-events-none" />
-        </>
-      )}
-      <div className="relative z-10 flex items-center gap-4">
-        <Avatar user={profile} size="2xl" className="bg-accent/15 border border-accent/25" />
-        <div className="min-w-0 flex-1">
-          <div className="font-display text-xl truncate">{profile.display_name || profile.username}</div>
-          <div className="text-text-muted text-sm">@{profile.username}</div>
-          <SocialLinks user={profile} />
-        </div>
-        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          <TierBadge tier={tier.name} size="md" />
-          <span className="text-white font-display text-lg">{profile.total_points} pts</span>
-        </div>
-      </div>
-    </div>
-  )
-}
+import MyProfileBanner from '../components/hub/MyProfileBanner'
 
 const SPORT_OPTIONS = [
   { key: 'basketball_nba', label: 'NBA' },

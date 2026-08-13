@@ -13,6 +13,8 @@ import FuturesPickCard from '../components/picks/FuturesPickCard'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import PickDetailModal from '../components/social/PickDetailModal'
+import MyProfileBanner from '../components/hub/MyProfileBanner'
+import UserProfileModal from '../components/profile/UserProfileModal'
 
 function getParlayGameDate(parlay) {
   const starts = (parlay.parlay_legs || [])
@@ -95,6 +97,8 @@ export default function ResultsPage() {
   const fetchProfile = useAuthStore((s) => s.fetchProfile)
   const [collapsed, setCollapsed] = useState(loadCollapsed)
   const [selectedPickId, setSelectedPickId] = useState(null)
+  const [selectedUserId, setSelectedUserId] = useState(null)
+  const session = useAuthStore((s) => s.session)
 
   // The auth-store profile is fetched once at login and never refreshed,
   // so total_points goes stale after picks settle. Refetch on mount and on
@@ -155,25 +159,6 @@ export default function ResultsPage() {
   const hasSettled = olderSettledPicks.length > 0 || olderSettledParlays.length > 0 || olderSettledProps.length > 0 || settledFutures.length > 0
 
   const allSettledPicks = useMemo(() => [...todayPicks.filter(p => p.status === 'settled'), ...olderSettledPicks], [todayPicks, olderSettledPicks])
-  const allSettledParlays = useMemo(() => [...todayParlays.filter(p => p.status === 'settled'), ...olderSettledParlays], [todayParlays, olderSettledParlays])
-  const allSettledProps = useMemo(() => [...todayProps.filter(p => p.status === 'settled'), ...olderSettledProps], [todayProps, olderSettledProps])
-
-  const leaguePoints = useMemo(() => {
-    if (!bonuses?.length) return 0
-    return bonuses.reduce((sum, b) => sum + (b.points || 0), 0)
-  }, [bonuses])
-
-  const weeklyStats = useMemo(() => {
-    if (!allSettledPicks.length && !allSettledParlays.length && !allSettledProps.length && !settledFutures.length && !leaguePoints) return null
-    let wins = 0, losses = 0
-    for (const item of [...allSettledPicks, ...allSettledParlays, ...allSettledProps, ...settledFutures]) {
-      if (item.is_correct === true) wins++
-      else if (item.is_correct === false) losses++
-    }
-    // Use authoritative total_points from the server instead of client-side sum
-    const netPoints = profile?.total_points ?? 0
-    return { wins, losses, leaguePoints, netPoints, total: allSettledPicks.length + allSettledParlays.length + allSettledProps.length + settledFutures.length }
-  }, [allSettledPicks, allSettledParlays, allSettledProps, settledFutures, leaguePoints, profile?.total_points])
 
   const settledPickIds = useMemo(() => {
     return allSettledPicks.map((p) => p.id)
@@ -187,32 +172,11 @@ export default function ResultsPage() {
     <div className="max-w-2xl mx-auto px-4 py-6">
       <h1 className="font-display text-3xl mb-6">Results</h1>
 
-      {weeklyStats && (
-        <div className="rounded-2xl border border-text-primary/20 p-4 mb-6">
-          <h2 className="font-display text-sm text-text-primary uppercase tracking-wider mb-2">Summary</h2>
-          <div className="grid grid-cols-4 gap-2 text-center">
-            <div className="bg-black/40 rounded-xl py-3">
-              <div className="font-display text-2xl text-correct">{weeklyStats.wins}</div>
-              <div className="text-xs text-text-muted">Wins</div>
-            </div>
-            <div className="bg-black/40 rounded-xl py-3">
-              <div className="font-display text-2xl text-incorrect">{weeklyStats.losses}</div>
-              <div className="text-xs text-text-muted">Losses</div>
-            </div>
-            <div className="bg-black/40 rounded-xl py-3">
-              <div className={`font-display text-2xl ${weeklyStats.leaguePoints > 0 ? 'text-correct' : weeklyStats.leaguePoints < 0 ? 'text-incorrect' : 'text-text-secondary'}`}>
-                {weeklyStats.leaguePoints > 0 ? '+' : ''}{weeklyStats.leaguePoints}
-              </div>
-              <div className="text-xs text-text-muted">Leagues</div>
-            </div>
-            <div className="bg-black/40 rounded-xl py-3">
-              <div className={`font-display text-2xl ${weeklyStats.netPoints >= 0 ? 'text-correct' : 'text-incorrect'}`}>
-                {weeklyStats.netPoints > 0 ? '+' : ''}{weeklyStats.netPoints}
-              </div>
-              <div className="text-xs text-text-muted">Net Pts</div>
-            </div>
-          </div>
-        </div>
+      {profile && (
+        <MyProfileBanner
+          profile={profile}
+          onTap={() => setSelectedUserId(session?.user?.id)}
+        />
       )}
 
       {hasTodayAction && (
@@ -388,6 +352,7 @@ export default function ResultsPage() {
         </>
       )}
       <PickDetailModal pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />
+      <UserProfileModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
     </div>
   )
 }
