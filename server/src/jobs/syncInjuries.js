@@ -288,7 +288,23 @@ function extractFootballStarters(data) {
 
   // Stable side order for the client's grouped rendering.
   const SIDE_ORDER = { offense: 0, defense: 1, special: 2 }
-  starters.sort((a, b) => (SIDE_ORDER[a.side] ?? 9) - (SIDE_ORDER[b.side] ?? 9))
+  // Canonical offense order — reads how fans think about the unit
+  // (skill positions first, then the line L→R). Defense + special
+  // keep ESPN's order, which already reads sensibly.
+  const OFFENSE_POS_ORDER = {
+    QB: 0, RB: 1, WR: 2, TE: 3, FB: 4,
+    LT: 5, LG: 6, C: 7, RG: 8, RT: 9,
+  }
+  starters.sort((a, b) => {
+    const sideDiff = (SIDE_ORDER[a.side] ?? 9) - (SIDE_ORDER[b.side] ?? 9)
+    if (sideDiff !== 0) return sideDiff
+    if (a.side === 'offense') {
+      const aRank = OFFENSE_POS_ORDER[a.position] ?? 99
+      const bRank = OFFENSE_POS_ORDER[b.position] ?? 99
+      if (aRank !== bRank) return aRank - bRank
+    }
+    return 0
+  })
 
   return { starters, activeNames }
 }
