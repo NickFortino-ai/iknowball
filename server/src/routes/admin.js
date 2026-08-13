@@ -1539,7 +1539,7 @@ router.get('/dfs/salaries', async (req, res) => {
 
   let query = supabase
     .from('dfs_weekly_salaries')
-    .select('id, player_id, salary, algorithm_salary, manually_set, updated_at, nfl_players!inner(id, full_name, position, team, headshot_url, injury_status)')
+    .select('id, player_id, salary, algorithm_salary, manually_set, hidden, published, updated_at, nfl_players!inner(id, full_name, position, team, headshot_url, injury_status, bye_week)')
     .eq('nfl_week', week)
     .eq('season', season)
     .order('salary', { ascending: false })
@@ -1565,12 +1565,15 @@ router.get('/dfs/salaries', async (req, res) => {
     salary: r.salary,
     algorithm_salary: r.algorithm_salary,
     manually_set: r.manually_set,
+    hidden: r.hidden,
+    published: r.published,
     updated_at: r.updated_at,
     full_name: r.nfl_players?.full_name,
     position: r.nfl_players?.position,
     team: r.nfl_players?.team,
     headshot_url: r.nfl_players?.headshot_url,
     injury_status: r.nfl_players?.injury_status,
+    bye_week: r.nfl_players?.bye_week,
   }))
   res.json({ rows, count: rows.length })
 })
@@ -1590,6 +1593,25 @@ router.patch('/dfs/salaries/:id', async (req, res) => {
     .single()
   if (error) {
     logger.error({ error, id, salary }, 'Failed to update DFS salary')
+    return res.status(500).json({ error: error.message })
+  }
+  res.json(data)
+})
+
+// Toggle whether the player appears in the user-visible pool.
+// Independent of salary + manually_set — admin can hide a deep-bench
+// or bye-week player without touching pricing.
+router.post('/dfs/salaries/:id/hide', async (req, res) => {
+  const id = req.params.id
+  const hidden = !!req.body.hidden
+  const { data, error } = await supabase
+    .from('dfs_weekly_salaries')
+    .update({ hidden, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('id, hidden, updated_at')
+    .single()
+  if (error) {
+    logger.error({ error, id, hidden }, 'Failed to toggle DFS salary hidden')
     return res.status(500).json({ error: error.message })
   }
   res.json(data)

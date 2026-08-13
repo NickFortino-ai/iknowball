@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAdminDFSSalaries, useUpdateDFSSalary, useResetDFSSalary, useSyncNFLSalaries, usePublishNFLSalaries, useAdminDFSUnpublishedCount } from '../../hooks/useAdmin'
+import { useAdminDFSSalaries, useUpdateDFSSalary, useResetDFSSalary, useSyncNFLSalaries, usePublishNFLSalaries, useAdminDFSUnpublishedCount, useToggleDFSHidden } from '../../hooks/useAdmin'
 import { toast } from '../ui/Toast'
 
 const POSITION_FILTERS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'DEF']
@@ -28,6 +28,7 @@ export default function NFLSalariesEditor() {
   const resetSalary = useResetDFSSalary()
   const generateSalaries = useSyncNFLSalaries()
   const publishSalaries = usePublishNFLSalaries()
+  const toggleHidden = useToggleDFSHidden()
   const { data: unpubData, refetch: refetchUnpub } = useAdminDFSUnpublishedCount({ week, season })
   const unpubCount = unpubData?.count ?? 0
   const hasDrafts = unpubCount > 0
@@ -168,9 +169,11 @@ export default function NFLSalariesEditor() {
                 <th className="px-3 py-2 text-left">Player</th>
                 <th className="px-2 py-2 text-left">Pos</th>
                 <th className="px-2 py-2 text-left">Team</th>
+                <th className="px-2 py-2 text-center">Bye</th>
                 <th className="px-3 py-2 text-right">Algorithm $</th>
                 <th className="px-3 py-2 text-right">Current Salary</th>
                 <th className="px-3 py-2 text-center">Manual?</th>
+                <th className="px-3 py-2 text-center">Visible?</th>
                 <th className="px-3 py-2 text-right">Actions</th>
               </tr>
             </thead>
@@ -195,6 +198,14 @@ export default function NFLSalariesEditor() {
                       toast(err.message || 'Failed to reset', 'error')
                     }
                   }}
+                  onToggleHidden={async () => {
+                    try {
+                      await toggleHidden.mutateAsync({ id: row.id, hidden: !row.hidden })
+                      toast(`${row.hidden ? 'Showing' : 'Hiding'} ${row.full_name}`, 'success')
+                    } catch (err) {
+                      toast(err.message || 'Failed to toggle visibility', 'error')
+                    }
+                  }}
                 />
               ))}
             </tbody>
@@ -205,7 +216,7 @@ export default function NFLSalariesEditor() {
   )
 }
 
-function SalaryRow({ row, onSave, onReset }) {
+function SalaryRow({ row, onSave, onReset, onToggleHidden }) {
   const [draft, setDraft] = useState(String(row.salary))
   const [saving, setSaving] = useState(false)
   const dirty = parseInt(draft, 10) !== row.salary
@@ -219,7 +230,7 @@ function SalaryRow({ row, onSave, onReset }) {
   }
 
   return (
-    <tr className={`border-t border-text-primary/10 ${row.manually_set ? 'bg-accent/5' : ''}`}>
+    <tr className={`border-t border-text-primary/10 ${row.hidden ? 'opacity-50' : ''} ${row.manually_set ? 'bg-accent/5' : ''}`}>
       <td className="px-3 py-2">
         <div className="flex items-center gap-2">
           {row.headshot_url ? (
@@ -249,6 +260,9 @@ function SalaryRow({ row, onSave, onReset }) {
       </td>
       <td className="px-2 py-2 text-text-muted">{row.position}</td>
       <td className="px-2 py-2 text-text-muted">{row.team}</td>
+      <td className="px-2 py-2 text-center text-text-muted tabular-nums">
+        {row.bye_week != null ? row.bye_week : '—'}
+      </td>
       <td className="px-3 py-2 text-right text-text-muted tabular-nums">
         {row.algorithm_salary != null ? `$${row.algorithm_salary.toLocaleString()}` : '—'}
       </td>
@@ -271,6 +285,19 @@ function SalaryRow({ row, onSave, onReset }) {
         ) : (
           <span className="text-[10px] text-text-muted">algo</span>
         )}
+      </td>
+      <td className="px-3 py-2 text-center">
+        <button
+          onClick={onToggleHidden}
+          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+            row.hidden
+              ? 'bg-incorrect/20 text-incorrect hover:bg-incorrect/30'
+              : 'bg-correct/20 text-correct hover:bg-correct/30'
+          }`}
+          title={row.hidden ? 'Hidden from user pool — click to show' : 'Visible to users — click to hide'}
+        >
+          {row.hidden ? 'HIDDEN' : 'SHOWN'}
+        </button>
       </td>
       <td className="px-3 py-2 text-right">
         <div className="flex justify-end gap-1">

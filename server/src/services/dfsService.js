@@ -20,6 +20,10 @@ export async function getPlayerPool(week, season, position = null) {
     // the pool goes live. Auto cron path publishes immediately after
     // generation, so this only gates the manual "generate early" flow.
     .eq('published', true)
+    // hidden: admin toggle for players they don't want in the user
+    // pool (deep-bench third-stringers, bye-week players auto-hidden
+    // during generation, etc.).
+    .eq('hidden', false)
     .order('salary', { ascending: false })
 
   if (position) {
@@ -392,7 +396,7 @@ export async function generateSalaries(week, season) {
   const players = await fetchAll(
     supabase
       .from('nfl_players')
-      .select('id, position, team, injury_status, depth_chart_order')
+      .select('id, position, team, injury_status, depth_chart_order, bye_week')
       .not('team', 'is', null)
       .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
       .order('id')
@@ -462,13 +466,21 @@ export async function generateSalaries(week, season) {
       salary = player.depth_chart_order === 2 ? 5000 : 4000
     }
 
-    salaries.push({
+    // Auto-hide bye-week players from the user-visible pool. Row is
+    // still written so admins can un-hide edge cases from the editor.
+    // Only set on INSERT (see the manual/hidden preservation pass
+    // below); UPSERT leaves `hidden` alone on UPDATE unless we
+    // explicitly send it.
+    const onBye = player.bye_week != null && player.bye_week === week
+    const row = {
       player_id: player.id,
       nfl_week: week,
       season,
       salary,
       algorithm_salary: salary,
-    })
+    }
+    if (onBye) row.hidden = true
+    salaries.push(row)
   }
 
   // Honor manual overrides — fetch existing rows that admins have edited

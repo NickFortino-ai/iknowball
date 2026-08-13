@@ -157,6 +157,19 @@ export function usePublishNFLSalaries() {
   })
 }
 
+// Toggle whether the salary row appears in the user pool. Independent
+// of pricing / manual override — used to bench third-string QBs,
+// bye-week players (auto-hidden by generateSalaries), etc.
+export function useToggleDFSHidden() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, hidden }) => api.post(`/admin/dfs/salaries/${id}/hide`, { hidden }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminDFSSalaries'] })
+    },
+  })
+}
+
 // Draft-row count for the currently-selected (week, season). Powers
 // the "N unpublished" status label + Publish button visibility.
 export function useAdminDFSUnpublishedCount({ week, season }) {
