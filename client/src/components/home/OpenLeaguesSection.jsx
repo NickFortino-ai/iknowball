@@ -162,10 +162,12 @@ export default function OpenLeaguesSection() {
               <div className="text-xs text-text-muted mb-1">
                 {league.member_count}{league.max_members ? `/${league.max_members}` : ''} members
               </div>
-              {/* Fantasy leagues surface the draft date instead of the
-                  Runs window — draft is the actionable moment for a
-                  joiner deciding whether to sign up. */}
-              {league.format === 'fantasy' ? (
+              {/* Traditional fantasy leagues surface the draft date
+                  instead of the Runs window — draft is the actionable
+                  moment for a joiner. Salary cap has no draft, so
+                  fall through to the standard Runs window (server
+                  already rewrites starts_at to the real Week 1). */}
+              {league.format === 'fantasy' && league.fantasy_format !== 'salary_cap' ? (
                 <div className="text-xs text-yellow-500 font-semibold mb-3">
                   {formatFantasyTimeline(league)}
                 </div>
