@@ -59,6 +59,14 @@ const SPORT_CONFIG = {
       { name: 'reboundsPerGame', label: 'RPG' },
       { name: 'assistsPerGame', label: 'APG' },
       { name: 'threePointFieldGoalsMade', label: '3PM' },
+      // ESPN only ranks steals/blocks per-game for WNBA. For each of
+      // these we fetch the per-game leader list, dereference each
+      // athlete's season statistics for the raw total, and re-rank by
+      // total. topFetch bumped to catch anyone with a shot at top-10
+      // totals whose per-game rank is deeper (e.g. big minutes with
+      // slightly lower per-game). See dereferenceLeader.
+      { name: 'steals', label: 'STL', totalFromPerGame: { source: 'stealsPerGame', statName: 'steals' } },
+      { name: 'blocks', label: 'BLK', totalFromPerGame: { source: 'blocksPerGame', statName: 'blocks' } },
     ],
   },
 }
@@ -87,7 +95,16 @@ async function fetchCategoriesForSport(espnPath, categoryNames, season = CURRENT
   }
 
   const allCats = data?.categories || []
-  const picked = categoryNames.map((cn) => allCats.find((c) => c.name === cn.name)).filter(Boolean)
+  // For a "totals" category (totalFromPerGame.source), fetch from ESPN's
+  // per-game leader list at that source key but tag the picked category
+  // with the requester's own name + statName so downstream code can
+  // dereference each athlete's totals + re-rank.
+  const picked = categoryNames.map((cn) => {
+    const espnKey = cn.totalFromPerGame?.source || cn.name
+    const cat = allCats.find((c) => c.name === espnKey)
+    if (!cat) return null
+    return { ...cat, requestedName: cn.name, totalStatName: cn.totalFromPerGame?.statName || null }
+  }).filter(Boolean)
   // Empty-category signal (offseason). Retry with prior season.
   const anyHasLeaders = picked.some((c) => (c.leaders || []).length > 0)
   if (!anyHasLeaders && allowFallback && season === CURRENT_YEAR) {
@@ -121,17 +138,33 @@ function formatCategoryValue(categoryName, value) {
   return n.toFixed(1)
 }
 
-async function dereferenceLeader(entry, categoryName) {
-  // Athlete + team come as $ref URLs. Fetch in parallel and unwrap.
-  const [athleteRes, teamRes] = await Promise.allSettled([
+async function dereferenceLeader(entry, categoryName, totalStatName) {
+  // Athlete + team + (optionally) full season statistics come as $ref
+  // URLs. Fetch in parallel and unwrap. totalStatName is set for
+  // categories where we want a raw total instead of the per-game
+  // value ESPN's leader ranking returns (e.g. WNBA steals/blocks).
+  const [athleteRes, teamRes, statsRes] = await Promise.allSettled([
     entry.athlete?.$ref ? fetchJson(entry.athlete.$ref) : Promise.resolve(null),
     entry.team?.$ref ? fetchJson(entry.team.$ref) : Promise.resolve(null),
+    totalStatName && entry.statistics?.$ref ? fetchJson(entry.statistics.$ref) : Promise.resolve(null),
   ])
   const athlete = athleteRes.status === 'fulfilled' ? athleteRes.value : null
   const team = teamRes.status === 'fulfilled' ? teamRes.value : null
+
+  let value = entry.value
+  if (totalStatName) {
+    const stats = statsRes.status === 'fulfilled' ? statsRes.value : null
+    let found = null
+    for (const cat of stats?.splits?.categories || []) {
+      const s = (cat.stats || []).find((x) => x.name === totalStatName)
+      if (s) { found = s.value; break }
+    }
+    value = found ?? null
+  }
+
   return {
-    value: entry.value,
-    display_value: formatCategoryValue(categoryName, entry.value),
+    value,
+    display_value: formatCategoryValue(categoryName, value),
     athlete_id: athlete?.id || null,
     athlete_name: athlete?.displayName || athlete?.fullName || athlete?.shortName || null,
     headshot: athlete?.headshot?.href || null,
@@ -150,16 +183,28 @@ async function fetchOne(sportKey) {
   const { categories: rawCats, season } = await fetchCategoriesForSport(config.espnPath, config.categories)
   if (!rawCats.length) return { categories: [], season }
 
-  // For each category, dereference top 10 in parallel. Different
-  // categories dereferenced in parallel too.
+  // For each category, dereference in parallel. For total categories
+  // (ESPN only ranks per-game), fetch a wider window and re-sort by
+  // the actual total we just dereferenced so top-10 reflects raw
+  // totals, not per-game rank.
   const results = await Promise.all(rawCats.map(async (cat) => {
-    const label = config.categories.find((c) => c.name === cat.name)?.label || cat.displayName
-    const topN = (cat.leaders || []).slice(0, 10)
-    const leaders = await Promise.all(topN.map((l) => dereferenceLeader(l, cat.name).catch(() => null)))
+    const requestedName = cat.requestedName || cat.name
+    const cfgEntry = config.categories.find((c) => c.name === requestedName)
+    const label = cfgEntry?.label || cat.displayName
+    const isTotalOfPerGame = !!cat.totalStatName
+    const topN = (cat.leaders || []).slice(0, isTotalOfPerGame ? 25 : 10)
+    const leaders = await Promise.all(
+      topN.map((l) => dereferenceLeader(l, requestedName, cat.totalStatName).catch(() => null)),
+    )
+    let ranked = leaders.filter(Boolean)
+    if (isTotalOfPerGame) {
+      ranked.sort((a, b) => (b.value ?? -Infinity) - (a.value ?? -Infinity))
+      ranked = ranked.slice(0, 10)
+    }
     return {
-      name: cat.name,
+      name: requestedName,
       label,
-      leaders: leaders.filter(Boolean).map((l, i) => ({ ...l, rank: i + 1 })),
+      leaders: ranked.map((l, i) => ({ ...l, rank: i + 1 })),
     }
   }))
   return { categories: results.filter((c) => c.leaders.length > 0), season }
