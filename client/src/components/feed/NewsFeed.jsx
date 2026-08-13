@@ -31,7 +31,15 @@ export default function NewsFeed({ compact }) {
     return order.map((k) => TAB_DEFS[k]).filter(Boolean)
   }, [cfg?.news_tab_order])
 
-  const [sport, setSport] = useState(sportTabs[0]?.key || 'nba')
+  // Track user's explicit selection separately from the effective sport.
+  // useState only reads its initializer on first render, when cfg is
+  // still loading — so hardcoding the initial value made the tab lock
+  // to whatever the pre-config fallback picked (NBA), even after the
+  // admin-configured news_tab_order arrived. Deriving effective sport
+  // from state + current tab list respects both: a user's explicit
+  // pick sticks, otherwise we always fall through to the leftmost tab.
+  const [selectedSport, setSelectedSport] = useState(null)
+  const sport = selectedSport || sportTabs[0]?.key || 'nba'
   const { data, isLoading } = useNews(sport)
   const articles = data?.articles || []
 
@@ -42,7 +50,7 @@ export default function NewsFeed({ compact }) {
         {sportTabs.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setSport(tab.key)}
+            onClick={() => setSelectedSport(tab.key)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
               sport === tab.key ? 'bg-bg-primary/50 border-accent text-accent' : 'bg-bg-primary/50 border-text-primary/20 text-text-secondary hover:border-text-primary/40'
             }`}
