@@ -22,6 +22,33 @@ async function fetchDepthChart(sportPath, espnTeamId) {
   return res.json()
 }
 
+// NFL's per-team /injuries endpoint returns 0 rows even when there are
+// dozens of injured players league-wide, and the depth chart never
+// populates athlete.injuries[]. The only working path is the league-wide
+// /injuries endpoint (identical shape to the WNBA one). Pull once per
+// sync, return a Map<teamId, injuries[]>.
+async function fetchNflInjuriesByTeamId() {
+  const url = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/injuries'
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`ESPN NFL league-wide injuries ${res.status}`)
+  const data = await res.json()
+  const byTeamId = new Map()
+  for (const teamEntry of data.injuries || []) {
+    const list = (teamEntry.injuries || [])
+      .filter((i) => i.athlete?.displayName)
+      .map((i) => ({
+        name: i.athlete.displayName,
+        shortName: i.athlete.shortName,
+        position: i.athlete.position?.abbreviation?.toUpperCase() || '',
+        status: i.status || 'Unknown',
+        detail: i.details?.type || i.shortComment || i.longComment || '',
+      }))
+    list.sort((a, b) => (SEVERITY_ORDER[a.status] ?? 99) - (SEVERITY_ORDER[b.status] ?? 99))
+    if (teamEntry.team?.id) byTeamId.set(String(teamEntry.team.id), list)
+  }
+  return byTeamId
+}
+
 // WNBA's depth-chart endpoint returns an empty `depthchart` array — ESPN
 // doesn't populate it. The per-team injuries endpoint is also empty. The
 // only working path is the league-wide /injuries endpoint, which returns
@@ -201,41 +228,68 @@ function extractBasketballData(data) {
   return { starters, injuries }
 }
 
-function extractFootballInjuries(data) {
-  const injuredMap = new Map()
+// NFL depth chart position labels → side. Formation name (e.g. "Base 4-3 D",
+// "3WR 1TE", "Special Teams") varies by team scheme, so we classify by
+// position label instead. Anything unrecognized falls back to offense so
+// nothing goes missing.
+const NFL_DEFENSE_POS = new Set([
+  'DE', 'DT', 'DL', 'NT',
+  'LDE', 'LDT', 'RDE', 'RDT',
+  'LB', 'ILB', 'OLB', 'MLB', 'WLB', 'SLB', 'LILB', 'RILB',
+  'CB', 'LCB', 'RCB', 'NB', 'DB',
+  'S', 'SS', 'FS',
+])
+const NFL_SPECIAL_POS = new Set(['PK', 'K', 'P', 'H', 'PR', 'KR', 'LS'])
+
+function sideForFootballPosition(posLabel) {
+  const p = String(posLabel || '').toUpperCase()
+  if (NFL_DEFENSE_POS.has(p)) return 'defense'
+  if (NFL_SPECIAL_POS.has(p)) return 'special'
+  return 'offense'
+}
+
+function extractFootballStarters(data) {
   const activeNames = new Set()
+  // Keep the FIRST occurrence of each position label so we don't render
+  // both a nickel package's WR row and a base package's WR row. Sort at
+  // the end into offense → defense → special so the UI can group them
+  // visually in that order without any client-side arranging.
+  const seenPositions = new Set()
+  const starters = []
 
   for (const chart of data.depthchart || []) {
     if (!chart?.positions) continue
     for (const [, pos] of Object.entries(chart.positions)) {
-      const posLabel = pos.position?.abbreviation || ''
+      const posLabel = (pos.position?.abbreviation || '').toUpperCase()
+      // Track every athlete on the depth chart for the cleared-to-play
+      // guard (see the NFL patch pass at the bottom of syncInjuries).
       for (const athlete of pos.athletes || []) {
-        // Track every athlete that appears on this team's depth chart.
-        // Cleared-to-play detection requires both signals: "ESPN dropped
-        // them from the injury list" AND "they're still on the depth chart"
-        // — the second guard is what prevents transient API drops from
-        // firing a false 'Cleared to play.' update.
         if (athlete.displayName) activeNames.add(athlete.displayName)
-
-        if (!athlete.injuries?.length) continue
-        if (injuredMap.has(athlete.id)) continue
-        const inj = athlete.injuries[0]
-        injuredMap.set(athlete.id, {
-          name: athlete.displayName,
-          shortName: athlete.shortName,
-          position: posLabel.toUpperCase(),
-          status: inj.status || 'Unknown',
-          detail: inj.shortComment || '',
-        })
       }
+      if (!posLabel) continue
+      if (seenPositions.has(posLabel)) continue
+
+      const depth = (pos.athletes || [])
+        .filter((a) => a?.displayName)
+        .map((a) => ({ name: a.displayName, shortName: a.shortName }))
+      if (!depth.length) continue
+
+      seenPositions.add(posLabel)
+      starters.push({
+        position: posLabel,
+        name: depth[0].name,
+        shortName: depth[0].shortName,
+        side: sideForFootballPosition(posLabel),
+        depth,
+      })
     }
   }
 
-  const injuries = [...injuredMap.values()].sort(
-    (a, b) => (SEVERITY_ORDER[a.status] ?? 99) - (SEVERITY_ORDER[b.status] ?? 99)
-  )
+  // Stable side order for the client's grouped rendering.
+  const SIDE_ORDER = { offense: 0, defense: 1, special: 2 }
+  starters.sort((a, b) => (SIDE_ORDER[a.side] ?? 9) - (SIDE_ORDER[b.side] ?? 9))
 
-  return { starters: [], injuries, activeNames }
+  return { starters, activeNames }
 }
 
 async function getUpcomingTeams(sportKey) {
@@ -305,6 +359,17 @@ export async function syncInjuries() {
         wnbaInjuriesByTeamId = new Map()
       }
     }
+    // NFL: same story — per-team endpoint returns empty, only the
+    // league-wide /injuries page has real data.
+    let nflInjuriesByTeamId = null
+    if (isNfl) {
+      try {
+        nflInjuriesByTeamId = await fetchNflInjuriesByTeamId()
+      } catch (err) {
+        logger.error({ err, sportKey }, 'NFL league-wide injuries fetch failed')
+        nflInjuriesByTeamId = new Map()
+      }
+    }
     let synced = 0
 
     for (const teamName of teamNames) {
@@ -330,9 +395,14 @@ export async function syncInjuries() {
           if (isBasketball) {
             ;({ starters, injuries } = extractBasketballData(data))
           } else {
-            const extracted = extractFootballInjuries(data)
+            const extracted = extractFootballStarters(data)
             starters = extracted.starters
-            injuries = extracted.injuries
+            // NFL depth chart never has injuries inline; the league-wide
+            // map above is the only source that actually returns data.
+            // Non-NFL football (NCAAF, UFL) falls through to an empty
+            // injury list — the depth-chart path never produced anything
+            // for them either, so nothing regresses.
+            injuries = isNfl ? (nflInjuriesByTeamId.get(String(espnId)) || []) : []
             if (isNfl && extracted.activeNames) {
               for (const n of extracted.activeNames) nflActiveNames.add(n)
             }

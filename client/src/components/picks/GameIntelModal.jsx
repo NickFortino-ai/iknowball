@@ -165,12 +165,25 @@ function TeamSection({ teamName, starters, injuries }) {
       const status = injuryMap[player.name] || injuryMap[player.shortName]
       if (status === 'Out' || status === 'Doubtful') continue
       usedPlayers.add(player.name)
-      return { position: s.position, name: player.name, shortName: player.shortName, status: status || null }
+      return { position: s.position, name: player.name, shortName: player.shortName, side: s.side || null, status: status || null }
     }
     // All available players at this position are out
     return null
   }).filter(Boolean)
   const hasStarters = todayStarters.length > 0
+
+  // NFL rosters carry a `side` on each starter (offense/defense/special) so
+  // the modal can render three subsections in the canonical order fans
+  // expect. Non-NFL rosters (NBA / WNBA starting 5) don't set `side`, so
+  // we fall through to a flat list without a subheader.
+  const groupedBySide = hasStarters && todayStarters.some((s) => s.side)
+  const sides = groupedBySide
+    ? [
+        { key: 'offense', label: 'Offense', rows: todayStarters.filter((s) => s.side === 'offense') },
+        { key: 'defense', label: 'Defense', rows: todayStarters.filter((s) => s.side === 'defense') },
+        { key: 'special', label: 'Special Teams', rows: todayStarters.filter((s) => s.side === 'special') },
+      ].filter((g) => g.rows.length)
+    : null
 
   return (
     <div className="min-w-0">
@@ -182,17 +195,38 @@ function TeamSection({ teamName, starters, injuries }) {
       {hasStarters && (
         <div className="mb-4">
           <div className="text-xs text-text-muted uppercase tracking-wider mb-2">Today's Starters</div>
-          <div className="space-y-1.5">
-            {todayStarters.map((s) => (
-              <div key={s.position} className="flex items-center gap-2 text-sm">
-                <span className="font-semibold text-accent w-7 shrink-0">{s.position}</span>
-                <span className="text-text-primary truncate">{s.shortName}</span>
-                {s.status === 'Questionable' && (
-                  <span className="text-[10px] font-bold text-yellow-400 shrink-0">Q</span>
-                )}
-              </div>
-            ))}
-          </div>
+          {groupedBySide ? (
+            <div className="space-y-3">
+              {sides.map((g) => (
+                <div key={g.key}>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1">{g.label}</div>
+                  <div className="space-y-1.5">
+                    {g.rows.map((s) => (
+                      <div key={`${g.key}-${s.position}`} className="flex items-center gap-2 text-sm">
+                        <span className="font-semibold text-accent w-9 shrink-0">{s.position}</span>
+                        <span className="text-text-primary truncate">{s.shortName}</span>
+                        {s.status === 'Questionable' && (
+                          <span className="text-[10px] font-bold text-yellow-400 shrink-0">Q</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {todayStarters.map((s) => (
+                <div key={s.position} className="flex items-center gap-2 text-sm">
+                  <span className="font-semibold text-accent w-7 shrink-0">{s.position}</span>
+                  <span className="text-text-primary truncate">{s.shortName}</span>
+                  {s.status === 'Questionable' && (
+                    <span className="text-[10px] font-bold text-yellow-400 shrink-0">Q</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
