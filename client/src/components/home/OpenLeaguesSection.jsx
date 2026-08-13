@@ -47,6 +47,11 @@ const SPORT_LABELS = {
 const PREFIX_SPORT_FORMATS = new Set(['pickem', 'survivor', 'bracket', 'squares'])
 
 function getLeagueHeadline(league) {
+  // Salary-cap fantasy is materially different from a traditional draft
+  // league — users need to see that on the card before joining.
+  if (league.format === 'fantasy' && league.fantasy_format === 'salary_cap') {
+    return 'Salary Cap Fantasy Football'
+  }
   const formatLabel = FORMAT_LABELS[league.format] || league.format
   const sportLabel = SPORT_LABELS[league.sport] || league.sport
   if (PREFIX_SPORT_FORMATS.has(league.format) && sportLabel && league.sport !== 'all') {

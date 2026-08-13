@@ -328,48 +328,99 @@ router.get('/open', requireAuth, async (req, res) => {
     membersByLeague[id] = membersByLeague[id].slice(0, 10)
   }
 
-  // Pull fantasy_settings.draft_date for any fantasy leagues in this batch
-  // so the open league cards can show a live "Draft starts in N days"
-  // countdown.
+  // Pull fantasy_settings for any fantasy leagues in this batch. We need
+  // draft_date/draft_status for the traditional-fantasy countdown, and
+  // format/season/single_week for salary-cap cards so we can:
+  //   - render 'Salary Cap Fantasy Football' vs 'Fantasy Football' on
+  //     the card (users can't tell them apart otherwise), and
+  //   - rewrite starts_at to the real Week 1 kickoff instead of the
+  //     createLeague-time `new Date()` default that would otherwise say
+  //     'Runs Aug 3 – End of season' for a league that doesn't actually
+  //     start until Sep 9.
   const fantasyLeagueIds = (leagues || [])
     .filter((l) => l.format === 'fantasy')
     .map((l) => l.id)
   const draftDateByLeague = {}
   const draftStatusByLeague = {}
+  const fantasyFormatByLeague = {}
+  const salaryCapSeasonByLeague = {} // { leagueId: { season, week } } for salary_cap only
   if (fantasyLeagueIds.length) {
     const { data: fs } = await supabase
       .from('fantasy_settings')
-      .select('league_id, draft_date, draft_status')
+      .select('league_id, draft_date, draft_status, format, season, single_week')
       .in('league_id', fantasyLeagueIds)
     for (const row of fs || []) {
       draftDateByLeague[row.league_id] = row.draft_date
       draftStatusByLeague[row.league_id] = row.draft_status
+      fantasyFormatByLeague[row.league_id] = row.format || 'traditional'
+      if (row.format === 'salary_cap' && row.season) {
+        salaryCapSeasonByLeague[row.league_id] = {
+          season: row.season,
+          week: row.single_week || 1,
+        }
+      }
+    }
+  }
+
+  // Compute effective starts_at for salary_cap fantasy leagues from the
+  // NFL schedule (Week 1 first game, or single_week's first game). Batch
+  // the lookup by unique (season, week) pairs so a room full of salary
+  // cap leagues only fires one nfl_schedule query per pair.
+  const seasonWeekPairs = new Set(
+    Object.values(salaryCapSeasonByLeague).map((s) => `${s.season}:${s.week}`),
+  )
+  const firstGameByPair = new Map()
+  for (const pair of seasonWeekPairs) {
+    const [season, week] = pair.split(':').map(Number)
+    const { data: schedRows } = await supabase
+      .from('nfl_schedule')
+      .select('game_date')
+      .eq('season', season)
+      .eq('week', week)
+      .order('game_date', { ascending: true })
+      .limit(1)
+    const firstDate = schedRows?.[0]?.game_date
+    if (firstDate) {
+      // Interpret game_date as 10:00 UTC (~6 AM ET) — same anchor the
+      // activation gate in completeLeagues uses so the two agree on
+      // "the league begins here."
+      firstGameByPair.set(pair, new Date(`${firstDate}T10:00:00Z`).toISOString())
     }
   }
 
   const result = (leagues || [])
     .filter((l) => !userLeagues.has(l.id)) // exclude leagues user already joined
     .filter((l) => !l.max_members || (countMap[l.id] || 0) < l.max_members) // exclude full leagues
-    .map((l) => ({
-      id: l.id,
-      name: l.name,
-      format: l.format,
-      sport: l.sport,
-      status: l.status,
-      member_count: countMap[l.id] || 0,
-      max_members: l.max_members,
-      commissioner: l.users?.display_name || l.users?.username || 'Unknown',
-      starts_at: l.starts_at,
-      ends_at: l.ends_at,
-      duration: l.duration,
-      settings: l.settings || {},
-      joins_locked_at: l.joins_locked_at,
-      backdrop_image: l.backdrop_image,
-      backdrop_y: l.backdrop_y ?? 50,
-      draft_date: draftDateByLeague[l.id] || null,
-      draft_status: draftStatusByLeague[l.id] || null,
-      top_members: membersByLeague[l.id] || [],
-    }))
+    .map((l) => {
+      const fantasyFormat = fantasyFormatByLeague[l.id] || null
+      // For salary_cap leagues, prefer the Week 1 kickoff over the
+      // creation-time starts_at default (which is `new Date()` at
+      // createLeague and doesn't reflect when the league actually
+      // begins).
+      const scap = salaryCapSeasonByLeague[l.id]
+      const effectiveStart = scap ? firstGameByPair.get(`${scap.season}:${scap.week}`) : null
+      return {
+        id: l.id,
+        name: l.name,
+        format: l.format,
+        fantasy_format: fantasyFormat,
+        sport: l.sport,
+        status: l.status,
+        member_count: countMap[l.id] || 0,
+        max_members: l.max_members,
+        commissioner: l.users?.display_name || l.users?.username || 'Unknown',
+        starts_at: effectiveStart || l.starts_at,
+        ends_at: l.ends_at,
+        duration: l.duration,
+        settings: l.settings || {},
+        joins_locked_at: l.joins_locked_at,
+        backdrop_image: l.backdrop_image,
+        backdrop_y: l.backdrop_y ?? 50,
+        draft_date: draftDateByLeague[l.id] || null,
+        draft_status: draftStatusByLeague[l.id] || null,
+        top_members: membersByLeague[l.id] || [],
+      }
+    })
 
   res.json(result)
 })

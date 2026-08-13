@@ -202,7 +202,9 @@ export default function JoinLeaguePage() {
                         <h3 className="font-display text-xl text-white truncate">{league.name}</h3>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           <span className="text-sm font-semibold text-accent">
-                            {FORMAT_LABELS[league.format] || league.format}
+                            {league.format === 'fantasy' && league.fantasy_format === 'salary_cap'
+                              ? 'Salary Cap Fantasy Football'
+                              : (FORMAT_LABELS[league.format] || league.format)}
                           </span>
                           <span className="text-xs text-text-secondary">{SPORT_LABELS[league.sport] || league.sport}</span>
                           <span className="text-xs text-text-secondary">
