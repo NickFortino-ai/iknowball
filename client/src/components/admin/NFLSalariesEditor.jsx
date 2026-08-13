@@ -287,17 +287,27 @@ function SalaryRow({ row, onSave, onReset, onToggleHidden }) {
         )}
       </td>
       <td className="px-3 py-2 text-center">
-        <button
-          onClick={onToggleHidden}
-          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${
-            row.hidden
-              ? 'bg-incorrect/20 text-incorrect hover:bg-incorrect/30'
-              : 'bg-correct/20 text-correct hover:bg-correct/30'
-          }`}
-          title={row.hidden ? 'Hidden from user pool — click to show' : 'Visible to users — click to hide'}
-        >
-          {row.hidden ? 'HIDDEN' : 'SHOWN'}
-        </button>
+        {/* Only render the toggle for the players who actually need it:
+            low-salary QBs (deep-bench / practice-squad types users
+            shouldn't be tempted to draft) OR any row already hidden
+            (bye-week auto-hides, etc.) so admin can un-hide edge cases.
+            Everyone else (starting QBs, all skill/DEF rows) shows
+            nothing — no visual noise on players who'll never be hidden. */}
+        {(row.hidden || (row.position === 'QB' && row.salary <= 5500)) ? (
+          <button
+            onClick={onToggleHidden}
+            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+              row.hidden
+                ? 'bg-incorrect/20 text-incorrect hover:bg-incorrect/30'
+                : 'bg-correct/20 text-correct hover:bg-correct/30'
+            }`}
+            title={row.hidden ? 'Hidden from user pool — click to show' : 'Visible to users — click to hide'}
+          >
+            {row.hidden ? 'HIDDEN' : 'SHOWN'}
+          </button>
+        ) : (
+          <span className="text-[10px] text-text-muted">—</span>
+        )}
       </td>
       <td className="px-3 py-2 text-right">
         <div className="flex justify-end gap-1">
