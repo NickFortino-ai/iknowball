@@ -63,6 +63,10 @@ const GRID_CLASSES = {
 export default function SportsScoresStrip() {
   const { data, isLoading, error } = useScoresStrip()
   const isAuthenticated = useAuthStore((s) => !!s.session)
+  // Mobile only: user picks a single sport via glass tabs below the
+  // Scoreboard header instead of scrolling through all 4 stacked
+  // columns. Desktop keeps the full grid.
+  const [selectedMobileSport, setSelectedMobileSport] = useState(null)
   // Settled picks let us paint a green/red border on any Final game
   // the current user picked. Only fetch for logged-in users — no need
   // to burn a request on the public landing view. Uses useQuery
@@ -109,15 +113,46 @@ export default function SportsScoresStrip() {
     // squeezed into ~half the page width.
     <section className="mb-10 xl:-mx-24" data-onboarding="scoreboard">
       <h2 className="font-display text-2xl mb-4">Scoreboard</h2>
+
+      {/* Mobile-only sport tabs — glass-styled pills. Stacking all 4
+          sport columns vertically made mobile users scroll past NFL
+          just to see NBA scores; picking a sport up-front is faster
+          and matches how Sleeper does it. Desktop keeps the grid. */}
+      {activeSports.length > 1 && (
+        <div className="sm:hidden flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
+          {activeSports.map((sport) => {
+            const isActive = (selectedMobileSport || activeSports[0].key) === sport.key
+            return (
+              <button
+                key={sport.key}
+                onClick={() => setSelectedMobileSport(sport.key)}
+                className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold backdrop-blur-md transition-colors border ${
+                  isActive
+                    ? 'bg-accent/20 border-accent text-text-primary'
+                    : 'bg-bg-primary/40 border-text-primary/15 text-text-secondary hover:text-text-primary hover:border-text-primary/30'
+                }`}
+              >
+                {sport.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       <div className={`grid gap-4 ${gridClass}`}>
-        {activeSports.map((sport) => (
-          <SportColumn
-            key={sport.key}
-            sport={sport}
-            data={data[sport.key]}
-            pickOutcomeByGame={pickOutcomeByGame}
-          />
-        ))}
+        {activeSports.map((sport) => {
+          const effectiveMobileSport = selectedMobileSport || activeSports[0].key
+          const showOnMobile = sport.key === effectiveMobileSport
+          return (
+            <div key={sport.key} className={showOnMobile ? '' : 'hidden sm:block'}>
+              <SportColumn
+                sport={sport}
+                data={data[sport.key]}
+                pickOutcomeByGame={pickOutcomeByGame}
+              />
+            </div>
+          )
+        })}
       </div>
     </section>
   )
