@@ -165,40 +165,19 @@ function SportColumn({ sport, data, pickOutcomeByGame }) {
   const upcoming = data?.upcoming || []
   const recent = data?.recent || []
 
-  // Mobile-only collapsibility. Desktop (xl+) always shows expanded —
-  // there's plenty of room in the 3-4 column grid.
-  const [collapsed, setCollapsed] = useState(false)
-
   return (
     <div>
       <div className="w-full py-2 mb-2 flex items-center justify-between">
-        {/* Sport label doubles as the drill-in link. On mobile, the
-            entire header area is a collapsible-toggle (the chevron
-            button on the right), keeping the drill-in link tappable
-            via the label itself. */}
+        {/* Sport label doubles as the drill-in link. Mobile no longer
+            needs a per-column collapse toggle — the sport tabs above
+            already gate visibility to one sport at a time. */}
         <Link to={`/scores/${sport.key}`} className="font-display text-lg text-text-primary hover:text-accent transition-colors flex items-center gap-1 group">
           {sport.label}
           <svg className="w-4 h-4 text-text-muted group-hover:text-accent transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="9 18 15 12 9 6" />
           </svg>
         </Link>
-        <button
-          type="button"
-          onClick={() => setCollapsed((c) => !c)}
-          className="xl:hidden text-text-muted"
-          aria-expanded={!collapsed}
-          aria-label={collapsed ? 'Expand' : 'Collapse'}
-        >
-          <svg
-            className={`w-4 h-4 transition-transform ${collapsed ? '' : 'rotate-180'}`}
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
       </div>
-      {/* Body is always rendered on desktop (xl+); mobile respects
-          the collapsed toggle via a conditional className swap. */}
       {/* Order: Live → Final → Upcoming → Leaders (top 3). Recent
           finals slot above upcoming so a user landing on a sport with
           a completed slate sees 'what just happened' first — matches
@@ -211,7 +190,7 @@ function SportColumn({ sport, data, pickOutcomeByGame }) {
         const todayStr = todayPT()
         const todayRecent = recent.filter((g) => new Date(g.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) === todayStr)
         return (
-          <div className={`space-y-4 ${collapsed ? 'hidden xl:block' : ''}`}>
+          <div className="space-y-4">
             {live.length > 0 && (
               <BucketSection label="Live" games={live} sportFullKey={sport.fullKey} isLive />
             )}
