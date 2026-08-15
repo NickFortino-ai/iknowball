@@ -333,10 +333,15 @@ export default function GameCenterModal({ gameId, onClose }) {
       >
         {/* Sticky top bar */}
         <div className="flex items-center justify-between gap-2 px-3 sm:px-5 pt-3 pb-2 border-b border-text-primary/10 shrink-0">
-          <div className="flex items-baseline gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
             <h2 className="font-display text-base sm:text-lg">Game Center</h2>
+            {data?.status === 'live' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+            )}
             {data?.status_detail && (
-              <span className="text-[11px] uppercase tracking-wider text-text-muted truncate">· {data.status_detail}</span>
+              <span className={`text-[11px] uppercase tracking-wider truncate ${data.status === 'live' ? 'text-red-400 font-semibold' : 'text-text-muted'}`}>
+                {data.status === 'live' ? data.status_detail : `· ${data.status_detail}`}
+              </span>
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">

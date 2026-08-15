@@ -82,6 +82,8 @@ function normalize(sportKey, summary) {
   const status = competition?.status?.type || {}
   const statusState = status.state || 'pre' // 'pre' | 'in' | 'post'
   const statusMap = { pre: 'upcoming', in: 'live', post: 'final' }
+  const displayClock = competition?.status?.displayClock || null
+  const period = competition?.status?.period || null
   const boxscore = summary?.boxscore || {}
   const players = boxscore?.players || []
   const teamMeta = new Map()
@@ -169,7 +171,12 @@ function normalize(sportKey, summary) {
   return {
     sport_key: sportKey,
     status: statusMap[statusState] || 'upcoming',
-    status_detail: status.description || status.shortDetail || null,
+    // shortDetail typically embeds the clock ("10:21 - 1st Quarter"),
+    // description doesn't ("1st Quarter"). Prefer shortDetail so live
+    // games surface the clock; finals collapse to "Final" either way.
+    status_detail: status.shortDetail || status.description || null,
+    period,
+    display_clock: displayClock,
     teams,
     line_score_headers,
     stat_groups,
