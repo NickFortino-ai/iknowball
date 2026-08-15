@@ -14,7 +14,7 @@ export function useScoresStrip() {
     refetchInterval: (query) => {
       const data = query.state.data
       if (!data) return 60 * 1000
-      const anyLive = ['nfl', 'nba', 'mlb', 'wnba'].some((s) => (data?.[s]?.live?.length || 0) > 0)
+      const anyLive = ['nfl', 'nba', 'mlb', 'wnba', 'mls', 'ncaaf', 'ncaab'].some((s) => (data?.[s]?.live?.length || 0) > 0)
       return anyLive ? 20 * 1000 : 5 * 60 * 1000
     },
     refetchIntervalInBackground: false,

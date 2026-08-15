@@ -18,13 +18,15 @@ const router = Router()
 
 // Sport keys to include in the strip. NFL rolls up regular + preseason
 // via expandSportFamily so the NFL column shows both.
-const STRIP_SPORTS = ['nfl', 'nba', 'mlb', 'wnba', 'mls']
+const STRIP_SPORTS = ['nfl', 'nba', 'mlb', 'wnba', 'mls', 'ncaaf', 'ncaab']
 const SHORT_TO_FULL = {
   nfl: 'americanfootball_nfl',
   nba: 'basketball_nba',
   mlb: 'baseball_mlb',
   wnba: 'basketball_wnba',
   mls: 'soccer_usa_mls',
+  ncaaf: 'americanfootball_ncaaf',
+  ncaab: 'basketball_ncaab',
 }
 
 // Per-bucket caps: high enough to cover a full daily slate for any
@@ -63,7 +65,7 @@ router.get('/strip', async (req, res) => {
     .select('id, key')
     .in('key', allSportKeys)
   if (sportsErr) return res.status(500).json({ error: sportsErr.message })
-  if (!sports?.length) return res.json({ nfl: emptyCol(), nba: emptyCol(), mlb: emptyCol(), wnba: emptyCol(), mls: emptyCol() })
+  if (!sports?.length) return res.json({ nfl: emptyCol(), nba: emptyCol(), mlb: emptyCol(), wnba: emptyCol(), mls: emptyCol(), ncaaf: emptyCol(), ncaab: emptyCol() })
 
   const sportIdToShort = {}
   for (const s of sports) {
@@ -73,6 +75,8 @@ router.get('/strip', async (req, res) => {
     else if (s.key === 'baseball_mlb') sportIdToShort[s.id] = 'mlb'
     else if (s.key === 'basketball_wnba') sportIdToShort[s.id] = 'wnba'
     else if (s.key === 'soccer_usa_mls') sportIdToShort[s.id] = 'mls'
+    else if (s.key === 'americanfootball_ncaaf') sportIdToShort[s.id] = 'ncaaf'
+    else if (s.key === 'basketball_ncaab') sportIdToShort[s.id] = 'ncaab'
   }
   // sport_ids are UUIDs — pass the map keys through as strings, NOT
   // Number()-cast (that was returning NaN and blowing up the .in()).
@@ -122,12 +126,14 @@ router.get('/strip', async (req, res) => {
   const shortToFullForRecords = {
     nfl: 'americanfootball_nfl', nba: 'basketball_nba',
     mlb: 'baseball_mlb', wnba: 'basketball_wnba',
-    // MLS records aren't cached today (teamRecordsService only covers
-    // the four US majors). getPlayerPool-style lookups will render
-    // teams without records, which is fine.
+    // MLS + NCAA records aren't cached today (teamRecordsService only
+    // covers the four US majors). Lookups will render teams without
+    // records, which is fine.
     mls: 'soccer_usa_mls',
+    ncaaf: 'americanfootball_ncaaf',
+    ncaab: 'basketball_ncaab',
   }
-  const out = { nfl: emptyCol(), nba: emptyCol(), mlb: emptyCol(), wnba: emptyCol(), mls: emptyCol() }
+  const out = { nfl: emptyCol(), nba: emptyCol(), mlb: emptyCol(), wnba: emptyCol(), mls: emptyCol(), ncaaf: emptyCol(), ncaab: emptyCol() }
   const attach = (s, g) => shape(g, shortToFullForRecords[s])
   for (const g of liveRes.data || []) {
     const s = sportIdToShort[g.sport_id]
@@ -142,13 +148,15 @@ router.get('/strip', async (req, res) => {
     if (s && out[s].recent.length < RECENT_LIMIT) out[s].recent.push(attach(s, g))
   }
 
-  // Daily-cadence sports (MLB / MLS) with substantial slates: when
-  // there are games left today the upcoming column shouldn't spill
-  // into tomorrow — users can drill in for the full schedule. If
-  // today has zero upcoming (all done), keep the wider window so
-  // the card still shows something (tomorrow's slate).
+  // Daily-cadence sports with substantial slates (MLB, MLS, NCAAB —
+  // CFB nominally plays Sat only but still gets the same treatment
+  // for consistency): when there are games left today the upcoming
+  // column shouldn't spill into tomorrow — users can drill in for
+  // the full schedule. If today has zero upcoming (all done), keep
+  // the wider window so the card still shows something (tomorrow's
+  // slate).
   const todayPt = toSportsDay(new Date().toISOString())
-  for (const key of ['mlb', 'mls']) {
+  for (const key of ['mlb', 'mls', 'ncaaf', 'ncaab']) {
     const todayUpcoming = out[key].upcoming.filter((g) => toSportsDay(g.starts_at) === todayPt)
     if (todayUpcoming.length) out[key].upcoming = todayUpcoming
   }
@@ -255,7 +263,7 @@ router.get('/day', async (req, res) => {
   const shortSport = String(req.query.sport || '').toLowerCase()
   const date = String(req.query.date || '')
   const full = SHORT_TO_FULL[shortSport]
-  if (!full) return res.status(400).json({ error: 'sport must be one of nfl/nba/mlb/wnba/mls' })
+  if (!full) return res.status(400).json({ error: 'sport must be one of nfl/nba/mlb/wnba/mls/ncaaf/ncaab' })
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' })
 
   const { startUtc, endUtc } = sportsDayBoundsUtc(date)
@@ -314,7 +322,7 @@ router.get('/day', async (req, res) => {
 router.get('/standings', async (req, res) => {
   const shortSport = String(req.query.sport || '').toLowerCase()
   const full = SHORT_TO_FULL[shortSport]
-  if (!full) return res.status(400).json({ error: 'sport must be one of nfl/nba/mlb/wnba/mls' })
+  if (!full) return res.status(400).json({ error: 'sport must be one of nfl/nba/mlb/wnba/mls/ncaaf/ncaab' })
 
   const { getStandingsTable } = await import('../services/teamRecordsService.js')
   const standings = await getStandingsTable(full)
@@ -330,7 +338,7 @@ router.get('/standings', async (req, res) => {
 router.get('/leaders', async (req, res) => {
   const shortSport = String(req.query.sport || '').toLowerCase()
   const full = SHORT_TO_FULL[shortSport]
-  if (!full) return res.status(400).json({ error: 'sport must be one of nfl/nba/mlb/wnba/mls' })
+  if (!full) return res.status(400).json({ error: 'sport must be one of nfl/nba/mlb/wnba/mls/ncaaf/ncaab' })
   const { getStatLeaders } = await import('../services/statLeadersService.js')
   const data = await getStatLeaders(full)
   res.set('Cache-Control', 'public, max-age=300')
@@ -347,7 +355,7 @@ router.get('/finals', async (req, res) => {
   const shortSport = String(req.query.sport || '').toLowerCase()
   const date = String(req.query.date || '')
   const full = SHORT_TO_FULL[shortSport]
-  if (!full) return res.status(400).json({ error: 'sport must be one of nfl/nba/mlb/wnba/mls' })
+  if (!full) return res.status(400).json({ error: 'sport must be one of nfl/nba/mlb/wnba/mls/ncaaf/ncaab' })
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' })
 
   const { startUtc, endUtc } = sportsDayBoundsUtc(date)
