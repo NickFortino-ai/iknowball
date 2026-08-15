@@ -177,7 +177,7 @@ function YourPickStrip({ userPick, away, home }) {
     : 'text-text-muted'
 
   return (
-    <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-bg-primary/40 border border-text-primary/10">
+    <div className="flex items-center gap-2 mb-3 mx-auto w-full max-w-md px-3 py-2 rounded-lg bg-bg-primary/40 border border-text-primary/10">
       <span className={`text-base font-bold shrink-0 ${iconClass}`}>{icon}</span>
       <span className="text-xs text-text-muted shrink-0">Picked</span>
       <span className="text-sm font-semibold text-text-primary truncate min-w-0">{pickedTeamName}</span>
@@ -426,41 +426,42 @@ export default function GameCenterModal({ gameId, onClose }) {
               {currentTeam && (
                 <TeamStatsSection groups={data.stat_groups?.[currentTeam.id]} />
               )}
+
+              {/* Reactions/comments — subtle link at the end of the scroll
+                  so users who want it can find it, without competing
+                  with the box score for attention. Expands inline. */}
+              {isAuthed && (
+                <div className="mt-6 pt-4 border-t border-text-primary/10">
+                  <div className="text-center">
+                    <button
+                      onClick={() => setDrawerOpen((v) => !v)}
+                      className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      </svg>
+                      {drawerOpen ? 'Hide discussion' : 'React & discuss'}
+                    </button>
+                  </div>
+                  {drawerOpen && (
+                    <div className="mt-3 space-y-3">
+                      {userPick ? (
+                        <>
+                          <PickReactions pickId={userPick.id} />
+                          <PickComments pickId={userPick.id} initialExpanded />
+                        </>
+                      ) : (
+                        <p className="text-sm text-text-muted text-center py-6">
+                          Make a pick on this game to react and discuss with your squad.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
-
-        {/* Reactions/comments drawer — always shown for authed viewers;
-            renders a "make a pick to discuss" hint when the viewer
-            hasn't picked this game. Slides up over the box score so
-            stat tables stay the primary focus by default. */}
-        {isAuthed && (
-          <>
-            {drawerOpen && (
-              <div className="border-t border-text-primary/10 bg-bg-primary/95 backdrop-blur-md shrink-0 max-h-[60vh] overflow-y-auto overscroll-contain px-3 sm:px-5 py-3 space-y-3">
-                {userPick ? (
-                  <>
-                    <PickReactions pickId={userPick.id} />
-                    <PickComments pickId={userPick.id} initialExpanded />
-                  </>
-                ) : (
-                  <p className="text-sm text-text-muted text-center py-6">
-                    Make a pick on this game to react and discuss with your squad.
-                  </p>
-                )}
-              </div>
-            )}
-            <button
-              onClick={() => setDrawerOpen((v) => !v)}
-              className="shrink-0 border-t border-accent/40 bg-accent/10 px-4 py-3.5 text-sm font-semibold text-text-primary hover:bg-accent/20 transition-colors flex items-center justify-center gap-2"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-              <span>{drawerOpen ? 'Hide discussion' : 'React & discuss'}</span>
-            </button>
-          </>
-        )}
       </div>
       {/* Nested profile modal when a squad chip is tapped. UserProfileModal
           renders its own overlay with a higher stacking order, layering
