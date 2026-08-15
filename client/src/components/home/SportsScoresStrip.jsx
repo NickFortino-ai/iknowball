@@ -125,7 +125,8 @@ export default function SportsScoresStrip() {
       {/* Mobile-only sport tabs — glass-styled pills. Stacking all 4
           sport columns vertically made mobile users scroll past NFL
           just to see NBA scores; picking a sport up-front is faster
-          and matches how Sleeper does it. Desktop keeps the grid. */}
+          and matches how Sleeper does it. Desktop gets its own tab
+          row below. */}
       {activeSports.length > 1 && (
         <div className="sm:hidden flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
           {activeSports.map((sport) => {
@@ -144,6 +145,30 @@ export default function SportsScoresStrip() {
               </button>
             )
           })}
+        </div>
+      )}
+
+      {/* Desktop-only sport tabs — TOP shows the multi-column overview
+          (default view), individual sport pills navigate to the sport
+          drill-in page for a wider, richer single-sport view. Only
+          renders when there are 2+ sports to switch between. */}
+      {activeSports.length > 1 && (
+        <div className="hidden sm:flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
+          <button
+            disabled
+            className="shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold backdrop-blur-md border bg-accent/20 border-accent text-text-primary"
+          >
+            TOP
+          </button>
+          {activeSports.map((sport) => (
+            <Link
+              key={sport.key}
+              to={`/scores/${sport.key}`}
+              className="shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold backdrop-blur-md transition-colors border bg-bg-primary/40 border-text-primary/15 text-text-secondary hover:text-text-primary hover:border-text-primary/30"
+            >
+              {sport.label}
+            </Link>
+          ))}
         </div>
       )}
 
