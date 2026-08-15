@@ -197,7 +197,7 @@ function AllPicksBar({ totalCounts, away, home }) {
   const awayPct = 100 - homePct
   return (
     <div className="mb-3">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1.5 px-1">IKB Picks</div>
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-text-primary mb-1.5 text-center">IKB Picks</div>
       <div className="flex justify-between text-[11px] font-semibold mb-1">
         <span className="text-text-primary truncate max-w-[45%]">{away?.short || away?.name} {awayPct}%</span>
         <span className="text-text-primary truncate max-w-[45%] text-right">{homePct}% {home?.short || home?.name}</span>
