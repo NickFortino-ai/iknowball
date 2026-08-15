@@ -197,7 +197,7 @@ function AllPicksBar({ totalCounts, away, home }) {
   const awayPct = 100 - homePct
   return (
     <div className="mb-3">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-text-primary mb-1.5 text-center">IKB Picks</div>
+      <div className="text-xs font-semibold uppercase tracking-wider text-text-primary mb-1.5 text-center">IKB Picks</div>
       <div className="flex justify-between text-[11px] font-semibold mb-1">
         <span className="text-text-primary truncate max-w-[45%]">{away?.short || away?.name} {awayPct}%</span>
         <span className="text-text-primary truncate max-w-[45%] text-right">{homePct}% {home?.short || home?.name}</span>
@@ -364,26 +364,34 @@ export default function BoxScoreModal({ gameId, onClose }) {
           )}
         </div>
 
-        {/* Reactions/comments drawer — only when the viewer has a pick on
-            this game. Collapsed by default; the sticky footer button
-            toggles it. Slides up over the box score so stat tables stay
-            the primary focus. */}
-        {userPick && (
+        {/* Reactions/comments drawer — always shown for authed viewers;
+            renders a "make a pick to discuss" hint when the viewer
+            hasn't picked this game. Slides up over the box score so
+            stat tables stay the primary focus by default. */}
+        {isAuthed && (
           <>
             {drawerOpen && (
               <div className="border-t border-text-primary/10 bg-bg-primary/95 backdrop-blur-md shrink-0 max-h-[60vh] overflow-y-auto overscroll-contain px-3 sm:px-5 py-3 space-y-3">
-                <PickReactions pickId={userPick.id} />
-                <PickComments pickId={userPick.id} initialExpanded />
+                {userPick ? (
+                  <>
+                    <PickReactions pickId={userPick.id} />
+                    <PickComments pickId={userPick.id} initialExpanded />
+                  </>
+                ) : (
+                  <p className="text-sm text-text-muted text-center py-6">
+                    Make a pick on this game to react and discuss with your squad.
+                  </p>
+                )}
               </div>
             )}
             <button
               onClick={() => setDrawerOpen((v) => !v)}
-              className="shrink-0 border-t border-text-primary/10 px-4 py-3 text-sm font-semibold text-text-secondary hover:text-text-primary hover:bg-bg-primary/40 transition-colors flex items-center justify-center gap-2"
+              className="shrink-0 border-t border-accent/40 bg-accent/10 px-4 py-3.5 text-sm font-semibold text-text-primary hover:bg-accent/20 transition-colors flex items-center justify-center gap-2"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
-              <span>{drawerOpen ? 'Hide' : 'React & discuss'}</span>
+              <span>{drawerOpen ? 'Hide discussion' : 'React & discuss'}</span>
             </button>
           </>
         )}
