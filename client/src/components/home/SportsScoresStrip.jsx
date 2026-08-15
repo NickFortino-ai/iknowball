@@ -81,12 +81,15 @@ export default function SportsScoresStrip() {
     staleTime: 60 * 1000,
     retry: false,
   })
+  // Map<game_id, 'win' | 'loss' | 'push'>. A push/tie (is_correct = null
+  // on a settled pick) surfaces with a yellow outline the same way it
+  // does on the Results page — critical for MLS where regular-season
+  // draws are common, and for anything else that can end tied.
   const pickOutcomeByGame = useMemo(() => {
     const map = new Map()
     for (const p of settledPicks || []) {
-      if (p.game_id && typeof p.is_correct === 'boolean') {
-        map.set(p.game_id, p.is_correct)
-      }
+      if (!p.game_id || p.status !== 'settled') continue
+      map.set(p.game_id, p.is_correct === true ? 'win' : p.is_correct === false ? 'loss' : 'push')
     }
     return map
   }, [settledPicks])
@@ -306,15 +309,18 @@ function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome }) {
   // no outer container wrapping the sport list.
   //
   // Final games the user picked get a green (correct) or red (wrong)
-  // outline + faint tint. Only applied when pickOutcome is a bool
-  // (undefined = no pick / not authenticated) and we're in isFinal
-  // mode — Live/Upcoming don't render the outline.
+  // outline + faint tint (win = green, loss = red, push/tie = yellow).
+  // Only applied when pickOutcome is set (undefined = no pick / not
+  // authenticated) and we're in isFinal mode — Live/Upcoming don't
+  // render the outline.
   const showScore = isLive || isFinal
-  const hasPick = isFinal && typeof pickOutcome === 'boolean'
+  const hasPick = isFinal && !!pickOutcome
   const outlineClass = hasPick
-    ? (pickOutcome
-        ? 'border-correct/60 bg-correct/5'
-        : 'border-incorrect/60 bg-incorrect/5')
+    ? pickOutcome === 'win'
+      ? 'border-correct/60 bg-correct/5'
+      : pickOutcome === 'loss'
+        ? 'border-incorrect/60 bg-incorrect/5'
+        : 'border-yellow-500/60 bg-yellow-500/5'
     : 'border-text-primary/10 bg-bg-primary/20'
   // Live game clock / inning label — Sleeper/ESPN-style "Bot 7th" for
   // MLB, "Q3 · 4:32" for football/basketball. Data comes from ESPN

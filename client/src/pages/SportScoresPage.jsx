@@ -62,12 +62,14 @@ export default function SportScoresPage() {
     staleTime: 60 * 1000,
     retry: false,
   })
+  // Map<game_id, 'win' | 'loss' | 'push'>. Push captures ties/draws
+  // (is_correct = null on a settled pick) so those cards outline in
+  // yellow like the Results page. Especially relevant for MLS.
   const pickOutcomeByGame = useMemo(() => {
     const map = new Map()
     for (const p of settledPicks || []) {
-      if (p.game_id && typeof p.is_correct === 'boolean') {
-        map.set(p.game_id, p.is_correct)
-      }
+      if (!p.game_id || p.status !== 'settled') continue
+      map.set(p.game_id, p.is_correct === true ? 'win' : p.is_correct === false ? 'loss' : 'push')
     }
     return map
   }, [settledPicks])
@@ -437,9 +439,15 @@ function DrillGameCard({ game, sportFullKey, showDate, pickOutcome }) {
   const dateLabel = showDate && !isLive ? dateStr : null
   // Same pick-outcome styling as the landing scoreboard so the drill-in
   // preserves the at-a-glance win/loss signal on finals.
-  const hasPick = isFinal && typeof pickOutcome === 'boolean'
+  // pickOutcome: 'win' | 'loss' | 'push' | undefined. Push (tie/draw)
+  // outlines in yellow to match the Results page treatment.
+  const hasPick = isFinal && !!pickOutcome
   const outlineClass = hasPick
-    ? (pickOutcome ? 'border-correct/60 bg-correct/5' : 'border-incorrect/60 bg-incorrect/5')
+    ? pickOutcome === 'win'
+      ? 'border-correct/60 bg-correct/5'
+      : pickOutcome === 'loss'
+        ? 'border-incorrect/60 bg-incorrect/5'
+        : 'border-yellow-500/60 bg-yellow-500/5'
     : 'border-text-primary/10 bg-bg-primary/20'
 
   return (
