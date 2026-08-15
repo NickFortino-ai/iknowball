@@ -8,6 +8,7 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 import PickReactions from '../social/PickReactions'
 import PickComments from '../social/PickComments'
+import UserProfileModal from '../profile/UserProfileModal'
 
 // ESPN-style post-game box score, opened by tapping a final-state game
 // on the landing Scoreboard, drill-in, or a pick result card.
@@ -217,7 +218,7 @@ function AllPicksBar({ totalCounts, away, home }) {
 // Row of squad chips: avatar + team abbr, color-coded by result if
 // settled. Tapping does nothing yet — could deep-link to their profile
 // in a follow-up.
-function SquadChips({ squadPicks, away, home }) {
+function SquadChips({ squadPicks, away, home, onOpenProfile }) {
   if (!squadPicks?.length) return null
   return (
     <div className="mb-4">
@@ -232,10 +233,14 @@ function SquadChips({ squadPicks, away, home }) {
               : 'border-yellow-500/60 bg-yellow-500/10'
             : 'border-text-primary/15 bg-bg-primary/30'
           return (
-            <div key={sp.pick_id || sp.id} className={`flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full border ${colorClass}`}>
+            <button
+              key={sp.pick_id || sp.id}
+              onClick={() => sp.id && onOpenProfile?.(sp.id)}
+              className={`flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full border transition-colors hover:brightness-125 ${colorClass}`}
+            >
               <Avatar user={sp} size="xs" />
               <span className="text-[11px] font-semibold text-text-primary">{team?.abbr || team?.short || '—'}</span>
-            </div>
+            </button>
           )
         })}
       </div>
@@ -250,6 +255,7 @@ export default function BoxScoreModal({ gameId, onClose }) {
   const { data: gamePicksData } = useGamePicks(isAuthed ? gameId : null)
   const [activeTeamId, setActiveTeamId] = useState(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [profileUserId, setProfileUserId] = useState(null)
 
   useEffect(() => {
     if (!gameId) return
@@ -327,7 +333,7 @@ export default function BoxScoreModal({ gameId, onClose }) {
                 <div className="mb-4 pb-4 border-b border-text-primary/10">
                   {userPick && <YourPickStrip userPick={userPick} away={away} home={home} />}
                   <AllPicksBar totalCounts={totalCounts} away={away} home={home} />
-                  <SquadChips squadPicks={squadPicks} away={away} home={home} />
+                  <SquadChips squadPicks={squadPicks} away={away} home={home} onOpenProfile={setProfileUserId} />
                 </div>
               )}
 
@@ -396,6 +402,12 @@ export default function BoxScoreModal({ gameId, onClose }) {
           </>
         )}
       </div>
+      {/* Nested profile modal when a squad chip is tapped. UserProfileModal
+          renders its own overlay with a higher stacking order, layering
+          on top of the box score. */}
+      {profileUserId && (
+        <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
+      )}
     </div>
   )
 }
