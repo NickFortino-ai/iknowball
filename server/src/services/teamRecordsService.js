@@ -24,6 +24,8 @@ const ESPN_PATH = {
   basketball_nba: 'basketball/nba',
   baseball_mlb: 'baseball/mlb',
   basketball_wnba: 'basketball/wnba',
+  americanfootball_ncaaf: 'football/college-football',
+  basketball_ncaab: 'basketball/mens-college-basketball',
 }
 
 function normalize(name) {

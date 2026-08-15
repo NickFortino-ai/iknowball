@@ -85,6 +85,30 @@ const SPORT_CONFIG = {
       { name: 'assists', label: 'Assists' },
     ],
   },
+  americanfootball_ncaaf: {
+    espnPath: 'football/leagues/college-football',
+    categories: [
+      { name: 'passingYards', label: 'Pass Yds' },
+      { name: 'passingTouchdowns', label: 'Pass TD' },
+      { name: 'rushingYards', label: 'Rush Yds' },
+      { name: 'receivingYards', label: 'Rec Yds' },
+      { name: 'totalTouchdowns', label: 'TDs' },
+      { name: 'sacks', label: 'Sacks' },
+      { name: 'interceptions', label: 'INTs' },
+      { name: 'totalTackles', label: 'Tackles' },
+    ],
+  },
+  basketball_ncaab: {
+    espnPath: 'basketball/leagues/mens-college-basketball',
+    categories: [
+      { name: 'pointsPerGame', label: 'PPG' },
+      { name: 'reboundsPerGame', label: 'RPG' },
+      { name: 'assistsPerGame', label: 'APG' },
+      { name: 'threePointFieldGoalsMade', label: '3PM' },
+      { name: 'steals', label: 'STL', totalFromPerGame: { source: 'stealsPerGame', statName: 'steals' } },
+      { name: 'blocks', label: 'BLK', totalFromPerGame: { source: 'blocksPerGame', statName: 'blocks' } },
+    ],
+  },
 }
 
 const CURRENT_YEAR = new Date().getUTCFullYear()
