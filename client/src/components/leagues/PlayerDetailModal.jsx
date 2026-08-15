@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { usePlayerDetail } from '../../hooks/useLeagues'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
+import { getTeamColor } from '../../lib/teamColors'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
 const INJURY_COLORS = {
@@ -380,8 +381,19 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
 
         {isLoading || !data ? (
           <div className="p-10 flex items-center justify-center"><LoadingSpinner /></div>
-        ) : (
-          <div className="p-5 space-y-5">
+        ) : (() => {
+          // Fantasy is NFL-only today. Look up team color for the
+          // hero backdrop; falls back to the default surface if the
+          // player has no team (FA) or the color's missing.
+          const teamColor = getTeamColor('americanfootball_nfl', data.player.team)
+          return (
+          <div>
+          <div
+            className="p-5"
+            style={teamColor ? {
+              background: `linear-gradient(180deg, ${teamColor} 0%, ${teamColor}cc 60%, ${teamColor}00 100%)`,
+            } : undefined}
+          >
             {/* Headshot + name top center */}
             <div className="flex flex-col items-center text-center">
               {data.player.headshot_url && (
@@ -416,7 +428,9 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
                 </div>
               )}
             </div>
+          </div>
 
+          <div className="p-5 space-y-5">
             {/* Player Notes — current blurb on top, prior weeks collapsed
                 behind a toggle so they don't push everything down. Falls
                 back to ESPN injury text only when no blurb exists at all. */}
@@ -530,7 +544,9 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
               </div>
             )}
           </div>
-        )}
+          </div>
+          )
+        })()}
       </div>
     </div>,
     document.body

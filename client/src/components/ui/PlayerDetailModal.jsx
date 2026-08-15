@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import { useNbaDfsPlayerGamelog } from '../../hooks/useLeagues'
+import { getTeamColor } from '../../lib/teamColors'
 import LoadingSpinner from './LoadingSpinner'
 import InjuryBadge from './InjuryBadge'
 
@@ -274,6 +275,7 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
   const isMLB = detectedSport === 'baseball_mlb'
   const isNFL = detectedSport === 'americanfootball_nfl'
   const isPitcher = !!data?.isPitcher
+  const teamColor = getTeamColor(detectedSport, player.team)
 
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-8" onClick={onClose}>
@@ -282,9 +284,15 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
         className="relative bg-bg-primary border border-text-primary/20 w-full max-w-md rounded-2xl max-h-[85vh] overflow-y-auto scrollbar-hide"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="p-5 border-b border-text-primary/10">
-          <button onClick={onClose} className="absolute top-4 right-4 text-text-muted hover:text-text-primary text-xl leading-none">&times;</button>
+        {/* Header — backdrop tinted to the player's team color when we
+            have one. Falls back to the modal's default surface. */}
+        <div
+          className="relative p-5 border-b border-text-primary/10"
+          style={teamColor ? {
+            background: `linear-gradient(135deg, ${teamColor} 0%, ${teamColor}cc 55%, ${teamColor}00 100%)`,
+          } : undefined}
+        >
+          <button onClick={onClose} className="absolute top-4 right-4 text-white/80 hover:text-white text-xl leading-none z-10">&times;</button>
           <div className="flex items-center gap-4">
             {player.headshot_url || player.player_headshot_url ? (
               <img src={player.headshot_url || player.player_headshot_url} alt="" className="w-16 h-16 rounded-full object-cover bg-bg-secondary shrink-0" />

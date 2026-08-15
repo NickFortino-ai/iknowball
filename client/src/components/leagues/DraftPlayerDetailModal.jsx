@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useDraftPlayerDetail, useMockDraftPlayerDetail } from '../../hooks/useLeagues'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
+import { getTeamColor } from '../../lib/teamColors'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
 /**
@@ -116,26 +117,35 @@ function Body({ data, onDraft }) {
   const projKey = scoring?.format === 'ppr' ? 'projected_pts_ppr' : scoring?.format === 'standard' ? 'projected_pts_std' : 'projected_pts_half_ppr'
   const proj = player[projKey]
   const isRookie = !prior
+  const teamColor = getTeamColor('americanfootball_nfl', player.team)
 
   return (
-    <div className="p-5 space-y-5">
-      {/* Headshot + name */}
-      <div className="flex flex-col items-center text-center">
-        {player.headshot_url && (
-          <img
-            src={player.headshot_url}
-            alt={player.full_name}
-            className="w-32 h-32 rounded-full object-cover bg-bg-card border-2 border-text-primary/20 mb-3"
-            onError={(e) => { e.target.style.display = 'none' }}
-          />
-        )}
-        <h2 className="font-display text-2xl text-text-primary">{player.full_name}</h2>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-xs text-text-muted">{player.position} · {player.team || 'FA'}{player.bye_week ? ` · Bye ${player.bye_week}` : ''}</span>
-          <InjuryBadge status={player.injury_status} />
+    <div>
+      {/* Hero — team-tinted backdrop for the headshot + name row. */}
+      <div
+        className="p-5"
+        style={teamColor ? {
+          background: `linear-gradient(180deg, ${teamColor} 0%, ${teamColor}cc 60%, ${teamColor}00 100%)`,
+        } : undefined}
+      >
+        <div className="flex flex-col items-center text-center">
+          {player.headshot_url && (
+            <img
+              src={player.headshot_url}
+              alt={player.full_name}
+              className="w-32 h-32 rounded-full object-cover bg-bg-card border-2 border-text-primary/20 mb-3"
+              onError={(e) => { e.target.style.display = 'none' }}
+            />
+          )}
+          <h2 className="font-display text-2xl text-text-primary">{player.full_name}</h2>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-text-muted">{player.position} · {player.team || 'FA'}{player.bye_week ? ` · Bye ${player.bye_week}` : ''}</span>
+            <InjuryBadge status={player.injury_status} />
+          </div>
         </div>
       </div>
 
+      <div className="p-5 space-y-5">
       {/* Quick stats row */}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded-xl border border-text-primary/15 bg-bg-card p-3 text-center">
@@ -212,6 +222,7 @@ function Body({ data, onDraft }) {
           Draft {player.full_name}
         </button>
       )}
+      </div>
     </div>
   )
 }
