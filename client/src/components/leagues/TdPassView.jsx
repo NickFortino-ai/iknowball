@@ -218,15 +218,28 @@ export default function TdPassView({ league, tab = 'picks' }) {
           )}
         </div>
 
-        {/* My used QBs (so user can see who they've already burned) */}
-        {(myPicks?.length || 0) > 0 && (
+        {/* My used QBs — only shows picks whose game is final. Current
+            week's active pick lives in the hero above until its game
+            wraps, then it drops down here. "Final" is approximated as
+            starts_at + 4h < now (NFL games are ~3-3.5h). */}
+        {(() => {
+          // eslint-disable-next-line react-hooks/purity
+          const now = Date.now()
+          const startByQb = new Map((qbs || []).map((q) => [q.id, q.matchup?.starts_at]))
+          const finalPicks = (myPicks || []).filter((p) => {
+            const startsAt = startByQb.get(p.qb_player_id)
+            if (!startsAt) return true // past-week pick without a current matchup — treat as final
+            return new Date(startsAt).getTime() + 4 * 60 * 60 * 1000 < now
+          })
+          if (finalPicks.length === 0) return null
+          return (
           <div className="mb-4">
             <button
               onClick={() => setUsedOpen((v) => !v)}
               className="w-full flex items-center justify-between gap-2 mb-2 hover:opacity-80 transition-opacity"
             >
               <span className="text-sm font-semibold text-text-primary uppercase tracking-wider">
-                QBs You've Used <span className="text-text-muted">({myPicks.length})</span>
+                QBs You've Used <span className="text-text-muted">({finalPicks.length})</span>
               </span>
               <svg className={`w-4 h-4 text-text-muted shrink-0 transition-transform ${usedOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M6 9l6 6 6-6" />
@@ -234,7 +247,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
             </button>
             {usedOpen && (
               <div className="rounded-xl border border-text-primary/15 overflow-hidden">
-                {[...(myPicks || [])].sort((a, b) => (b.week || 0) - (a.week || 0)).map((p) => {
+                {[...finalPicks].sort((a, b) => (b.week || 0) - (a.week || 0)).map((p) => {
                   const usedColor = getTeamColor('americanfootball_nfl', p.team)
                   return (
                     <div
@@ -264,7 +277,8 @@ export default function TdPassView({ league, tab = 'picks' }) {
               </div>
             )}
           </div>
-        )}
+          )
+        })()}
       </div>
 
       {/* Right: QB pool */}
