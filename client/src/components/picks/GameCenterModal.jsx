@@ -62,15 +62,15 @@ function TeamHeaderCard({ team, isWinner }) {
 function LineScoreRow({ team, headers, isWinner }) {
   return (
     <tr className="border-t border-text-primary/5">
-      <td className={`px-2 py-1.5 text-xs ${isWinner ? 'text-text-primary font-semibold' : 'text-text-secondary'}`}>
+      <td className={`px-2 py-1 text-sm ${isWinner ? 'text-text-primary font-semibold' : 'text-text-secondary'}`}>
         {team.abbr || team.short || team.name}
       </td>
       {headers.slice(0, -1).map((_, i) => (
-        <td key={i} className="px-2 py-1.5 text-xs text-right text-text-secondary tabular-nums">
+        <td key={i} className="px-2 py-1 text-sm text-right text-text-secondary tabular-nums w-10">
           {team.linescore[i] ?? '—'}
         </td>
       ))}
-      <td className={`px-2 py-1.5 text-xs text-right tabular-nums ${isWinner ? 'text-text-primary font-bold' : 'text-text-secondary font-semibold'}`}>
+      <td className={`px-2 py-1 text-sm text-right tabular-nums w-10 ${isWinner ? 'text-text-primary font-bold' : 'text-text-secondary font-semibold'}`}>
         {team.score ?? '—'}
       </td>
     </tr>
@@ -82,13 +82,13 @@ function LineScoreTable({ teams, headers }) {
   const winnerScore = Math.max(...teams.map((x) => x.score ?? -Infinity))
   const uniqueWinner = teams.filter((x) => x.score === winnerScore).length === 1
   return (
-    <div className="overflow-x-auto -mx-1 mb-4">
-      <table className="w-full text-xs">
+    <div className="overflow-x-auto mb-4 flex justify-center">
+      <table className="text-sm w-auto">
         <thead>
           <tr className="text-text-muted">
-            <th className="px-2 py-1 text-left font-medium w-14"></th>
+            <th className="px-2 py-1 text-left font-medium w-12"></th>
             {headers.map((h, i) => (
-              <th key={i} className={`px-2 py-1 text-right font-medium ${i === headers.length - 1 ? 'text-text-primary' : ''}`}>{h}</th>
+              <th key={i} className={`px-2 py-1 text-right font-medium w-10 ${i === headers.length - 1 ? 'text-text-primary' : ''}`}>{h}</th>
             ))}
           </tr>
         </thead>
@@ -217,9 +217,9 @@ function AllPicksBar({ totalCounts, away, home, winnerSide }) {
         <span className="text-text-primary truncate max-w-[45%]">{away?.short || away?.name} {awayPct}%</span>
         <span className="text-text-primary truncate max-w-[45%] text-right">{homePct}% {home?.short || home?.name}</span>
       </div>
-      <div className="flex h-1.5 rounded-full overflow-hidden bg-bg-primary/50">
-        {awayPct > 0 && <div className={awayColor} style={{ width: `${awayPct}%` }} />}
-        {homePct > 0 && <div className={homeColor} style={{ width: `${homePct}%` }} />}
+      <div className="relative h-1.5 rounded-full overflow-hidden bg-bg-primary/50">
+        {awayPct > 0 && <div className={`absolute inset-y-0 left-0 ${awayColor}`} style={{ width: `${awayPct}%` }} />}
+        {homePct > 0 && <div className={`absolute inset-y-0 right-0 ${homeColor}`} style={{ width: `${homePct}%` }} />}
       </div>
       <div className="flex justify-between text-[10px] text-text-muted mt-0.5">
         <span>{totalCounts.away || 0}</span>
