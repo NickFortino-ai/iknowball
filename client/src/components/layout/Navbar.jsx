@@ -11,7 +11,7 @@ import { useNotifications, useUnreadNotificationCount, useMarkAllNotificationsRe
 import { useUnreadMessageCount } from '../../hooks/useMessages'
 import { getTier } from '../../lib/scoring'
 import TierBadge from '../ui/TierBadge'
-import PickDetailModal from '../social/PickDetailModal'
+import PickModalRouter from '../picks/PickModalRouter'
 import FuturesHitModalWrapper from '../feed/FuturesHitModalWrapper'
 import ParlayResultModal from '../picks/ParlayResultModal'
 import PropDetailModal from '../picks/PropDetailModal'
@@ -1272,7 +1272,7 @@ export default function Navbar() {
         {/* Auth links moved to hero CTA on landing page */}
       </div>
     </nav>
-    <PickDetailModal pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />
+    <PickModalRouter pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />
     <ParlayResultModal parlayId={selectedParlayId} onClose={() => setSelectedParlayId(null)} />
     <PropDetailModal propPickId={selectedPropPickId} onClose={() => setSelectedPropPickId(null)} />
     <LeagueWinModal data={leagueWinData} onClose={() => setLeagueWinData(null)} />

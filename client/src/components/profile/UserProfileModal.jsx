@@ -19,7 +19,7 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import PickHistoryByMonth from './PickHistoryByMonth'
 import SocialLinks from '../ui/SocialLinks'
 import Avatar from '../ui/Avatar'
-import PickDetailModal from '../social/PickDetailModal'
+import PickModalRouter from '../picks/PickModalRouter'
 import ParlayResultModal from '../picks/ParlayResultModal'
 import PropDetailModal from '../picks/PropDetailModal'
 import ReportModal from '../moderation/ReportModal'
@@ -797,7 +797,7 @@ export default function UserProfileModal({ userId, onClose }) {
         </div>
       </div>
     </div>
-    <PickDetailModal pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />
+    <PickModalRouter pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />
     <ParlayResultModal parlayId={selectedParlayId} onClose={() => setSelectedParlayId(null)} />
     <PropDetailModal propPickId={selectedPropPickId} onClose={() => setSelectedPropPickId(null)} />
     {showReportModal && (
