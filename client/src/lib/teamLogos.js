@@ -107,6 +107,43 @@ const UFL_ABBRS = {
   'St. Louis Battlehawks': 'stl', 'St Louis Battlehawks': 'stl',
 }
 
+// MLS team → ESPN numeric ID (same pattern as NCAA). Includes name
+// variants for teams whose odds-API/DB name differs from ESPN's
+// display name (Red Bull New York vs New York Red Bulls, unaccented
+// Montreal, unofficial St Louis casing).
+const MLS_IDS = {
+  'Atlanta United FC': '18418', 'Atlanta United': '18418',
+  'Austin FC': '20906',
+  'CF Montréal': '9720', 'CF Montreal': '9720',
+  'Charlotte FC': '21300',
+  'Chicago Fire FC': '182', 'Chicago Fire': '182',
+  'Colorado Rapids': '184',
+  'Columbus Crew': '183',
+  'D.C. United': '193', 'DC United': '193',
+  'FC Cincinnati': '18267',
+  'FC Dallas': '185',
+  'Houston Dynamo FC': '6077', 'Houston Dynamo': '6077',
+  'Inter Miami CF': '20232', 'Inter Miami': '20232',
+  'LA Galaxy': '187',
+  'LAFC': '18966', 'Los Angeles FC': '18966',
+  'Minnesota United FC': '17362', 'Minnesota United': '17362',
+  'Nashville SC': '18986',
+  'New England Revolution': '189',
+  'New York City FC': '17606', 'NYC FC': '17606', 'NYCFC': '17606',
+  'Orlando City SC': '12011', 'Orlando City': '12011',
+  'Philadelphia Union': '10739',
+  'Portland Timbers': '9723',
+  'Real Salt Lake': '4771',
+  'Red Bull New York': '190', 'New York Red Bulls': '190',
+  'San Diego FC': '22529',
+  'San Jose Earthquakes': '191',
+  'Seattle Sounders FC': '9726', 'Seattle Sounders': '9726',
+  'Sporting Kansas City': '186', 'Sporting KC': '186',
+  'St. Louis CITY SC': '21812', 'St. Louis City SC': '21812', 'St Louis City SC': '21812',
+  'Toronto FC': '7318',
+  'Vancouver Whitecaps': '9727', 'Vancouver Whitecaps FC': '9727',
+}
+
 const SPORT_MAP = {
   icehockey_nhl: { abbrs: NHL_ABBRS, sport: 'nhl' },
   basketball_nba: { abbrs: NBA_ABBRS, sport: 'nba' },
@@ -122,6 +159,8 @@ const SPORT_MAP = {
   americanfootball_ncaaf: { ids: NCAAF_IDS, sport: 'ncaa' },
   basketball_ncaab: { ids: NCAAF_IDS, sport: 'ncaa' },
   basketball_wncaab: { ids: NCAAF_IDS, sport: 'ncaa' },
+  // MLS uses ESPN numeric team IDs, under the `soccer` sport folder.
+  soccer_usa_mls: { ids: MLS_IDS, sport: 'soccer' },
 }
 
 // Canonical 3-letter team abbreviations for display (e.g. prop card

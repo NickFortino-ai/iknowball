@@ -74,6 +74,17 @@ const SPORT_CONFIG = {
       { name: 'blocks', label: 'BLK', totalFromPerGame: { source: 'blocksPerGame', statName: 'blocks' } },
     ],
   },
+  soccer_usa_mls: {
+    espnPath: 'soccer/leagues/usa.1',
+    // ESPN's soccer leaders endpoint lives at /types/1 (regular season
+    // equivalent). Every other league uses /types/2, so this per-sport
+    // override in the fetcher below.
+    typeCode: 1,
+    categories: [
+      { name: 'goals', label: 'Goals' },
+      { name: 'assists', label: 'Assists' },
+    ],
+  },
 }
 
 const CURRENT_YEAR = new Date().getUTCFullYear()
@@ -86,15 +97,15 @@ async function fetchJson(url) {
 
 // Try current season; if the leaders array is empty (offseason /
 // preseason), fall back to the prior season.
-async function fetchCategoriesForSport(espnPath, categoryNames, season = CURRENT_YEAR, allowFallback = true) {
-  const url = `https://sports.core.api.espn.com/v2/sports/${espnPath}/seasons/${season}/types/2/leaders?limit=15`
+async function fetchCategoriesForSport(espnPath, categoryNames, typeCode = 2, season = CURRENT_YEAR, allowFallback = true) {
+  const url = `https://sports.core.api.espn.com/v2/sports/${espnPath}/seasons/${season}/types/${typeCode}/leaders?limit=15`
   let data
   try {
     data = await fetchJson(url)
   } catch (err) {
-    logger.warn({ err: err.message, espnPath, season }, 'Leaders fetch failed')
+    logger.warn({ err: err.message, espnPath, season, typeCode }, 'Leaders fetch failed')
     if (allowFallback && season === CURRENT_YEAR) {
-      return fetchCategoriesForSport(espnPath, categoryNames, season - 1, false)
+      return fetchCategoriesForSport(espnPath, categoryNames, typeCode, season - 1, false)
     }
     return { categories: [], season }
   }
@@ -113,7 +124,7 @@ async function fetchCategoriesForSport(espnPath, categoryNames, season = CURRENT
   // Empty-category signal (offseason). Retry with prior season.
   const anyHasLeaders = picked.some((c) => (c.leaders || []).length > 0)
   if (!anyHasLeaders && allowFallback && season === CURRENT_YEAR) {
-    return fetchCategoriesForSport(espnPath, categoryNames, season - 1, false)
+    return fetchCategoriesForSport(espnPath, categoryNames, typeCode, season - 1, false)
   }
   return { categories: picked, season }
 }
@@ -185,7 +196,7 @@ async function fetchOne(sportKey) {
   const config = SPORT_CONFIG[sportKey]
   if (!config) return { categories: [], season: null }
 
-  const { categories: rawCats, season } = await fetchCategoriesForSport(config.espnPath, config.categories)
+  const { categories: rawCats, season } = await fetchCategoriesForSport(config.espnPath, config.categories, config.typeCode || 2)
   if (!rawCats.length) return { categories: [], season }
 
   // For each category, dereference in parallel. For total categories
