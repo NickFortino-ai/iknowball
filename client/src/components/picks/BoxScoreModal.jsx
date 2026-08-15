@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useBoxScore } from '../../hooks/useScoresStrip'
+import { useGamePicks } from '../../hooks/usePicks'
+import { useAuth } from '../../hooks/useAuth'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
+import { formatOdds } from '../../lib/scoring'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import Avatar from '../ui/Avatar'
+import PickReactions from '../social/PickReactions'
+import PickComments from '../social/PickComments'
 
 // ESPN-style post-game box score, opened by tapping a final-state game
 // on the landing Scoreboard, drill-in, or a pick result card.
@@ -12,8 +18,10 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 // Stats block for NBA/WNBA/soccer). Each group renders as a table
 // with ESPN's labels row and one row per athlete.
 //
-// Mobile: full-bleed sheet, away/home tab switcher so you never scroll
-// through both teams' stat tables end-to-end on a small screen.
+// When the viewer is authenticated the modal also surfaces pick context:
+// their own pick + result, the community pick split, and squad picks.
+// Reactions + comments live in a slide-up drawer keyed on the pick id
+// so the box score itself stays uncluttered.
 
 function TeamHeaderCard({ team, isWinner }) {
   const [logoBroken, setLogoBroken] = useState(false)
@@ -139,9 +147,108 @@ function TeamStatsSection({ groups }) {
   )
 }
 
+// Compact one-line summary of the viewer's own pick on this game.
+// Result icon → team → odds → points (post-settle only).
+function YourPickStrip({ userPick, away, home }) {
+  const pickedTeamName = userPick.picked_team === 'home'
+    ? (home?.short || home?.name || 'Home')
+    : (away?.short || away?.name || 'Away')
+  const settled = userPick.status === 'settled'
+  const isCorrect = settled && userPick.is_correct === true
+  const isLost = settled && userPick.is_correct === false
+  const isPush = settled && userPick.is_correct === null
+
+  const iconClass = isCorrect ? 'text-correct'
+    : isLost ? 'text-incorrect'
+    : isPush ? 'text-yellow-500'
+    : 'text-text-muted'
+  const icon = isCorrect ? '✓' : isLost ? '✗' : isPush ? '—' : '·'
+
+  const points = userPick.points_earned
+  const ptsClass = points > 0 ? 'text-correct'
+    : points < 0 ? 'text-incorrect'
+    : 'text-text-muted'
+
+  return (
+    <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-bg-primary/40 border border-text-primary/10">
+      <span className={`text-base font-bold shrink-0 ${iconClass}`}>{icon}</span>
+      <span className="text-xs text-text-muted shrink-0">Picked</span>
+      <span className="text-sm font-semibold text-text-primary truncate min-w-0">{pickedTeamName}</span>
+      {userPick.multiplier > 1 && (
+        <span className="text-[10px] font-bold text-accent shrink-0">{userPick.multiplier}x</span>
+      )}
+      {userPick.odds_at_pick != null && (
+        <span className="text-[11px] text-text-muted shrink-0 ml-auto">{formatOdds(userPick.odds_at_pick)}</span>
+      )}
+      {settled && points != null && (
+        <span className={`text-sm font-display font-bold tabular-nums shrink-0 ${ptsClass} ${userPick.odds_at_pick != null ? '' : 'ml-auto'}`}>
+          {points > 0 ? '+' : ''}{points}
+        </span>
+      )}
+    </div>
+  )
+}
+
+// Horizontal split showing what % of IKB'ers picked each team.
+function AllPicksBar({ totalCounts, away, home }) {
+  const totalPicks = (totalCounts?.home || 0) + (totalCounts?.away || 0)
+  if (totalPicks === 0) return null
+  const homePct = Math.round(((totalCounts.home || 0) / totalPicks) * 100)
+  const awayPct = 100 - homePct
+  return (
+    <div className="mb-3">
+      <div className="flex justify-between text-[11px] font-semibold mb-1">
+        <span className="text-text-primary truncate max-w-[45%]">{away?.short || away?.name} {awayPct}%</span>
+        <span className="text-text-primary truncate max-w-[45%] text-right">{homePct}% {home?.short || home?.name}</span>
+      </div>
+      <div className="flex h-1.5 rounded-full overflow-hidden bg-bg-primary/50">
+        {awayPct > 0 && <div className="bg-accent" style={{ width: `${awayPct}%` }} />}
+        {homePct > 0 && <div className="bg-text-secondary/50" style={{ width: `${homePct}%` }} />}
+      </div>
+      <div className="flex justify-between text-[10px] text-text-muted mt-0.5">
+        <span>{totalCounts.away || 0}</span>
+        <span>{totalCounts.home || 0}</span>
+      </div>
+    </div>
+  )
+}
+
+// Row of squad chips: avatar + team abbr, color-coded by result if
+// settled. Tapping does nothing yet — could deep-link to their profile
+// in a follow-up.
+function SquadChips({ squadPicks, away, home }) {
+  if (!squadPicks?.length) return null
+  return (
+    <div className="mb-4">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1.5 px-1">Squad</div>
+      <div className="flex flex-wrap gap-1.5">
+        {squadPicks.map((sp) => {
+          const team = sp.picked_team === 'home' ? home : away
+          const settled = sp.status === 'settled'
+          const colorClass = settled
+            ? sp.is_correct === true ? 'border-correct/60 bg-correct/10'
+              : sp.is_correct === false ? 'border-incorrect/60 bg-incorrect/10'
+              : 'border-yellow-500/60 bg-yellow-500/10'
+            : 'border-text-primary/15 bg-bg-primary/30'
+          return (
+            <div key={sp.pick_id || sp.id} className={`flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full border ${colorClass}`}>
+              <Avatar user={sp} size="xs" />
+              <span className="text-[11px] font-semibold text-text-primary">{team?.abbr || team?.short || '—'}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function BoxScoreModal({ gameId, onClose }) {
+  const { session } = useAuth()
+  const isAuthed = !!session
   const { data, isLoading } = useBoxScore(gameId)
+  const { data: gamePicksData } = useGamePicks(isAuthed ? gameId : null)
   const [activeTeamId, setActiveTeamId] = useState(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
     if (!gameId) return
@@ -149,15 +256,22 @@ export default function BoxScoreModal({ gameId, onClose }) {
     return () => unlockScroll()
   }, [gameId])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setDrawerOpen(false) }, [gameId])
+
   if (!gameId) return null
 
   const teams = data?.teams || []
   const away = teams.find((t) => t.home_away === 'away') || teams[0]
   const home = teams.find((t) => t.home_away === 'home') || teams[1]
 
-  // Default active team = away (visitor listed first is convention).
   const currentTeamId = activeTeamId ?? away?.id ?? home?.id
   const currentTeam = teams.find((t) => t.id === currentTeamId) || away
+
+  const userPick = gamePicksData?.userPick
+  const totalCounts = gamePicksData?.totalCounts
+  const squadPicks = gamePicksData?.squadPicks || []
+  const hasPickContext = !!(userPick || (totalCounts && (totalCounts.home + totalCounts.away) > 0) || squadPicks.length)
 
   return (
     <div
@@ -173,7 +287,7 @@ export default function BoxScoreModal({ gameId, onClose }) {
         className="relative bg-bg-primary/95 backdrop-blur-md border-0 sm:border sm:border-text-primary/20 w-full sm:max-w-3xl sm:my-6 rounded-none sm:rounded-2xl max-h-full overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Sticky top bar: title + close */}
+        {/* Sticky top bar */}
         <div className="flex items-center justify-between gap-2 px-3 sm:px-5 pt-3 pb-2 border-b border-text-primary/10 shrink-0">
           <div className="flex items-baseline gap-2 min-w-0">
             <h2 className="font-display text-base sm:text-lg">Box Score</h2>
@@ -207,10 +321,19 @@ export default function BoxScoreModal({ gameId, onClose }) {
                 {home && <TeamHeaderCard team={home} isWinner={home.score > (away?.score ?? -1)} />}
               </div>
 
+              {/* Pick context — hidden when there's nothing to show */}
+              {hasPickContext && (
+                <div className="mb-4 pb-4 border-b border-text-primary/10">
+                  {userPick && <YourPickStrip userPick={userPick} away={away} home={home} />}
+                  <AllPicksBar totalCounts={totalCounts} away={away} home={home} />
+                  <SquadChips squadPicks={squadPicks} away={away} home={home} />
+                </div>
+              )}
+
               {/* Line score (quarters / innings / halves) — always both teams */}
               <LineScoreTable teams={[away, home].filter(Boolean)} headers={data.line_score_headers || []} />
 
-              {/* Away/Home tab switcher — one team's stats at a time */}
+              {/* Team-name tab switcher — one team's stat tables at a time */}
               {teams.length > 1 && (
                 <div className="flex gap-1 mb-3 border-b border-text-primary/10">
                   {[away, home].filter(Boolean).map((t) => {
@@ -239,6 +362,27 @@ export default function BoxScoreModal({ gameId, onClose }) {
             </>
           )}
         </div>
+
+        {/* Reactions/comments drawer — only when the viewer has a pick on
+            this game. Collapsed by default; the sticky footer button
+            toggles it. Slides up over the box score so stat tables stay
+            the primary focus. */}
+        {userPick && (
+          <>
+            {drawerOpen && (
+              <div className="border-t border-text-primary/10 bg-bg-primary/95 backdrop-blur-md shrink-0 max-h-[60vh] overflow-y-auto overscroll-contain px-3 sm:px-5 py-3 space-y-3">
+                <PickReactions pickId={userPick.id} />
+                <PickComments pickId={userPick.id} initialExpanded />
+              </div>
+            )}
+            <button
+              onClick={() => setDrawerOpen((v) => !v)}
+              className="shrink-0 border-t border-text-primary/10 px-4 py-3 text-sm font-semibold text-text-secondary hover:text-text-primary hover:bg-bg-primary/40 transition-colors flex items-center justify-center gap-2"
+            >
+              <span>💬 {drawerOpen ? 'Hide' : 'React & discuss'}</span>
+            </button>
+          </>
+        )}
       </div>
     </div>
   )

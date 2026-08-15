@@ -261,12 +261,12 @@ export async function getGamePicksData(userId, gameId) {
     c.user_id_1 === userId ? c.user_id_2 : c.user_id_1
   )
 
-  const [squadResult, homeCount, awayCount] = await Promise.all([
+  const [squadResult, homeCount, awayCount, ownPickResult] = await Promise.all([
     // Squad picks (skip if no connections)
     connectedIds.length > 0
       ? supabase
           .from('picks')
-          .select('picked_team, users(id, username, display_name, avatar_url, avatar_emoji)')
+          .select('id, picked_team, is_correct, status, users(id, username, display_name, avatar_url, avatar_emoji)')
           .eq('game_id', gameId)
           .in('user_id', connectedIds)
       : { data: [] },
@@ -282,11 +282,23 @@ export async function getGamePicksData(userId, gameId) {
       .select('*', { count: 'exact', head: true })
       .eq('game_id', gameId)
       .eq('picked_team', 'away'),
+    // User's own pick on this game (so BoxScoreModal can key reactions
+    // + comments on the pick id without a second round-trip).
+    supabase
+      .from('picks')
+      .select('id, picked_team, odds_at_pick, multiplier, is_correct, status, points_earned, created_at')
+      .eq('game_id', gameId)
+      .eq('user_id', userId)
+      .maybeSingle(),
   ])
 
   return {
+    userPick: ownPickResult.data || null,
     squadPicks: (squadResult.data || []).map((p) => ({
+      pick_id: p.id,
       picked_team: p.picked_team,
+      is_correct: p.is_correct,
+      status: p.status,
       ...p.users,
     })),
     totalCounts: {
