@@ -181,20 +181,20 @@ export default function TdPassView({ league, tab = 'picks' }) {
                   <img src={myCurrentPick.headshot_url} alt="" className="w-28 h-28 rounded-full object-cover bg-bg-secondary/30 border-2 border-accent/30" onError={(e) => { e.target.style.display = 'none' }} />
                 )}
                 <div className="flex items-center justify-center gap-2">
-                  <div className="font-display text-xl text-text-primary">{myCurrentPick.qb_name}</div>
+                  <div className={`font-display text-xl ${teamColor ? 'text-white' : 'text-text-primary'}`}>{myCurrentPick.qb_name}</div>
                   <InjuryBadge status={pickedQbData?.injury_status} />
                 </div>
-                <div className="text-sm text-text-muted">
-                  <span className="text-white">{myCurrentPick.team}</span>
+                <div className={`text-sm ${teamColor ? 'text-white/80' : 'text-text-muted'}`}>
+                  <span className={teamColor ? 'text-white' : 'text-white'}>{myCurrentPick.team}</span>
                   {matchup ? ` ${matchup.home_away === 'home' ? 'vs' : '@'} ${matchup.opponent}` : ''}
                 </div>
                 {matchup?.starts_at && (
-                  <div className="text-xs text-text-muted">
+                  <div className={`text-xs ${teamColor ? 'text-white/80' : 'text-text-muted'}`}>
                     {new Date(matchup.starts_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} ET
                   </div>
                 )}
                 {matchup?.starts_at && !gameStarted && (
-                  <div className="text-[10px] text-accent uppercase tracking-wider font-semibold">
+                  <div className={`text-[10px] uppercase tracking-wider font-semibold ${teamColor ? 'text-white' : 'text-accent'}`}>
                     Locks at {new Date(matchup.starts_at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} ET
                   </div>
                 )}
@@ -205,11 +205,11 @@ export default function TdPassView({ league, tab = 'picks' }) {
                   </div>
                 )}
                 <div className={showWeekTds ? 'mt-0' : 'mt-2'}>
-                  <span className={`font-display ${showWeekTds ? 'text-xl text-text-muted' : 'text-3xl text-accent'}`}>{seasonTds}</span>
-                  <span className="text-[10px] text-text-muted uppercase ml-1.5">Season Total</span>
+                  <span className={`font-display ${showWeekTds ? `text-xl ${teamColor ? 'text-white/80' : 'text-text-muted'}` : `text-3xl ${teamColor ? 'text-white' : 'text-accent'}`}`}>{seasonTds}</span>
+                  <span className={`text-[10px] uppercase ml-1.5 ${teamColor ? 'text-white/80' : 'text-text-muted'}`}>Season Total</span>
                 </div>
                 {!gameStarted && (
-                  <p className="text-xs text-text-muted mt-3">Tap any QB below to swap your pick — locks at kickoff.</p>
+                  <p className={`text-xs mt-3 ${teamColor ? 'text-white/80' : 'text-text-muted'}`}>Tap any QB below to swap your pick — locks at kickoff.</p>
                 )}
               </div>
             )
