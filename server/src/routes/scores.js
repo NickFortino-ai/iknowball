@@ -142,14 +142,16 @@ router.get('/strip', async (req, res) => {
     if (s && out[s].recent.length < RECENT_LIMIT) out[s].recent.push(attach(s, g))
   }
 
-  // MLB has a daily cadence + a big slate every night, so when there
-  // are still MLB games left today the upcoming column shouldn't
-  // spill into tomorrow — users can drill in for the full schedule.
-  // If today has zero upcoming (all done), keep the wider window
-  // so the card still shows something (tomorrow's slate).
+  // Daily-cadence sports (MLB / MLS) with substantial slates: when
+  // there are games left today the upcoming column shouldn't spill
+  // into tomorrow — users can drill in for the full schedule. If
+  // today has zero upcoming (all done), keep the wider window so
+  // the card still shows something (tomorrow's slate).
   const todayPt = toSportsDay(new Date().toISOString())
-  const mlbTodayUpcoming = out.mlb.upcoming.filter((g) => toSportsDay(g.starts_at) === todayPt)
-  if (mlbTodayUpcoming.length) out.mlb.upcoming = mlbTodayUpcoming
+  for (const key of ['mlb', 'mls']) {
+    const todayUpcoming = out[key].upcoming.filter((g) => toSportsDay(g.starts_at) === todayPt)
+    if (todayUpcoming.length) out[key].upcoming = todayUpcoming
+  }
 
   // MLB linescores for both live + final buckets. Live cache is
   // short-TTL inside the service so in-progress hits/errors stay fresh.
