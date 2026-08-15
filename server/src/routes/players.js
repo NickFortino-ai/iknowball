@@ -13,7 +13,10 @@ import {
   saveNBADFSRoster,
   getNBADFSStandings,
   getNBANightlyResults,
+  calculateNBAFantasyPoints,
 } from '../services/nbaDfsService.js'
+import { calculateWNBAFantasyPoints } from '../services/wnbaDfsService.js'
+import { mlbBatterGameFpts, mlbPitcherGameFpts } from '../services/mlbDfsService.js'
 import { leagueEndSportsDay, leagueStartSportsDay } from '../utils/sportsDay.js'
 import { getFantasySettings } from '../services/fantasyService.js'
 
@@ -889,16 +892,30 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
       return dateB.localeCompare(dateA)
     })
 
-    const games = allGames.slice(0, 10).map((ev) => {
+    // NFL only plays 17 regular + 4 postseason games — cap at 25 so
+    // we surface the full season. All other sports have 60-160 game
+    // seasons where the last 10 is the useful window.
+    const gameCap = isNFL ? 25 : 10
+    // Per-game DFS fantasy points for sports we score. Non-fantasy
+    // contest surfaces ignore the field; DFS modals render it.
+    let fptsFn = null
+    if (sport === 'basketball_nba') fptsFn = calculateNBAFantasyPoints
+    else if (sport === 'basketball_wnba') fptsFn = calculateWNBAFantasyPoints
+    else if (sport === 'baseball_mlb') fptsFn = isPitcher ? mlbPitcherGameFpts : mlbBatterGameFpts
+
+    const games = allGames.slice(0, gameCap).map((ev) => {
       const detail = eventsMap[ev.eventId] || {}
       const statMap = {}
       labels.forEach((l, i) => { statMap[l] = ev.stats?.[i] })
+      const parsed = colParser(statMap)
+      const fpts = fptsFn ? fptsFn(sport === 'baseball_mlb' ? statMap : parsed) : null
 
       return {
         date: detail.gameDate || null,
         opponent: resolveOpponentAbbrev(detail.opponent, sport),
         result: detail.gameResult || null,
-        ...colParser(statMap),
+        fantasy_pts: fpts != null ? Number(fpts.toFixed(1)) : null,
+        ...parsed,
       }
     })
 

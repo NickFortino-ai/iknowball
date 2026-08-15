@@ -95,14 +95,18 @@ function MLBPitcherAverages({ averages }) {
   )
 }
 
-function MLBPitcherGameLog({ games }) {
+function MLBPitcherGameLog({ games, showFantasyPoints }) {
+  const cols = showFantasyPoints
+    ? 'grid-cols-[1.5rem_minmax(2.25rem,1fr)_2.25rem_1.5rem_1.5rem_1.5rem_1.5rem_1.5rem_2.25rem]'
+    : 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.5rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem]'
   return (
     <div className="space-y-0">
-      <div className="grid grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.5rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
+      <div className={`grid ${cols} gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10`}>
         <span></span><span>OPP</span><span className="text-right">IP</span><span className="text-right">H</span><span className="text-right">R</span><span className="text-right">ER</span><span className="text-right">BB</span><span className="text-right">K</span>
+        {showFantasyPoints && <span className="text-right text-accent">FPTS</span>}
       </div>
       {games.map((g, i) => (
-        <div key={i} className="grid grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.5rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
+        <div key={i} className={`grid ${cols} gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center`}>
           <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : g.result === 'L' ? 'text-incorrect' : 'text-text-muted'}`}>{g.result}</span>
           <span className="text-xs text-text-secondary truncate">{g.opponent || '—'}</span>
           <span className="text-xs text-text-primary text-right font-semibold">{g.ip}</span>
@@ -111,20 +115,25 @@ function MLBPitcherGameLog({ games }) {
           <span className="text-xs text-text-secondary text-right">{g.er}</span>
           <span className="text-xs text-text-secondary text-right">{g.bb}</span>
           <span className="text-xs text-text-primary text-right font-semibold">{g.k}</span>
+          {showFantasyPoints && <span className="text-xs text-accent text-right font-semibold">{g.fantasy_pts != null ? g.fantasy_pts.toFixed(1) : '—'}</span>}
         </div>
       ))}
     </div>
   )
 }
 
-function NBAGameLog({ games }) {
+function NBAGameLog({ games, showFantasyPoints }) {
+  const cols = showFantasyPoints
+    ? 'grid-cols-[1.5rem_minmax(2rem,1fr)_2rem_2rem_2rem_2rem_2rem_2rem_2.25rem]'
+    : 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.25rem_2.25rem_2.25rem_2.25rem_2.25rem_2.25rem]'
   return (
     <div className="space-y-0">
-      <div className="grid grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.25rem_2.25rem_2.25rem_2.25rem_2.25rem_2.25rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
+      <div className={`grid ${cols} gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10`}>
         <span></span><span>OPP</span><span className="text-right">MIN</span><span className="text-right">PTS</span><span className="text-right">REB</span><span className="text-right">AST</span><span className="text-right">STL</span><span className="text-right">BLK</span>
+        {showFantasyPoints && <span className="text-right text-accent">FPTS</span>}
       </div>
       {games.map((g, i) => (
-        <div key={i} className="grid grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.25rem_2.25rem_2.25rem_2.25rem_2.25rem_2.25rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
+        <div key={i} className={`grid ${cols} gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center`}>
           <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
           <span className="text-xs text-text-secondary truncate">{g.opponent || '—'}</span>
           <span className="text-xs text-text-secondary text-right">{g.min}</span>
@@ -133,20 +142,25 @@ function NBAGameLog({ games }) {
           <span className="text-xs text-text-secondary text-right">{g.ast}</span>
           <span className="text-xs text-text-secondary text-right">{g.stl}</span>
           <span className="text-xs text-text-secondary text-right">{g.blk}</span>
+          {showFantasyPoints && <span className="text-xs text-accent text-right font-semibold">{g.fantasy_pts != null ? g.fantasy_pts.toFixed(1) : '—'}</span>}
         </div>
       ))}
     </div>
   )
 }
 
-function MLBGameLog({ games }) {
+function MLBGameLog({ games, showFantasyPoints }) {
+  const cols = showFantasyPoints
+    ? 'grid-cols-[1.5rem_minmax(2rem,1fr)_1.5rem_1.5rem_1.5rem_1.5rem_1.5rem_1.5rem_1.5rem_2.25rem]'
+    : 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem]'
   return (
     <div className="space-y-0">
-      <div className="grid grid-cols-[1.5rem_minmax(2.5rem,1fr)_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
+      <div className={`grid ${cols} gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10`}>
         <span></span><span>OPP</span><span className="text-right">AB</span><span className="text-right">H</span><span className="text-right">R</span><span className="text-right">HR</span><span className="text-right">RBI</span><span className="text-right">BB</span><span className="text-right">SO</span>
+        {showFantasyPoints && <span className="text-right text-accent">FPTS</span>}
       </div>
       {games.map((g, i) => (
-        <div key={i} className="grid grid-cols-[1.5rem_minmax(2.5rem,1fr)_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
+        <div key={i} className={`grid ${cols} gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center`}>
           <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
           <span className="text-xs text-text-secondary truncate">{g.opponent || '—'}</span>
           <span className="text-xs text-text-primary text-right font-semibold">{g.ab}</span>
@@ -156,6 +170,7 @@ function MLBGameLog({ games }) {
           <span className="text-xs text-text-secondary text-right">{g.rbi}</span>
           <span className="text-xs text-text-secondary text-right">{g.bb}</span>
           <span className="text-xs text-text-secondary text-right">{g.so}</span>
+          {showFantasyPoints && <span className="text-xs text-accent text-right font-semibold">{g.fantasy_pts != null ? g.fantasy_pts.toFixed(1) : '—'}</span>}
         </div>
       ))}
     </div>
@@ -262,7 +277,7 @@ function NFLGameLog({ games, position }) {
   )
 }
 
-export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'basketball_nba' }) {
+export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'basketball_nba', showFantasyPoints = false }) {
   // ESPN id is the preferred lookup key. NFL single-stat contests (Sacks,
   // Ints, Tackles, Receptions) carry sleeper_player_id instead — the
   // server resolves that to espn_id via nfl_players.espn_id.
@@ -359,13 +374,13 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
           ) : !data?.games?.length ? (
             <p className="text-sm text-text-muted text-center py-4">No recent games found.</p>
           ) : isPitcher ? (
-            <MLBPitcherGameLog games={data.games} />
+            <MLBPitcherGameLog games={data.games} showFantasyPoints={showFantasyPoints} />
           ) : isMLB ? (
-            <MLBGameLog games={data.games} />
+            <MLBGameLog games={data.games} showFantasyPoints={showFantasyPoints} />
           ) : isNFL ? (
             <NFLGameLog games={data.games} position={player.position} />
           ) : (
-            <NBAGameLog games={data.games} />
+            <NBAGameLog games={data.games} showFantasyPoints={showFantasyPoints} />
           )}
         </div>
       </div>

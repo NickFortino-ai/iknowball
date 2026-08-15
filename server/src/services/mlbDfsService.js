@@ -163,7 +163,7 @@ function calcMLBPitcherFppg(avgs) {
 /**
  * Calculate MLB batter fantasy points from a single game stat map (ESPN gamelog).
  */
-function mlbBatterGameFpts(statMap) {
+export function mlbBatterGameFpts(statMap) {
   const ab = parseInt(statMap['AB']) || 0
   if (ab === 0 && !statMap['AB']) return null // DNP
   const h = parseInt(statMap['H']) || 0
@@ -189,7 +189,7 @@ function mlbBatterGameFpts(statMap) {
  * counted them, causing the L10/L20 components to systematically underrate
  * pitchers who pick up decisions or saves.
  */
-function mlbPitcherGameFpts(statMap) {
+export function mlbPitcherGameFpts(statMap) {
   const ip = parseFloat(statMap['IP']) || 0
   if (ip === 0) return null
   const k = parseInt(statMap['K'] || statMap['SO']) || 0

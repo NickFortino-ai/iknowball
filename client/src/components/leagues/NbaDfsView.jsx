@@ -1000,6 +1000,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
           player={selectedPlayer}
           onClose={() => setSelectedPlayer(null)}
           onAdd={posFilter !== 'OUT' ? addPlayer : null}
+          showFantasyPoints
         />
       )}
     </div>

@@ -989,6 +989,7 @@ export default function WnbaDfsView({ league, tab = 'roster' }) {
           onClose={() => setSelectedPlayer(null)}
           onAdd={posFilter !== 'OUT' ? addPlayer : null}
           sport="basketball_wnba"
+          showFantasyPoints
         />
       )}
     </div>

@@ -696,6 +696,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
           onClose={() => setSelectedPlayer(null)}
           onAdd={!isViewMode ? addPlayer : null}
           sport="baseball_mlb"
+          showFantasyPoints
         />
       )}
     </div>
