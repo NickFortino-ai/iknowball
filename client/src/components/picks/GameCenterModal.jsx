@@ -323,16 +323,12 @@ export default function GameCenterModal({ gameId, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-stretch sm:items-center sm:justify-center sm:px-4"
-      style={{
-        paddingTop: 'env(safe-area-inset-top)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}
+      className="fixed inset-0 z-50 flex items-stretch sm:items-center sm:justify-center sm:px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:pt-20 sm:pb-6"
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/70" />
       <div
-        className="relative bg-bg-primary/95 backdrop-blur-md border-0 sm:border sm:border-text-primary/20 w-full sm:max-w-3xl sm:my-6 rounded-none sm:rounded-2xl max-h-full overflow-hidden flex flex-col"
+        className="relative bg-bg-primary/95 backdrop-blur-md border-0 sm:border sm:border-text-primary/20 w-full sm:max-w-3xl rounded-none sm:rounded-2xl max-h-full overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sticky top bar */}
