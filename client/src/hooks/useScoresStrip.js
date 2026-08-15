@@ -114,3 +114,16 @@ export function useNflWeekGames(season, week, seasonType = 'regular') {
     retry: false,
   })
 }
+
+// Per-game box score for the tap-in modal on the scoreboard + result
+// cards. Finals never change so staleTime is long; live games poll
+// via the modal's own refresh when needed.
+export function useBoxScore(gameId) {
+  return useQuery({
+    queryKey: ['boxScore', gameId],
+    queryFn: () => api.get(`/scores/box/${gameId}`),
+    enabled: !!gameId,
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+  })
+}

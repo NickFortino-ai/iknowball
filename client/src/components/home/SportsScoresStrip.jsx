@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { api } from '../../lib/api'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import StatLeadersBlock from './StatLeadersBlock'
+import BoxScoreModal from '../picks/BoxScoreModal'
 
 // PT calendar date as YYYY-MM-DD — anchored to America/Los_Angeles so
 // it matches the server's sports-day convention. Every US pro sport
@@ -69,6 +70,8 @@ export default function SportsScoresStrip() {
   // Scoreboard header instead of scrolling through all 4 stacked
   // columns. Desktop keeps the full grid.
   const [selectedMobileSport, setSelectedMobileSport] = useState(null)
+  // Tapping any Final card opens an ESPN-style box score modal.
+  const [boxScoreGameId, setBoxScoreGameId] = useState(null)
   // Settled picks let us paint a green/red border on any Final game
   // the current user picked. Only fetch for logged-in users — no need
   // to burn a request on the public landing view. Uses useQuery
@@ -154,16 +157,18 @@ export default function SportsScoresStrip() {
                 sport={sport}
                 data={data[sport.key]}
                 pickOutcomeByGame={pickOutcomeByGame}
+                onOpenBoxScore={setBoxScoreGameId}
               />
             </div>
           )
         })}
       </div>
+      <BoxScoreModal gameId={boxScoreGameId} onClose={() => setBoxScoreGameId(null)} />
     </section>
   )
 }
 
-function SportColumn({ sport, data, pickOutcomeByGame }) {
+function SportColumn({ sport, data, pickOutcomeByGame, onOpenBoxScore }) {
   // Parent filters out sports with zero games across all buckets before
   // mapping, so we're guaranteed at least one bucket has rows here.
   const live = data?.live || []
@@ -197,10 +202,10 @@ function SportColumn({ sport, data, pickOutcomeByGame }) {
         return (
           <div className="space-y-4">
             {live.length > 0 && (
-              <BucketSection label="Live" games={live} sportFullKey={sport.fullKey} isLive />
+              <BucketSection label="Live" games={live} sportFullKey={sport.fullKey} isLive onOpenBoxScore={onOpenBoxScore} />
             )}
             {todayRecent.length > 0 && (
-              <FinalSection sport={sport} todayRecent={todayRecent} pickOutcomeByGame={pickOutcomeByGame} />
+              <FinalSection sport={sport} todayRecent={todayRecent} pickOutcomeByGame={pickOutcomeByGame} onOpenBoxScore={onOpenBoxScore} />
             )}
             {upcoming.length > 0 && (
               <BucketSection label={live.length > 0 ? 'Coming up' : 'Upcoming'} games={upcoming} sportFullKey={sport.fullKey} />
@@ -218,7 +223,7 @@ function SportColumn({ sport, data, pickOutcomeByGame }) {
 // Tapping the left arrow steps back one PT day and lazy-fetches that
 // day's finals via /api/scores/finals. Right arrow disabled once we're
 // back at today so users can't scroll into the future here.
-function FinalSection({ sport, todayRecent, pickOutcomeByGame }) {
+function FinalSection({ sport, todayRecent, pickOutcomeByGame, onOpenBoxScore }) {
   const today = todayPT()
   const [date, setDate] = useState(today)
   const isToday = date === today
@@ -276,6 +281,7 @@ function FinalSection({ sport, todayRecent, pickOutcomeByGame }) {
               sportFullKey={sport.fullKey}
               isFinal
               pickOutcome={pickOutcomeByGame?.get(g.id)}
+              onOpenBoxScore={onOpenBoxScore}
             />
           ))
         )}
@@ -284,7 +290,7 @@ function FinalSection({ sport, todayRecent, pickOutcomeByGame }) {
   )
 }
 
-function BucketSection({ label, games, sportFullKey, isLive, isFinal }) {
+function BucketSection({ label, games, sportFullKey, isLive, isFinal, onOpenBoxScore }) {
   return (
     <div>
       <div className="mb-1.5 flex items-center gap-2">
@@ -295,14 +301,14 @@ function BucketSection({ label, games, sportFullKey, isLive, isFinal }) {
       </div>
       <div className="space-y-1.5">
         {games.map((g) => (
-          <GameCard key={g.id} game={g} sportFullKey={sportFullKey} isLive={isLive} isFinal={isFinal} />
+          <GameCard key={g.id} game={g} sportFullKey={sportFullKey} isLive={isLive} isFinal={isFinal} onOpenBoxScore={onOpenBoxScore} />
         ))}
       </div>
     </div>
   )
 }
 
-function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome }) {
+function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome, onOpenBoxScore }) {
   // Live + Final rows show the score inline next to each team.
   // Upcoming rows show a time/date pill on the right instead.
   // Sleeper-style: each matchup is its own subtle bordered card,
@@ -326,8 +332,11 @@ function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome }) {
   // MLB, "Q3 · 4:32" for football/basketball. Data comes from ESPN
   // via syncLiveScores (period + clock columns on games).
   const liveLabel = isLive ? formatLiveLabel(game.period, game.clock, sportFullKey) : null
+  const tappable = isFinal && !!onOpenBoxScore
   return (
-    <div className={`rounded-lg border backdrop-blur-md px-4 py-2.5 ${outlineClass}`}>
+    <div
+      onClick={tappable ? () => onOpenBoxScore(game.id) : undefined}
+      className={`rounded-lg border backdrop-blur-md px-4 py-2.5 ${outlineClass} ${tappable ? 'cursor-pointer hover:bg-bg-primary/30 transition-colors' : ''}`}>
       {/* Live-state header (Bot 7th / Q3 · 4:32) OR MLB R/H/E header.
           Both live in the same top row: state on the left, R/H/E on
           the right, so a live MLB game shows "Bot 7th" + R H E. */}

@@ -443,4 +443,16 @@ async function attachMlbLinescores(games, sportFullKey) {
   }
 }
 
+// Per-game post-game box score for the tap-in modal. Public (no auth)
+// like the rest of /scores — same reason: this is visible to logged-out
+// users clicking a final card. Returns null when we can't resolve an
+// ESPN event id (rare: pre-season, obscure teams).
+router.get('/box/:game_id', async (req, res) => {
+  const { getBoxScore } = await import('../services/boxScoreService.js')
+  const data = await getBoxScore(req.params.game_id)
+  if (!data) return res.status(404).json({ error: 'box score not available' })
+  res.set('Cache-Control', 'public, max-age=30')
+  res.json(data)
+})
+
 export default router

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { formatOdds } from '../../lib/scoring'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
+import BoxScoreModal from './BoxScoreModal'
 
 function TeamLogo({ team, sportKey }) {
   const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
@@ -16,6 +17,7 @@ function TeamLogo({ team, sportKey }) {
 // Reusable pick result display: matchup card + user pick + ALL PICKS bar
 // Used in PickDetailModal and feed FlexTargetCard
 export default function PickResultCard({ pick, game, totalCounts }) {
+  const [showBox, setShowBox] = useState(false)
   if (!pick || !game) return null
 
   const isPostponed = game.status === 'postponed'
@@ -94,6 +96,18 @@ export default function PickResultCard({ pick, game, totalCounts }) {
           </div>
         )}
       </div>
+
+      {/* Box score tap-in for finalized games */}
+      {isSettled && !isPostponed && (
+        <button
+          onClick={() => setShowBox(true)}
+          className="w-full border-t border-text-primary/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-text-secondary hover:text-text-primary hover:bg-bg-primary/30 transition-colors"
+        >
+          View Box Score →
+        </button>
+      )}
+
+      {showBox && <BoxScoreModal gameId={game.id} onClose={() => setShowBox(false)} />}
 
       {/* ALL PICKS bar */}
       {totalPicks > 0 && (

@@ -7,6 +7,7 @@ import { api } from '../lib/api'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../lib/teamLogos'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import StatLeadersBlock from '../components/home/StatLeadersBlock'
+import BoxScoreModal from '../components/picks/BoxScoreModal'
 
 // /scores/:sport — Sleeper-style drill-in for one sport: date scrubber
 // + full day's scores on the left, standings sidebar on the right.
@@ -50,6 +51,7 @@ export default function SportScoresPage() {
   const config = SPORTS[sport?.toLowerCase()]
   if (!config) return <Navigate to="/" replace />
   const isNfl = sport?.toLowerCase() === 'nfl'
+  const [boxScoreGameId, setBoxScoreGameId] = useState(null)
 
   // Green/red outline on any Final game the user picked — matches the
   // landing scoreboard's pick indicator so drilling in preserves the
@@ -192,7 +194,7 @@ export default function SportScoresPage() {
           ) : (
             <div className="space-y-2">
               {games.map((g) => (
-                <DrillGameCard key={g.id} game={g} sportFullKey={config.fullKey} showDate={isNfl} pickOutcome={pickOutcomeByGame.get(g.id)} />
+                <DrillGameCard key={g.id} game={g} sportFullKey={config.fullKey} showDate={isNfl} pickOutcome={pickOutcomeByGame.get(g.id)} onOpenBoxScore={setBoxScoreGameId} />
               ))}
             </div>
           )}
@@ -218,6 +220,7 @@ export default function SportScoresPage() {
           <StatLeadersBlock sport={sport} mode="full" />
         </div>
       </div>
+      <BoxScoreModal gameId={boxScoreGameId} onClose={() => setBoxScoreGameId(null)} />
     </div>
   )
 }
@@ -429,9 +432,10 @@ function formatWeekRange(startStr, endStr) {
 // + score on the right. showDate adds a Day, Mon DD prefix — used
 // for NFL where a week bunches Thu/Sun/Mon games together so time
 // alone doesn't tell you which day the game is on.
-function DrillGameCard({ game, sportFullKey, showDate, pickOutcome }) {
+function DrillGameCard({ game, sportFullKey, showDate, pickOutcome, onOpenBoxScore }) {
   const isLive = game.status === 'live'
   const isFinal = game.status === 'final'
+  const tappable = isFinal && !!onOpenBoxScore
   const showScore = isLive || isFinal
   const timeStr = new Date(game.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   const dateStr = showDate ? new Date(game.starts_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : null
@@ -451,7 +455,10 @@ function DrillGameCard({ game, sportFullKey, showDate, pickOutcome }) {
     : 'border-text-primary/10 bg-bg-primary/20'
 
   return (
-    <div className={`rounded-lg border backdrop-blur-md px-4 py-3 ${outlineClass}`}>
+    <div
+      onClick={tappable ? () => onOpenBoxScore(game.id) : undefined}
+      className={`rounded-lg border backdrop-blur-md px-4 py-3 ${outlineClass} ${tappable ? 'cursor-pointer hover:bg-bg-primary/30 transition-colors' : ''}`}
+    >
       <div className="flex items-center gap-3 mb-2">
         {isLive && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />}
         <span className={`text-[11px] font-semibold uppercase tracking-wider ${isLive ? 'text-red-400' : isFinal ? 'text-text-muted' : 'text-text-secondary'}`}>
