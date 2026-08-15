@@ -2,6 +2,42 @@ import { useState } from 'react'
 import { useSportLeaders } from '../../hooks/useScoresStrip'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
+// Circular player avatar with graceful fallback. When the headshot
+// image is missing or fails to load, we render the player's initials
+// on the same neutral background instead of an empty gray circle.
+// Common in MLS + lower-division NCAA where ESPN's coverage is spotty.
+function initialsFor(name) {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  const first = parts[0]?.[0] || ''
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : ''
+  return (first + last).toUpperCase() || '?'
+}
+const AVATAR_SIZE = {
+  sm: 'w-6 h-6 text-[10px]',
+  lg: 'w-8 h-8 text-[11px]',
+}
+function PlayerAvatar({ name, headshot, size = 'sm' }) {
+  const [broken, setBroken] = useState(false)
+  const sizeClass = AVATAR_SIZE[size] || AVATAR_SIZE.sm
+  if (!headshot || broken) {
+    return (
+      <span className={`${sizeClass} rounded-full bg-bg-secondary shrink-0 flex items-center justify-center font-semibold text-text-secondary tabular-nums`}>
+        {initialsFor(name)}
+      </span>
+    )
+  }
+  return (
+    <img
+      src={headshot}
+      alt=""
+      className={`${sizeClass} rounded-full object-cover shrink-0 bg-bg-secondary`}
+      loading="lazy"
+      onError={() => setBroken(true)}
+    />
+  )
+}
+
 // Reusable stat-leaders block. Two modes:
 //   compact: top 3 with mini rows (headshot + name + value). Used on
 //     the landing card under Final.
@@ -58,9 +94,7 @@ export default function StatLeadersBlock({ sport, mode = 'full' }) {
           {rows.map((r) => (
             <div key={`${r.athlete_id}-${r.rank}`} className="flex items-center gap-3 px-3 py-2 border-b border-text-primary/5 last:border-0">
               <span className="w-6 text-center text-xs text-text-muted tabular-nums shrink-0">{r.rank}</span>
-              {r.headshot ? (
-                <img src={r.headshot} alt="" width="32" height="32" className="w-8 h-8 rounded-full object-cover shrink-0 bg-bg-secondary" loading="lazy" onError={(e) => e.currentTarget.style.visibility = 'hidden'} />
-              ) : <span className="w-8 h-8 rounded-full bg-bg-secondary shrink-0" />}
+              <PlayerAvatar name={r.athlete_name} headshot={r.headshot} size="lg" />
               <div className="flex-1 min-w-0">
                 <div className="text-sm text-text-primary truncate">{r.athlete_name}</div>
                 <div className="text-[11px] text-text-muted flex items-center gap-1.5">
@@ -79,9 +113,7 @@ export default function StatLeadersBlock({ sport, mode = 'full' }) {
           {rows.map((r) => (
             <div key={`${r.athlete_id}-${r.rank}`} className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-3 py-2 flex items-center gap-2.5">
               <span className="w-4 text-center text-xs text-text-muted tabular-nums shrink-0">{r.rank}</span>
-              {r.headshot ? (
-                <img src={r.headshot} alt="" width="24" height="24" className="w-6 h-6 rounded-full object-cover shrink-0 bg-bg-secondary" loading="lazy" onError={(e) => e.currentTarget.style.visibility = 'hidden'} />
-              ) : <span className="w-6 h-6 rounded-full bg-bg-secondary shrink-0" />}
+              <PlayerAvatar name={r.athlete_name} headshot={r.headshot} size="sm" />
               <div className="flex-1 min-w-0 flex items-baseline gap-2">
                 <span className="text-sm text-text-primary truncate">{r.athlete_name}</span>
                 {r.team_abbr && <span className="text-[10px] text-text-muted shrink-0">{r.team_abbr}</span>}
