@@ -21,6 +21,7 @@ const SPORTS = {
   nba: { label: 'NBA', fullKey: 'basketball_nba' },
   mlb: { label: 'MLB', fullKey: 'baseball_mlb' },
   wnba: { label: 'WNBA', fullKey: 'basketball_wnba' },
+  mls: { label: 'MLS', fullKey: 'soccer_usa_mls' },
 }
 
 // PT calendar day math, matches server's sportsDayBoundsUtc anchor.
