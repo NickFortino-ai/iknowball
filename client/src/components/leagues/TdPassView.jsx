@@ -7,6 +7,7 @@ import {
   useSubmitTdPassPick,
 } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
+import { getTeamColor } from '../../lib/teamColors'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 import InjuryBadge from '../ui/InjuryBadge'
@@ -168,8 +169,14 @@ export default function TdPassView({ league, tab = 'picks' }) {
             // Show week TDs prominently if QB has scored this week (game started or finished)
             const gameStarted = matchup?.starts_at && new Date(matchup.starts_at) <= new Date()
             const showWeekTds = weekTds > 0 || gameStarted
+            const teamColor = getTeamColor('americanfootball_nfl', myCurrentPick.team)
             return (
-              <div className="flex flex-col items-center text-center gap-2 py-4">
+              <div
+                className="flex flex-col items-center text-center gap-2 py-4 -mx-4 px-4 rounded-xl"
+                style={teamColor ? {
+                  background: `linear-gradient(180deg, ${teamColor} 0%, ${teamColor}b3 55%, ${teamColor}00 100%)`,
+                } : undefined}
+              >
                 {myCurrentPick.headshot_url && (
                   <img src={myCurrentPick.headshot_url} alt="" className="w-28 h-28 rounded-full object-cover bg-bg-secondary/30 border-2 border-accent/30" onError={(e) => { e.target.style.display = 'none' }} />
                 )}
