@@ -1,6 +1,9 @@
 import { useState, useMemo } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useScoresForDay, useSportStandings, useNflSchedule, useNflWeekGames } from '../hooks/useScoresStrip'
+import { useAuthStore } from '../stores/authStore'
+import { api } from '../lib/api'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../lib/teamLogos'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import StatLeadersBlock from '../components/home/StatLeadersBlock'
@@ -46,6 +49,27 @@ export default function SportScoresPage() {
   const config = SPORTS[sport?.toLowerCase()]
   if (!config) return <Navigate to="/" replace />
   const isNfl = sport?.toLowerCase() === 'nfl'
+
+  // Green/red outline on any Final game the user picked — matches the
+  // landing scoreboard's pick indicator so drilling in preserves the
+  // same at-a-glance signal. Same query + cache key as the strip.
+  const isAuthenticated = useAuthStore((s) => !!s.session)
+  const { data: settledPicks } = useQuery({
+    queryKey: ['scoreboardPickIndicators'],
+    queryFn: () => api.get('/picks/me?status=settled'),
+    enabled: isAuthenticated,
+    staleTime: 60 * 1000,
+    retry: false,
+  })
+  const pickOutcomeByGame = useMemo(() => {
+    const map = new Map()
+    for (const p of settledPicks || []) {
+      if (p.game_id && typeof p.is_correct === 'boolean') {
+        map.set(p.game_id, p.is_correct)
+      }
+    }
+    return map
+  }, [settledPicks])
 
   // NFL uses week-based scrubbing (Thu/Sun/Mon cadence makes daily
   // dates feel wrong). All other sports keep the 7-day strip.
@@ -165,7 +189,7 @@ export default function SportScoresPage() {
           ) : (
             <div className="space-y-2">
               {games.map((g) => (
-                <DrillGameCard key={g.id} game={g} sportFullKey={config.fullKey} showDate={isNfl} />
+                <DrillGameCard key={g.id} game={g} sportFullKey={config.fullKey} showDate={isNfl} pickOutcome={pickOutcomeByGame.get(g.id)} />
               ))}
             </div>
           )}
@@ -402,7 +426,7 @@ function formatWeekRange(startStr, endStr) {
 // + score on the right. showDate adds a Day, Mon DD prefix — used
 // for NFL where a week bunches Thu/Sun/Mon games together so time
 // alone doesn't tell you which day the game is on.
-function DrillGameCard({ game, sportFullKey, showDate }) {
+function DrillGameCard({ game, sportFullKey, showDate, pickOutcome }) {
   const isLive = game.status === 'live'
   const isFinal = game.status === 'final'
   const showScore = isLive || isFinal
@@ -410,9 +434,15 @@ function DrillGameCard({ game, sportFullKey, showDate }) {
   const dateStr = showDate ? new Date(game.starts_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : null
   const timeLabel = isLive ? 'LIVE' : isFinal ? 'FINAL' : timeStr
   const dateLabel = showDate && !isLive ? dateStr : null
+  // Same pick-outcome styling as the landing scoreboard so the drill-in
+  // preserves the at-a-glance win/loss signal on finals.
+  const hasPick = isFinal && typeof pickOutcome === 'boolean'
+  const outlineClass = hasPick
+    ? (pickOutcome ? 'border-correct/60 bg-correct/5' : 'border-incorrect/60 bg-incorrect/5')
+    : 'border-text-primary/10 bg-bg-primary/20'
 
   return (
-    <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-3">
+    <div className={`rounded-lg border backdrop-blur-md px-4 py-3 ${outlineClass}`}>
       <div className="flex items-center gap-3 mb-2">
         {isLive && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />}
         <span className={`text-[11px] font-semibold uppercase tracking-wider ${isLive ? 'text-red-400' : isFinal ? 'text-text-muted' : 'text-text-secondary'}`}>
