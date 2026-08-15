@@ -46,8 +46,9 @@ export default function PickResultCard({ pick, game, totalCounts }) {
   const homePct = totalPicks > 0 ? Math.round(((totalCounts.home || 0) / totalPicks) * 100) : 0
   const awayPct = totalPicks > 0 ? 100 - homePct : 0
 
+  const tappable = isSettled && !isPostponed
   return (
-    <div className={`rounded-xl border ${borderColor} overflow-hidden`}>
+    <div className={`rounded-xl border ${borderColor} overflow-hidden ${tappable ? 'cursor-pointer hover:bg-bg-primary/20 transition-colors' : ''}`} onClick={tappable ? () => setShowBox(true) : undefined}>
       {/* Matchup */}
       <div className="p-4">
         <div className="text-xs text-text-muted uppercase tracking-wider mb-1">{game.sports?.name || ''}</div>
@@ -96,16 +97,6 @@ export default function PickResultCard({ pick, game, totalCounts }) {
           </div>
         )}
       </div>
-
-      {/* Box score tap-in for finalized games */}
-      {isSettled && !isPostponed && (
-        <button
-          onClick={() => setShowBox(true)}
-          className="w-full border-t border-text-primary/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-text-secondary hover:text-text-primary hover:bg-bg-primary/30 transition-colors"
-        >
-          View Box Score →
-        </button>
-      )}
 
       {showBox && <BoxScoreModal gameId={game.id} onClose={() => setShowBox(false)} />}
 
