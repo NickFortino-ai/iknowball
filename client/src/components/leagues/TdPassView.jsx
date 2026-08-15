@@ -178,7 +178,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
                 } : undefined}
               >
                 {myCurrentPick.headshot_url && (
-                  <img src={myCurrentPick.headshot_url} alt="" className="w-28 h-28 rounded-full object-cover bg-bg-secondary/30 border-2 border-accent/30" onError={(e) => { e.target.style.display = 'none' }} />
+                  <img src={myCurrentPick.headshot_url} alt="" className="w-28 h-28 rounded-full object-cover bg-bg-card border-2 border-text-primary/20" onError={(e) => { e.target.style.display = 'none' }} />
                 )}
                 <div className="flex items-center justify-center gap-2">
                   <div className={`font-display text-xl ${teamColor ? 'text-white' : 'text-text-primary'}`}>{myCurrentPick.qb_name}</div>
