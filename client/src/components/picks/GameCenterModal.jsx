@@ -197,11 +197,19 @@ function YourPickStrip({ userPick, away, home }) {
 }
 
 // Horizontal split showing what % of IKB'ers picked each team.
-function AllPicksBar({ totalCounts, away, home }) {
+// Once the game is final, winning team's segment turns green and
+// losing team's turns red. Live/upcoming games use neutral colors.
+function AllPicksBar({ totalCounts, away, home, winnerSide }) {
   const totalPicks = (totalCounts?.home || 0) + (totalCounts?.away || 0)
   if (totalPicks === 0) return null
   const homePct = Math.round(((totalCounts.home || 0) / totalPicks) * 100)
   const awayPct = 100 - homePct
+  const awayColor = winnerSide === 'away' ? 'bg-correct'
+    : winnerSide === 'home' ? 'bg-incorrect'
+    : 'bg-accent'
+  const homeColor = winnerSide === 'home' ? 'bg-correct'
+    : winnerSide === 'away' ? 'bg-incorrect'
+    : 'bg-text-secondary/50'
   return (
     <div className="mb-3">
       <div className="text-xs font-semibold uppercase tracking-wider text-text-primary mb-1.5 text-center">IKB Picks</div>
@@ -210,8 +218,8 @@ function AllPicksBar({ totalCounts, away, home }) {
         <span className="text-text-primary truncate max-w-[45%] text-right">{homePct}% {home?.short || home?.name}</span>
       </div>
       <div className="flex h-1.5 rounded-full overflow-hidden bg-bg-primary/50">
-        {awayPct > 0 && <div className="bg-accent" style={{ width: `${awayPct}%` }} />}
-        {homePct > 0 && <div className="bg-text-secondary/50" style={{ width: `${homePct}%` }} />}
+        {awayPct > 0 && <div className={awayColor} style={{ width: `${awayPct}%` }} />}
+        {homePct > 0 && <div className={homeColor} style={{ width: `${homePct}%` }} />}
       </div>
       <div className="flex justify-between text-[10px] text-text-muted mt-0.5">
         <span>{totalCounts.away || 0}</span>
@@ -293,6 +301,11 @@ export default function GameCenterModal({ gameId, onClose }) {
   const totalCounts = gamePicksData?.totalCounts
   const squadPicks = gamePicksData?.squadPicks || []
   const hasPickContext = !!(userPick || (totalCounts && (totalCounts.home + totalCounts.away) > 0) || squadPicks.length)
+  // Winner side is only meaningful once the game is final — during a
+  // live game we don't want to color the bar as if it's decided.
+  const winnerSide = data?.status === 'final' && away?.score != null && home?.score != null && away.score !== home.score
+    ? (away.score > home.score ? 'away' : 'home')
+    : null
   const canFlex = userPick?.status === 'settled' && userPick?.is_correct === true
 
   async function handleSubmitFlex() {
@@ -392,7 +405,7 @@ export default function GameCenterModal({ gameId, onClose }) {
               {hasPickContext && (
                 <div className="mb-4 pb-4 border-b border-text-primary/10">
                   {userPick && <YourPickStrip userPick={userPick} away={away} home={home} />}
-                  <AllPicksBar totalCounts={totalCounts} away={away} home={home} />
+                  <AllPicksBar totalCounts={totalCounts} away={away} home={home} winnerSide={winnerSide} />
                   <SquadChips squadPicks={squadPicks} away={away} home={home} onOpenProfile={setProfileUserId} />
                 </div>
               )}
