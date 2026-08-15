@@ -233,12 +233,34 @@ export default function TdPassView({ league, tab = 'picks' }) {
               </svg>
             </button>
             {usedOpen && (
-              <div className="flex flex-wrap gap-2">
-                {(myPicks || []).map((p) => (
-                  <span key={p.id} className="text-sm bg-bg-primary/40 border border-text-primary/15 text-text-primary px-3 py-1.5 rounded-full">
-                    W{p.week} · {p.qb_name} · {p.td_count} TD
-                  </span>
-                ))}
+              <div className="rounded-xl border border-text-primary/15 overflow-hidden">
+                {[...(myPicks || [])].sort((a, b) => (b.week || 0) - (a.week || 0)).map((p) => {
+                  const usedColor = getTeamColor('americanfootball_nfl', p.team)
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-3 px-3 py-2 border-b border-text-primary/10 last:border-b-0"
+                      style={usedColor ? {
+                        background: `linear-gradient(90deg, ${usedColor}40 0%, ${usedColor}1a 100%)`,
+                      } : undefined}
+                    >
+                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider w-6 shrink-0">W{p.week}</span>
+                      {p.headshot_url ? (
+                        <img src={p.headshot_url} alt="" className="w-9 h-9 rounded-full object-cover bg-bg-card border border-text-primary/20 shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-bg-card border border-text-primary/20 shrink-0 flex items-center justify-center text-[10px] text-text-muted font-bold">QB</div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-text-primary truncate">{p.qb_name}</div>
+                        <div className="text-[10px] text-text-muted">{p.team}</div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className={`font-display text-lg ${p.td_count > 0 ? 'text-correct' : 'text-text-muted'}`}>{p.td_count}</span>
+                        <span className="text-[10px] text-text-muted uppercase ml-1">TD</span>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
