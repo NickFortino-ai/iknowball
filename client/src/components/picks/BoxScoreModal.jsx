@@ -11,37 +11,39 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 // Receiving for NFL, Batting / Pitching for MLB, a single Player
 // Stats block for NBA/WNBA/soccer). Each group renders as a table
 // with ESPN's labels row and one row per athlete.
+//
+// Mobile: full-bleed sheet, away/home tab switcher so you never scroll
+// through both teams' stat tables end-to-end on a small screen.
 
 function TeamHeaderCard({ team, isWinner }) {
   const [logoBroken, setLogoBroken] = useState(false)
   return (
-    <div className="flex-1 min-w-0 flex items-center gap-3">
+    <div className="flex-1 min-w-0 flex items-center gap-2 sm:gap-3">
       {team.logo && !logoBroken ? (
         <img
           src={team.logo}
           alt=""
-          className="w-10 h-10 object-contain shrink-0"
+          className="w-9 h-9 sm:w-10 sm:h-10 object-contain shrink-0"
           onError={() => setLogoBroken(true)}
         />
       ) : (
-        <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0" />
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-bg-secondary shrink-0" />
       )}
       <div className="min-w-0 flex-1">
-        <div className={`font-display text-base truncate ${isWinner ? 'text-text-primary' : 'text-text-secondary'}`}>
+        <div className={`font-display text-sm sm:text-base truncate ${isWinner ? 'text-text-primary' : 'text-text-secondary'}`}>
           {team.short || team.name}
         </div>
         {team.record && (
-          <div className="text-[11px] text-text-muted truncate">{team.record}</div>
+          <div className="text-[10px] sm:text-[11px] text-text-muted truncate">{team.record}</div>
         )}
       </div>
-      <div className={`font-display text-2xl tabular-nums shrink-0 ${isWinner ? 'text-text-primary' : 'text-text-secondary'}`}>
+      <div className={`font-display text-xl sm:text-2xl tabular-nums shrink-0 ${isWinner ? 'text-text-primary' : 'text-text-secondary'}`}>
         {team.score ?? '—'}
       </div>
     </div>
   )
 }
 
-// Small line-score table (per-quarter / per-inning / per-half + total).
 function LineScoreRow({ team, headers, isWinner }) {
   return (
     <tr className="border-t border-text-primary/5">
@@ -62,6 +64,8 @@ function LineScoreRow({ team, headers, isWinner }) {
 
 function LineScoreTable({ teams, headers }) {
   if (!headers.length || !teams.length) return null
+  const winnerScore = Math.max(...teams.map((x) => x.score ?? -Infinity))
+  const uniqueWinner = teams.filter((x) => x.score === winnerScore).length === 1
   return (
     <div className="overflow-x-auto -mx-1 mb-4">
       <table className="w-full text-xs">
@@ -74,11 +78,9 @@ function LineScoreTable({ teams, headers }) {
           </tr>
         </thead>
         <tbody>
-          {teams.map((t) => {
-            const winnerScore = Math.max(...teams.map((x) => x.score ?? -Infinity))
-            const isWinner = t.score === winnerScore && teams.filter((x) => x.score === winnerScore).length === 1
-            return <LineScoreRow key={t.id} team={t} headers={headers} isWinner={isWinner} />
-          })}
+          {teams.map((t) => (
+            <LineScoreRow key={t.id} team={t} headers={headers} isWinner={uniqueWinner && t.score === winnerScore} />
+          ))}
         </tbody>
       </table>
     </div>
@@ -120,14 +122,16 @@ function StatGroupTable({ group }) {
   )
 }
 
-function TeamStatsSection({ team, groups }) {
-  if (!groups || !groups.length) return null
+function TeamStatsSection({ groups }) {
+  if (!groups || !groups.length) {
+    return (
+      <p className="text-sm text-text-muted text-center py-6">
+        No player stats available for this team.
+      </p>
+    )
+  }
   return (
-    <div className="mb-6">
-      <div className="flex items-center gap-2 mb-3 px-1">
-        {team.logo && <img src={team.logo} alt="" className="w-6 h-6 object-contain shrink-0" />}
-        <h3 className="font-display text-base text-text-primary truncate">{team.name}</h3>
-      </div>
+    <div>
       {groups.map((g, i) => (
         <StatGroupTable key={`${g.title}-${i}`} group={g} />
       ))}
@@ -137,6 +141,7 @@ function TeamStatsSection({ team, groups }) {
 
 export default function BoxScoreModal({ gameId, onClose }) {
   const { data, isLoading } = useBoxScore(gameId)
+  const [activeTeamId, setActiveTeamId] = useState(null)
 
   useEffect(() => {
     if (!gameId) return
@@ -150,58 +155,90 @@ export default function BoxScoreModal({ gameId, onClose }) {
   const away = teams.find((t) => t.home_away === 'away') || teams[0]
   const home = teams.find((t) => t.home_away === 'home') || teams[1]
 
+  // Default active team = away (visitor listed first is convention).
+  const currentTeamId = activeTeamId ?? away?.id ?? home?.id
+  const currentTeam = teams.find((t) => t.id === currentTeamId) || away
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      className="fixed inset-0 z-50 flex items-stretch sm:items-center sm:justify-center sm:px-4"
       style={{
-        paddingTop: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-top) + 1rem))',
-        paddingBottom: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-bottom) + 1rem))',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
       }}
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/60" />
+      <div className="absolute inset-0 bg-black/70" />
       <div
-        className="relative bg-bg-primary/95 backdrop-blur-md border border-text-primary/20 w-full md:max-w-3xl rounded-2xl p-5 max-h-full overflow-y-auto overscroll-contain"
+        className="relative bg-bg-primary/95 backdrop-blur-md border-0 sm:border sm:border-text-primary/20 w-full sm:max-w-3xl sm:my-6 rounded-none sm:rounded-2xl max-h-full overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 w-10 h-10 flex items-center justify-center text-text-muted hover:text-text-primary text-xl leading-none rounded-full hover:bg-bg-secondary transition-colors"
-        >
-          &times;
-        </button>
-
-        <div className="flex items-center gap-2 mb-4">
-          <h2 className="font-display text-lg">Box Score</h2>
-          {data?.status_detail && (
-            <span className="text-[11px] uppercase tracking-wider text-text-muted">· {data.status_detail}</span>
-          )}
+        {/* Sticky top bar: title + close */}
+        <div className="flex items-center justify-between gap-2 px-3 sm:px-5 pt-3 pb-2 border-b border-text-primary/10 shrink-0">
+          <div className="flex items-baseline gap-2 min-w-0">
+            <h2 className="font-display text-base sm:text-lg">Box Score</h2>
+            {data?.status_detail && (
+              <span className="text-[11px] uppercase tracking-wider text-text-muted truncate">· {data.status_detail}</span>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="w-11 h-11 flex items-center justify-center text-text-muted hover:text-text-primary text-2xl leading-none rounded-full hover:bg-bg-secondary transition-colors shrink-0 -mr-2"
+            aria-label="Close"
+          >
+            &times;
+          </button>
         </div>
 
-        {isLoading ? (
-          <LoadingSpinner />
-        ) : !data ? (
-          <p className="text-sm text-text-muted text-center py-8">
-            Box score isn't available for this game yet.
-          </p>
-        ) : (
-          <>
-            {/* Team header with logos, records, final scores */}
-            <div className="flex items-center gap-4 mb-4 pb-4 border-b border-text-primary/10">
-              {away && <TeamHeaderCard team={away} isWinner={away.score > (home?.score ?? -1)} />}
-              <div className="text-text-muted text-xs font-semibold px-1">@</div>
-              {home && <TeamHeaderCard team={home} isWinner={home.score > (away?.score ?? -1)} />}
-            </div>
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-3 sm:px-5 py-3 sm:py-4">
+          {isLoading ? (
+            <LoadingSpinner />
+          ) : !data ? (
+            <p className="text-sm text-text-muted text-center py-8">
+              Box score isn't available for this game yet.
+            </p>
+          ) : (
+            <>
+              {/* Team header — scores + records + logos */}
+              <div className="flex items-center gap-2 sm:gap-4 mb-4 pb-4 border-b border-text-primary/10">
+                {away && <TeamHeaderCard team={away} isWinner={away.score > (home?.score ?? -1)} />}
+                <div className="text-text-muted text-[10px] sm:text-xs font-semibold px-0.5 shrink-0">@</div>
+                {home && <TeamHeaderCard team={home} isWinner={home.score > (away?.score ?? -1)} />}
+              </div>
 
-            {/* Line score (quarters / innings / halves) */}
-            <LineScoreTable teams={[away, home].filter(Boolean)} headers={data.line_score_headers || []} />
+              {/* Line score (quarters / innings / halves) — always both teams */}
+              <LineScoreTable teams={[away, home].filter(Boolean)} headers={data.line_score_headers || []} />
 
-            {/* Per-team stat groups */}
-            {[away, home].filter(Boolean).map((t) => (
-              <TeamStatsSection key={t.id} team={t} groups={data.stat_groups?.[t.id]} />
-            ))}
-          </>
-        )}
+              {/* Away/Home tab switcher — one team's stats at a time */}
+              {teams.length > 1 && (
+                <div className="flex gap-1 mb-3 border-b border-text-primary/10">
+                  {[away, home].filter(Boolean).map((t) => {
+                    const isActive = t.id === currentTeamId
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => setActiveTeamId(t.id)}
+                        className={`flex items-center gap-2 px-3 py-2 text-sm font-semibold border-b-2 transition-colors ${
+                          isActive
+                            ? 'border-accent text-text-primary'
+                            : 'border-transparent text-text-muted hover:text-text-secondary'
+                        }`}
+                      >
+                        {t.logo && <img src={t.logo} alt="" className="w-5 h-5 object-contain" />}
+                        <span className="truncate max-w-[140px]">{t.short || t.name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {currentTeam && (
+                <TeamStatsSection groups={data.stat_groups?.[currentTeam.id]} />
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   )
