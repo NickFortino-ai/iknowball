@@ -325,7 +325,7 @@ function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome }) {
   // Live game clock / inning label — Sleeper/ESPN-style "Bot 7th" for
   // MLB, "Q3 · 4:32" for football/basketball. Data comes from ESPN
   // via syncLiveScores (period + clock columns on games).
-  const liveLabel = isLive ? formatLiveLabel(game.period, game.clock) : null
+  const liveLabel = isLive ? formatLiveLabel(game.period, game.clock, sportFullKey) : null
   return (
     <div className={`rounded-lg border backdrop-blur-md px-4 py-2.5 ${outlineClass}`}>
       {/* Live-state header (Bot 7th / Q3 · 4:32) OR MLB R/H/E header.
@@ -430,13 +430,22 @@ function TeamRow({ team, logoLookupTeam, record, score, hits, errors, sportFullK
 // a friendly string ("Top 5th" / "Bot 7th" / "Mid 3rd"), so we pass
 // it through. For football / basketball, period is a quarter number
 // and clock is a display clock like "4:32" — join as "Q3 · 4:32".
-function formatLiveLabel(period, clock) {
+// For soccer, period 1 = first half, 2 = second half, 3 = extra time;
+// clock renders as "45'+2" style — join as "1H · 34'".
+function formatLiveLabel(period, clock, sportFullKey) {
   if (!period) return clock || null
   const p = String(period)
   // MLB style — already contains letters (Top/Bot/Mid) so hand it back verbatim.
   if (/[a-zA-Z]/.test(p)) return p.toUpperCase()
   const num = parseInt(p, 10)
   if (isNaN(num)) return clock ? `${p} · ${clock}` : p
+
+  if (sportFullKey?.startsWith('soccer_')) {
+    const half = num === 1 ? '1H' : num === 2 ? '2H' : num === 3 ? 'ET' : num === 4 ? 'PK' : `P${num}`
+    // Strip trailing colon/seconds from the ESPN clock (e.g. "34:22" → "34'")
+    const mins = clock ? String(clock).split(':')[0] : null
+    return mins ? `${half} · ${mins}'` : half
+  }
   const quarter = `Q${num}`
   return clock ? `${quarter} · ${clock}` : quarter
 }
