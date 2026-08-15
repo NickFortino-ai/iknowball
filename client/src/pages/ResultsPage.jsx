@@ -12,7 +12,7 @@ import PropCard from '../components/picks/PropCard'
 import FuturesPickCard from '../components/picks/FuturesPickCard'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
-import PickDetailModal from '../components/social/PickDetailModal'
+import GameCenterModal from '../components/picks/GameCenterModal'
 import MyProfileBanner from '../components/hub/MyProfileBanner'
 import UserProfileModal from '../components/profile/UserProfileModal'
 
@@ -96,8 +96,8 @@ export default function ResultsPage() {
   const { profile } = useAuth()
   const fetchProfile = useAuthStore((s) => s.fetchProfile)
   const [collapsed, setCollapsed] = useState(loadCollapsed)
-  const [selectedPickId, setSelectedPickId] = useState(null)
   const [selectedUserId, setSelectedUserId] = useState(null)
+  const [gameCenterGameId, setGameCenterGameId] = useState(null)
   const session = useAuthStore((s) => s.session)
 
   // The auth-store profile is fetched once at login and never refreshed,
@@ -193,7 +193,7 @@ export default function ResultsPage() {
                   game={pick.games}
                   userPick={pick}
                   reactions={reactionsBatch?.[pick.id]}
-                  onCardClick={() => setSelectedPickId(pick.id)}
+                  onCardClick={() => setGameCenterGameId(pick.games?.id)}
                   sportKey={pick.games?.sports?.key}
                 />
               ))}
@@ -234,7 +234,7 @@ export default function ResultsPage() {
                             game={pick.games}
                             userPick={pick}
                             reactions={reactionsBatch?.[pick.id]}
-                            onCardClick={() => setSelectedPickId(pick.id)}
+                            onCardClick={() => setGameCenterGameId(pick.games?.id)}
                             sportKey={pick.games?.sports?.key}
                           />
                         ))}
@@ -351,7 +351,7 @@ export default function ResultsPage() {
           })()}
         </>
       )}
-      <PickDetailModal pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />
+      <GameCenterModal gameId={gameCenterGameId} onClose={() => setGameCenterGameId(null)} />
       <UserProfileModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
     </div>
   )

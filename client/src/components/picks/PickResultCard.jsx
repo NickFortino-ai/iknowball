@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { formatOdds } from '../../lib/scoring'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
-import BoxScoreModal from './BoxScoreModal'
 
 function TeamLogo({ team, sportKey }) {
   const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
@@ -17,7 +16,6 @@ function TeamLogo({ team, sportKey }) {
 // Reusable pick result display: matchup card + user pick + ALL PICKS bar
 // Used in PickDetailModal and feed FlexTargetCard
 export default function PickResultCard({ pick, game, totalCounts }) {
-  const [showBox, setShowBox] = useState(false)
   if (!pick || !game) return null
 
   const isPostponed = game.status === 'postponed'
@@ -46,9 +44,8 @@ export default function PickResultCard({ pick, game, totalCounts }) {
   const homePct = totalPicks > 0 ? Math.round(((totalCounts.home || 0) / totalPicks) * 100) : 0
   const awayPct = totalPicks > 0 ? 100 - homePct : 0
 
-  const tappable = isSettled && !isPostponed
   return (
-    <div className={`rounded-xl border ${borderColor} overflow-hidden ${tappable ? 'cursor-pointer hover:bg-bg-primary/20 transition-colors' : ''}`} onClick={tappable ? () => setShowBox(true) : undefined}>
+    <div className={`rounded-xl border ${borderColor} overflow-hidden`}>
       {/* Matchup */}
       <div className="p-4">
         <div className="text-xs text-text-muted uppercase tracking-wider mb-1">{game.sports?.name || ''}</div>
@@ -97,8 +94,6 @@ export default function PickResultCard({ pick, game, totalCounts }) {
           </div>
         )}
       </div>
-
-      {showBox && <BoxScoreModal gameId={game.id} onClose={() => setShowBox(false)} />}
 
       {/* ALL PICKS bar */}
       {totalPicks > 0 && (

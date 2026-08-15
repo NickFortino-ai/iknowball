@@ -7,7 +7,8 @@ import { api } from '../lib/api'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../lib/teamLogos'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import StatLeadersBlock from '../components/home/StatLeadersBlock'
-import BoxScoreModal from '../components/picks/BoxScoreModal'
+import GameCenterModal from '../components/picks/GameCenterModal'
+
 
 // /scores/:sport — Sleeper-style drill-in for one sport: date scrubber
 // + full day's scores on the left, standings sidebar on the right.
@@ -51,7 +52,7 @@ export default function SportScoresPage() {
   const config = SPORTS[sport?.toLowerCase()]
   if (!config) return <Navigate to="/" replace />
   const isNfl = sport?.toLowerCase() === 'nfl'
-  const [boxScoreGameId, setBoxScoreGameId] = useState(null)
+  const [gameCenterGameId, setGameCenterGameId] = useState(null)
 
   // Green/red outline on any Final game the user picked — matches the
   // landing scoreboard's pick indicator so drilling in preserves the
@@ -194,7 +195,7 @@ export default function SportScoresPage() {
           ) : (
             <div className="space-y-2">
               {games.map((g) => (
-                <DrillGameCard key={g.id} game={g} sportFullKey={config.fullKey} showDate={isNfl} pickOutcome={pickOutcomeByGame.get(g.id)} onOpenBoxScore={setBoxScoreGameId} />
+                <DrillGameCard key={g.id} game={g} sportFullKey={config.fullKey} showDate={isNfl} pickOutcome={pickOutcomeByGame.get(g.id)} onOpenGameCenter={setGameCenterGameId} />
               ))}
             </div>
           )}
@@ -220,7 +221,7 @@ export default function SportScoresPage() {
           <StatLeadersBlock sport={sport} mode="full" />
         </div>
       </div>
-      <BoxScoreModal gameId={boxScoreGameId} onClose={() => setBoxScoreGameId(null)} />
+      <GameCenterModal gameId={gameCenterGameId} onClose={() => setGameCenterGameId(null)} />
     </div>
   )
 }
@@ -432,10 +433,10 @@ function formatWeekRange(startStr, endStr) {
 // + score on the right. showDate adds a Day, Mon DD prefix — used
 // for NFL where a week bunches Thu/Sun/Mon games together so time
 // alone doesn't tell you which day the game is on.
-function DrillGameCard({ game, sportFullKey, showDate, pickOutcome, onOpenBoxScore }) {
+function DrillGameCard({ game, sportFullKey, showDate, pickOutcome, onOpenGameCenter }) {
   const isLive = game.status === 'live'
   const isFinal = game.status === 'final'
-  const tappable = isFinal && !!onOpenBoxScore
+  const tappable = (isFinal || isLive) && !!onOpenGameCenter
   const showScore = isLive || isFinal
   const timeStr = new Date(game.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   const dateStr = showDate ? new Date(game.starts_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : null
@@ -456,7 +457,7 @@ function DrillGameCard({ game, sportFullKey, showDate, pickOutcome, onOpenBoxSco
 
   return (
     <div
-      onClick={tappable ? () => onOpenBoxScore(game.id) : undefined}
+      onClick={tappable ? () => onOpenGameCenter(game.id) : undefined}
       className={`rounded-lg border backdrop-blur-md px-4 py-3 ${outlineClass} ${tappable ? 'cursor-pointer hover:bg-bg-primary/30 transition-colors' : ''}`}
     >
       <div className="flex items-center gap-3 mb-2">

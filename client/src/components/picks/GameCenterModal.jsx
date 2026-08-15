@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useBoxScore } from '../../hooks/useScoresStrip'
 import { useGamePicks } from '../../hooks/usePicks'
 import { useAuth } from '../../hooks/useAuth'
+import { useCreateFlex } from '../../hooks/useHotTakes'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { formatOdds } from '../../lib/scoring'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -9,9 +10,12 @@ import Avatar from '../ui/Avatar'
 import PickReactions from '../social/PickReactions'
 import PickComments from '../social/PickComments'
 import UserProfileModal from '../profile/UserProfileModal'
+import { toast } from '../ui/Toast'
 
-// ESPN-style post-game box score, opened by tapping a final-state game
-// on the landing Scoreboard, drill-in, or a pick result card.
+// Game Center — the unified live/final game screen. Opened by tapping a
+// game on the landing scoreboard, sport drill-in, or a user's own
+// settled result item. Live and final only; upcoming games are not
+// tappable (nothing meaningful to show yet).
 //
 // Rendering is intentionally sport-agnostic — we iterate whatever
 // stat groups ESPN's summary payload provided (Passing / Rushing /
@@ -22,7 +26,9 @@ import UserProfileModal from '../profile/UserProfileModal'
 // When the viewer is authenticated the modal also surfaces pick context:
 // their own pick + result, the community pick split, and squad picks.
 // Reactions + comments live in a slide-up drawer keyed on the pick id
-// so the box score itself stays uncluttered.
+// so the box score itself stays uncluttered. Winners of a settled pick
+// get a Flex-to-Squad button in the header, matching what used to live
+// on PickDetailModal.
 
 function TeamHeaderCard({ team, isWinner }) {
   const [logoBroken, setLogoBroken] = useState(false)
@@ -248,14 +254,17 @@ function SquadChips({ squadPicks, away, home, onOpenProfile }) {
   )
 }
 
-export default function BoxScoreModal({ gameId, onClose }) {
+export default function GameCenterModal({ gameId, onClose }) {
   const { session } = useAuth()
   const isAuthed = !!session
   const { data, isLoading } = useBoxScore(gameId)
   const { data: gamePicksData } = useGamePicks(isAuthed ? gameId : null)
+  const createFlex = useCreateFlex()
   const [activeTeamId, setActiveTeamId] = useState(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [profileUserId, setProfileUserId] = useState(null)
+  const [flexing, setFlexing] = useState(false)
+  const [flexText, setFlexText] = useState('')
 
   useEffect(() => {
     if (!gameId) return
@@ -263,8 +272,13 @@ export default function BoxScoreModal({ gameId, onClose }) {
     return () => unlockScroll()
   }, [gameId])
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setDrawerOpen(false) }, [gameId])
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    setDrawerOpen(false)
+    setFlexing(false)
+    setFlexText('')
+  }, [gameId])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!gameId) return null
 
@@ -279,6 +293,20 @@ export default function BoxScoreModal({ gameId, onClose }) {
   const totalCounts = gamePicksData?.totalCounts
   const squadPicks = gamePicksData?.squadPicks || []
   const hasPickContext = !!(userPick || (totalCounts && (totalCounts.home + totalCounts.away) > 0) || squadPicks.length)
+  const canFlex = userPick?.status === 'settled' && userPick?.is_correct === true
+
+  async function handleSubmitFlex() {
+    if (!userPick?.id) return
+    try {
+      await createFlex.mutateAsync({ content: flexText, pickId: userPick.id })
+      toast('Flex posted to squad!', 'success')
+      setFlexing(false)
+      setFlexText('')
+      onClose?.()
+    } catch (err) {
+      toast(err.message || 'Failed to flex', 'error')
+    }
+  }
 
   return (
     <div
@@ -297,19 +325,51 @@ export default function BoxScoreModal({ gameId, onClose }) {
         {/* Sticky top bar */}
         <div className="flex items-center justify-between gap-2 px-3 sm:px-5 pt-3 pb-2 border-b border-text-primary/10 shrink-0">
           <div className="flex items-baseline gap-2 min-w-0">
-            <h2 className="font-display text-base sm:text-lg">Box Score</h2>
+            <h2 className="font-display text-base sm:text-lg">Game Center</h2>
             {data?.status_detail && (
               <span className="text-[11px] uppercase tracking-wider text-text-muted truncate">· {data.status_detail}</span>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="w-11 h-11 flex items-center justify-center text-text-muted hover:text-text-primary text-2xl leading-none rounded-full hover:bg-bg-secondary transition-colors shrink-0 -mr-2"
-            aria-label="Close"
-          >
-            &times;
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            {canFlex && !flexing && (
+              <button
+                onClick={() => setFlexing(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs sm:text-sm font-semibold text-text-primary hover:opacity-80 transition-opacity"
+              >
+                <img src="/flex-button.png" alt="" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />
+                <span className="hidden sm:inline">Flex to Squad</span>
+                <span className="sm:hidden">Flex</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="w-11 h-11 flex items-center justify-center text-text-muted hover:text-text-primary text-2xl leading-none rounded-full hover:bg-bg-secondary transition-colors -mr-2"
+              aria-label="Close"
+            >
+              &times;
+            </button>
+          </div>
         </div>
+
+        {/* Flex composer — expands under the top bar when triggered */}
+        {flexing && (
+          <div className="px-3 sm:px-5 pt-3 pb-3 border-b border-text-primary/10 shrink-0">
+            <textarea
+              value={flexText}
+              onChange={(e) => setFlexText(e.target.value)}
+              placeholder="Let them know!"
+              rows={2}
+              className="w-full bg-bg-primary/50 border border-accent rounded-lg px-3 py-2 text-sm font-semibold text-white placeholder-text-muted focus:outline-none resize-none"
+              autoFocus
+            />
+            <div className="flex gap-2 justify-end mt-2">
+              <button onClick={() => { setFlexing(false); setFlexText('') }} className="text-xs text-text-muted hover:text-text-secondary px-3 py-1.5">Cancel</button>
+              <button onClick={handleSubmitFlex} disabled={createFlex.isPending} className="text-xs font-semibold bg-accent text-white px-4 py-1.5 rounded-lg hover:bg-accent-hover disabled:opacity-50">
+                {createFlex.isPending ? 'Posting...' : 'Flex'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto overscroll-contain px-3 sm:px-5 py-3 sm:py-4">
