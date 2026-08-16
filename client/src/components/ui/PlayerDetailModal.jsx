@@ -328,7 +328,7 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
                   <div className="text-sm text-text-muted">
                     {displayPosition ? <>{displayPosition} · </> : null}
                     {player.team && <span className="text-text-primary font-semibold">{player.team}</span>}
-                    {player.opponent ? ` ${player.opponent}` : ''}
+                    {player.opponent ? ` ${/^(vs|@)\s/i.test(player.opponent) ? player.opponent : `vs ${player.opponent}`}` : ''}
                   </div>
                 )
               })()}
