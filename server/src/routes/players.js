@@ -903,16 +903,39 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     else if (sport === 'basketball_wnba') fptsFn = calculateWNBAFantasyPoints
     else if (sport === 'baseball_mlb') fptsFn = isPitcher ? mlbPitcherGameFpts : mlbBatterGameFpts
 
+    // For NFL, build a game-date → week map so we can label each row
+    // "W1", "W2", etc. matching the fantasy football modal. Only pulls
+    // the current season's schedule; games outside that window fall
+    // back to null week (rare — e.g. Hall of Fame preseason).
+    let nflDateToWeek = null
+    if (isNFL) {
+      const { data: schedRows } = await supabase
+        .from('nfl_schedule')
+        .select('week, game_date')
+        .eq('season', seasonYear)
+      nflDateToWeek = new Map()
+      for (const r of schedRows || []) nflDateToWeek.set(r.game_date, r.week)
+    }
+
     const games = allGames.slice(0, gameCap).map((ev) => {
       const detail = eventsMap[ev.eventId] || {}
       const statMap = {}
       labels.forEach((l, i) => { statMap[l] = ev.stats?.[i] })
       const parsed = colParser(statMap)
       const fpts = fptsFn ? fptsFn(sport === 'baseball_mlb' ? statMap : parsed) : null
+      let week = null
+      if (nflDateToWeek && detail.gameDate) {
+        // gameDate can be a full ISO string or "YYYY-MM-DD"; both work
+        // for a substring match against the schedule's date column.
+        const day = detail.gameDate.slice(0, 10)
+        week = nflDateToWeek.get(day) || null
+      }
 
       return {
         date: detail.gameDate || null,
+        week,
         opponent: resolveOpponentAbbrev(detail.opponent, sport),
+        is_home: detail.homeAway === 'home' || null,
         result: detail.gameResult || null,
         fantasy_pts: fpts != null ? Number(fpts.toFixed(1)) : null,
         ...parsed,

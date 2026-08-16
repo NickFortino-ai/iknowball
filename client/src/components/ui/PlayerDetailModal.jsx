@@ -118,13 +118,18 @@ function MLBPitcherAverages({ averages }) {
 // columns to the right, W/L color chip merged into the # column so we
 // don't spend a whole column on it. `columns` is a list of
 // { key, label, primary?, accent? } objects; primary bolds the value.
-function GameLogTable({ games, columns, showFantasyPoints }) {
+// firstColumn: 'result' (default; shows W/L color-coded) or 'week'
+// (shows the NFL week number, still colored by W/L). Opponent cell
+// gets a vs/@ prefix when the row has is_home data; if the string
+// already includes one (DFS services pre-format it), pass through.
+function GameLogTable({ games, columns, showFantasyPoints, firstColumn = 'result' }) {
+  const isWeek = firstColumn === 'week'
   return (
     <div className="overflow-x-auto -mx-2 px-2">
       <table className="min-w-full text-xs">
         <thead>
           <tr className="text-[10px] uppercase text-text-muted">
-            <th className="text-left font-semibold pl-2 pr-1 py-2 sticky left-0 bg-bg-primary">RES</th>
+            <th className="text-left font-semibold pl-2 pr-1 py-2 sticky left-0 bg-bg-primary">{isWeek ? 'WK' : 'RES'}</th>
             <th className="text-left font-semibold pl-1 pr-2 py-2 whitespace-nowrap">OPP</th>
             {columns.map((c) => (
               <th key={c.key} className={`text-right font-semibold px-2 py-2 whitespace-nowrap ${c.accent ? 'text-accent' : ''}`}>{c.label}</th>
@@ -135,10 +140,15 @@ function GameLogTable({ games, columns, showFantasyPoints }) {
         <tbody>
           {games.map((g, i) => {
             const resultColor = g.result === 'W' ? 'text-correct' : g.result === 'L' ? 'text-incorrect' : 'text-text-muted'
+            const firstCell = isWeek ? (g.week ?? '—') : (g.result || '—')
+            let opponentText = g.opponent || '—'
+            if (opponentText !== '—' && g.is_home != null && !/^(vs|@)\s/i.test(opponentText)) {
+              opponentText = `${g.is_home ? 'vs' : '@'} ${opponentText}`
+            }
             return (
               <tr key={i} className="border-t border-text-primary/10">
-                <td className={`pl-2 pr-1 py-2 font-bold sticky left-0 bg-bg-primary ${resultColor}`}>{g.result || '—'}</td>
-                <td className="pl-1 pr-2 py-2 whitespace-nowrap text-text-primary">{g.opponent || '—'}</td>
+                <td className={`pl-2 pr-1 py-2 font-bold sticky left-0 bg-bg-primary ${resultColor}`}>{firstCell}</td>
+                <td className="pl-1 pr-2 py-2 whitespace-nowrap text-text-primary">{opponentText}</td>
                 {columns.map((c) => (
                   <td
                     key={c.key}
@@ -311,18 +321,18 @@ function NFLGameLog({ games, position, twoWay }) {
       <div className="space-y-4">
         <div>
           <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1 font-semibold">Offense</div>
-          <GameLogTable games={games} columns={NFL_LOG_COLS.rec} />
+          <GameLogTable games={games} columns={NFL_LOG_COLS.rec} firstColumn="week" />
         </div>
         <div>
           <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1 font-semibold">Defense</div>
-          <GameLogTable games={games} columns={NFL_LOG_COLS.idp} />
+          <GameLogTable games={games} columns={NFL_LOG_COLS.idp} firstColumn="week" />
         </div>
       </div>
     )
   }
   const group = getNFLPositionGroup(position)
   const columns = NFL_LOG_COLS[group] || NFL_LOG_COLS.skill
-  return <GameLogTable games={games} columns={columns} />
+  return <GameLogTable games={games} columns={columns} firstColumn="week" />
 }
 
 export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'basketball_nba', showFantasyPoints = false }) {
