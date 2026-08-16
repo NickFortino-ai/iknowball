@@ -418,13 +418,6 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
           </div>
         )}
 
-        {/* Season Averages */}
-        {data?.averages && (
-          <div className="px-5 py-4 border-b border-text-primary/10">
-            <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3 font-semibold">Season Averages</h3>
-            {isPitcher ? <MLBPitcherAverages averages={data.averages} /> : isMLB ? <MLBaverages averages={data.averages} /> : isNFL ? <NFLaverages averages={data.averages} position={player.position} /> : <NBAaverages averages={data.averages} />}
-          </div>
-        )}
 
         {/* Game Log */}
         <div className="px-5 py-4">
