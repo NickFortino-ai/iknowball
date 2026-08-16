@@ -780,7 +780,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         : league.format === 'tackles' ? 'tackle'
         : 'reception'
       return [
-        `Pick up to 3 NFL ${poolNoun}s each week that you think will record ${stat}s.`,
+        `Pick 3 ${poolNoun}s each week that you think will record ${stat}s.`,
         reuseRule,
         'You can change your picks until each player\'s game starts.',
         `Every ${stat} your picks record adds to your league total.`,
@@ -839,10 +839,14 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
               <div className="mt-3 flex items-start gap-2">
                 {Array.isArray(narrative) ? (
                   <ul className="text-sm text-text-primary leading-relaxed flex-1 space-y-1.5 list-disc list-outside pl-5">
-                    {narrative.map((item, i) => <li key={i}>{item}</li>)}
+                    {narrative.map((item, i) => (
+                      item
+                        ? <li key={i}>{item}</li>
+                        : <li key={i} className="list-none h-2" aria-hidden="true" />
+                    ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-text-primary leading-relaxed flex-1">{narrative}</p>
+                  <p className="text-sm text-text-primary leading-relaxed flex-1 whitespace-pre-line">{narrative}</p>
                 )}
                 {isCommissioner && (
                   <button
@@ -966,13 +970,21 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                       // Multi-line → store as array (renders as bulleted list).
                       // Single line → store as string (renders as paragraph).
                       // Empty → null (revert to default narrative).
-                      const raw = (narrativeText || '').trim()
-                      const lines = raw.split('\n').map((s) => s.trim()).filter(Boolean)
-                      const saved = lines.length === 0
-                        ? null
-                        : lines.length === 1
-                          ? lines[0]
-                          : lines
+                      //
+                      // Preserve every line the user typed (including
+                      // blank ones for visual spacing). Only strip
+                      // leading/trailing empty lines around the whole
+                      // block so a wholly-empty textarea reverts, and
+                      // an unintentional trailing return isn't kept.
+                      const raw = (narrativeText || '').replace(/^\n+|\n+$/g, '')
+                      if (!raw.trim()) {
+                        await updateLeague.mutateAsync({ leagueId: league.id, settings: { ...league.settings, custom_narrative: null } })
+                        setEditingNarrative(false)
+                        toast('Reset to default', 'success')
+                        return
+                      }
+                      const lines = raw.split('\n')
+                      const saved = lines.length === 1 ? lines[0] : lines
                       await updateLeague.mutateAsync({ leagueId: league.id, settings: { ...league.settings, custom_narrative: saved } })
                       setEditingNarrative(false)
                       toast('Description updated', 'success')
