@@ -837,8 +837,10 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     const useSeasonParam = sport !== 'basketball_nba'
     const response = await fetch(`https://site.api.espn.com/apis/common/v3/sports/${espnPath}/athletes/${espnId}/gamelog${useSeasonParam ? `?season=${seasonYear}` : ''}`)
     if (!response.ok) {
-      // No gamelog but the row still wants blurbs — fall through with
-      // empty games/averages so the modal can render notes alone.
+      // No ESPN gamelog. Instead of bailing straight to empty, still
+      // synthesize NFL upcoming-week rows from nfl_schedule so the
+      // modal at least shows the player's remaining schedule (matches
+      // the FF modal's behavior for players ESPN hasn't logged yet).
       const blurbSport = ({
         basketball_nba: 'nba',
         basketball_wnba: 'wnba',
@@ -850,9 +852,25 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
         try {
           const { getPublishedBlurbsForPlayer } = await import('../services/playerBlurbService.js')
           blurbs = await getPublishedBlurbsForPlayer(rawId, 10, blurbSport)
-        } catch {}
+        } catch { /* blurbs are best-effort */ }
       }
-      return res.json({ games: [], averages: null, sport, isPitcher: false, blurbs, blurb: blurbs[0] || null })
+      let fallbackGames = []
+      if (sport === 'americanfootball_nfl' && nflPlayerTeam) {
+        const { data: schedRows } = await supabase
+          .from('nfl_schedule')
+          .select('week, game_date, home_team, away_team')
+          .eq('season', seasonYear)
+        const mine = (schedRows || []).filter((r) => r.home_team === nflPlayerTeam || r.away_team === nflPlayerTeam)
+        fallbackGames = mine.map((r) => {
+          const isHome = r.home_team === nflPlayerTeam
+          return { week: r.week, date: r.game_date, opponent: isHome ? r.away_team : r.home_team, is_home: isHome, result: null, fantasy_pts: null }
+        })
+        if (nflPlayerByeWeek && !fallbackGames.some((g) => g.week === nflPlayerByeWeek)) {
+          fallbackGames.push({ week: nflPlayerByeWeek, date: null, opponent: null, is_home: null, on_bye: true, result: null, fantasy_pts: null })
+        }
+        fallbackGames.sort((a, b) => (a.week ?? 999) - (b.week ?? 999))
+      }
+      return res.json({ games: fallbackGames, averages: null, sport, isPitcher: false, blurbs, blurb: blurbs[0] || null })
     }
     const data = await response.json()
 
