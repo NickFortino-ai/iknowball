@@ -299,61 +299,64 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
         className="relative bg-bg-primary border border-text-primary/20 w-full max-w-md rounded-2xl max-h-[85vh] overflow-y-auto scrollbar-hide"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header — backdrop tinted to the player's team color when we
-            have one. Falls back to the modal's default surface. */}
+        {/* Header — centered headshot + name on team-tinted backdrop.
+            Matches the fantasy football player modal so the whole app
+            has one consistent player-hero look. */}
         <div
-          className="relative p-5 border-b border-text-primary/10"
+          className="relative px-5 pt-6 pb-5"
           style={teamColor ? {
-            background: `linear-gradient(135deg, ${teamColor} 0%, ${teamColor}cc 55%, ${teamColor}00 100%)`,
+            background: `linear-gradient(180deg, ${teamColor} 0%, ${teamColor}cc 60%, ${teamColor}00 100%)`,
           } : undefined}
         >
-          <button onClick={onClose} className="absolute top-4 right-4 text-white/80 hover:text-white text-xl leading-none z-10">&times;</button>
-          <div className="flex items-center gap-4">
+          <button onClick={onClose} className="absolute top-3 right-3 text-white/80 hover:text-white text-xl leading-none z-10 p-1">&times;</button>
+          <div className="flex flex-col items-center text-center">
             {player.headshot_url || player.player_headshot_url ? (
-              <img src={player.headshot_url || player.player_headshot_url} alt="" className="w-16 h-16 rounded-full object-cover bg-bg-secondary shrink-0" />
+              <img src={player.headshot_url || player.player_headshot_url} alt="" className="w-32 h-32 rounded-full object-cover bg-bg-card border-2 border-text-primary/20 mb-3" />
             ) : (
-              <div className="w-16 h-16 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-lg text-text-muted font-bold">
+              <div className="w-32 h-32 rounded-full bg-bg-card border-2 border-text-primary/20 mb-3 flex items-center justify-center text-2xl text-text-muted font-bold">
                 {(player.position || '?').split('/')[0]}
               </div>
             )}
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="font-display text-xl text-text-primary">{player.player_name}</h2>
-                <InjuryBadge status={player.injury_status} />
-              </div>
-              {(() => {
-                const displayPosition = twoWayPositionLabel(player) || player.position
-                if (!displayPosition && !player.team) return null
-                return (
-                  <div className="text-sm text-text-muted">
-                    {displayPosition ? <>{displayPosition} · </> : null}
-                    {player.team && <span className="text-text-primary font-semibold">{player.team}</span>}
-                  </div>
-                )
-              })()}
+            <div className="flex items-center gap-2">
+              <h2 className="font-display text-2xl text-text-primary">{player.player_name}</h2>
+              <InjuryBadge status={player.injury_status} />
             </div>
+            {(() => {
+              const displayPosition = twoWayPositionLabel(player) || player.position
+              if (!displayPosition && !player.team) return null
+              return (
+                <div className="text-xs text-text-muted mt-1">
+                  {displayPosition ? <>{displayPosition} · </> : null}
+                  {player.team && <span className="text-text-primary font-semibold">{player.team}</span>}
+                </div>
+              )
+            })()}
+            {onAdd && (
+              <button
+                onClick={() => { onAdd(player); onClose() }}
+                className="mt-4 px-6 py-2 rounded-xl font-display text-sm bg-accent text-white hover:bg-accent-hover transition-colors"
+              >
+                Add to Roster
+              </button>
+            )}
           </div>
-          {onAdd && (
-            <button
-              onClick={() => { onAdd(player); onClose() }}
-              className="w-full mt-4 py-2.5 rounded-xl font-display text-sm bg-accent text-white hover:bg-accent-hover transition-colors"
-            >
-              Add to Roster
-            </button>
-          )}
         </div>
 
-        {/* Player Notes (admin blurb) */}
+        {/* Player Notes (admin blurb) — matches the fantasy football
+            modal's styling: accent-orange heading + date pushed to the
+            right on the same row, body text below. */}
         {data?.blurb && (
           <div className="px-5 py-4 border-b border-text-primary/10">
-            <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2 font-semibold">Player Notes</h3>
+            <div className="flex items-baseline justify-between gap-3 mb-2">
+              <h3 className="text-xs text-accent uppercase tracking-wider font-semibold">Player Notes</h3>
+              {data.blurb.published_at && (
+                <div className="text-[10px] text-text-muted shrink-0">
+                  {data.blurb.generated_by === 'espn' && <span className="mr-1.5">via ESPN</span>}
+                  {new Date(data.blurb.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </div>
+              )}
+            </div>
             <p className="text-sm text-text-primary leading-relaxed whitespace-pre-wrap">{data.blurb.content}</p>
-            {data.blurb.published_at && (
-              <div className="text-[10px] text-text-muted mt-1.5">
-                {data.blurb.generated_by === 'espn' && <span className="mr-1.5">via ESPN</span>}
-                {new Date(data.blurb.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </div>
-            )}
           </div>
         )}
 
