@@ -95,86 +95,86 @@ function MLBPitcherAverages({ averages }) {
   )
 }
 
-function MLBPitcherGameLog({ games, showFantasyPoints }) {
-  const cols = showFantasyPoints
-    ? 'grid-cols-[1.5rem_minmax(2.25rem,1fr)_2.25rem_1.5rem_1.5rem_1.5rem_1.5rem_1.5rem_2.25rem]'
-    : 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.5rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem]'
+// Shared table renderer for every game log below. Matches the fantasy
+// football modal's layout: sticky #/OPP columns on the left, per-stat
+// columns to the right, W/L color chip merged into the # column so we
+// don't spend a whole column on it. `columns` is a list of
+// { key, label, primary?, accent? } objects; primary bolds the value.
+function GameLogTable({ games, columns, showFantasyPoints }) {
   return (
-    <div className="space-y-0">
-      <div className={`grid ${cols} gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10`}>
-        <span></span><span>OPP</span><span className="text-right">IP</span><span className="text-right">H</span><span className="text-right">R</span><span className="text-right">ER</span><span className="text-right">BB</span><span className="text-right">K</span>
-        {showFantasyPoints && <span className="text-right text-accent">FPTS</span>}
-      </div>
-      {games.map((g, i) => (
-        <div key={i} className={`grid ${cols} gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center`}>
-          <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : g.result === 'L' ? 'text-incorrect' : 'text-text-muted'}`}>{g.result}</span>
-          <span className="text-xs text-text-secondary truncate">{g.opponent || '—'}</span>
-          <span className="text-xs text-text-primary text-right font-semibold">{g.ip}</span>
-          <span className="text-xs text-text-secondary text-right">{g.h}</span>
-          <span className="text-xs text-text-secondary text-right">{g.r}</span>
-          <span className="text-xs text-text-secondary text-right">{g.er}</span>
-          <span className="text-xs text-text-secondary text-right">{g.bb}</span>
-          <span className="text-xs text-text-primary text-right font-semibold">{g.k}</span>
-          {showFantasyPoints && <span className="text-xs text-accent text-right font-semibold">{g.fantasy_pts != null ? g.fantasy_pts.toFixed(1) : '—'}</span>}
-        </div>
-      ))}
+    <div className="overflow-x-auto -mx-2 px-2">
+      <table className="min-w-full text-xs">
+        <thead>
+          <tr className="text-[10px] uppercase text-text-muted">
+            <th className="text-left font-semibold pl-2 pr-1 py-2 sticky left-0 bg-bg-primary">#</th>
+            <th className="text-left font-semibold pl-1 pr-2 py-2 whitespace-nowrap">OPP</th>
+            {columns.map((c) => (
+              <th key={c.key} className={`text-right font-semibold px-2 py-2 whitespace-nowrap ${c.accent ? 'text-accent' : ''}`}>{c.label}</th>
+            ))}
+            {showFantasyPoints && <th className="text-right font-semibold px-2 py-2 whitespace-nowrap text-accent">FPTS</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {games.map((g, i) => {
+            const resultColor = g.result === 'W' ? 'text-correct' : g.result === 'L' ? 'text-incorrect' : 'text-text-muted'
+            return (
+              <tr key={i} className="border-t border-text-primary/10">
+                <td className={`pl-2 pr-1 py-2 font-semibold sticky left-0 bg-bg-primary ${resultColor}`}>{i + 1}</td>
+                <td className="pl-1 pr-2 py-2 whitespace-nowrap text-text-primary">{g.opponent || '—'}</td>
+                {columns.map((c) => (
+                  <td
+                    key={c.key}
+                    className={`px-2 py-2 text-right whitespace-nowrap tabular-nums ${c.primary ? 'text-text-primary font-semibold' : 'text-text-secondary'}`}
+                  >
+                    {g[c.key] ?? '—'}
+                  </td>
+                ))}
+                {showFantasyPoints && (
+                  <td className="px-2 py-2 text-right whitespace-nowrap tabular-nums text-accent font-semibold">
+                    {g.fantasy_pts != null ? g.fantasy_pts.toFixed(1) : '—'}
+                  </td>
+                )}
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
+}
+
+function MLBPitcherGameLog({ games, showFantasyPoints }) {
+  return <GameLogTable games={games} showFantasyPoints={showFantasyPoints} columns={[
+    { key: 'ip', label: 'IP', primary: true },
+    { key: 'h', label: 'H' },
+    { key: 'r', label: 'R' },
+    { key: 'er', label: 'ER' },
+    { key: 'bb', label: 'BB' },
+    { key: 'k', label: 'K', primary: true },
+  ]} />
 }
 
 function NBAGameLog({ games, showFantasyPoints }) {
-  const cols = showFantasyPoints
-    ? 'grid-cols-[1.5rem_minmax(2rem,1fr)_2rem_2rem_2rem_2rem_2rem_2rem_2.25rem]'
-    : 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.25rem_2.25rem_2.25rem_2.25rem_2.25rem_2.25rem]'
-  return (
-    <div className="space-y-0">
-      <div className={`grid ${cols} gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10`}>
-        <span></span><span>OPP</span><span className="text-right">MIN</span><span className="text-right">PTS</span><span className="text-right">REB</span><span className="text-right">AST</span><span className="text-right">STL</span><span className="text-right">BLK</span>
-        {showFantasyPoints && <span className="text-right text-accent">FPTS</span>}
-      </div>
-      {games.map((g, i) => (
-        <div key={i} className={`grid ${cols} gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center`}>
-          <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
-          <span className="text-xs text-text-secondary truncate">{g.opponent || '—'}</span>
-          <span className="text-xs text-text-secondary text-right">{g.min}</span>
-          <span className="text-xs text-text-primary text-right font-semibold">{g.pts}</span>
-          <span className="text-xs text-text-secondary text-right">{g.reb}</span>
-          <span className="text-xs text-text-secondary text-right">{g.ast}</span>
-          <span className="text-xs text-text-secondary text-right">{g.stl}</span>
-          <span className="text-xs text-text-secondary text-right">{g.blk}</span>
-          {showFantasyPoints && <span className="text-xs text-accent text-right font-semibold">{g.fantasy_pts != null ? g.fantasy_pts.toFixed(1) : '—'}</span>}
-        </div>
-      ))}
-    </div>
-  )
+  return <GameLogTable games={games} showFantasyPoints={showFantasyPoints} columns={[
+    { key: 'min', label: 'MIN' },
+    { key: 'pts', label: 'PTS', primary: true },
+    { key: 'reb', label: 'REB' },
+    { key: 'ast', label: 'AST' },
+    { key: 'stl', label: 'STL' },
+    { key: 'blk', label: 'BLK' },
+  ]} />
 }
 
 function MLBGameLog({ games, showFantasyPoints }) {
-  const cols = showFantasyPoints
-    ? 'grid-cols-[1.5rem_minmax(2rem,1fr)_1.5rem_1.5rem_1.5rem_1.5rem_1.5rem_1.5rem_1.5rem_2.25rem]'
-    : 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem]'
-  return (
-    <div className="space-y-0">
-      <div className={`grid ${cols} gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10`}>
-        <span></span><span>OPP</span><span className="text-right">AB</span><span className="text-right">H</span><span className="text-right">R</span><span className="text-right">HR</span><span className="text-right">RBI</span><span className="text-right">BB</span><span className="text-right">SO</span>
-        {showFantasyPoints && <span className="text-right text-accent">FPTS</span>}
-      </div>
-      {games.map((g, i) => (
-        <div key={i} className={`grid ${cols} gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center`}>
-          <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
-          <span className="text-xs text-text-secondary truncate">{g.opponent || '—'}</span>
-          <span className="text-xs text-text-primary text-right font-semibold">{g.ab}</span>
-          <span className="text-xs text-text-secondary text-right">{g.h}</span>
-          <span className="text-xs text-text-secondary text-right">{g.r}</span>
-          <span className="text-xs text-text-secondary text-right">{g.hr}</span>
-          <span className="text-xs text-text-secondary text-right">{g.rbi}</span>
-          <span className="text-xs text-text-secondary text-right">{g.bb}</span>
-          <span className="text-xs text-text-secondary text-right">{g.so}</span>
-          {showFantasyPoints && <span className="text-xs text-accent text-right font-semibold">{g.fantasy_pts != null ? g.fantasy_pts.toFixed(1) : '—'}</span>}
-        </div>
-      ))}
-    </div>
-  )
+  return <GameLogTable games={games} showFantasyPoints={showFantasyPoints} columns={[
+    { key: 'ab', label: 'AB', primary: true },
+    { key: 'h', label: 'H' },
+    { key: 'r', label: 'R' },
+    { key: 'hr', label: 'HR' },
+    { key: 'rbi', label: 'RBI' },
+    { key: 'bb', label: 'BB' },
+    { key: 'so', label: 'SO' },
+  ]} />
 }
 
 function getNFLPositionGroup(position) {
@@ -232,12 +232,41 @@ const NFL_AVG_STATS = {
   ],
 }
 
+// Per-position column configs — defensive players (idp) get a full
+// defensive stat line, not "0 pass yds" columns that don't apply.
 const NFL_LOG_COLS = {
-  qb: { cols: 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.5rem_2rem_2rem_2.5rem]', headers: ['PaYD', 'TD', 'INT', 'RuYD'], fields: ['pass_yds', 'pass_td', 'int', 'rush_yds'] },
-  rb: { cols: 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.5rem_2rem_2rem_2.5rem]', headers: ['RuYD', 'RTD', 'REC', 'ReYD'], fields: ['rush_yds', 'rush_td', 'rec', 'rec_yds'] },
-  rec: { cols: 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2rem_2.5rem_2rem_2.5rem]', headers: ['REC', 'ReYD', 'RTD', 'RuYD'], fields: ['rec', 'rec_yds', 'rec_td', 'rush_yds'] },
-  skill: { cols: 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.5rem_2.5rem_2rem_2rem]', headers: ['RuYD', 'ReYD', 'REC', 'TD'], fields: ['rush_yds', 'rec_yds', 'rec', 'rush_td'] },
-  idp: { cols: 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2rem_2rem_2.5rem_2rem]', headers: ['SOLO', 'AST', 'SACK', 'INT'], fields: ['def_tackles_solo', 'def_tackles_ast', 'def_sack', 'def_int'] },
+  qb: [
+    { key: 'pass_yds', label: 'PaYD', primary: true },
+    { key: 'pass_td', label: 'PaTD' },
+    { key: 'int', label: 'INT' },
+    { key: 'rush_yds', label: 'RuYD' },
+  ],
+  rb: [
+    { key: 'rush_yds', label: 'RuYD', primary: true },
+    { key: 'rush_td', label: 'RTD' },
+    { key: 'rec', label: 'REC' },
+    { key: 'rec_yds', label: 'ReYD' },
+  ],
+  rec: [
+    { key: 'rec', label: 'REC', primary: true },
+    { key: 'rec_yds', label: 'ReYD' },
+    { key: 'rec_td', label: 'RTD' },
+    { key: 'rush_yds', label: 'RuYD' },
+  ],
+  skill: [
+    { key: 'rush_yds', label: 'RuYD' },
+    { key: 'rec_yds', label: 'ReYD' },
+    { key: 'rec', label: 'REC' },
+    { key: 'rush_td', label: 'TD' },
+  ],
+  idp: [
+    { key: 'def_tackles_solo', label: 'SOLO', primary: true },
+    { key: 'def_tackles_ast', label: 'AST' },
+    { key: 'def_sack', label: 'SACK' },
+    { key: 'def_tfl', label: 'TFL' },
+    { key: 'def_pass_def', label: 'PD' },
+    { key: 'def_int', label: 'INT' },
+  ],
 }
 
 function NFLaverages({ averages, position }) {
@@ -257,24 +286,8 @@ function NFLaverages({ averages, position }) {
 
 function NFLGameLog({ games, position }) {
   const group = getNFLPositionGroup(position)
-  const config = NFL_LOG_COLS[group] || NFL_LOG_COLS.skill
-  return (
-    <div className="space-y-0">
-      <div className={`grid ${config.cols} gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10`}>
-        <span></span><span>OPP</span>
-        {config.headers.map((h) => <span key={h} className="text-right">{h}</span>)}
-      </div>
-      {games.map((g, i) => (
-        <div key={i} className={`grid ${config.cols} gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center`}>
-          <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
-          <span className="text-xs text-text-secondary truncate">{g.opponent || '—'}</span>
-          {config.fields.map((f, j) => (
-            <span key={f} className={`text-xs text-right ${j === 0 ? 'text-text-primary font-semibold' : 'text-text-secondary'}`}>{g[f] || 0}</span>
-          ))}
-        </div>
-      ))}
-    </div>
-  )
+  const columns = NFL_LOG_COLS[group] || NFL_LOG_COLS.skill
+  return <GameLogTable games={games} columns={columns} />
 }
 
 export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'basketball_nba', showFantasyPoints = false }) {
