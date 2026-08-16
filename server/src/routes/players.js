@@ -931,11 +931,21 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
         week = nflDateToWeek.get(day) || null
       }
 
+      // ESPN gamelog events carry the home/away signal in a few
+      // different places depending on sport/response version. atVs is
+      // usually "vs" or "@"; homeAway when present is "home"/"away";
+      // opponent.homeAway is another shape entirely. Check them all.
+      const atVs = String(detail.atVs || '').toLowerCase()
+      const isHome = detail.homeAway === 'home'
+        || detail.opponent?.homeAway === 'home'
+        || atVs === 'vs'
+        || (atVs && atVs !== '@' ? true : null)
+
       return {
         date: detail.gameDate || null,
         week,
         opponent: resolveOpponentAbbrev(detail.opponent, sport),
-        is_home: detail.homeAway === 'home' || null,
+        is_home: typeof isHome === 'boolean' ? isHome : null,
         result: detail.gameResult || null,
         fantasy_pts: fpts != null ? Number(fpts.toFixed(1)) : null,
         ...parsed,
