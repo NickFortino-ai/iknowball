@@ -787,13 +787,15 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
   // blurb lookup below still keys on the original path param because
   // admin blurbs for NFL are stored under the Sleeper id.
   let espnId = rawId
+  let nflPlayerTeam = null
   if (sport === 'americanfootball_nfl') {
     const { data: nflRow } = await supabase
       .from('nfl_players')
-      .select('espn_id')
+      .select('espn_id, team')
       .eq('id', rawId)
       .maybeSingle()
     if (nflRow?.espn_id) espnId = nflRow.espn_id
+    if (nflRow?.team) nflPlayerTeam = nflRow.team
   } else if (sport === 'baseball_mlb') {
     // Two-way players (Ohtani) have a -P suffix on the pitcher row so it
     // doesn't collide with the hitter row in mlb_dfs_salaries. ESPN's
@@ -911,14 +913,34 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     // "W1", "W2", etc. matching the fantasy football modal. Only pulls
     // the current season's schedule; games outside that window fall
     // back to null week (rare — e.g. Hall of Fame preseason).
+    //
+    // ALSO collect this player's team schedule (home_team/away_team ==
+    // their team) so we can synthesize upcoming-week rows for weeks
+    // ESPN hasn't published gamelog entries for yet — matches how the
+    // FF modal shows future opponents pre-kickoff.
     let nflDateToWeek = null
+    let nflUpcoming = []
     if (isNFL) {
       const { data: schedRows } = await supabase
         .from('nfl_schedule')
-        .select('week, game_date')
+        .select('week, game_date, home_team, away_team')
         .eq('season', seasonYear)
       nflDateToWeek = new Map()
       for (const r of schedRows || []) nflDateToWeek.set(r.game_date, r.week)
+      if (nflPlayerTeam) {
+        const myGames = (schedRows || []).filter((r) => r.home_team === nflPlayerTeam || r.away_team === nflPlayerTeam)
+        nflUpcoming = myGames.map((r) => {
+          const isHome = r.home_team === nflPlayerTeam
+          return {
+            week: r.week,
+            date: r.game_date,
+            opponent: isHome ? r.away_team : r.home_team,
+            is_home: isHome,
+            result: null,
+            fantasy_pts: null,
+          }
+        })
+      }
     }
 
     const games = allGames.slice(0, gameCap).map((ev) => {
@@ -955,6 +977,24 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
         ...parsed,
       }
     })
+
+    // For NFL, merge in upcoming weeks from nfl_schedule that ESPN's
+    // gamelog didn't cover (weeks with no played gamelog entry yet).
+    // Sorted week-ascending so Wk 1 is at the top and drops away as it
+    // gets played — mirrors the FF modal's timeline layout.
+    let finalGames = games
+    if (isNFL && nflUpcoming.length) {
+      const playedWeeks = new Set(games.map((g) => g.week).filter((w) => w != null))
+      const upcomingUnplayed = nflUpcoming.filter((u) => !playedWeeks.has(u.week))
+      finalGames = [...games, ...upcomingUnplayed].sort((a, b) => {
+        // Prefer week ordering; fall back to date desc for pre-season
+        // exhibitions that don't map to a week number.
+        if (a.week != null && b.week != null) return a.week - b.week
+        if (a.week != null) return -1
+        if (b.week != null) return 1
+        return (b.date || '').localeCompare(a.date || '')
+      })
+    }
 
     // Season averages
     const seasonParam = useSeasonParam ? `?season=${seasonYear}` : ''
@@ -1033,7 +1073,7 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
       } catch {}
     }
 
-    res.json({ games, averages, sport, isPitcher, blurbs, blurb: blurbs[0] || null })
+    res.json({ games: finalGames, averages, sport, isPitcher, blurbs, blurb: blurbs[0] || null })
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch game log' })
   }
