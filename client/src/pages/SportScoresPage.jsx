@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useScoresForDay, useSportStandings, useNflSchedule, useNflWeekGames } from '../hooks/useScoresStrip'
@@ -55,6 +55,10 @@ export default function SportScoresPage() {
   if (!config) return <Navigate to="/" replace />
   const isNfl = sport?.toLowerCase() === 'nfl'
   const [gameCenterGameId, setGameCenterGameId] = useState(null)
+  // React Router preserves scroll across routes; drilling into a
+  // sport from the scoreboard tab was landing users mid-list on
+  // desktop. Reset to top whenever the sport changes.
+  useEffect(() => { window.scrollTo(0, 0) }, [sport])
 
   // Green/red outline on any Final game the user picked — matches the
   // landing scoreboard's pick indicator so drilling in preserves the
