@@ -124,7 +124,7 @@ function GameLogTable({ games, columns, showFantasyPoints }) {
       <table className="min-w-full text-xs">
         <thead>
           <tr className="text-[10px] uppercase text-text-muted">
-            <th className="text-left font-semibold pl-2 pr-1 py-2 sticky left-0 bg-bg-primary">#</th>
+            <th className="text-left font-semibold pl-2 pr-1 py-2 sticky left-0 bg-bg-primary">RES</th>
             <th className="text-left font-semibold pl-1 pr-2 py-2 whitespace-nowrap">OPP</th>
             {columns.map((c) => (
               <th key={c.key} className={`text-right font-semibold px-2 py-2 whitespace-nowrap ${c.accent ? 'text-accent' : ''}`}>{c.label}</th>
@@ -137,7 +137,7 @@ function GameLogTable({ games, columns, showFantasyPoints }) {
             const resultColor = g.result === 'W' ? 'text-correct' : g.result === 'L' ? 'text-incorrect' : 'text-text-muted'
             return (
               <tr key={i} className="border-t border-text-primary/10">
-                <td className={`pl-2 pr-1 py-2 font-semibold sticky left-0 bg-bg-primary ${resultColor}`}>{i + 1}</td>
+                <td className={`pl-2 pr-1 py-2 font-bold sticky left-0 bg-bg-primary ${resultColor}`}>{g.result || '—'}</td>
                 <td className="pl-1 pr-2 py-2 whitespace-nowrap text-text-primary">{g.opponent || '—'}</td>
                 {columns.map((c) => (
                   <td
