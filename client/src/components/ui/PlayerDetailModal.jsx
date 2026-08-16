@@ -11,8 +11,26 @@ import InjuryBadge from './InjuryBadge'
 const TWO_WAY_PLAYER_NAMES = new Set(['shohei ohtani'])
 function twoWayPositionLabel(player) {
   if (!player?.player_name) return null
+  const nfl = twoWayNflLabel(player)
+  if (nfl) return nfl
   if (!TWO_WAY_PLAYER_NAMES.has(player.player_name.toLowerCase().trim())) return null
   return 'SP, DH'
+}
+
+// NFL two-way players — currently just Travis Hunter (2024 Heisman, Jags
+// WR/CB). Sleeper picks one primary position (usually WR) which means
+// the standard column set drops his defensive stats. When detected we
+// override the position label AND render two mini game-log tables so
+// both sides of the ball are visible.
+const TWO_WAY_NFL_PLAYERS = new Map([
+  ['travis hunter', 'WR/CB'],
+])
+function twoWayNflLabel(player) {
+  const name = (player?.player_name || player?.full_name || '').toLowerCase().trim()
+  return TWO_WAY_NFL_PLAYERS.get(name) || null
+}
+function isTwoWayNflByName(player) {
+  return !!twoWayNflLabel(player)
 }
 
 // InjuryBadge moved to ui/InjuryBadge.jsx — the local copy here had
@@ -284,7 +302,24 @@ function NFLaverages({ averages, position }) {
   )
 }
 
-function NFLGameLog({ games, position }) {
+function NFLGameLog({ games, position, twoWay }) {
+  if (twoWay) {
+    // Stack a receiving + defensive block so we cover both sides of
+    // the ball. Same games list feeds both — ESPN's gamelog rows
+    // include offense + defense stats for two-way athletes.
+    return (
+      <div className="space-y-4">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1 font-semibold">Offense</div>
+          <GameLogTable games={games} columns={NFL_LOG_COLS.rec} />
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1 font-semibold">Defense</div>
+          <GameLogTable games={games} columns={NFL_LOG_COLS.idp} />
+        </div>
+      </div>
+    )
+  }
   const group = getNFLPositionGroup(position)
   const columns = NFL_LOG_COLS[group] || NFL_LOG_COLS.skill
   return <GameLogTable games={games} columns={columns} />
@@ -393,7 +428,7 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
           ) : isMLB ? (
             <MLBGameLog games={data.games} showFantasyPoints={showFantasyPoints} />
           ) : isNFL ? (
-            <NFLGameLog games={data.games} position={player.position} />
+            <NFLGameLog games={data.games} position={player.position} twoWay={isTwoWayNflByName(player)} />
           ) : (
             <NBAGameLog games={data.games} showFantasyPoints={showFantasyPoints} />
           )}
