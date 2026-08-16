@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useMyRankings, useSetMyRankings, useResetMyRankings, useDraftBoard } from '../../hooks/useLeagues'
 import { useDraftPrepRankings, useSetDraftPrepRankings, useResetDraftPrepRankings, useDraftPrepSync } from '../../hooks/useDraftPrep'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import PlayerDetailModal from './PlayerDetailModal'
 import { toast } from '../ui/Toast'
 
 const POSITION_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF']
@@ -47,6 +48,7 @@ export default function FantasyMyRankings({ league, draftPrepConfig }) {
   const [posFilter, setPosFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [editMode, setEditMode] = useState(false)
+  const [detailPlayerId, setDetailPlayerId] = useState(null)
 
   // Sync server data into working copy
   useEffect(() => {
@@ -231,10 +233,12 @@ export default function FantasyMyRankings({ league, draftPrepConfig }) {
             const p = r.nfl_players
             if (!p) return null
             const workingIdx = working.findIndex((w) => w.player_id === r.player_id)
+            const tappable = !editMode && league?.id
             return (
               <div
                 key={r.player_id}
-                className="flex items-center gap-2 px-2 py-2.5"
+                className={`flex items-center gap-2 px-2 py-2.5 ${tappable ? 'cursor-pointer hover:bg-bg-primary/40 transition-colors' : ''}`}
+                onClick={tappable ? () => setDetailPlayerId(r.player_id) : undefined}
               >
                 {/* Move buttons (edit mode only) */}
                 {editMode && (
@@ -280,6 +284,13 @@ export default function FantasyMyRankings({ league, draftPrepConfig }) {
           )}
         </div>
       </div>
+      {detailPlayerId && league?.id && (
+        <PlayerDetailModal
+          leagueId={league.id}
+          playerId={detailPlayerId}
+          onClose={() => setDetailPlayerId(null)}
+        />
+      )}
     </div>
   )
 }
