@@ -859,22 +859,26 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     // surfaces the actual most recent games to the top.
     const allGames = eventsFromGamelog(data)
 
+    const isMLB = sport === 'baseball_mlb'
+    const isNFL = sport === 'americanfootball_nfl'
     // Backfill from prior season ONLY when the current season is empty
     // (offseason, just-called-up rookie, returning-from-IL with no games
     // back yet). Previous threshold of <10 misled users mid-season — e.g.
     // an early-WNBA player with 5 GP this year showed 5 current + 5
     // prior-season games mashed together with no separator, contradicting
     // the "5 GP" in Season Averages.
-    if (allGames.length === 0 && useSeasonParam) {
+    //
+    // NFL is intentionally excluded — this endpoint feeds the single-stat
+    // contest modals (Sacks, Ints, Tackles, Receptions, etc.) where prior-
+    // season leakage is misleading during preseason. FF draft still gets
+    // last year's stats through a different route by design.
+    if (allGames.length === 0 && useSeasonParam && !isNFL) {
       const prior = await fetchGamelogJson(seasonYear - 1)
       if (prior) {
         Object.assign(eventsMap, prior.events || {})
         allGames.push(...eventsFromGamelog(prior))
       }
     }
-
-    const isMLB = sport === 'baseball_mlb'
-    const isNFL = sport === 'americanfootball_nfl'
     // Detect MLB pitchers by the presence of IP (innings pitched) in the
     // gamelog labels — ESPN uses pitching columns for pitchers, batting for
     // everyone else.
