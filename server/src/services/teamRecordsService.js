@@ -120,15 +120,17 @@ export async function getTeamRecords(sportKey) {
 export async function getStandingsTable(sportKey) {
   const now = Date.now()
   const cached = cache.get(sportKey)
-  if (cached && cached.expiresAt > now) return cached.standings
+  if (cached && cached.expiresAt > now) return cached.standings || []
   const { map, standings } = await fetchOne(sportKey)
-  cache.set(sportKey, { records: map, standings, expiresAt: now + CACHE_TTL_MS })
-  return standings
+  // Never cache an empty result with undefined fields — that would
+  // poison lookupRecord below (cached.records[...] on undefined throws).
+  cache.set(sportKey, { records: map || {}, standings: standings || [], expiresAt: now + CACHE_TTL_MS })
+  return standings || []
 }
 
 export function lookupRecord(sportKey, teamName) {
   const cached = cache.get(sportKey)
-  if (!cached) return null
+  if (!cached?.records) return null
   return cached.records[normalize(teamName)] || null
 }
 
