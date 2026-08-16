@@ -48,7 +48,11 @@ const LIVE_STALE_CUTOFF_MS = 6 * 60 * 60 * 1000
 // Upcoming window: 7 days lets the NFL column show the coming Sunday
 // slate even when browsing on Wednesday; MLB/NBA/WNBA still see ~2-3
 // days of games since their cadence is daily.
-const UPCOMING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
+// 30-day window handles the gap between preseason weeks and Week 1 for
+// NFL (and any long weekly-cadence gap for NCAAF). Daily-cadence sports
+// (MLB, MLS, NCAAB) have a "today only" filter downstream that keeps
+// their upcoming column from spilling into the following weeks.
+const UPCOMING_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
 
 router.get('/strip', async (req, res) => {
   const now = new Date()
@@ -156,7 +160,9 @@ router.get('/strip', async (req, res) => {
   // the wider window so the card still shows something (tomorrow's
   // slate).
   const todayPt = toSportsDay(new Date().toISOString())
-  for (const key of ['mlb', 'mls', 'ncaaf', 'ncaab']) {
+  // Daily-cadence sports only. NFL + NCAAF are weekly and rely on the
+  // 30-day window to surface next week's slate during off-days.
+  for (const key of ['mlb', 'mls', 'ncaab']) {
     const todayUpcoming = out[key].upcoming.filter((g) => toSportsDay(g.starts_at) === todayPt)
     if (todayUpcoming.length) out[key].upcoming = todayUpcoming
   }
