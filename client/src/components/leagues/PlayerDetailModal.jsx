@@ -214,7 +214,7 @@ function PreviousGamesTable({ position, weeks, currentWeek }) {
       <table className="min-w-full text-xs">
         <thead>
           <tr className="text-[10px] uppercase text-text-muted">
-            <th className="text-left font-semibold pl-2 pr-1 py-2 sticky left-0 bg-bg-secondary">Wk</th>
+            <th className="text-left font-semibold pl-2 pr-1 py-2 w-6">Wk</th>
             <th className="text-left font-semibold pl-1 pr-2 py-2 whitespace-nowrap">Opp</th>
             {columns.map((c) => (
               <th key={c.key} className="text-right font-semibold px-2 py-2 whitespace-nowrap">{c.label}</th>
@@ -232,7 +232,7 @@ function PreviousGamesTable({ position, weeks, currentWeek }) {
               : isPlayed ? 'text-text-primary' : 'text-text-muted'
             return (
               <tr key={w.week} className="border-t border-text-primary/10">
-                <td className={`pl-2 pr-1 py-2 font-semibold sticky left-0 bg-bg-secondary ${isPlayed ? '' : 'text-text-muted'}`}>{w.week}</td>
+                <td className={`pl-2 pr-1 py-2 font-semibold w-6 ${isPlayed ? '' : 'text-text-muted'}`}>{w.week}</td>
                 <td className={`pl-1 pr-2 py-2 whitespace-nowrap ${oppColor}`}>{oppLabel}</td>
                 {columns.map((c) => {
                   const val = w[c.key]
@@ -269,7 +269,7 @@ function PreviousGamesTable({ position, weeks, currentWeek }) {
         </tbody>
         <tfoot>
           <tr className="border-t-2 border-text-primary/20 bg-bg-card/40">
-            <td className="pl-2 pr-1 py-2 font-semibold uppercase tracking-wider text-text-muted sticky left-0 bg-bg-card/40">Total</td>
+            <td className="pl-2 pr-1 py-2 font-semibold uppercase tracking-wider text-text-muted w-6">Total</td>
             <td className="pl-1 pr-2 py-2" />{/* Opp column has no total */}
             {columns.map((c) => (
               <td
