@@ -272,6 +272,22 @@ router.post('/sync-odds', async (req, res) => {
   res.json({ message: 'Odds sync complete', results })
 })
 
+// Sync the NFL regular-season schedule from Sleeper into the
+// nfl_schedule table (which the player modals + fantasy code path
+// key on for week labels + is_home info). Body: { season }.
+// Idempotent — the underlying upsert is keyed by (season, week,
+// home_team) so re-running just refreshes status/dates in place.
+router.post('/sync-nfl-schedule', async (req, res) => {
+  try {
+    const { syncNflSchedule } = await import('../services/nflScheduleService.js')
+    const season = parseInt(req.body?.season || req.query?.season || new Date().getFullYear(), 10)
+    const result = await syncNflSchedule(season)
+    res.json({ message: 'NFL schedule synced', ...result })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // Backfill an entire NFL regular season of weekly stats. Fire-and-forget —
 // returns immediately so the gateway doesn't timeout. Watch Render logs
 // for progress and completion lines.
