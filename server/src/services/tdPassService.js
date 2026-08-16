@@ -351,44 +351,22 @@ export async function getAvailableQBs(leagueId, userId) {
  */
 export async function getCurrentWeekMatchups() {
   const { week, season } = await getCurrentNflWeek()
-  const { data: weekRows } = await supabase
+  // Pull directly from nfl_schedule — home_team / away_team are already
+  // Sleeper abbreviations (BUF/BAL/etc.), matching nfl_players.team.
+  // Previously joined with the odds-API `games` table for starts_at, but
+  // that table lags nfl_schedule during preseason so every defender's
+  // opponent came back null and the pickers looked broken. Fall back to
+  // noon ET on game_date when we don't have a precise timestamp yet.
+  const { data: rows } = await supabase
     .from('nfl_schedule')
-    .select('game_date')
+    .select('home_team, away_team, game_date')
     .eq('season', season)
     .eq('week', week)
-  if (!weekRows?.length) return {}
-  const dates = weekRows.map((r) => r.game_date).sort()
-  const minDate = dates[0]
-  const maxDate = dates[dates.length - 1]
-
-  const { data: sport } = await supabase
-    .from('sports')
-    .select('id')
-    .eq('key', 'americanfootball_nfl')
-    .single()
-  if (!sport?.id) return {}
-
-  const { data: games } = await supabase
-    .from('games')
-    .select('home_team, away_team, starts_at')
-    .eq('sport_id', sport.id)
-    .gte('starts_at', `${minDate}T00:00:00Z`)
-    .lt('starts_at', `${maxDate}T23:59:59Z`)
-
-  // games.home_team / away_team are full names ("Buffalo Bills") but
-  // nfl_players.team (what the client keys on) is Sleeper's abbreviation
-  // ("BUF"). Key the returned map by abbreviation so QB lookups match.
-  // Without this every QB was tagged BYE in Week 1.
   const byTeam = {}
-  for (const g of games || []) {
-    const homeAbbr = NFL_FULL_TO_ABBR_LOCK[g.home_team]
-    const awayAbbr = NFL_FULL_TO_ABBR_LOCK[g.away_team]
-    if (homeAbbr) {
-      byTeam[homeAbbr] = { opponent: awayAbbr || g.away_team, home_away: 'home', starts_at: g.starts_at }
-    }
-    if (awayAbbr) {
-      byTeam[awayAbbr] = { opponent: homeAbbr || g.home_team, home_away: 'away', starts_at: g.starts_at }
-    }
+  for (const r of rows || []) {
+    const starts_at = r.game_date ? `${r.game_date}T17:00:00Z` : null
+    if (r.home_team) byTeam[r.home_team] = { opponent: r.away_team, home_away: 'home', starts_at }
+    if (r.away_team) byTeam[r.away_team] = { opponent: r.home_team, home_away: 'away', starts_at }
   }
   return byTeam
 }
