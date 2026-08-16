@@ -303,12 +303,25 @@ export default function SurvivorView({ league }) {
         />
       )}
 
-      {/* Standard team pick form */}
-      {showPickForm && !leagueCompleted && userIsAlive && !isTouchdown && pickWeekGames.length === 0 && (
-        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10">
-          <p className="text-sm text-text-primary text-center">No upcoming games available right now. Check back closer to game time.</p>
-        </div>
-      )}
+      {/* Standard team pick form — pre-start vs empty-slate variants. */}
+      {showPickForm && !leagueCompleted && userIsAlive && !isTouchdown && pickWeekGames.length === 0 && (() => {
+        // eslint-disable-next-line react-hooks/purity
+        const notOpenYet = league.starts_at && new Date(league.starts_at).getTime() > Date.now()
+        return (
+          <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10 text-center py-8">
+            {notOpenYet ? (
+              <>
+                <div className="text-sm text-text-primary mb-1 font-semibold">Not open yet</div>
+                <div className="text-xs text-text-secondary">
+                  Picks open {new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-text-primary">No upcoming games available right now. Check back closer to game time.</p>
+            )}
+          </div>
+        )
+      })()}
       {showPickForm && !leagueCompleted && userIsAlive && !isTouchdown && pickWeekGames.length > 0 && (() => {
         const isAllSports = league.sport === 'all'
 
