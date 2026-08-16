@@ -788,14 +788,16 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
   // admin blurbs for NFL are stored under the Sleeper id.
   let espnId = rawId
   let nflPlayerTeam = null
+  let nflPlayerByeWeek = null
   if (sport === 'americanfootball_nfl') {
     const { data: nflRow } = await supabase
       .from('nfl_players')
-      .select('espn_id, team')
+      .select('espn_id, team, bye_week')
       .eq('id', rawId)
       .maybeSingle()
     if (nflRow?.espn_id) espnId = nflRow.espn_id
     if (nflRow?.team) nflPlayerTeam = nflRow.team
+    if (nflRow?.bye_week) nflPlayerByeWeek = nflRow.bye_week
   } else if (sport === 'baseball_mlb') {
     // Two-way players (Ohtani) have a -P suffix on the pitcher row so it
     // doesn't collide with the hitter row in mlb_dfs_salaries. ESPN's
@@ -979,14 +981,27 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     })
 
     // For NFL, merge in upcoming weeks from nfl_schedule that ESPN's
-    // gamelog didn't cover (weeks with no played gamelog entry yet).
-    // Sorted week-ascending so Wk 1 is at the top and drops away as it
-    // gets played — mirrors the FF modal's timeline layout.
+    // gamelog didn't cover (weeks with no played gamelog entry yet)
+    // plus a dedicated BYE row so the full season's calendar shows
+    // continuously — mirrors the FF modal.
     let finalGames = games
-    if (isNFL && nflUpcoming.length) {
+    if (isNFL && (nflUpcoming.length || nflPlayerByeWeek)) {
       const playedWeeks = new Set(games.map((g) => g.week).filter((w) => w != null))
       const upcomingUnplayed = nflUpcoming.filter((u) => !playedWeeks.has(u.week))
-      finalGames = [...games, ...upcomingUnplayed].sort((a, b) => {
+      const rows = [...games, ...upcomingUnplayed]
+      const knownWeeks = new Set(rows.map((r) => r.week).filter((w) => w != null))
+      if (nflPlayerByeWeek && !knownWeeks.has(nflPlayerByeWeek)) {
+        rows.push({
+          week: nflPlayerByeWeek,
+          date: null,
+          opponent: null,
+          is_home: null,
+          on_bye: true,
+          result: null,
+          fantasy_pts: null,
+        })
+      }
+      finalGames = rows.sort((a, b) => {
         // Prefer week ordering; fall back to date desc for pre-season
         // exhibitions that don't map to a week number.
         if (a.week != null && b.week != null) return a.week - b.week

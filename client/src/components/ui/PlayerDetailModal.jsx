@@ -141,14 +141,16 @@ function GameLogTable({ games, columns, showFantasyPoints, firstColumn = 'result
           {games.map((g, i) => {
             const resultColor = g.result === 'W' ? 'text-correct' : g.result === 'L' ? 'text-incorrect' : 'text-text-muted'
             const firstCell = isWeek ? (g.week ?? '—') : (g.result || '—')
-            let opponentText = g.opponent || '—'
-            if (opponentText !== '—' && g.is_home != null && !/^(vs|@)\s/i.test(opponentText)) {
+            const isBye = g.on_bye || (!g.opponent && !g.result && g.week != null)
+            let opponentText = isBye ? 'BYE' : (g.opponent || '—')
+            if (!isBye && opponentText !== '—' && g.is_home != null && !/^(vs|@)\s/i.test(opponentText)) {
               opponentText = `${g.is_home ? 'vs' : '@'} ${opponentText}`
             }
+            const oppClass = isBye ? 'text-yellow-400 font-semibold' : 'text-text-primary'
             return (
               <tr key={i} className="border-t border-text-primary/10">
                 <td className={`pl-2 pr-1 py-2 font-bold sticky left-0 bg-bg-primary ${resultColor}`}>{firstCell}</td>
-                <td className="pl-1 pr-2 py-2 whitespace-nowrap text-text-primary">{opponentText}</td>
+                <td className={`pl-1 pr-2 py-2 whitespace-nowrap ${oppClass}`}>{opponentText}</td>
                 {columns.map((c) => (
                   <td
                     key={c.key}
@@ -419,13 +421,14 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
         )}
 
 
-        {/* Game Log */}
+        {/* Game log — the table itself is self-explanatory (WK/OPP
+            columns) so no section heading needed. Matches the FF
+            modal which also drops the label. */}
         <div className="px-5 py-4">
-          <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3 font-semibold">Recent Games</h3>
           {isLoading ? (
             <LoadingSpinner />
           ) : !data?.games?.length ? (
-            <p className="text-sm text-text-muted text-center py-4">No recent games found.</p>
+            <p className="text-sm text-text-muted text-center py-4">No games available.</p>
           ) : isPitcher ? (
             <MLBPitcherGameLog games={data.games} showFantasyPoints={showFantasyPoints} />
           ) : isMLB ? (
