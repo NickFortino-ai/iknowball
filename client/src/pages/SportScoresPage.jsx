@@ -57,6 +57,7 @@ export default function SportScoresPage() {
   const isNcaaf = sport?.toLowerCase() === 'ncaaf'
   const isWeekly = isNfl || isNcaaf
   const [gameCenterGameId, setGameCenterGameId] = useState(null)
+  const [rankedOnly, setRankedOnly] = useState(false)
   // React Router preserves scroll across routes; drilling into a
   // sport from the scoreboard tab was landing users mid-list on
   // desktop. Reset to top whenever the sport changes.
@@ -201,6 +202,29 @@ export default function SportScoresPage() {
             </div>
           )}
 
+          {/* NCAAF only: filter to just games involving an AP Top 25
+              team. Hidden until data returns any ranked games. */}
+          {isNcaaf && (games || []).some((g) => g.home_rank || g.away_rank) && (
+            <div className="flex gap-2 mb-3">
+              <button
+                onClick={() => setRankedOnly(false)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                  !rankedOnly ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                All Games
+              </button>
+              <button
+                onClick={() => setRankedOnly(true)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                  rankedOnly ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                Top 25
+              </button>
+            </div>
+          )}
+
           {/* Scores list */}
           {gamesLoading ? (
             <LoadingSpinner />
@@ -208,13 +232,23 @@ export default function SportScoresPage() {
             <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-6 text-sm text-text-muted text-center">
               {isWeekly ? `No games this ${config.label} week yet.` : `No ${config.label} games on ${formatMd(date)}.`}
             </div>
-          ) : (
-            <div className="space-y-2">
-              {games.map((g) => (
-                <DrillGameCard key={g.id} game={g} sportFullKey={config.fullKey} showDate={isWeekly} pickOutcome={pickOutcomeByGame.get(g.id)} onOpenGameCenter={setGameCenterGameId} />
-              ))}
-            </div>
-          )}
+          ) : (() => {
+            const visibleGames = rankedOnly ? games.filter((g) => g.home_rank || g.away_rank) : games
+            if (visibleGames.length === 0) {
+              return (
+                <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-6 text-sm text-text-muted text-center">
+                  No Top 25 games this week.
+                </div>
+              )
+            }
+            return (
+              <div className="space-y-2">
+                {visibleGames.map((g) => (
+                  <DrillGameCard key={g.id} game={g} sportFullKey={config.fullKey} showDate={isWeekly} pickOutcome={pickOutcomeByGame.get(g.id)} onOpenGameCenter={setGameCenterGameId} />
+                ))}
+              </div>
+            )
+          })()}
         </div>
 
         {/* RIGHT: Standings sidebar + Stat leaders */}
@@ -269,6 +303,7 @@ function StandingsTable({ rows, showRank = true }) {
               {row.logo ? (
                 <img src={row.logo} alt="" width="18" height="18" className="w-4 h-4 object-contain shrink-0" loading="lazy" onError={(e) => e.currentTarget.style.visibility = 'hidden'} />
               ) : <span className="w-4 h-4 shrink-0" />}
+              {row.rank && <span className="text-[10px] font-bold text-accent tabular-nums shrink-0">#{row.rank}</span>}
               <span className="text-sm text-text-primary truncate">{row.short_name}</span>
             </div>
             <span className="text-right text-sm text-text-primary tabular-nums">{row.wins}</span>
@@ -539,14 +574,14 @@ function DrillGameCard({ game, sportFullKey, showDate, pickOutcome, onOpenGameCe
         </div>
       )}
       <div className="space-y-1.5">
-        <DrillTeamRow team={game.away_short || game.away_team} fullTeam={game.away_team} record={game.away_record} score={showScore ? game.away_score : null} hits={game.linescore?.away?.h} errors={game.linescore?.away?.e} sportFullKey={sportFullKey} isLive={isLive} />
-        <DrillTeamRow team={game.home_short || game.home_team} fullTeam={game.home_team} record={game.home_record} score={showScore ? game.home_score : null} hits={game.linescore?.home?.h} errors={game.linescore?.home?.e} sportFullKey={sportFullKey} isLive={isLive} />
+        <DrillTeamRow team={game.away_short || game.away_team} fullTeam={game.away_team} record={game.away_record} score={showScore ? game.away_score : null} hits={game.linescore?.away?.h} errors={game.linescore?.away?.e} sportFullKey={sportFullKey} isLive={isLive} rank={game.away_rank} />
+        <DrillTeamRow team={game.home_short || game.home_team} fullTeam={game.home_team} record={game.home_record} score={showScore ? game.home_score : null} hits={game.linescore?.home?.h} errors={game.linescore?.home?.e} sportFullKey={sportFullKey} isLive={isLive} rank={game.home_rank} />
       </div>
     </div>
   )
 }
 
-function DrillTeamRow({ team, fullTeam, record, score, hits, errors, sportFullKey, isLive }) {
+function DrillTeamRow({ team, fullTeam, record, score, hits, errors, sportFullKey, isLive, rank }) {
   const logoUrl = getTeamLogoUrl(fullTeam || team, sportFullKey)
   const fallbackUrl = getTeamLogoFallbackUrl(fullTeam || team, sportFullKey)
   return (
@@ -567,6 +602,7 @@ function DrillTeamRow({ team, fullTeam, record, score, hits, errors, sportFullKe
         <div className="w-7 h-7 rounded-full bg-bg-secondary shrink-0" />
       )}
       <div className="flex-1 min-w-0 flex items-baseline gap-2">
+        {rank && <span className="text-[11px] font-bold text-accent tabular-nums shrink-0">#{rank}</span>}
         <span className="text-sm text-text-primary truncate">{team}</span>
         {record && <span className="text-[11px] text-text-muted tabular-nums shrink-0">{record}</span>}
       </div>

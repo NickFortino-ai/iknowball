@@ -325,6 +325,33 @@ router.get('/ncaaf-week', async (req, res) => {
   for (const g of weekRes.data || []) { if (!seen.has(g.id)) out.push(shape(g, 'americanfootball_ncaaf')) }
   out.sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
 
+  // Attach AP Top 25 ranks. Standings table already has team_id
+  // per row + team_name / short_name, so use it to bridge each
+  // game's home_team / away_team → espn_team_id → rank.
+  try {
+    const { getStandingsTable } = await import('../services/teamRecordsService.js')
+    const { getNcaafApRankings } = await import('../services/ncaafRankingsService.js')
+    const [standings, rankById] = await Promise.all([
+      getStandingsTable('americanfootball_ncaaf'),
+      getNcaafApRankings(),
+    ])
+    const nameToId = new Map()
+    for (const row of standings || []) {
+      if (!row.team_id) continue
+      const id = String(row.team_id)
+      if (row.team_name) nameToId.set(row.team_name.toLowerCase(), id)
+      if (row.short_name) nameToId.set(row.short_name.toLowerCase(), id)
+    }
+    for (const g of out) {
+      const homeId = nameToId.get((g.home_team || '').toLowerCase())
+      const awayId = nameToId.get((g.away_team || '').toLowerCase())
+      const homeRank = homeId ? rankById.get(homeId) : null
+      const awayRank = awayId ? rankById.get(awayId) : null
+      if (homeRank) g.home_rank = homeRank
+      if (awayRank) g.away_rank = awayRank
+    }
+  } catch { /* rank attachment is best-effort */ }
+
   res.set('Cache-Control', 'public, max-age=15')
   res.json(out)
 })
@@ -401,6 +428,17 @@ router.get('/standings', async (req, res) => {
 
   const { getStandingsTable } = await import('../services/teamRecordsService.js')
   const standings = await getStandingsTable(full)
+  // Attach AP Top 25 rank for NCAAF so the sidebar can render "#5"
+  // badges next to team names.
+  if (shortSport === 'ncaaf' && standings.length) {
+    const { getNcaafApRankings } = await import('../services/ncaafRankingsService.js')
+    const rankById = await getNcaafApRankings()
+    for (const row of standings) {
+      const id = row.team_id ? String(row.team_id) : null
+      const rank = id ? rankById.get(id) : null
+      if (rank) row.rank = rank
+    }
+  }
   res.set('Cache-Control', 'public, max-age=300')
   res.json(standings)
 })
