@@ -35,6 +35,13 @@ const SHORT_TO_FULL = {
 // per full MLB night ('why isn't Giants @ Padres showing?').
 const UPCOMING_LIMIT = 20
 const RECENT_LIMIT = 20
+// NCAAF has 60-130 games per week (much more than any other sport)
+// so we ingest more before capping, then trim by matchup importance
+// (rank + prestige) below rather than by chronological order — the
+// default UPCOMING_LIMIT was chopping Ohio State-Texas out of the
+// strip because Toledo-Akron kicked off earlier.
+const NCAAF_UPCOMING_INGEST_CAP = 150
+const NCAAF_STRIP_DISPLAY = 15
 // Recent-finals window: 30h covers overnight games that finished after
 // midnight but started yesterday.
 const RECENT_WINDOW_MS = 30 * 60 * 60 * 1000
@@ -145,7 +152,8 @@ router.get('/strip', async (req, res) => {
   }
   for (const g of upcomingRes.data || []) {
     const s = sportIdToShort[g.sport_id]
-    if (s && out[s].upcoming.length < UPCOMING_LIMIT) out[s].upcoming.push(attach(s, g))
+    const cap = s === 'ncaaf' ? NCAAF_UPCOMING_INGEST_CAP : UPCOMING_LIMIT
+    if (s && out[s].upcoming.length < cap) out[s].upcoming.push(attach(s, g))
   }
   for (const g of recentRes.data || []) {
     const s = sportIdToShort[g.sport_id]
@@ -201,6 +209,15 @@ router.get('/strip', async (req, res) => {
       for (const g of out.ncaaf.live) attach(g)
       for (const g of out.ncaaf.upcoming) attach(g)
       for (const g of out.ncaaf.recent) attach(g)
+      // Sort each bucket by matchup importance and trim to the strip
+      // display limit. Server-side sort guarantees the top X marquee
+      // games survive — client sort alone can only reorder what
+      // the strip already sent.
+      const score = (g) => ((g.home_rank || 26) + (g.away_rank || 26))
+      const rank = (a, b) => score(a) - score(b) || new Date(a.starts_at) - new Date(b.starts_at)
+      out.ncaaf.upcoming = [...out.ncaaf.upcoming].sort(rank).slice(0, NCAAF_STRIP_DISPLAY)
+      out.ncaaf.live = [...out.ncaaf.live].sort(rank)
+      out.ncaaf.recent = [...out.ncaaf.recent].sort(rank)
     } catch { /* rank attachment is best-effort */ }
   }
 
