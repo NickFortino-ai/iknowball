@@ -78,11 +78,17 @@ async function fetchOne(sportKey) {
           // Full row for the standings table sidebar. Group name comes
           // from the walking node's parent when it exists (e.g. 'AL East',
           // 'NFC South') — falls back to null for a flat 'All' list.
+          // ESPN's first logo for NCAA teams is often the -dark variant
+          // (Iowa, Alabama, etc. rendering as invisible dark blobs on
+          // our dark UI). Rewrite -dark → standard so the sidebar always
+          // gets the multicolor version.
+          const rawLogo = team.logos?.[0]?.href || null
+          const logo = rawLogo ? rawLogo.replace('/500-dark/', '/500/') : null
           standingsRows.push({
             team_id: team.id || null,
             team_name: team.displayName,
             short_name: team.shortDisplayName || team.name || team.displayName,
-            logo: team.logos?.[0]?.href || null,
+            logo,
             wins: w, losses: l, ties: t,
             win_pct: winPct,
             group: groupName,
