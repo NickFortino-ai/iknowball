@@ -300,6 +300,26 @@ const STANDINGS_CONFIG = {
       { tab: 'NL', prefix: 'National League', divisions: ['East', 'Central', 'West'] },
     ],
   },
+  // NCAAF is flat inside each conference (no divisions for most —
+  // Sun Belt is the exception with East/West). 'All' tab omitted
+  // since browsing all 130 FBS teams isn't useful. Default is SEC.
+  ncaaf: {
+    defaultTab: 'SEC',
+    showAllTab: false,
+    conferences: [
+      { tab: 'SEC', prefix: 'Southeastern Conference', divisions: [] },
+      { tab: 'Big 12', prefix: 'Big 12 Conference', divisions: [] },
+      { tab: 'Big Ten', prefix: 'Big Ten Conference', divisions: [] },
+      { tab: 'ACC', prefix: 'Atlantic Coast Conference', divisions: [] },
+      { tab: 'American', prefix: 'American Conference', divisions: [] },
+      { tab: 'Pac-12', prefix: 'Pac-12 Conference', divisions: [] },
+      { tab: 'Mountain West', prefix: 'Mountain West Conference', divisions: [] },
+      { tab: 'MAC', prefix: 'Mid-American Conference', divisions: [] },
+      { tab: 'C-USA', prefix: 'Conference USA', divisions: [] },
+      { tab: 'Sun Belt', prefix: 'Sun Belt', divisions: ['East', 'West'] },
+      { tab: 'Independents', prefix: 'FBS Independents', divisions: [] },
+    ],
+  },
 }
 
 // Standings with All + per-conference tabs. Each conference renders
@@ -308,32 +328,49 @@ const STANDINGS_CONFIG = {
 // always examined. Config-driven so a new sport just needs an entry
 // in STANDINGS_CONFIG.
 function GroupedStandings({ standings, config }) {
-  const [conf, setConf] = useState('All')
+  const [conf, setConf] = useState(config.defaultTab || 'All')
 
   const activeConf = config.conferences.find((c) => c.tab === conf)
+  const isFlatConf = activeConf && (!activeConf.divisions || activeConf.divisions.length === 0)
 
   const divisionSections = useMemo(() => {
-    if (!activeConf) return null
+    if (!activeConf || isFlatConf) return null
     return activeConf.divisions.map((d) => ({
       name: d,
       rows: standings
-        .filter((r) => r.group === `${activeConf.prefix} ${d}`)
+        .filter((r) => r.group === `${activeConf.prefix} ${d}` || r.group === `${activeConf.prefix} - ${d}`)
         .sort((a, b) => {
           if (b.win_pct !== a.win_pct) return b.win_pct - a.win_pct
           if (b.wins !== a.wins) return b.wins - a.wins
           return a.losses - b.losses
         }),
     })).filter((s) => s.rows.length)
-  }, [standings, activeConf])
+  }, [standings, activeConf, isFlatConf])
+
+  // Flat conferences (most CFB conferences) — single sorted table of
+  // every team under that conference's group prefix.
+  const flatRows = useMemo(() => {
+    if (!activeConf || !isFlatConf) return []
+    return standings
+      .filter((r) => r.group === activeConf.prefix)
+      .sort((a, b) => {
+        if (b.win_pct !== a.win_pct) return b.win_pct - a.win_pct
+        if (b.wins !== a.wins) return b.wins - a.wins
+        return a.losses - b.losses
+      })
+  }, [standings, activeConf, isFlatConf])
+
+  const showAllTab = config.showAllTab !== false
+  const tabList = showAllTab ? ['All', ...config.conferences.map((c) => c.tab)] : config.conferences.map((c) => c.tab)
 
   return (
     <div>
-      <div className="flex gap-1 mb-3">
-        {['All', ...config.conferences.map((c) => c.tab)].map((c) => (
+      <div className="flex gap-1 mb-3 overflow-x-auto scrollbar-hide pb-1">
+        {tabList.map((c) => (
           <button
             key={c}
             onClick={() => setConf(c)}
-            className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors ${
+            className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-semibold transition-colors ${
               conf === c ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
             }`}
           >
@@ -343,6 +380,14 @@ function GroupedStandings({ standings, config }) {
       </div>
       {!activeConf ? (
         <StandingsTable rows={standings} />
+      ) : isFlatConf ? (
+        flatRows.length === 0 ? (
+          <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-6 text-sm text-text-muted text-center">
+            {activeConf.tab} standings loading…
+          </div>
+        ) : (
+          <StandingsTable rows={flatRows} />
+        )
       ) : divisionSections.length === 0 ? (
         <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-6 text-sm text-text-muted text-center">
           {activeConf.tab} standings loading…
