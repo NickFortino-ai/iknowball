@@ -209,6 +209,29 @@ router.get('/strip', async (req, res) => {
       for (const g of out.ncaaf.live) attach(g)
       for (const g of out.ncaaf.upcoming) attach(g)
       for (const g of out.ncaaf.recent) attach(g)
+
+      // Constrain the strip to CURRENT week only — otherwise the
+      // rank-sort surfaces Week 2's Ohio State-Texas above every
+      // Week 1 game and the strip stops matching what's actually
+      // "up next". Look up the current week's date window via the
+      // ncaaf calendar; if the current week has zero games left,
+      // fall through to the next upcoming week instead.
+      const { getNcaafCalendar } = await import('../services/ncaafCalendarService.js')
+      const cal = await getNcaafCalendar()
+      const todayPtStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+      const currentWeek = (cal.regular || []).find((w) => w.start <= todayPtStr && w.end >= todayPtStr)
+        || (cal.regular || []).find((w) => w.start > todayPtStr)
+      if (currentWeek) {
+        const inCurrentWeek = (g) => {
+          const gDay = toSportsDay(g.starts_at)
+          return gDay >= currentWeek.start && gDay <= currentWeek.end
+        }
+        const filtered = out.ncaaf.upcoming.filter(inCurrentWeek)
+        // If the current week is fully in the past for upcoming purposes,
+        // don't lie by leaving upcoming empty — keep the broader window.
+        if (filtered.length) out.ncaaf.upcoming = filtered
+      }
+
       // Sort each bucket by matchup importance and trim to the strip
       // display limit. Server-side sort guarantees the top X marquee
       // games survive — client sort alone can only reorder what
