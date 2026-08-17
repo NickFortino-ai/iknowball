@@ -180,6 +180,29 @@ router.get('/strip', async (req, res) => {
   await attachMlbLinescores(out.mlb.live, 'baseball_mlb')
   await attachMlbLinescores(out.mlb.recent, 'baseball_mlb')
 
+  // NFL strip: constrain upcoming to the current week window so users
+  // don't see Pre W2 + Pre W3 + Regular W1 games mashed together.
+  // Preseason + regular are separate calendar arrays; pick whichever
+  // week (across both) contains today. If today's window is fully in
+  // the past for upcoming, keep the wider window.
+  if (out.nfl.upcoming.length > 1) {
+    try {
+      const { getNflCalendar } = await import('../services/nflCalendarService.js')
+      const cal = await getNflCalendar()
+      const allWeeks = [...(cal.preseason || []), ...(cal.regular || [])]
+      const todayPtStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+      const currentWeek = allWeeks.find((w) => w.start <= todayPtStr && w.end >= todayPtStr)
+        || allWeeks.find((w) => w.start > todayPtStr)
+      if (currentWeek) {
+        const filtered = out.nfl.upcoming.filter((g) => {
+          const gDay = toSportsDay(g.starts_at)
+          return gDay >= currentWeek.start && gDay <= currentWeek.end
+        })
+        if (filtered.length) out.nfl.upcoming = filtered
+      }
+    } catch { /* week filter best-effort */ }
+  }
+
   // AP Top 25 ranks for NCAAF strip games so the landing scoreboard
   // can elevate marquee matchups the same way the drill-in does.
   const anyNcaaf = out.ncaaf.live.length + out.ncaaf.upcoming.length + out.ncaaf.recent.length > 0
