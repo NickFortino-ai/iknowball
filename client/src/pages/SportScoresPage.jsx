@@ -313,7 +313,7 @@ function StandingsTable({ rows, showRank = true }) {
               {row.logo ? (
                 <img src={row.logo} alt="" width="18" height="18" className="w-4 h-4 object-contain shrink-0" loading="lazy" onError={(e) => e.currentTarget.style.visibility = 'hidden'} />
               ) : <span className="w-4 h-4 shrink-0" />}
-              {row.rank && <span className="text-[10px] font-bold text-accent tabular-nums shrink-0">#{row.rank}</span>}
+              {row.rank && <span className="text-xs font-bold text-accent tabular-nums shrink-0">#{row.rank}</span>}
               <span className="text-sm text-text-primary truncate">{row.short_name}</span>
             </div>
             <span className="text-right text-sm text-text-primary tabular-nums">{row.wins}</span>
@@ -612,7 +612,7 @@ function DrillTeamRow({ team, fullTeam, record, score, hits, errors, sportFullKe
         <div className="w-7 h-7 rounded-full bg-bg-secondary shrink-0" />
       )}
       <div className="flex-1 min-w-0 flex items-baseline gap-2">
-        {rank && <span className="text-[11px] font-bold text-accent tabular-nums shrink-0">#{rank}</span>}
+        {rank && <span className="text-sm font-bold text-accent tabular-nums shrink-0">#{rank}</span>}
         <span className="text-sm text-text-primary truncate">{team}</span>
         {record && <span className="text-[11px] text-text-muted tabular-nums shrink-0">{record}</span>}
       </div>

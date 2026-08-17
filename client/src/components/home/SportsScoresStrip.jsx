@@ -455,7 +455,7 @@ function TeamRow({ team, logoLookupTeam, record, score, hits, errors, sportFullK
           team name (not right-aligned), which reads as one unit
           instead of two separate columns. */}
       <div className="flex-1 min-w-0 flex items-baseline gap-2">
-        {rank && <span className="text-[11px] font-bold text-accent tabular-nums shrink-0">#{rank}</span>}
+        {rank && <span className="text-sm font-bold text-accent tabular-nums shrink-0">#{rank}</span>}
         <span className="text-sm text-text-primary truncate">{team}</span>
         {record && (
           <span className="text-[11px] text-text-muted tabular-nums shrink-0">{record}</span>
