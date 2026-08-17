@@ -5,6 +5,7 @@ import { useScoresForDay, useSportStandings, useNflSchedule, useNflWeekGames, us
 import { useAuthStore } from '../stores/authStore'
 import { api } from '../lib/api'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../lib/teamLogos'
+import { getNcaafMatchupScore } from '../lib/ncaafPrestige'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import StatLeadersBlock from '../components/home/StatLeadersBlock'
 import GameCenterModal from '../components/picks/GameCenterModal'
@@ -233,7 +234,16 @@ export default function SportScoresPage() {
               {isWeekly ? `No games this ${config.label} week yet.` : `No ${config.label} games on ${formatMd(date)}.`}
             </div>
           ) : (() => {
-            const visibleGames = rankedOnly ? games.filter((g) => g.home_rank || g.away_rank) : games
+            let visibleGames = rankedOnly ? games.filter((g) => g.home_rank || g.away_rank) : games
+            // NCAAF: elevate marquee matchups. Combined AP rank first,
+            // prestige tier as tiebreak, kickoff last.
+            if (isNcaaf) {
+              visibleGames = [...visibleGames].sort((a, b) => {
+                const s = getNcaafMatchupScore(a) - getNcaafMatchupScore(b)
+                if (s !== 0) return s
+                return new Date(a.starts_at) - new Date(b.starts_at)
+              })
+            }
             if (visibleGames.length === 0) {
               return (
                 <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-6 text-sm text-text-muted text-center">

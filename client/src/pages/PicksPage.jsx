@@ -5,7 +5,7 @@ import { useMyParlays, useDeleteParlay } from '../hooks/useParlays'
 import { useMyPropPicks } from '../hooks/useProps'
 import { usePickStore } from '../stores/pickStore'
 import GameCard from '../components/picks/GameCard'
-import { getNcaafGamePrestige } from '../lib/ncaafPrestige'
+import { getNcaafMatchupScore } from '../lib/ncaafPrestige'
 import BottomBar from '../components/picks/BottomBar'
 import ParlaySlip from '../components/picks/ParlaySlip'
 import ParlayCard from '../components/picks/ParlayCard'
@@ -141,13 +141,12 @@ export default function PicksPage() {
     if (!games) return []
     const dayGames = games.filter((game) => isSameDay(new Date(game.starts_at), selectedDate))
     // NCAAF: re-order so marquee matchups float to the top of each day.
-    // Saturday's slate has 40+ games across many time slots; surfacing
-    // Alabama-Georgia above Toledo-Akron matches how users actually
-    // scan the page. Within same prestige, fall back to chronological.
+    // Combined AP Top 25 rank (lower = better), prestige tier as
+    // tiebreaker. Kickoff time is the final tiebreak.
     if (activeSport === 'americanfootball_ncaaf') {
       return [...dayGames].sort((a, b) => {
-        const pb = getNcaafGamePrestige(b) - getNcaafGamePrestige(a)
-        if (pb !== 0) return pb
+        const s = getNcaafMatchupScore(a) - getNcaafMatchupScore(b)
+        if (s !== 0) return s
         return new Date(a.starts_at) - new Date(b.starts_at)
       })
     }

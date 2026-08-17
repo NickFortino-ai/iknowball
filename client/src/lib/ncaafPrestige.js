@@ -78,3 +78,22 @@ export function getNcaafGamePrestige(game) {
   if (!game) return 0
   return tierFor(game.home_team) + tierFor(game.away_team)
 }
+
+/**
+ * Lower-is-better sort key. Uses combined AP Top 25 rank primarily
+ * (unranked = 26), so ranked-vs-ranked floats above ranked-vs-unranked
+ * which floats above unranked-vs-unranked. Preseason-tier prestige is
+ * a fine-grained tiebreaker inside each rank bucket so Alabama-anyone
+ * still beats Toledo-Akron when neither is ranked yet.
+ *
+ * Sort ascending: `games.sort((a, b) => getNcaafMatchupScore(a) - getNcaafMatchupScore(b))`
+ */
+export function getNcaafMatchupScore(game) {
+  if (!game) return Number.MAX_SAFE_INTEGER
+  const rankSum = (game.home_rank || 26) + (game.away_rank || 26)
+  // rankSum ranges 2..52. Multiply by 100 so prestige (~2..10) never
+  // flips the rank ordering. Subtract prestige inside the bucket so
+  // higher prestige = lower score.
+  const prestige = tierFor(game.home_team) + tierFor(game.away_team)
+  return rankSum * 100 - prestige
+}
