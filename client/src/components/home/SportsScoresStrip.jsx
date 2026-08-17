@@ -7,6 +7,7 @@ import { api } from '../../lib/api'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import StatLeadersBlock from './StatLeadersBlock'
 import GameCenterModal from '../picks/GameCenterModal'
+import { getNcaafMatchupScore } from '../../lib/ncaafPrestige'
 
 // PT calendar date as YYYY-MM-DD — anchored to America/Los_Angeles so
 // it matches the server's sports-day convention. Every US pro sport
@@ -200,9 +201,19 @@ export default function SportsScoresStrip() {
 function SportColumn({ sport, data, pickOutcomeByGame, onOpenGameCenter }) {
   // Parent filters out sports with zero games across all buckets before
   // mapping, so we're guaranteed at least one bucket has rows here.
-  const live = data?.live || []
-  const upcoming = data?.upcoming || []
-  const recent = data?.recent || []
+  let live = data?.live || []
+  let upcoming = data?.upcoming || []
+  let recent = data?.recent || []
+
+  // NCAAF: sort each bucket by matchup importance (combined AP rank
+  // ascending, prestige tiebreak) so marquee games float to the top.
+  // Ranked-vs-ranked → ranked-vs-unranked → unranked-vs-unranked.
+  if (sport.key === 'ncaaf') {
+    const cmp = (a, b) => getNcaafMatchupScore(a) - getNcaafMatchupScore(b)
+    live = [...live].sort(cmp)
+    upcoming = [...upcoming].sort(cmp)
+    recent = [...recent].sort(cmp)
+  }
 
   return (
     <div>
@@ -393,6 +404,7 @@ function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome, onOpenGame
           hits={game.linescore?.away?.h}
           errors={game.linescore?.away?.e}
           sportFullKey={sportFullKey} isLive={isLive}
+          rank={game.away_rank}
         />
         <TeamRow
           team={game.home_short || game.home_team}
@@ -402,6 +414,7 @@ function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome, onOpenGame
           hits={game.linescore?.home?.h}
           errors={game.linescore?.home?.e}
           sportFullKey={sportFullKey} isLive={isLive}
+          rank={game.home_rank}
         />
       </div>
       {!showScore && (
@@ -414,7 +427,7 @@ function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome, onOpenGame
   )
 }
 
-function TeamRow({ team, logoLookupTeam, record, score, hits, errors, sportFullKey, isLive }) {
+function TeamRow({ team, logoLookupTeam, record, score, hits, errors, sportFullKey, isLive, rank }) {
   // Logo helper needs the FULL name (Detroit Lions, San Francisco
   // Giants) since it's keyed by full name in the abbreviation map.
   // Display name is the short version passed via `team`.
@@ -442,6 +455,7 @@ function TeamRow({ team, logoLookupTeam, record, score, hits, errors, sportFullK
           team name (not right-aligned), which reads as one unit
           instead of two separate columns. */}
       <div className="flex-1 min-w-0 flex items-baseline gap-2">
+        {rank && <span className="text-[11px] font-bold text-accent tabular-nums shrink-0">#{rank}</span>}
         <span className="text-sm text-text-primary truncate">{team}</span>
         {record && (
           <span className="text-[11px] text-text-muted tabular-nums shrink-0">{record}</span>

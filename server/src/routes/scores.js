@@ -172,6 +172,38 @@ router.get('/strip', async (req, res) => {
   await attachMlbLinescores(out.mlb.live, 'baseball_mlb')
   await attachMlbLinescores(out.mlb.recent, 'baseball_mlb')
 
+  // AP Top 25 ranks for NCAAF strip games so the landing scoreboard
+  // can elevate marquee matchups the same way the drill-in does.
+  const anyNcaaf = out.ncaaf.live.length + out.ncaaf.upcoming.length + out.ncaaf.recent.length > 0
+  if (anyNcaaf) {
+    try {
+      const { getStandingsTable } = await import('../services/teamRecordsService.js')
+      const { getNcaafApRankings } = await import('../services/ncaafRankingsService.js')
+      const [standings, rankById] = await Promise.all([
+        getStandingsTable('americanfootball_ncaaf'),
+        getNcaafApRankings(),
+      ])
+      const nameToId = new Map()
+      for (const row of standings || []) {
+        if (!row.team_id) continue
+        const id = String(row.team_id)
+        if (row.team_name) nameToId.set(row.team_name.toLowerCase(), id)
+        if (row.short_name) nameToId.set(row.short_name.toLowerCase(), id)
+      }
+      const attach = (g) => {
+        const homeId = nameToId.get((g.home_team || '').toLowerCase())
+        const awayId = nameToId.get((g.away_team || '').toLowerCase())
+        const hr = homeId ? rankById.get(homeId) : null
+        const ar = awayId ? rankById.get(awayId) : null
+        if (hr) g.home_rank = hr
+        if (ar) g.away_rank = ar
+      }
+      for (const g of out.ncaaf.live) attach(g)
+      for (const g of out.ncaaf.upcoming) attach(g)
+      for (const g of out.ncaaf.recent) attach(g)
+    } catch { /* rank attachment is best-effort */ }
+  }
+
   // Short cache header — clients also poll but this dampens repeat
   // landing-page hits from the same session/CDN.
   res.set('Cache-Control', 'public, max-age=15')
