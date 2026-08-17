@@ -45,11 +45,11 @@ function labelForPTDate(dateStr) {
 
 const SPORTS = [
   { key: 'nfl', label: 'NFL', fullKey: 'americanfootball_nfl' },
-  { key: 'ncaaf', label: 'CFB', fullKey: 'americanfootball_ncaaf' },
+  { key: 'ncaaf', label: 'NCAAF', fullKey: 'americanfootball_ncaaf' },
   { key: 'mlb', label: 'MLB', fullKey: 'baseball_mlb' },
   { key: 'wnba', label: 'WNBA', fullKey: 'basketball_wnba' },
   { key: 'nba', label: 'NBA', fullKey: 'basketball_nba' },
-  { key: 'ncaab', label: 'CBB', fullKey: 'basketball_ncaab' },
+  { key: 'ncaab', label: 'NCAAB', fullKey: 'basketball_ncaab' },
   { key: 'mls', label: 'MLS', fullKey: 'soccer_usa_mls' },
 ]
 
