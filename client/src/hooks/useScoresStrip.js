@@ -115,6 +115,36 @@ export function useNflWeekGames(season, week, seasonType = 'regular') {
   })
 }
 
+// NCAAF calendar — same shape as useNflSchedule (regular season only,
+// no preseason). Powers the drill-in week scrubber.
+export function useNcaafSchedule(enabled = true) {
+  return useQuery({
+    queryKey: ['ncaafSchedule'],
+    queryFn: () => api.get('/scores/ncaaf-schedule'),
+    staleTime: 5 * 60 * 1000,
+    enabled,
+    retry: false,
+  })
+}
+
+// NCAAF games for a specific (season, week). Adaptive poll cadence.
+export function useNcaafWeekGames(season, week) {
+  return useQuery({
+    queryKey: ['ncaafWeekGames', season, week],
+    queryFn: () => api.get(`/scores/ncaaf-week?season=${season}&week=${week}`),
+    staleTime: 15 * 1000,
+    enabled: !!season && !!week,
+    refetchInterval: (query) => {
+      const data = query.state.data
+      if (!Array.isArray(data)) return 60 * 1000
+      const anyLive = data.some((g) => g.status === 'live')
+      return anyLive ? 20 * 1000 : 5 * 60 * 1000
+    },
+    refetchIntervalInBackground: false,
+    retry: false,
+  })
+}
+
 // Per-game payload for the Game Center modal (scoreboard + own results
 // tap-in). Finals never change so staleTime is long; live games poll
 // every 30s so the box score / score / clock actually moves while the

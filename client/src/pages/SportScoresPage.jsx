@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { useScoresForDay, useSportStandings, useNflSchedule, useNflWeekGames } from '../hooks/useScoresStrip'
+import { useScoresForDay, useSportStandings, useNflSchedule, useNflWeekGames, useNcaafSchedule, useNcaafWeekGames } from '../hooks/useScoresStrip'
 import { useAuthStore } from '../stores/authStore'
 import { api } from '../lib/api'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../lib/teamLogos'
@@ -54,6 +54,8 @@ export default function SportScoresPage() {
   const config = SPORTS[sport?.toLowerCase()]
   if (!config) return <Navigate to="/" replace />
   const isNfl = sport?.toLowerCase() === 'nfl'
+  const isNcaaf = sport?.toLowerCase() === 'ncaaf'
+  const isWeekly = isNfl || isNcaaf
   const [gameCenterGameId, setGameCenterGameId] = useState(null)
   // React Router preserves scroll across routes; drilling into a
   // sport from the scoreboard tab was landing users mid-list on
@@ -83,32 +85,40 @@ export default function SportScoresPage() {
     return map
   }, [settledPicks])
 
-  // NFL uses week-based scrubbing (Thu/Sun/Mon cadence makes daily
-  // dates feel wrong). All other sports keep the 7-day strip.
-  // The scrubber tracks BOTH week + season_type so preseason (Pre 1-3)
-  // and regular (Week 1-18) can coexist in the same strip without
-  // collision.
+  // NFL + NCAAF use week-based scrubbing (Thu/Sat/Sun cadence makes daily
+  // dates feel wrong). Other sports keep the 7-day strip.
+  // NFL scrubber tracks both week + season_type so preseason (Pre 1-3)
+  // and regular (Week 1-18) coexist without collision. NCAAF is regular-
+  // season only.
   const nflSchedule = useNflSchedule(isNfl)
-  const current = nflSchedule?.data?.current
-  const defaultNflSelection = current ? { week: current.week, seasonType: current.season_type } : { week: 1, seasonType: 'pre' }
-  const [nflSelection, setNflSelection] = useState(null)
-  const activeSelection = nflSelection ?? defaultNflSelection
-  const nflSeason = nflSchedule?.data?.season || new Date().getFullYear()
+  const ncaafSchedule = useNcaafSchedule(isNcaaf)
+  const weeklySchedule = isNfl ? nflSchedule : ncaafSchedule
+  const current = weeklySchedule?.data?.current
+  const defaultWeeklySelection = current
+    ? { week: current.week, seasonType: current.season_type }
+    : { week: 1, seasonType: isNfl ? 'pre' : 'regular' }
+  const [weeklySelection, setWeeklySelection] = useState(null)
+  const activeSelection = weeklySelection ?? defaultWeeklySelection
+  const weeklySeason = weeklySchedule?.data?.season || new Date().getFullYear()
   const { data: nflGames, isLoading: nflGamesLoading } = useNflWeekGames(
-    isNfl ? nflSeason : null,
+    isNfl ? weeklySeason : null,
     isNfl ? activeSelection.week : null,
     activeSelection.seasonType,
+  )
+  const { data: ncaafGames, isLoading: ncaafGamesLoading } = useNcaafWeekGames(
+    isNcaaf ? weeklySeason : null,
+    isNcaaf ? activeSelection.week : null,
   )
 
   const [date, setDate] = useState(todayPT())
   const { data: dailyGames, isLoading: dailyLoading } = useScoresForDay(
-    isNfl ? null : sport,
-    isNfl ? null : date,
+    isWeekly ? null : sport,
+    isWeekly ? null : date,
   )
   const { data: standings, isLoading: standingsLoading } = useSportStandings(sport)
 
-  const games = isNfl ? nflGames : dailyGames
-  const gamesLoading = isNfl ? nflGamesLoading : dailyLoading
+  const games = isNfl ? nflGames : isNcaaf ? ncaafGames : dailyGames
+  const gamesLoading = isNfl ? nflGamesLoading : isNcaaf ? ncaafGamesLoading : dailyLoading
 
   // 7-day strip for date-based sports.
   const stripDates = useMemo(() => {
@@ -138,15 +148,15 @@ export default function SportScoresPage() {
         <div>
           <h2 className="font-display text-xl text-text-primary mb-3">Scores</h2>
 
-          {/* Scrubber: NFL uses week buttons, everyone else uses a
-              7-day date strip. NFL plays 3 days per week so a daily
-              strip felt wrong (empty Wed/Thu/Fri buttons). */}
-          {isNfl ? (
+          {/* Scrubber: NFL + NCAAF use week buttons, everyone else uses
+              a 7-day date strip. Football plays 3-4 days per week so a
+              daily strip felt wrong (empty midweek buttons). */}
+          {isWeekly ? (
             <NflWeekScrubber
-              weeks={nflSchedule?.data?.weeks || []}
+              weeks={weeklySchedule?.data?.weeks || []}
               activeSelection={activeSelection}
               current={current}
-              onPick={setNflSelection}
+              onPick={setWeeklySelection}
             />
           ) : (
             <div className="flex items-stretch gap-1 mb-4 min-w-0">
@@ -196,12 +206,12 @@ export default function SportScoresPage() {
             <LoadingSpinner />
           ) : !games?.length ? (
             <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-6 text-sm text-text-muted text-center">
-              {isNfl ? `No games this NFL week yet.` : `No ${config.label} games on ${formatMd(date)}.`}
+              {isWeekly ? `No games this ${config.label} week yet.` : `No ${config.label} games on ${formatMd(date)}.`}
             </div>
           ) : (
             <div className="space-y-2">
               {games.map((g) => (
-                <DrillGameCard key={g.id} game={g} sportFullKey={config.fullKey} showDate={isNfl} pickOutcome={pickOutcomeByGame.get(g.id)} onOpenGameCenter={setGameCenterGameId} />
+                <DrillGameCard key={g.id} game={g} sportFullKey={config.fullKey} showDate={isWeekly} pickOutcome={pickOutcomeByGame.get(g.id)} onOpenGameCenter={setGameCenterGameId} />
               ))}
             </div>
           )}

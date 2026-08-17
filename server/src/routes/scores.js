@@ -260,6 +260,75 @@ router.get('/nfl-week', async (req, res) => {
   res.json(out)
 })
 
+// NCAAF schedule + current-week helper — mirrors /nfl-schedule so the
+// drill-in can render a week scrubber for college football instead of
+// the 7-day date strip. Week windows sourced from ESPN's calendar.
+router.get('/ncaaf-schedule', async (req, res) => {
+  const { getNcaafCalendar } = await import('../services/ncaafCalendarService.js')
+  const cal = await getNcaafCalendar()
+  const weeks = cal.regular
+  // "Current" derived from calendar windows against now (PT).
+  const todayPt = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+  const current = weeks.find((w) => w.start <= todayPt && w.end >= todayPt)
+    || weeks.find((w) => w.start > todayPt) // pre-season: highlight week 1
+    || weeks[weeks.length - 1] // post-season: last week
+    || null
+  res.set('Cache-Control', 'public, max-age=300')
+  res.json({
+    season: cal.season,
+    current: current ? { season: cal.season, week: current.week, season_type: 'regular' } : null,
+    weeks,
+  })
+})
+
+// All games for one NCAAF (season, week). Same shape as /nfl-week.
+router.get('/ncaaf-week', async (req, res) => {
+  const week = Number(req.query.week)
+  if (!week) return res.status(400).json({ error: 'week required' })
+
+  const { getNcaafWeekWindow } = await import('../services/ncaafCalendarService.js')
+  const window = await getNcaafWeekWindow(week)
+  if (!window) return res.json([])
+
+  const startUtc = `${window.start}T00:00:00Z`
+  const endD = new Date(`${window.end}T00:00:00Z`)
+  endD.setUTCDate(endD.getUTCDate() + 2)
+  const endUtc = endD.toISOString()
+
+  const { data: sports } = await supabase.from('sports').select('id, key').eq('key', 'americanfootball_ncaaf')
+  const sportIds = (sports || []).map((s) => s.id)
+  if (!sportIds.length) return res.json([])
+
+  const liveStaleCutoff = new Date(Date.now() - LIVE_STALE_CUTOFF_MS).toISOString()
+  const [liveRes, weekRes] = await Promise.all([
+    supabase
+      .from('games')
+      .select('id, home_team, away_team, home_score, away_score, live_home_score, live_away_score, period, clock, starts_at, status')
+      .in('sport_id', sportIds)
+      .eq('status', 'live')
+      .gte('updated_at', liveStaleCutoff)
+      .order('starts_at', { ascending: true }),
+    supabase
+      .from('games')
+      .select('id, home_team, away_team, home_score, away_score, live_home_score, live_away_score, period, clock, starts_at, status')
+      .in('sport_id', sportIds)
+      .in('status', ['upcoming', 'final'])
+      .gte('starts_at', startUtc)
+      .lt('starts_at', endUtc)
+      .order('starts_at', { ascending: true }),
+  ])
+  if (liveRes.error || weekRes.error) return res.status(500).json({ error: 'ncaaf-week fetch failed' })
+
+  const seen = new Set()
+  const out = []
+  for (const g of liveRes.data || []) { seen.add(g.id); out.push(shape(g, 'americanfootball_ncaaf')) }
+  for (const g of weekRes.data || []) { if (!seen.has(g.id)) out.push(shape(g, 'americanfootball_ncaaf')) }
+  out.sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
+
+  res.set('Cache-Control', 'public, max-age=15')
+  res.json(out)
+})
+
 // Per-sport ALL games for a given PT calendar date — powers the drill-
 // in `/scores/:sport` page's date scrubber. Returns upcoming, live,
 // and final together (unlike /finals which is finals-only for the
