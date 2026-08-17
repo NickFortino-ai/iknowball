@@ -1148,15 +1148,20 @@ export function getTeamLogoUrl(teamName, sportKey) {
   }
   const config = SPORT_MAP[sportKey]
   if (!config) return null
-  // NCAA uses numeric IDs: /i/teamlogos/ncaa/500/{id}.png
+  // NCAA -dark variants are inconsistently curated by ESPN — many
+  // teams (Iowa, Alabama, etc.) end up as dark-on-transparent blobs
+  // that vanish on our dark UI. Use the standard (non-dark) variant
+  // as the primary URL for NCAA sports.
+  const useDark = config.sport !== 'ncaa'
+  const variant = useDark ? '500-dark' : '500'
   if (config.ids) {
     const id = normalizedLookup(config.ids, teamName)
     if (!id) return null
-    return `https://a.espncdn.com/i/teamlogos/${config.sport}/500-dark/${id}.png`
+    return `https://a.espncdn.com/i/teamlogos/${config.sport}/${variant}/${id}.png`
   }
   const abbr = normalizedLookup(config.abbrs, teamName)
   if (!abbr) return null
-  return `https://a.espncdn.com/i/teamlogos/${config.sport}/500-dark/${abbr}.png`
+  return `https://a.espncdn.com/i/teamlogos/${config.sport}/${variant}/${abbr}.png`
 }
 
 // Standard (non-dark) URL as fallback
