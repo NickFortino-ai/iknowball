@@ -1084,6 +1084,8 @@ const NCAAF_COLORS = {
   "Maryville (TN) Scots": "#000000",
   "Mass Maritime Buccaneers": "#212c62",
   "Massachusetts Minutemen": "#881c1c",
+  "UMass Minutemen": "#881c1c",
+  "UMass": "#881c1c",
   "Mayville State Comets": "#000000",
   "McDaniel Green Terror": "#00674d",
   "McKendree Bearcats": "#000000",
@@ -2097,6 +2099,8 @@ const NCAAB_COLORS = {
   "Maryland Eastern Shore Hawks": "#5c2301",
   "Maryland Terrapins": "#ce1126",
   "Massachusetts Minutemen": "#881c1c",
+  "UMass Minutemen": "#881c1c",
+  "UMass": "#881c1c",
   "McNeese Cowboys": "#00529c",
   "Memphis Tigers": "#004991",
   "Mercer Bears": "#ff7f29",
@@ -3222,6 +3226,32 @@ const SPORT_MAP = {
   wncaab: WNCAAB_COLORS, basketball_wncaab: WNCAAB_COLORS,
 }
 
+// Strip diacritics, straighten quotes, lowercase. Bridges name mismatches
+// between odds sources ("San Jose State") and ESPN ("San José State").
+function normalizeName(s) {
+  if (!s) return ''
+  return s
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[ʻʼ‘’]/g, "'")
+    .replace(/'/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+}
+
+const _normCache = new WeakMap()
+function normalizedLookup(map, teamName) {
+  if (!map || !teamName) return null
+  if (map[teamName] != null) return map[teamName]
+  let cached = _normCache.get(map)
+  if (!cached) {
+    cached = {}
+    for (const k of Object.keys(map)) cached[normalizeName(k)] = map[k]
+    _normCache.set(map, cached)
+  }
+  return cached[normalizeName(teamName)] ?? null
+}
+
 // Look up a team's primary color by sport + team name OR abbreviation.
 // Returns a #rrggbb string or null when the sport/team isn't covered.
 // Pure black (#000000) is preserved — some teams (Raiders, Bruins) do
@@ -3230,5 +3260,5 @@ export function getTeamColor(sportKey, team) {
   if (!sportKey || !team) return null
   const map = SPORT_MAP[sportKey]
   if (!map) return null
-  return map[team] || null
+  return normalizedLookup(map, team)
 }

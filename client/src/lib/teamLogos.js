@@ -504,6 +504,8 @@ const NCAA_IDS = {
   "Maryville (TN) Scots": 2373,
   "Mass Maritime Buccaneers": 110,
   "Massachusetts Minutemen": 113,
+  "UMass Minutemen": 113,
+  "UMass": 113,
   "Massachusetts Minutewomen": 113,
   "Mayville State Comets": 561,
   "McDaniel Green Terror": 2700,
@@ -1100,9 +1102,41 @@ const CANONICAL_ABBRS = {
   'St. Louis Battlehawks': 'STL', 'St Louis Battlehawks': 'STL',
 }
 
+// Normalize team names to a form that matches across sources:
+// strip diacritics ("San José" → "San Jose"), fold curly quotes /
+// ʻokina to straight ("Hawai'i" → "hawai'i" → "hawaii"), collapse
+// whitespace, lowercase. Odds sources spell "San Jose State" while
+// ESPN spells "San José State" — this bridges the two.
+function normalizeName(s) {
+  if (!s) return ''
+  return s
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[ʻʼ‘’]/g, "'")
+    .replace(/'/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+}
+
+// Lazy per-map cache of { normalizedKey -> originalValue } so a
+// normalize-fallback lookup doesn't rebuild the reverse map every call.
+const _normCache = new WeakMap()
+function normalizedLookup(map, teamName) {
+  if (!map || !teamName) return null
+  const direct = map[teamName]
+  if (direct != null) return direct
+  let cached = _normCache.get(map)
+  if (!cached) {
+    cached = {}
+    for (const k of Object.keys(map)) cached[normalizeName(k)] = map[k]
+    _normCache.set(map, cached)
+  }
+  return cached[normalizeName(teamName)] ?? null
+}
+
 export function getTeamAbbr(teamName) {
   if (!teamName) return ''
-  return CANONICAL_ABBRS[teamName] || null
+  return normalizedLookup(CANONICAL_ABBRS, teamName) || null
 }
 
 export function getTeamLogoUrl(teamName, sportKey) {
@@ -1116,11 +1150,11 @@ export function getTeamLogoUrl(teamName, sportKey) {
   if (!config) return null
   // NCAA uses numeric IDs: /i/teamlogos/ncaa/500/{id}.png
   if (config.ids) {
-    const id = config.ids[teamName]
+    const id = normalizedLookup(config.ids, teamName)
     if (!id) return null
     return `https://a.espncdn.com/i/teamlogos/${config.sport}/500-dark/${id}.png`
   }
-  const abbr = config.abbrs[teamName]
+  const abbr = normalizedLookup(config.abbrs, teamName)
   if (!abbr) return null
   return `https://a.espncdn.com/i/teamlogos/${config.sport}/500-dark/${abbr}.png`
 }
@@ -1134,11 +1168,11 @@ export function getTeamLogoFallbackUrl(teamName, sportKey) {
   const config = SPORT_MAP[sportKey]
   if (!config) return null
   if (config.ids) {
-    const id = config.ids[teamName]
+    const id = normalizedLookup(config.ids, teamName)
     if (!id) return null
     return `https://a.espncdn.com/i/teamlogos/${config.sport}/500/${id}.png`
   }
-  const abbr = config.abbrs[teamName]
+  const abbr = normalizedLookup(config.abbrs, teamName)
   if (!abbr) return null
   return `https://a.espncdn.com/i/teamlogos/${config.sport}/500/${abbr}.png`
 }
