@@ -986,6 +986,7 @@ const MLS_IDS = {
   'Chicago Fire FC': '182', 'Chicago Fire': '182',
   'Colorado Rapids': '184',
   'Columbus Crew': '183',
+  'Columbus Crew SC': '183',
   'D.C. United': '193', 'DC United': '193',
   'FC Cincinnati': '18267',
   'FC Dallas': '185',

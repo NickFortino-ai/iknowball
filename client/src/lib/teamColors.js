@@ -309,6 +309,7 @@ const MLS_COLORS = {
   "Chicago Fire FC": "#7ccdef",
   "Colorado Rapids": "#8a2432",
   "Columbus Crew": "#000000",
+  "Columbus Crew SC": "#000000",
   "D.C. United": "#000000",
   "DAL": "#c6093b",
   "DC": "#000000",
