@@ -62,7 +62,13 @@ export default function SportScoresPage() {
   // React Router preserves scroll across routes; drilling into a
   // sport from the scoreboard tab was landing users mid-list on
   // desktop. Reset to top whenever the sport changes.
-  useEffect(() => { window.scrollTo(0, 0) }, [sport])
+  useEffect(() => {
+    // AppShell renders its content inside a scrollable <main>, so
+    // window.scrollTo does nothing here — the actual scroll happens
+    // on that element. Reset both to be safe.
+    window.scrollTo(0, 0)
+    document.querySelector('main')?.scrollTo({ top: 0, behavior: 'instant' })
+  }, [sport])
 
   // Green/red outline on any Final game the user picked — matches the
   // landing scoreboard's pick indicator so drilling in preserves the
