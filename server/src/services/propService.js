@@ -4,6 +4,7 @@ import { fetchPlayerProps } from './oddsService.js'
 import { getMarketLabel, PROP_MARKETS } from '../utils/propMarkets.js'
 import { calculateRiskPoints, calculateRewardPoints } from '../utils/scoring.js'
 import { checkRecordAfterSettle } from './recordService.js'
+import { createNotification } from './notificationService.js'
 import { fetchCompletedGameStats as fetchNbaStatsFromEspn } from '../jobs/scoreNBADFS.js'
 import { fetchCompletedGameStats as fetchMlbStatsFromEspn } from '../jobs/scoreMLBDFS.js'
 import { fetchCompletedWNBAGameStats as fetchWnbaStatsFromEspn } from '../jobs/scoreWNBADFS.js'
@@ -521,6 +522,13 @@ export async function settleProps(settlements) {
       continue
     }
 
+    // Only fire the DNP push notification when the settle path passed
+    // actualValue: null — that's the "player wasn't in the box"
+    // signal from settleWNBAProps / settleNFLProps / etc. Exact-line
+    // pushes (rare, actualValue === line) don't need a special notif.
+    const wasDnpPush = outcome === 'push' && (actualValue === null || actualValue === undefined)
+    const propLabel = prop.market_key ? getMarketLabel(prop.market_key) : 'this prop'
+
     for (const pick of picks) {
       let isCorrect = null
       let pointsEarned = 0
@@ -583,6 +591,22 @@ export async function settleProps(settlements) {
           await checkRecordAfterSettle(pick.user_id, 'prop', { isCorrect })
         } catch (err) {
           logger.error({ err, userId: pick.user_id }, 'Record check after prop settle failed')
+        }
+      }
+
+      // DNP push notification — user picked a prop and the player
+      // didn't play. No point/record impact, but users deserve to
+      // know why the pick isn't showing win/loss.
+      if (wasDnpPush) {
+        try {
+          await createNotification(pick.user_id, 'prop_pushed', `⏸ ${prop.player_name} didn't play — your ${propLabel} pick was pushed.`, {
+            propPickId: pick.id,
+            propId: prop.id,
+            playerName: prop.player_name,
+            marketKey: prop.market_key,
+          })
+        } catch (err) {
+          logger.error({ err, userId: pick.user_id, propId: prop.id, pickId: pick.id }, 'DNP push notification failed')
         }
       }
     }

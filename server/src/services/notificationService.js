@@ -4,7 +4,7 @@ import { sendPushNotification } from './pushService.js'
 import { sendApnsToUser, sendApnsBadgeUpdate } from './apnsService.js'
 import { sendFcmToUser } from './fcmService.js'
 
-const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_result', 'squares_quarter_win', 'record_broken', 'survivor_result', 'survivor_win', 'survivor_pick_reminder', 'roster_reminder', 'league_win', 'league_invitation', 'direct_message', 'league_thread_mention', 'league_report', 'nfl_injury_warning', 'fantasy_trade_proposed', 'fantasy_trade_accepted', 'fantasy_trade_declined', 'fantasy_waiver_awarded', 'fantasy_stat_correction', 'fantasy_draft_starting_soon', 'poll_response_milestone', 'og_welcome', 'bracket_published', 'commissioner_report_reply', 'writer_granted']
+const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_result', 'squares_quarter_win', 'record_broken', 'survivor_result', 'survivor_win', 'survivor_pick_reminder', 'roster_reminder', 'league_win', 'league_invitation', 'direct_message', 'league_thread_mention', 'league_report', 'nfl_injury_warning', 'fantasy_trade_proposed', 'fantasy_trade_accepted', 'fantasy_trade_declined', 'fantasy_waiver_awarded', 'fantasy_stat_correction', 'fantasy_draft_starting_soon', 'poll_response_milestone', 'og_welcome', 'bracket_published', 'commissioner_report_reply', 'writer_granted', 'prop_pushed']
 
 // Types that respect quiet hours (10 PM – 8 AM PT). The DB row is still
 // written so the user sees the notification in-app when they open the
@@ -28,6 +28,10 @@ const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_resul
 const QUIET_HOURS_TYPES = new Set([
   'survivor_result',
   'survivor_win',
+  // Prop-pushed notifs fire when settle jobs run after games —
+  // typically Sun/Mon nights for NFL, late nights for late-slate
+  // WNBA / MLB. Informational, not urgent, no need to wake users.
+  'prop_pushed',
   // League-completion notifications fire from the completeLeagues cron
   // whenever the last game in the window finalizes — which for late-slate
   // MLB can be 11 PM+ PT. Winners don't want to be woken up mid-night
