@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
-import { buildRosterConfigHash } from '../lib/rosterConfigHash'
+import { buildRosterConfigHash, parseRosterConfigHash } from '../lib/rosterConfigHash'
+import { useSavedRankingConfigs } from '../hooks/useDraftPrep'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../lib/api'
 import { toast } from '../components/ui/Toast'
@@ -13,6 +14,11 @@ import SavedRankings from '../components/draftPrep/SavedRankings'
 import MockDraftPage from './MockDraftPage'
 
 const BACKDROP_KEY = 'draft_prep_backdrop_y'
+// Remembers the last scoring + roster the user was working in. Without this
+// the page remounted at PPR + the default roster every visit, silently
+// swapping the user off their own board (a superflex board looks almost
+// identical to the default in the roster pill — only the SFLEX chip differs).
+const CONFIG_KEY = 'draft_prep_active_config'
 
 const TABS = ['My Rankings', 'ADP', 'Mock Draft', 'In-Person Draft']
 
@@ -35,6 +41,16 @@ const SLOT_LABELS = [
   { key: 'def', label: 'DEF' },
 ]
 
+function readStoredConfig() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CONFIG_KEY) || 'null')
+    if (!parsed?.scoringFormat || !parsed?.rosterSlots) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 function rosterLabel(slots) {
   return SLOT_LABELS
     .filter((s) => (slots[s.key] || 0) > 0)
@@ -49,8 +65,8 @@ export default function DraftPrepPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTab = TABS.findIndex((t) => t.toLowerCase().replace(/\s+/g, '-') === searchParams.get('tab'))
   const [activeTab, setActiveTab] = useState(initialTab >= 0 ? initialTab : 0)
-  const [scoringFormat, setScoringFormat] = useState('ppr')
-  const [rosterSlots, setRosterSlots] = useState({ ...DEFAULT_ROSTER })
+  const [scoringFormat, setScoringFormat] = useState(() => readStoredConfig()?.scoringFormat || 'ppr')
+  const [rosterSlots, setRosterSlots] = useState(() => ({ ...DEFAULT_ROSTER, ...(readStoredConfig()?.rosterSlots || {}) }))
   const [showConfig, setShowConfig] = useState(false)
   const [introOpen, setIntroOpen] = useState(false)
   const [mockDraftActive, setMockDraftActive] = useState(false)
@@ -103,7 +119,33 @@ export default function DraftPrepPage() {
 
   const configHash = buildRosterConfigHash(rosterSlots)
 
+  // Remember the active board on this device.
+  useEffect(() => {
+    try {
+      localStorage.setItem(CONFIG_KEY, JSON.stringify({ scoringFormat, rosterSlots }))
+    } catch {
+      // Private mode / quota — the server-side hydrate below still covers us.
+    }
+  }, [scoringFormat, rosterSlots])
+
+  // First visit on a NEW device has no localStorage, so fall back to the
+  // user's most-recently-updated saved board (the API returns them sorted
+  // by last_updated). Without this, signing in on another machine drops you
+  // onto a default board that isn't the one you've been building.
+  const { data: savedConfigs } = useSavedRankingConfigs()
+  const hydratedRef = useRef(!!readStoredConfig())
+  useEffect(() => {
+    if (hydratedRef.current) return
+    const top = savedConfigs?.[0]
+    if (!top) return
+    hydratedRef.current = true
+    setScoringFormat(top.scoring_format)
+    setRosterSlots({ ...DEFAULT_ROSTER, ...parseRosterConfigHash(top.config_hash) })
+  }, [savedConfigs])
+
   function loadSavedConfig({ scoringFormat: sf, rosterSlots: rs }) {
+    // An explicit pick from the picker wins over any later hydrate.
+    hydratedRef.current = true
     if (sf) setScoringFormat(sf)
     if (rs) setRosterSlots({ ...DEFAULT_ROSTER, ...rs })
   }
