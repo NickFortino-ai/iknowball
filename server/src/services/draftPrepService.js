@@ -140,14 +140,23 @@ async function seedDraftPrepRankings(userId, configHash, scoringFormat, rosterSl
 // so lazy-seeded / reset boards (pure ADP order) don't pollute the list.
 // setDraftPrepRankings deletes + re-inserts on every save, so created_at
 // acts as last-saved.
+// MUST use fetchAll: a single board can exceed 1000 rows on its own now
+// that getDraftPrepRankings appends the full draftable pool, so the plain
+// select silently truncated at Supabase's 1000-row cap and whole boards
+// vanished from the picker (a 1374-row board disappeared entirely).
 export async function getSavedRankingConfigs(userId) {
-  const { data, error } = await supabase
-    .from('draft_prep_rankings')
-    .select('roster_config_hash, scoring_format, created_at')
-    .eq('user_id', userId)
-    .eq('is_customized', true)
+  const data = await fetchAll(
+    supabase
+      .from('draft_prep_rankings')
+      .select('roster_config_hash, scoring_format, created_at')
+      .eq('user_id', userId)
+      .eq('is_customized', true)
+      // Explicit order on the PK — fetchAll pages with .range(), and an
+      // unordered paginated scan lets Postgres return rows in a different
+      // order per page, which silently skips and double-counts rows.
+      .order('id', { ascending: true })
+  )
 
-  if (error) throw error
   if (!data?.length) return []
 
   // Fetch user-supplied names for each (config, scoring) pair.
