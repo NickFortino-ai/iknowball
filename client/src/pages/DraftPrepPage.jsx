@@ -143,6 +143,14 @@ export default function DraftPrepPage() {
     setRosterSlots({ ...DEFAULT_ROSTER, ...parseRosterConfigHash(top.config_hash) })
   }, [savedConfigs])
 
+  // The board the current scoring + roster resolves to, if it's one the user
+  // has actually saved. Surfaced in the config bar so you can tell at a
+  // glance which board you're editing — a superflex board and the default
+  // differ by a single SFLEX chip, which is far too easy to miss mid-draft.
+  const activeSavedConfig = savedConfigs?.find(
+    (c) => c.config_hash === configHash && c.scoring_format === scoringFormat,
+  )
+
   function loadSavedConfig({ scoringFormat: sf, rosterSlots: rs }) {
     // An explicit pick from the picker wins over any later hydrate.
     hydratedRef.current = true
@@ -248,6 +256,19 @@ export default function DraftPrepPage() {
 
       {/* Config bar */}
       <div className="rounded-xl border border-text-primary/20 bg-bg-primary/30 backdrop-blur-md p-3 mb-4">
+        {/* Which saved board the current scoring + roster resolves to. Only
+            renders for boards the user actually named/customized — an
+            unsaved combo intentionally shows nothing rather than a fake label. */}
+        {activeSavedConfig && (
+          <div className="flex items-center gap-2 mb-2.5 pb-2.5 border-b border-text-primary/10">
+            <span className="text-[9px] font-bold text-accent uppercase tracking-wider px-1.5 py-0.5 rounded border border-accent/40 shrink-0">
+              Editing
+            </span>
+            <span className="text-sm font-semibold text-text-primary truncate">
+              {activeSavedConfig.name || rosterLabel(rosterSlots)}
+            </span>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="text-xs text-text-muted font-semibold">Scoring:</span>
