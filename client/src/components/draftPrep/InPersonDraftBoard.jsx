@@ -152,16 +152,28 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
   const [rosterOpen, setRosterOpen] = useState(false)
   const [posFilter, setPosFilter] = useState('All')
   const [hydrated, setHydrated] = useState(false)
+  // True when this session came back from localStorage rather than being
+  // started here. Drives the resume banner below.
+  const [resumed, setResumed] = useState(false)
 
   // Load from localStorage on mount / config change
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-      setDraftedOthers(saved.others || [])
-      setMyRoster(saved.roster || {})
+      const others = saved.others || []
+      const roster = saved.roster || {}
+      setDraftedOthers(others)
+      setMyRoster(roster)
+      // A restored session hides players from the board. Silently resuming a
+      // months-old draft made a correct board look wrong and unrecognizable,
+      // so flag it and say so loudly instead.
+      const restoredCount = others.length + Object.values(roster)
+        .reduce((n, arr) => n + (Array.isArray(arr) ? arr.length : 0), 0)
+      setResumed(restoredCount > 0)
     } catch {
       setDraftedOthers([])
       setMyRoster({})
+      setResumed(false)
     }
     setHydrated(true)
   }, [STORAGE_KEY])
@@ -183,9 +195,15 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
 
   const totalDrafted = draftedOthers.length + myRosterIds.size
 
+  // Rank comes from the FULL board and is stamped BEFORE any filtering, so a
+  // player's number is their actual spot on your rankings and never moves as
+  // players come off the board or you switch position tabs. Numbering the
+  // filtered list instead (rank = index + 1) silently renumbered everything
+  // on every pick, which made a correct board look like someone else's.
   const available = useMemo(() => {
     if (!rankings) return []
     return rankings
+      .map((r, i) => ({ ...r, boardRank: i + 1 }))
       .filter((r) => !draftedOthersSet.has(r.player_id) && !myRosterIds.has(r.player_id))
       .filter((r) => posFilter === 'All' || r.nfl_players?.position === posFilter)
   }, [rankings, draftedOthersSet, myRosterIds, posFilter])
@@ -225,6 +243,7 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
     if (!confirm('Reset draft? All your swiped picks and drafted players will be cleared.')) return
     setDraftedOthers([])
     setMyRoster({})
+    setResumed(false)
   }
 
   if (isLoading || !hydrated) return <LoadingSpinner />
@@ -233,6 +252,37 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
 
   return (
     <div className="space-y-4">
+      {/* Resumed-session banner. The board hides every player in a saved
+          session, so a stale one silently subtracts players and shifts the
+          list — indistinguishable from "these aren't my rankings". Make the
+          resume explicit and give a one-tap way out. */}
+      {resumed && totalDrafted > 0 && (
+        <div className="rounded-xl border border-accent bg-bg-primary px-4 py-3">
+          <div className="text-sm font-bold text-text-primary">
+            Picked up a draft already in progress
+          </div>
+          <div className="text-xs text-text-secondary mt-1">
+            <span className="font-semibold text-text-primary">{totalDrafted}</span>
+            {totalDrafted === 1 ? ' player is' : ' players are'} already marked drafted and hidden from the list below.
+            If this isn't the draft you're in right now, start fresh.
+          </div>
+          <div className="flex gap-2 mt-2.5">
+            <button
+              onClick={reset}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold border border-accent text-accent hover:bg-accent/10 transition-colors"
+            >
+              Start fresh
+            </button>
+            <button
+              onClick={() => setResumed(false)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text-muted hover:text-text-primary transition-colors"
+            >
+              Keep going
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Intro */}
       <div className={`rounded-xl border border-text-primary/20 backdrop-blur-md p-4 transition-colors ${introOpen ? 'bg-bg-primary/15' : 'bg-bg-primary/5'}`}>
         <button
@@ -342,10 +392,10 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
             {rankings?.length ? 'No more available players in this position.' : 'No rankings yet — set your board on the My Rankings tab first.'}
           </div>
         ) : (
-          available.map((r, i) => (
+          available.map((r) => (
             <SwipeRow
               key={r.player_id}
-              rank={i + 1}
+              rank={r.boardRank}
               player={r.nfl_players || { full_name: 'Unknown', position: '', team: '' }}
               onLeft={() => draftToOthers(r)}
               onRight={() => draftToMe(r)}
