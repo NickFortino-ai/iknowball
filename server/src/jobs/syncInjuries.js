@@ -283,6 +283,22 @@ function extractFootballStarters(data) {
         side: sideForFootballPosition(posLabel),
         depth,
       })
+
+      // Offenses line up with two receivers far more often than one, so a
+      // lineup card that lists a single WR reads wrong. Emit WR2 as its own
+      // row carrying the SAME full depth array — the client walks depth and
+      // skips anyone it has already placed, so WR1 resolves to depth[0] and
+      // WR2 falls through to depth[1], with injury promotion still running
+      // down the chart independently for each row.
+      if (posLabel === 'WR' && depth.length > 1) {
+        starters.push({
+          position: posLabel,
+          name: depth[1].name,
+          shortName: depth[1].shortName,
+          side: sideForFootballPosition(posLabel),
+          depth,
+        })
+      }
     }
   }
 

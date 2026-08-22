@@ -201,8 +201,11 @@ function TeamSection({ teamName, starters, injuries }) {
                 <div key={g.key}>
                   <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1">{g.label}</div>
                   <div className="space-y-1.5">
-                    {g.rows.map((s) => (
-                      <div key={`${g.key}-${s.position}`} className="flex items-center gap-2 text-sm">
+                    {/* Index in the key: a unit can legitimately field two
+                        rows at the same position (WR1 / WR2), so position
+                        alone is no longer unique. */}
+                    {g.rows.map((s, i) => (
+                      <div key={`${g.key}-${s.position}-${i}`} className="flex items-center gap-2 text-sm">
                         <span className="font-semibold text-accent w-9 shrink-0">{s.position}</span>
                         <span className="text-text-primary truncate">{s.shortName}</span>
                         {s.status === 'Questionable' && (
@@ -216,8 +219,8 @@ function TeamSection({ teamName, starters, injuries }) {
             </div>
           ) : (
             <div className="space-y-1.5">
-              {todayStarters.map((s) => (
-                <div key={s.position} className="flex items-center gap-2 text-sm">
+              {todayStarters.map((s, i) => (
+                <div key={`${s.position}-${i}`} className="flex items-center gap-2 text-sm">
                   <span className="font-semibold text-accent w-7 shrink-0">{s.position}</span>
                   <span className="text-text-primary truncate">{s.shortName}</span>
                   {s.status === 'Questionable' && (
