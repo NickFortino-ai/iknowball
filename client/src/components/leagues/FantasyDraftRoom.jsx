@@ -223,6 +223,11 @@ export default function FantasyDraftRoom({ league }) {
 
   const isMyTurn = currentPick?.user_id === profile?.id
   const completedPicks = picks.filter((p) => p.player_id)
+  // What Undo would reverse. undoLastDraftPick targets the highest
+  // pick_number, so sort rather than trusting the array's incoming order.
+  const lastCompletedPick = completedPicks.length
+    ? [...completedPicks].sort((a, b) => a.pick_number - b.pick_number)[completedPicks.length - 1]
+    : null
 
   // Pick timer
   useEffect(() => {
@@ -642,12 +647,14 @@ export default function FantasyDraftRoom({ league }) {
           </div>
         )}
 
-        {/* Undo button */}
-        {filledPicks > 0 && (
+        {/* Undo button. Commissioner-gated in the UI to match the server,
+            which 403s everyone else — without this a regular member saw an
+            Undo button that only ever produced an error toast. */}
+        {isCommissioner && lastCompletedPick && (
           <div className="flex items-center justify-between">
             <div className="text-xs text-text-muted">
-              Last pick: <span className="text-text-primary font-semibold">{completedPicks[completedPicks.length - 1]?.nfl_players?.full_name}</span>
-              {' '}to {completedPicks[completedPicks.length - 1]?.users?.display_name || completedPicks[completedPicks.length - 1]?.users?.username}
+              Last pick: <span className="text-text-primary font-semibold">{lastCompletedPick.nfl_players?.full_name}</span>
+              {' '}to {lastCompletedPick.users?.display_name || lastCompletedPick.users?.username}
             </div>
             <button
               onClick={async () => {
@@ -812,6 +819,38 @@ export default function FantasyDraftRoom({ league }) {
             >
               {offlineMode ? '● Offline mode ON' : 'Offline mode'}
             </button>
+            {/* Undo the last pick mid-draft. Previously this only existed in
+                the offline results-entry flow, so a commissioner in a LIVE
+                draft could freeze the clock but had no way to fix a bad pick.
+                Confirm names the player and manager so it can't be misfired
+                on a fast-moving board. */}
+            {lastCompletedPick && (
+              <button
+                onClick={async () => {
+                  const who = lastCompletedPick.users?.display_name || lastCompletedPick.users?.username || 'that manager'
+                  const what = lastCompletedPick.nfl_players?.full_name || 'the last pick'
+                  if (!confirm(`Undo ${what} to ${who}? The pick goes back on the clock and the player returns to the pool.`)) return
+                  try {
+                    await undoPick.mutateAsync(league.id)
+                    toast('Pick undone', 'success')
+                  } catch (err) {
+                    toast(err.message || 'Failed to undo', 'error')
+                  }
+                }}
+                disabled={undoPick.isPending}
+                className="px-3 py-1 rounded-lg text-xs font-semibold text-incorrect border border-incorrect/30 hover:bg-incorrect/10 transition-colors disabled:opacity-50"
+                title={`Undo ${lastCompletedPick.nfl_players?.full_name || 'the last pick'}`}
+              >
+                {undoPick.isPending ? 'Undoing...' : 'Undo last pick'}
+              </button>
+            )}
+          </div>
+        )}
+        {/* Show the commissioner exactly what Undo would reverse. */}
+        {isCommissioner && lastCompletedPick && (
+          <div className="mt-1.5 text-[11px] text-text-muted w-full text-center">
+            Last pick: <span className="text-text-primary font-semibold">{lastCompletedPick.nfl_players?.full_name}</span>
+            {' '}to {lastCompletedPick.users?.display_name || lastCompletedPick.users?.username}
           </div>
         )}
         {offlineMode && (
