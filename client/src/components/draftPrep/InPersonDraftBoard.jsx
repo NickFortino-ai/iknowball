@@ -155,6 +155,10 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
   // True when this session came back from localStorage rather than being
   // started here. Drives the resume banner below.
   const [resumed, setResumed] = useState(false)
+  // ISO timestamp set when the user hits Finish. A finished draft shows its
+  // recap instead of the live board, so a completed draft can never quietly
+  // hide players from a future one.
+  const [finishedAt, setFinishedAt] = useState(null)
 
   // Load from localStorage on mount / config change
   useEffect(() => {
@@ -164,6 +168,7 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
       const roster = saved.roster || {}
       setDraftedOthers(others)
       setMyRoster(roster)
+      setFinishedAt(saved.finishedAt || null)
       // A restored session hides players from the board. Silently resuming a
       // months-old draft made a correct board look wrong and unrecognizable,
       // so flag it and say so loudly instead.
@@ -173,16 +178,18 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
     } catch {
       setDraftedOthers([])
       setMyRoster({})
+      setFinishedAt(null)
       setResumed(false)
     }
     setHydrated(true)
   }, [STORAGE_KEY])
 
-  // Save to localStorage on change
+  // Save to localStorage on change. This is what makes progress survive
+  // navigating away mid-draft — it must keep firing on every state change.
   useEffect(() => {
     if (!hydrated) return
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ others: draftedOthers, roster: myRoster }))
-  }, [STORAGE_KEY, draftedOthers, myRoster, hydrated])
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ others: draftedOthers, roster: myRoster, finishedAt }))
+  }, [STORAGE_KEY, draftedOthers, myRoster, finishedAt, hydrated])
 
   const draftedOthersSet = useMemo(() => new Set(draftedOthers), [draftedOthers])
   const myRosterIds = useMemo(() => {
@@ -239,12 +246,43 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
     })
   }
 
+  // Every starting slot the roster config asks for is filled. Bench is
+  // excluded — it has no real cap (it renders a floor of 6 empty rows), so
+  // counting it would mean the roster is never "full".
+  const startingSlots = useMemo(
+    () => SLOT_DISPLAY.filter((s) => s.key !== 'bench' && (rosterSlots[s.key] || 0) > 0),
+    [rosterSlots],
+  )
+  const rosterFull = useMemo(
+    () => startingSlots.length > 0 &&
+      startingSlots.every((s) => (myRoster[s.key]?.length || 0) >= (rosterSlots[s.key] || 0)),
+    [startingSlots, myRoster, rosterSlots],
+  )
+
   function reset() {
     if (!confirm('Reset draft? All your swiped picks and drafted players will be cleared.')) return
     setDraftedOthers([])
     setMyRoster({})
+    setFinishedAt(null)
     setResumed(false)
   }
+
+  function finishDraft() {
+    if (!rosterFull && !confirm('Finish draft? Your starting roster isn\'t full yet — you can reopen it after.')) return
+    setFinishedAt(new Date().toISOString())
+    setResumed(false)
+    setRosterOpen(true)
+  }
+
+  // Escape hatch for a mis-tapped Finish — puts the live board back with the
+  // session intact rather than forcing a reset.
+  function reopenDraft() {
+    setFinishedAt(null)
+  }
+
+  const finishedDate = finishedAt
+    ? new Date(finishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : null
 
   if (isLoading || !hydrated) return <LoadingSpinner />
 
@@ -256,7 +294,54 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
           session, so a stale one silently subtracts players and shifts the
           list — indistinguishable from "these aren't my rankings". Make the
           resume explicit and give a one-tap way out. */}
-      {resumed && totalDrafted > 0 && (
+      {/* Finished draft — the recap replaces the live board entirely, which is
+          also what keeps a completed draft from silently hiding players the
+          next time this roster + scoring combo is opened. */}
+      {finishedAt && (
+        <div className="rounded-xl border border-accent bg-bg-primary px-4 py-4">
+          <div className="font-display text-xl text-text-primary">Draft complete</div>
+          <div className="text-xs text-text-muted mt-1">
+            Finished {finishedDate} · <span className="font-semibold text-text-primary">{myRosterIds.size}</span> players on your roster
+          </div>
+          <div className="text-xs text-text-secondary mt-2">
+            Your roster is below. Starting a new draft clears this one.
+          </div>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <button
+              onClick={reset}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold border border-accent text-accent hover:bg-accent/10 transition-colors"
+            >
+              Start a new draft
+            </button>
+            <button
+              onClick={reopenDraft}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text-muted hover:text-text-primary transition-colors"
+            >
+              Reopen this draft
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Roster full but not yet finished — offer the natural exit. */}
+      {!finishedAt && rosterFull && (
+        <div className="rounded-xl border border-correct/50 bg-bg-primary px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-bold text-text-primary">Your roster is full</div>
+            <div className="text-xs text-text-secondary mt-0.5">
+              Every starting slot is filled. Keep drafting for the bench, or wrap it up.
+            </div>
+          </div>
+          <button
+            onClick={finishDraft}
+            className="px-3.5 py-2 rounded-lg text-xs font-bold bg-correct text-white hover:opacity-90 transition-opacity shrink-0"
+          >
+            Finish draft
+          </button>
+        </div>
+      )}
+
+      {!finishedAt && resumed && totalDrafted > 0 && (
         <div className="rounded-xl border border-accent bg-bg-primary px-4 py-3">
           <div className="text-sm font-bold text-text-primary">
             Picked up a draft already in progress
@@ -320,12 +405,22 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
           <span className="text-text-primary font-semibold">{available.length}</span> available
         </div>
         {totalDrafted > 0 && (
-          <button
-            onClick={reset}
-            className="text-xs text-text-muted hover:text-incorrect transition-colors underline"
-          >
-            Reset draft
-          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            {!finishedAt && (
+              <button
+                onClick={finishDraft}
+                className="text-xs font-semibold text-correct hover:opacity-80 transition-opacity underline"
+              >
+                Finish draft
+              </button>
+            )}
+            <button
+              onClick={reset}
+              className="text-xs text-text-muted hover:text-incorrect transition-colors underline"
+            >
+              Reset draft
+            </button>
+          </div>
         )}
       </div>
 
@@ -352,8 +447,11 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
           <div className="px-4 pb-4 space-y-1.5">
             {SLOT_DISPLAY.filter((s) => s.key === 'bench' || (rosterSlots[s.key] || 0) > 0).map((s) => {
               const players = myRoster[s.key] || []
+              // Bench shows a floor of 6 open rows while drafting so there's
+              // somewhere to land; once finished, show only what was actually
+              // drafted rather than a run of empty rows in the recap.
               const capacity = s.key === 'bench'
-                ? Math.max(players.length, 6)
+                ? (finishedAt ? players.length : Math.max(players.length, 6))
                 : (rosterSlots[s.key] || 0)
               return (
                 <div key={s.key} className="space-y-1">
@@ -370,39 +468,45 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
         )}
       </div>
 
-      {/* Position filter */}
-      <div className="flex flex-wrap gap-1.5">
-        {positions.map((pos) => (
-          <button
-            key={pos}
-            onClick={() => setPosFilter(pos)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              posFilter === pos
-                ? 'bg-accent text-white'
-                : 'bg-bg-primary/30 border border-text-primary/20 text-text-secondary hover:bg-white/10'
-            }`}
-          >{pos}</button>
-        ))}
-      </div>
-
-      {/* Rankings list */}
-      <div className="space-y-1.5">
-        {available.length === 0 ? (
-          <div className="text-center py-8 text-sm text-text-muted">
-            {rankings?.length ? 'No more available players in this position.' : 'No rankings yet — set your board on the My Rankings tab first.'}
+      {/* Live board — hidden once the draft is finished, so the recap above
+          is the whole screen and there's nothing left to swipe by accident. */}
+      {!finishedAt && (
+        <>
+          {/* Position filter */}
+          <div className="flex flex-wrap gap-1.5">
+            {positions.map((pos) => (
+              <button
+                key={pos}
+                onClick={() => setPosFilter(pos)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  posFilter === pos
+                    ? 'bg-accent text-white'
+                    : 'bg-bg-primary/30 border border-text-primary/20 text-text-secondary hover:bg-white/10'
+                }`}
+              >{pos}</button>
+            ))}
           </div>
-        ) : (
-          available.map((r) => (
-            <SwipeRow
-              key={r.player_id}
-              rank={r.boardRank}
-              player={r.nfl_players || { full_name: 'Unknown', position: '', team: '' }}
-              onLeft={() => draftToOthers(r)}
-              onRight={() => draftToMe(r)}
-            />
-          ))
-        )}
-      </div>
+
+          {/* Rankings list */}
+          <div className="space-y-1.5">
+            {available.length === 0 ? (
+              <div className="text-center py-8 text-sm text-text-muted">
+                {rankings?.length ? 'No more available players in this position.' : 'No rankings yet — set your board on the My Rankings tab first.'}
+              </div>
+            ) : (
+              available.map((r) => (
+                <SwipeRow
+                  key={r.player_id}
+                  rank={r.boardRank}
+                  player={r.nfl_players || { full_name: 'Unknown', position: '', team: '' }}
+                  onLeft={() => draftToOthers(r)}
+                  onRight={() => draftToMe(r)}
+                />
+              ))
+            )}
+          </div>
+        </>
+      )}
 
     </div>
   )
