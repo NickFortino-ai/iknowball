@@ -115,7 +115,7 @@ function StatGroupTable({ group }) {
             <tr>
               <th className="px-2 py-1.5 text-left font-medium text-text-muted sticky left-0 bg-bg-primary/30 z-10 min-w-[110px]">Player</th>
               {group.labels.map((l, i) => (
-                <th key={i} className="px-2 py-1.5 text-right font-medium text-text-muted whitespace-nowrap">{l}</th>
+                <th key={i} className="px-1.5 py-1.5 text-right font-medium text-text-muted whitespace-nowrap">{l}</th>
               ))}
             </tr>
           </thead>
@@ -126,8 +126,12 @@ function StatGroupTable({ group }) {
                   {a.short || a.name}
                   {a.position && <span className="ml-1 text-[10px] text-text-muted">{a.position}</span>}
                 </td>
+                {/* nowrap is the actual fix — without it a made-attempted
+                    value like "5-6" breaks at the hyphen onto two lines,
+                    which stretched every row. Header cells already had it;
+                    the body cells didn't. Tighter px buys back the width. */}
                 {a.stats.map((s, j) => (
-                  <td key={j} className="px-2 py-1.5 text-right text-text-primary">{s ?? '—'}</td>
+                  <td key={j} className="px-1.5 py-1.5 text-right text-text-primary whitespace-nowrap">{s ?? '—'}</td>
                 ))}
               </tr>
             ))}
