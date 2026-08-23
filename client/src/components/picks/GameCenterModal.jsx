@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useBoxScore } from '../../hooks/useScoresStrip'
 import { useGamePicks } from '../../hooks/usePicks'
 import { useAuth } from '../../hooks/useAuth'
@@ -280,6 +281,15 @@ export default function GameCenterModal({ gameId, onClose }) {
     return () => unlockScroll()
   }, [gameId])
 
+  // Escape closes. Backstop so a layout regression that hides the X can
+  // never leave someone stuck in here again.
+  useEffect(() => {
+    if (!gameId) return
+    const onKey = (e) => { if (e.key === 'Escape') onClose?.() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [gameId, onClose])
+
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setDrawerOpen(false)
@@ -321,9 +331,18 @@ export default function GameCenterModal({ gameId, onClose }) {
     }
   }
 
-  return (
+  // Portalled to document.body. Rendered inline, the overlay inherited
+  // whatever stacking context its host page happened to create, so the same
+  // modal behaved differently per page — from the home scoreboard the navbar
+  // painted over the header and buried the close button, while from Results
+  // it rendered correctly. Every other modal in the app already portals;
+  // this one was the outlier. Matches PlayerDetailModal / FantasyTrades.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-stretch sm:items-center sm:justify-center sm:px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:pt-20 sm:pb-6"
+      // Docked BELOW the navbar (safe-area + h-14) instead of inset-0, so the
+      // nav stays visible and tappable rather than being swallowed whole.
+      className="fixed inset-x-0 bottom-0 z-50 flex items-stretch sm:items-center sm:justify-center sm:px-4 pb-[env(safe-area-inset-bottom)] sm:pb-6"
+      style={{ top: 'calc(env(safe-area-inset-top) + 3.5rem)' }}
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/70" />
@@ -483,6 +502,7 @@ export default function GameCenterModal({ gameId, onClose }) {
       {profileUserId && (
         <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
       )}
-    </div>
+    </div>,
+    document.body,
   )
 }
