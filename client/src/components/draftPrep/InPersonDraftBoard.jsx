@@ -1,9 +1,14 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useDraftPrepRankings } from '../../hooks/useDraftPrep'
+import DraftPlayerPreview from '../leagues/DraftPlayerPreview'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
 const SWIPE_THRESHOLD = 80
 const SWIPE_MAX = 160
+// Movement past this reads as a drag, not a tap. Finger presses jitter a few
+// px, so keeping it above ~4 stops real taps being swallowed on touch.
+const TAP_SLOP = 8
 
 const SLOT_DISPLAY = [
   { key: 'qb', label: 'QB' },
@@ -29,13 +34,20 @@ function autoSlotKey(rosterSlots, currentRoster, position) {
   return 'bench'
 }
 
-function SwipeRow({ rank, player, onLeft, onRight }) {
+function SwipeRow({ rank, player, onLeft, onRight, onTap }) {
   const [offset, setOffset] = useState(0)
   const [animating, setAnimating] = useState(false)
   const startRef = useRef(null)
   const movedRef = useRef(false)
 
-  function handleStart(clientX) {
+  function handleStart(clientX, target) {
+    // Presses that begin on the desktop ✕ Off / ✓ Mine buttons bubble up to
+    // this container. Ignore them so a button click can't also register as a
+    // tap on the row and open the preview behind the action.
+    if (target?.closest?.('button')) {
+      startRef.current = null
+      return
+    }
     startRef.current = clientX
     movedRef.current = false
     setAnimating(false)
@@ -44,14 +56,17 @@ function SwipeRow({ rank, player, onLeft, onRight }) {
   function handleMove(clientX) {
     if (startRef.current == null) return
     const delta = clientX - startRef.current
-    if (Math.abs(delta) > 4) movedRef.current = true
+    if (Math.abs(delta) > TAP_SLOP) movedRef.current = true
     const clamped = Math.max(-SWIPE_MAX, Math.min(SWIPE_MAX, delta))
     setOffset(clamped)
   }
 
-  function handleEnd() {
+  // allowTap is false for mouseleave — the pointer wandering off the row
+  // shouldn't count as a tap.
+  function handleEnd(allowTap = true) {
     if (startRef.current == null) return
     const final = offset
+    const moved = movedRef.current
     startRef.current = null
     setAnimating(true)
     if (final > SWIPE_THRESHOLD) {
@@ -62,6 +77,8 @@ function SwipeRow({ rank, player, onLeft, onRight }) {
       setTimeout(() => onLeft?.(), 150)
     } else {
       setOffset(0)
+      // Settled short of either threshold without moving — that's a tap.
+      if (allowTap && !moved) onTap?.()
     }
   }
 
@@ -79,15 +96,15 @@ function SwipeRow({ rank, player, onLeft, onRight }) {
       </div>
 
       <div
-        className={`relative bg-bg-primary/60 backdrop-blur-md border border-text-primary/15 rounded-xl px-3 py-2.5 flex items-center gap-3 select-none ${animating ? 'transition-transform duration-150' : ''}`}
+        className={`relative bg-bg-primary/60 backdrop-blur-md border border-text-primary/15 rounded-xl px-3 py-2.5 flex items-center gap-3 select-none cursor-pointer ${animating ? 'transition-transform duration-150' : ''}`}
         style={{ transform: `translateX(${offset}px)`, touchAction: 'pan-y' }}
-        onTouchStart={(e) => handleStart(e.touches[0].clientX)}
+        onTouchStart={(e) => handleStart(e.touches[0].clientX, e.target)}
         onTouchMove={(e) => handleMove(e.touches[0].clientX)}
-        onTouchEnd={handleEnd}
-        onMouseDown={(e) => handleStart(e.clientX)}
+        onTouchEnd={() => handleEnd(true)}
+        onMouseDown={(e) => handleStart(e.clientX, e.target)}
         onMouseMove={(e) => { if (startRef.current != null) handleMove(e.clientX) }}
-        onMouseUp={handleEnd}
-        onMouseLeave={() => { if (startRef.current != null) handleEnd() }}
+        onMouseUp={() => handleEnd(true)}
+        onMouseLeave={() => { if (startRef.current != null) handleEnd(false) }}
       >
         <span className="text-text-muted font-semibold text-sm w-8 shrink-0 text-center">{rank}</span>
         <div className="flex-1 min-w-0">
@@ -152,6 +169,8 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
   const [rosterOpen, setRosterOpen] = useState(false)
   const [posFilter, setPosFilter] = useState('All')
   const [hydrated, setHydrated] = useState(false)
+  // Player whose preview is open. Tapping a row opens it; swiping does not.
+  const [detailPlayerId, setDetailPlayerId] = useState(null)
   // True when this session came back from localStorage rather than being
   // started here. Drives the resume banner below.
   const [resumed, setResumed] = useState(false)
@@ -501,6 +520,7 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
                   player={r.nfl_players || { full_name: 'Unknown', position: '', team: '' }}
                   onLeft={() => draftToOthers(r)}
                   onRight={() => draftToMe(r)}
+                  onTap={() => setDetailPlayerId(r.nfl_players?.id || r.player_id)}
                 />
               ))
             )}
@@ -508,6 +528,34 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
         </>
       )}
 
+      {/* Tapping a row opens the same preview the mock draft uses — ADP,
+          projections and prior-season stats are what you actually want mid
+          draft. No leagueId here, so it runs in mock mode off scoringFormat.
+
+          DraftPlayerPreview is an inline panel by design (it's embedded in
+          the draft room layout), so it gets an overlay shell here: dropped
+          inline it would render below a 1000-row board and read as "nothing
+          happened". Portalled to body so the board's own stacking can't
+          bury it — the same trap that hit Game Center. */}
+      {detailPlayerId && createPortal(
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-8"
+          onClick={() => setDetailPlayerId(null)}
+        >
+          <div className="absolute inset-0 bg-black/60" />
+          <div
+            className="relative w-full max-w-md max-h-[85vh] overflow-y-auto scrollbar-hide"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DraftPlayerPreview
+              playerId={detailPlayerId}
+              mockScoring={scoringFormat}
+              onClose={() => setDetailPlayerId(null)}
+            />
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   )
 }

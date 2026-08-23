@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useDraftPlayerDetail, useMockDraftPlayerDetail } from '../../hooks/useLeagues'
+import { getTeamColor } from '../../lib/teamColors'
 
 /**
  * Embedded player preview that lives in the draft room — replaces the
@@ -90,13 +91,17 @@ export default function DraftPlayerPreview({ leagueId, mockScoring, playerId, on
   const projKey = scoring?.format === 'ppr' ? 'projected_pts_ppr' : scoring?.format === 'standard' ? 'projected_pts_std' : 'projected_pts_half_ppr'
   const proj = player[projKey]
   const isRookie = !prior
+  // nfl_players.team is an abbreviation (ATL, JAX); the NFL color map keys
+  // both abbreviations and full names, so either resolves.
+  const teamColor = getTeamColor('americanfootball_nfl', player.team)
 
   return (
     <div className="relative rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden">
-      {/* × top-right corner */}
+      {/* × top-right corner. White rather than muted since it now sits over
+          the team tint — same treatment as the × in ui/PlayerDetailModal. */}
       <button
         onClick={onClose}
-        className="absolute top-1.5 right-2 z-10 w-9 h-9 flex items-center justify-center text-text-muted hover:text-incorrect text-2xl leading-none"
+        className="absolute top-1.5 right-2 z-10 w-9 h-9 flex items-center justify-center text-white/80 hover:text-white text-2xl leading-none"
         title="Close"
       >
         ×
@@ -110,8 +115,18 @@ export default function DraftPlayerPreview({ leagueId, mockScoring, playerId, on
         {expanded ? '▴' : '▾'}
       </button>
 
-      {/* Compact row — pr-10 reserves space for the corner buttons */}
-      <div className="flex items-center gap-3 md:gap-4 pl-3 md:pl-5 pr-10 md:pr-12 py-4">
+      {/* Compact row — pr-10 reserves space for the corner buttons.
+          Team-tinted gradient behind the hero, fading to transparent so the
+          stats below stay on the normal surface. Matches the player-hero
+          treatment in ui/PlayerDetailModal so both modals read the same.
+          Falls back to no background when the team isn't in the color map
+          (free agents, odd abbreviations). */}
+      <div
+        className="relative flex items-center gap-3 md:gap-4 pl-3 md:pl-5 pr-10 md:pr-12 py-4"
+        style={teamColor ? {
+          background: `linear-gradient(180deg, ${teamColor} 0%, ${teamColor}cc 60%, ${teamColor}00 100%)`,
+        } : undefined}
+      >
         {player.headshot_url && (
           <img
             src={player.headshot_url}
