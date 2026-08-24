@@ -283,17 +283,25 @@ router.get('/nfl-schedule', async (req, res) => {
   const cal = await getNflCalendar()
   const weeks = [...cal.preseason, ...cal.regular]
 
-  // Current week + season_type.
-  let current = null
-  try {
-    const { getCurrentNflWeek } = await import('../services/tdPassService.js')
-    const state = await getCurrentNflWeek()
-    current = {
-      season: state?.season || cal.season,
-      week: state?.week || 1,
-      season_type: state?.isPreSeason ? 'pre' : 'regular',
-    }
-  } catch {}
+  // Current week + season_type — matched by date window, same as the NCAAF
+  // endpoint below.
+  //
+  // This used to call getCurrentNflWeek(), which answers a DIFFERENT
+  // question for the TD Pass contest: "what's the next REGULAR week, and
+  // has regular Week 1 kicked off yet." Mid-preseason that returns
+  // { week: 1, isPreSeason: true } — regular Week 1 — which got relabeled
+  // as PRE 1 here. So the scrubber sat on preseason Week 1 for the whole
+  // preseason regardless of the actual date. getCurrentNflWeek is left
+  // alone; it's still correct for the gating it was written for.
+  const todayPtStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+  let currentWeek = weeks.find((w) => w.start <= todayPtStr && w.end >= todayPtStr)
+  // Gaps (offseason, or a seam between calendars) fall forward to the next
+  // week that hasn't started, then back to the final week once the season
+  // is over — never null, so the client's PRE-1 fallback stays unreachable.
+  if (!currentWeek) currentWeek = weeks.find((w) => w.start > todayPtStr) || weeks[weeks.length - 1]
+  const current = currentWeek
+    ? { season: cal.season, week: currentWeek.week, season_type: currentWeek.season_type }
+    : null
 
   res.set('Cache-Control', 'public, max-age=300')
   res.json({ season: cal.season, current, weeks })
