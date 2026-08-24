@@ -45,6 +45,23 @@ export function formatRecordValue(record) {
   }
 }
 
+// Compact variant for inline "🏆 Label — value" chips (profile modal),
+// where there's no room for the "10 → N" stake framing and the label
+// already supplies the context that framing exists to give.
+//
+// biggest_parlay is stored as a payout multiplier, so a bare "35.6" reads
+// as points sitting right under a points total. The x makes it a
+// multiplier. Everything else defers to formatRecordValue so units stay in
+// one place.
+export function formatRecordValueCompact(record) {
+  if (record == null) return ''
+  const val = record.record_value ?? record.new_value ?? record.value ?? record
+  if (val == null) return '--'
+  const key = record.record_key || record.key || ''
+  if (key === 'biggest_parlay') return `${val}x`
+  return formatRecordValue(record)
+}
+
 // Variant for displaying a previous_value alongside the new value where
 // the record object only carries the key once. Pass the same record (for
 // the key) plus the raw previous_value.

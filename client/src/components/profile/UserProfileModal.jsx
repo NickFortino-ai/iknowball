@@ -12,6 +12,7 @@ import { timeAgo } from '../../lib/time'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useMemo } from 'react'
 import { getTier } from '../../lib/scoring'
+import { formatRecordValueCompact } from '../../lib/recordFormat'
 import { toast } from '../ui/Toast'
 import TierBadge from '../ui/TierBadge'
 import OGBadge from '../ui/OGBadge'
@@ -640,7 +641,7 @@ export default function UserProfileModal({ userId, onClose }) {
                     className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-yellow-500 text-xs font-semibold"
                   >
                     <span>🏆</span>
-                    {record.label} — {record.value}
+                    {record.label} — {formatRecordValueCompact(record)}
                   </span>
                 ))}
               </div>
