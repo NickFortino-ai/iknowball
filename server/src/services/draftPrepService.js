@@ -260,15 +260,22 @@ export async function getDraftPrepRankings(userId, configHash, scoringFormat, ro
     await seedDraftPrepRankings(userId, configHash, scoringFormat, rosterSlots)
   }
 
-  const { data, error } = await supabase
-    .from('draft_prep_rankings')
-    .select(PLAYER_SELECT)
-    .eq('user_id', userId)
-    .eq('roster_config_hash', configHash)
-    .eq('scoring_format', scoringFormat)
-    .order('rank', { ascending: true })
-  if (error) throw error
-  const ranked = data || []
+  // MUST paginate: boards exceed 1000 rows now that this function appends
+  // the full draftable pool and saves write it back. A plain select silently
+  // dropped everything past rank 999, and the tail-append below then re-added
+  // those players at the BOTTOM in ADP order — so their custom rank was lost
+  // on read, and overwritten for good on the next save. Measured on a live
+  // 1097-row board: 92 players served out of position.
+  // `rank` is unique within a board, so it's a stable key to page on.
+  const ranked = await fetchAll(
+    supabase
+      .from('draft_prep_rankings')
+      .select(PLAYER_SELECT)
+      .eq('user_id', userId)
+      .eq('roster_config_hash', configHash)
+      .eq('scoring_format', scoringFormat)
+      .order('rank', { ascending: true })
+  )
 
   // Append the rest of the draftable pool (any on-team player not already
   // in the user's saved rankings) so consumers like the in-person draft
@@ -370,13 +377,18 @@ export async function resetDraftPrepRankings(userId, configHash, scoringFormat, 
   if (syncRecords?.length) {
     // Snapshot the current (still-customized) rankings once — every synced
     // league forks from the same source.
-    const { data: prepRankings } = await supabase
-      .from('draft_prep_rankings')
-      .select('player_id, rank')
-      .eq('user_id', userId)
-      .eq('roster_config_hash', configHash)
-      .eq('scoring_format', scoringFormat)
-      .order('rank', { ascending: true })
+    // Paginated — this snapshot is the ONLY copy synced leagues keep once
+    // the board is wiped below, so a truncated read means those leagues
+    // silently lose every player past rank 999.
+    const prepRankings = await fetchAll(
+      supabase
+        .from('draft_prep_rankings')
+        .select('player_id, rank')
+        .eq('user_id', userId)
+        .eq('roster_config_hash', configHash)
+        .eq('scoring_format', scoringFormat)
+        .order('rank', { ascending: true })
+    )
 
     if (prepRankings?.length) {
       for (const sync of syncRecords) {
@@ -506,14 +518,18 @@ export async function unsyncLeague(userId, leagueId) {
     throw err
   }
 
-  // Fork: copy draft prep rankings into league-specific rankings
-  const { data: prepRankings } = await supabase
-    .from('draft_prep_rankings')
-    .select('player_id, rank')
-    .eq('user_id', userId)
-    .eq('roster_config_hash', syncRecord.roster_config_hash)
-    .eq('scoring_format', syncRecord.scoring_format)
-    .order('rank', { ascending: true })
+  // Fork: copy draft prep rankings into league-specific rankings.
+  // Paginated — the fork is what the league keeps after disconnecting, so a
+  // truncated read hands it a board missing everything past rank 999.
+  const prepRankings = await fetchAll(
+    supabase
+      .from('draft_prep_rankings')
+      .select('player_id, rank')
+      .eq('user_id', userId)
+      .eq('roster_config_hash', syncRecord.roster_config_hash)
+      .eq('scoring_format', syncRecord.scoring_format)
+      .order('rank', { ascending: true })
+  )
 
   if (prepRankings?.length) {
     const rows = prepRankings.map((r) => ({
