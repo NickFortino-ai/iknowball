@@ -269,7 +269,14 @@ export default function NflSalaryCapView({ league }) {
 
       {/* Right column: player pool */}
       <div className="rounded-xl border border-text-primary/20 overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
-        <div className="px-4 py-3 border-b border-text-primary/10">
+        {/* Pinned so search + position filters stay reachable while scrolling
+            the pool. On desktop the list is max-h-none and the PANEL scrolls,
+            which used to carry these controls off-screen and force a scroll
+            back up to switch position. On mobile the list scrolls inside its
+            own max-h box, so the header already stayed put — sticky is inert
+            there. Needs an opaque bg: the rows below are bg-bg-primary and
+            would otherwise show through. */}
+        <div className="sticky top-0 z-10 bg-bg-primary px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Available Players</h3>
           <input
             type="text"
