@@ -29,7 +29,10 @@ export default function TdPassView({ league, tab = 'picks' }) {
   const [search, setSearch] = useState('')
   const [expandedUserId, setExpandedUserId] = useState(null)
   const [profileUserId, setProfileUserId] = useState(null)
-  const [usedOpen, setUsedOpen] = useState(false)
+  // Expanded by default — the whole strategy of TD Pass is not burning a QB
+  // twice, so the used list is reference material you want in front of you
+  // when picking, not something to go hunting for. Still collapsible.
+  const [usedOpen, setUsedOpen] = useState(true)
 
   const myCurrentPick = useMemo(() => {
     if (!currentWeek) return null
