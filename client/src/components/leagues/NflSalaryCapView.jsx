@@ -274,9 +274,11 @@ export default function NflSalaryCapView({ league }) {
             which used to carry these controls off-screen and force a scroll
             back up to switch position. On mobile the list scrolls inside its
             own max-h box, so the header already stayed put — sticky is inert
-            there. Needs an opaque bg: the rows below are bg-bg-primary and
-            would otherwise show through. */}
-        <div className="sticky top-0 z-10 bg-bg-primary px-4 py-3 border-b border-text-primary/10">
+            there. Tinted rather than opaque so the backdrop reads through,
+            matching the Salary Cap panel — but heavier than that panel's /20
+            with a stronger blur, because rows scroll UNDER this one and at
+            /20 they'd stay legible right through the search box. */}
+        <div className="sticky top-0 z-10 bg-bg-primary/70 backdrop-blur-md px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Available Players</h3>
           <input
             type="text"
