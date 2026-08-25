@@ -30,6 +30,12 @@ export default function PlayerHeadshot({ name, url, size = 'md', className = '',
       <img
         src={url}
         alt=""
+        // Long pools (the NFL DFS "All" tab is ~1,100 players) would otherwise
+        // fire every headshot request on mount. Lazy + async decode keeps
+        // offscreen rows free, which is what lets those lists render in full
+        // instead of being capped.
+        loading="lazy"
+        decoding="async"
         className={`${sizeClass} rounded-full object-cover bg-bg-secondary shrink-0 ${interactive} ${className}`}
         onClick={onClick}
         onError={() => setErrored(true)}

@@ -34,10 +34,15 @@ export async function getPlayerPool(week, season, position = null) {
     }
   }
 
-  // Cap high enough to include all 32 DEFs (priced $2,500-$5,000,
-  // sorted last by salary DESC) alongside the ~500-player offensive pool.
-  const { data, error } = await query.limit(800)
-  if (error) throw error
+  // No cap. The old .limit(800) was sized for a "~500-player offensive pool"
+  // that has since grown past 1,100, and because rows come back salary DESC
+  // it truncated the CHEAPEST players — exactly the value plays needed to fit
+  // a roster under the cap. A plain unbounded select would also stop at
+  // Supabase's silent 1000-row limit, so page it.
+  // salary is not unique (dozens of players share a price), so `id` is the
+  // tiebreaker — without it the paginated scan can skip and duplicate rows
+  // across page boundaries.
+  const data = await fetchAll(query.order('id', { ascending: true }))
 
   return (data || []).map((d) => ({
     ...d.nfl_players,

@@ -98,7 +98,12 @@ export default function NflSalaryCapView({ league }) {
       .filter((p) => !searchQuery || p.full_name?.toLowerCase().includes(searchQuery.toLowerCase()))
       .filter((p) => posFilter === 'OUT' || p.salary <= remaining)
       .sort((a, b) => (b.salary || 0) - (a.salary || 0))
-      .slice(0, 100)
+    // No display cap. This used to .slice(0, 100), which only ever bit on the
+    // All tab — every position tab filters below 100 on its own. With ~1,100
+    // players priced, All showed the top 100 by salary and silently hid
+    // everything under ~$5,700, so the value plays you need to fit under the
+    // cap were unreachable. Headshots are loading="lazy", so offscreen rows
+    // cost no requests.
   }, [players, usedPlayerIds, posFilter, searchQuery, remaining])
 
   function addPlayer(player) {
