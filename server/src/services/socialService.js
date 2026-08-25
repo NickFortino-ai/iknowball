@@ -89,6 +89,33 @@ async function reactionTargetLabel(targetType, targetId) {
   }
 }
 
+// Maps a feed target onto the id keys the client's notification router reads
+// to open a detail modal. Without an entry here a notification falls through
+// to a generic /hub deep-link, which drops the user on the Hub instead of the
+// thing they tapped.
+//
+// hot_take_reminder resolves to its PARENT hot take — a reminder card is a
+// resurfaced post, and the client already opens HotTakeDetailModal off
+// metadata.hotTakeId. Filling it in here means already-shipped builds start
+// deep-linking correctly with no client change.
+async function targetNotificationIds(targetType, targetId) {
+  switch (targetType) {
+    case 'pick': return { pickId: targetId }
+    case 'parlay': return { parlayId: targetId }
+    case 'prop': return { propPickId: targetId }
+    case 'hot_take': return { hotTakeId: targetId }
+    case 'hot_take_reminder': {
+      const { data } = await supabase
+        .from('hot_take_reminders')
+        .select('hot_take_id')
+        .eq('id', targetId)
+        .maybeSingle()
+      return data?.hot_take_id ? { hotTakeId: data.hot_take_id } : {}
+    }
+    default: return {}
+  }
+}
+
 async function getTargetOwner(targetType, targetId) {
   const TABLE_MAP = {
     pick: 'picks',
@@ -253,11 +280,12 @@ export async function addComment(userId, targetType, targetId, content, parentId
         else if (ht?.post_type === 'poll') label = 'poll'
       }
       const username = data.users?.username || 'Someone'
-      const metadata = { actorId: userId, targetType, targetId }
-      if (targetType === 'pick') metadata.pickId = targetId
-      else if (targetType === 'parlay') metadata.parlayId = targetId
-      else if (targetType === 'prop') metadata.propPickId = targetId
-      else if (targetType === 'hot_take') metadata.hotTakeId = targetId
+      const metadata = {
+        actorId: userId,
+        targetType,
+        targetId,
+        ...(await targetNotificationIds(targetType, targetId)),
+      }
       const message = parentId
         ? `${username} replied to your comment`
         : `${username} commented on your ${label}`
@@ -382,12 +410,17 @@ export async function toggleFeedReaction(userId, targetType, targetId, reactionT
     return { toggled: 'off' }
   }
 
-  await supabase.from('feed_reactions').insert({
+  // Check the error. This used to be fire-and-forget, so when the
+  // target_type CHECK constraint rejected the row the reaction silently
+  // never persisted — and the owner still got "X reacted to your post"
+  // for a reaction that doesn't exist. Fail loudly instead.
+  const { error: reactionErr } = await supabase.from('feed_reactions').insert({
     target_type: targetType,
     target_id: targetId,
     user_id: userId,
     reaction_type: reactionType,
   })
+  if (reactionErr) throw reactionErr
 
   if (ownerId && userId !== ownerId) {
     try {
@@ -403,6 +436,7 @@ export async function toggleFeedReaction(userId, targetType, targetId, reactionT
         targetType,
         targetId,
         reactionType,
+        ...(await targetNotificationIds(targetType, targetId)),
       })
     } catch (_) { /* notification is best-effort */ }
   }
