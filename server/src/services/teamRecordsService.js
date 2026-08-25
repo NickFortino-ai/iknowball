@@ -78,12 +78,17 @@ async function fetchOne(sportKey) {
           // Full row for the standings table sidebar. Group name comes
           // from the walking node's parent when it exists (e.g. 'AL East',
           // 'NFC South') — falls back to null for a flat 'All' list.
-          // ESPN's first logo for NCAA teams is often the -dark variant
-          // (Iowa, Alabama, etc. rendering as invisible dark blobs on
-          // our dark UI). Rewrite -dark → standard so the sidebar always
-          // gets the multicolor version.
+          // Normalize to ESPN's "-dark" variant, which means "artwork FOR
+          // dark backgrounds" — i.e. the LIGHT version, which is what our
+          // near-black UI needs. This previously rewrote the other way on
+          // the belief that -dark was the dark-on-transparent one; measuring
+          // the images shows the reverse. Iowa and Wake Forest average
+          // luminance 0 on the standard variant — invisible — versus 205 and
+          // 185 on -dark. Across an 18-team NCAA sample -dark was brighter
+          // for 14, identical for 4, worse for none.
+          // The client falls back to /500/ if a team has no -dark artwork.
           const rawLogo = team.logos?.[0]?.href || null
-          const logo = rawLogo ? rawLogo.replace('/500-dark/', '/500/') : null
+          const logo = rawLogo ? rawLogo.replace('/500/', '/500-dark/') : null
           standingsRows.push({
             team_id: team.id || null,
             team_name: team.displayName,

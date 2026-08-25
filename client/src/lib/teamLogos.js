@@ -1149,12 +1149,17 @@ export function getTeamLogoUrl(teamName, sportKey) {
   }
   const config = SPORT_MAP[sportKey]
   if (!config) return null
-  // NCAA -dark variants are inconsistently curated by ESPN — many
-  // teams (Iowa, Alabama, etc.) end up as dark-on-transparent blobs
-  // that vanish on our dark UI. Use the standard (non-dark) variant
-  // as the primary URL for NCAA sports.
-  const useDark = config.sport !== 'ncaa'
-  const variant = useDark ? '500-dark' : '500'
+  // ESPN's "-dark" means "variant FOR dark backgrounds" — it's the LIGHT
+  // artwork, which is what we want on our near-black UI. NCAA used to be
+  // excluded here on the belief that -dark was the dark-on-transparent one;
+  // measuring the actual images shows the opposite. Across an 18-team NCAA
+  // sample, -dark was brighter for 14, identical for 4, and worse for none.
+  // On the standard variant Iowa and Wake Forest average luminance 0 — they
+  // render as literally invisible blobs. Ohio State sits at 52 with 45% of
+  // its pixels near-black, which is what surfaced this.
+  // getTeamLogoFallbackUrl still points at /500/ for the rare team with no
+  // -dark artwork.
+  const variant = '500-dark'
   if (config.ids) {
     const id = normalizedLookup(config.ids, teamName)
     if (!id) return null

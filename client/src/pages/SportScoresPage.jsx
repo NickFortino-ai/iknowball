@@ -316,8 +316,23 @@ function StandingsTable({ rows, showRank = true }) {
           <div key={row.team_id || row.team_name} className={`grid ${gridCols} gap-2 px-3 py-2 items-center`}>
             {showRank && <span className="text-center text-xs text-text-muted tabular-nums">{i + 1}</span>}
             <div className="flex items-center gap-2 min-w-0">
+              {/* Logos are served as ESPN's -dark (light) variant. The rare
+                  team with no -dark artwork falls back to the standard one
+                  rather than vanishing, which is all this used to do. */}
               {row.logo ? (
-                <img src={row.logo} alt="" width="18" height="18" className="w-4 h-4 object-contain shrink-0" loading="lazy" onError={(e) => e.currentTarget.style.visibility = 'hidden'} />
+                <img
+                  src={row.logo}
+                  alt=""
+                  width="18"
+                  height="18"
+                  className="w-4 h-4 object-contain shrink-0"
+                  loading="lazy"
+                  onError={(e) => {
+                    const std = (row.logo || '').replace('/500-dark/', '/500/')
+                    if (std && e.currentTarget.src !== std) e.currentTarget.src = std
+                    else e.currentTarget.style.visibility = 'hidden'
+                  }}
+                />
               ) : <span className="w-4 h-4 shrink-0" />}
               {row.rank && <span className="text-xs font-bold text-accent tabular-nums shrink-0">#{row.rank}</span>}
               <span className="text-sm text-text-primary truncate">{row.short_name}</span>
