@@ -46,6 +46,7 @@ import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
 import LeagueStartsBanner from '../components/leagues/LeagueStartsBanner'
+import { buildSingleStatNarrative, buildPreStartBlurb } from '../lib/leagueNarrative'
 import { toast } from '../components/ui/Toast'
 import { api } from '../lib/api'
 import { getBackdropUrl, getBackdropFilterKey } from '../lib/backdropUrl'
@@ -763,30 +764,11 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
       ]
     }
 
-    if (league.format === 'sacks' || league.format === 'ints' || league.format === 'tackles' || league.format === 'receptions') {
-      const raw = fantasySettings?.pick_reuse
-      const maxUses = raw === 'unlimited' ? Infinity
-        : raw === 'season' ? 1
-        : (parseInt(raw, 10) || 1)
-      const isOffense = league.format === 'receptions'
-      const poolNoun = isOffense ? 'pass catcher' : 'defender'
-      const reuseRule = maxUses === Infinity
-        ? `No reuse limit — pick the same ${poolNoun} as many weeks as you want.`
-        : maxUses === 1
-          ? `Each ${poolNoun} can only be used once all season.`
-          : `Each ${poolNoun} can be used up to ${maxUses} times this season.`
-      const stat = league.format === 'sacks' ? 'sack'
-        : league.format === 'ints' ? 'interception'
-        : league.format === 'tackles' ? 'tackle'
-        : 'reception'
-      return [
-        `Pick 3 ${poolNoun}s each week that you think will record ${stat}s.`,
-        reuseRule,
-        'You can change your picks until each player\'s game starts.',
-        `Every ${stat} your picks record adds to your league total.`,
-        'Your finishing position impacts your global IKB score — see the table below.',
-      ]
-    }
+    // Shared with the pre-start banner on the Picks tab — see lib/leagueNarrative.
+    // Both surfaces must describe the same rules, and the reuse sentence has to
+    // track fantasy_settings.pick_reuse, which commissioners set per league.
+    const singleStat = buildSingleStatNarrative(league.format, fantasySettings)
+    if (singleStat) return singleStat
 
     if (league.format === 'td_pass') {
       return `Pick one quarterback each week — you can only pick a QB once all season. Standings rank by total passing touchdowns accumulated across all your picks. Most TDs by end of the regular season wins. Your finishing position impacts your global IKB score — see the table below.`
@@ -1754,6 +1736,43 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
       )}
       </div>}
     </div>
+  )
+}
+
+// Pre-start explainer for the NFL single-stat contests, TD Pass and survivor.
+// Someone who just joined lands on Picks with nothing to do yet, so use that
+// space to say what the league IS and how it scores — settings-aware, since
+// the reuse rule differs league to league.
+//
+// Disappears ON the start day, not at the exact starts_at timestamp: compared
+// in PT sports-days so a league whose starts_at is stored as midnight UTC
+// doesn't keep showing "Starts in 1 day" through the morning of game day.
+function PreStartExplainer({ league, fantasySettings }) {
+  if (league.status !== 'open' || !league.starts_at) return null
+  const startDay = leagueStartSportsDay(league.starts_at)
+  const today = todaySportsDay()
+  if (!startDay || !today || startDay <= today) return null
+
+  const lines = buildPreStartBlurb(league.format, fantasySettings)
+  if (!lines?.length) return null
+
+  return (
+    <LeagueStartsBanner
+      countdownTo={league.starts_at}
+      headline={new Date(league.starts_at).toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles',
+      })}
+      subtitle={
+        <span className="block space-y-1.5 text-left">
+          {lines.map((l, i) => (
+            <span key={i} className="flex gap-2">
+              <span className="text-accent shrink-0">•</span>
+              <span>{l}</span>
+            </span>
+          ))}
+        </span>
+      }
+    />
   )
 }
 
@@ -2742,16 +2761,9 @@ export default function LeagueDetailPage() {
         // started — the latter matters because the ET-anchor fix can pull
         // Day 1 earlier than leagues.starts_at). Suppress the "starts later"
         // banner in that case.
-        const notStartedYet = league.status === 'open' && league.starts_at && new Date(league.starts_at) > new Date()
         return (
           <div className="relative z-10">
-            {notStartedYet && (
-              <LeagueStartsBanner
-                countdownTo={league.starts_at}
-                headline={new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles' })}
-                subtitle="Picks lock when each game starts — you can pick early."
-              />
-            )}
+            <PreStartExplainer league={league} fantasySettings={fantasySettings} />
             <SurvivorView league={league} />
           </div>
         )
@@ -2934,30 +2946,35 @@ export default function LeagueDetailPage() {
 
       {(tabs[activeTab] === 'Picks' || tabs[activeTab] === 'Standings') && league.format === 'sacks' && (
         <div className="relative z-10">
+          {tabs[activeTab] === 'Picks' && <PreStartExplainer league={league} fantasySettings={fantasySettings} />}
           <SacksView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : 'picks'} />
         </div>
       )}
 
       {(tabs[activeTab] === 'Picks' || tabs[activeTab] === 'Standings') && league.format === 'ints' && (
         <div className="relative z-10">
+          {tabs[activeTab] === 'Picks' && <PreStartExplainer league={league} fantasySettings={fantasySettings} />}
           <IntsView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : 'picks'} />
         </div>
       )}
 
       {(tabs[activeTab] === 'Picks' || tabs[activeTab] === 'Standings') && league.format === 'tackles' && (
         <div className="relative z-10">
+          {tabs[activeTab] === 'Picks' && <PreStartExplainer league={league} fantasySettings={fantasySettings} />}
           <TacklesView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : 'picks'} />
         </div>
       )}
 
       {(tabs[activeTab] === 'Picks' || tabs[activeTab] === 'Standings') && league.format === 'receptions' && (
         <div className="relative z-10">
+          {tabs[activeTab] === 'Picks' && <PreStartExplainer league={league} fantasySettings={fantasySettings} />}
           <ReceptionsView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : 'picks'} />
         </div>
       )}
 
       {(tabs[activeTab] === 'Picks' || tabs[activeTab] === 'Standings') && league.format === 'td_pass' && (
         <div className="relative z-10">
+          {tabs[activeTab] === 'Picks' && <PreStartExplainer league={league} fantasySettings={fantasySettings} />}
           <TdPassView
             league={league}
             tab={tabs[activeTab] === 'Standings' ? 'standings' : 'picks'}
