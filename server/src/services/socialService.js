@@ -297,15 +297,38 @@ export async function addComment(userId, targetType, targetId, content, parentId
 }
 
 export async function getComments(targetType, targetId, requestingUserId = null) {
+  // A hot take's thread also includes comments left on any reminder card
+  // that resurfaced it. Those are stored under target_type
+  // 'hot_take_reminder' keyed by the REMINDER's id, so matching the hot
+  // take's id alone hid them — a user could get "X commented on your post",
+  // open the post, and find no such comment.
+  const targetTypes = [targetType]
+  const targetIds = [targetId]
+  if (targetType === 'hot_take') {
+    const reminders = await fetchAll(
+      supabase
+        .from('hot_take_reminders')
+        .select('id')
+        .eq('hot_take_id', targetId)
+        .order('id', { ascending: true })
+    )
+    if (reminders.length) {
+      targetTypes.push('hot_take_reminder')
+      for (const r of reminders) targetIds.push(r.id)
+    }
+  }
+
   // fetchAll: a viral post's comment thread can exceed 1000; without
   // this the tail silently disappears and the like-count fetch below
   // would also miss likes on comments past the cap.
+  // The type/id pairs can't cross-match — every id here is a distinct UUID
+  // from a different table, so no comment satisfies the wrong combination.
   const comments = await fetchAll(
     supabase
       .from('comments')
       .select('id, content, created_at, user_id, target_type, target_id, parent_id, users(username, avatar_url, avatar_emoji)')
-      .eq('target_type', targetType)
-      .eq('target_id', targetId)
+      .in('target_type', targetTypes)
+      .in('target_id', targetIds)
       .order('created_at', { ascending: true })
   )
   if (!comments.length) return comments
