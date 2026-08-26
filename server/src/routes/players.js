@@ -7,6 +7,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../config/supabase.js'
+import { logger } from '../utils/logger.js'
 import {
   getNBAPlayerPool,
   getNBADFSRoster,
@@ -1106,8 +1107,20 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
       } catch {}
     }
 
+    // An empty game log and a thrown error look identical to the user —
+    // the modal renders "No games available" for both, since it only
+    // checks !data?.games?.length. Log the empty case with enough context
+    // to tell which id we actually asked ESPN about, because the leading
+    // theory is that some callers pass an internal UUID instead of an
+    // espn_player_id and ESPN 404s.
+    if (!finalGames.length) {
+      logger.warn({ rawId, espnId, sport, espnPath, seasonYear }, 'Player gamelog returned zero games')
+    }
     res.json({ games: finalGames, averages, sport, isPitcher, blurbs, blurb: blurbs[0] || null })
   } catch (err) {
+    // Was a bare 500 with no logging, so a throw here was invisible on the
+    // server AND indistinguishable from "no games" on the client.
+    logger.error({ err: err.message, stack: err.stack, rawId, espnId, sport }, 'Player gamelog threw')
     res.status(500).json({ error: 'Failed to fetch game log' })
   }
 })
