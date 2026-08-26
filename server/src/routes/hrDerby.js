@@ -18,7 +18,13 @@ const HR_CACHE_TTL = 30 * 60 * 1000
 async function getSeasonHRLeaders() {
   if (hrLeadersCache && Date.now() - hrLeadersCacheTime < HR_CACHE_TTL) return hrLeadersCache
   try {
-    const res = await fetch('https://sports.core.api.espn.com/v2/sports/baseball/leagues/mlb/seasons/2026/types/2/leaders?limit=200')
+    // limit=1000, not 200. ESPN's leaders list is ranked, so a low cap
+    // silently truncates the BOTTOM — at 200 the list stopped at 9 HRs and
+    // every hitter below that reported season_hrs: 0. That was 447 players,
+    // i.e. most of the pool (Joshua Baez shows 4 HRs on ESPN, 0 here).
+    // ESPN returns the full 653-player set at 1000 and caps itself, so this
+    // is the whole league rather than a bigger arbitrary slice.
+    const res = await fetch('https://sports.core.api.espn.com/v2/sports/baseball/leagues/mlb/seasons/2026/types/2/leaders?limit=1000')
     if (!res.ok) throw new Error(`ESPN returned ${res.status}`)
     const data = await res.json()
     const hrMap = {}
