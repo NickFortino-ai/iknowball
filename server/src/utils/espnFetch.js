@@ -47,40 +47,43 @@ export function installEspnFetch() {
     if (!isEspn(url)) return nativeFetch(input, init)
 
     const opts = { ...init, headers: { ...ESPN_HEADERS, ...(init.headers || {}) } }
-    let res = await nativeFetch(input, opts)
 
-    // 403/429 can be transient throttling, so one backoff retry first.
-    if (res.status === 403 || res.status === 429) {
-      logger.warn({ url, status: res.status }, 'ESPN request blocked — retrying once')
-      await sleep(1500)
-      res = await nativeFetch(input, opts)
-    }
+    // site.api.espn.com is the host currently being 403'd for this server;
+    // site.web.api.espn.com serves identical payloads and is not. Go to the
+    // working host FIRST rather than always paying 403 + retry + mirror —
+    // three requests per call is exactly the wrong thing to do while ESPN is
+    // rate-limiting us. Falls back to the original host below if the mirror
+    // ever fails, so this self-corrects if ESPN flips which one is blocked.
+    const primary = url.includes('site.api.espn.com')
+      ? url.replace('site.api.espn.com', 'site.web.api.espn.com')
+      : input
 
-    // Still blocked: fall over to ESPN's mirror host. The browser User-Agent
-    // alone did NOT lift the 403s, which means the block is on this server's
-    // IP rather than on how the request identifies itself — but it is applied
-    // per-host. sports.core.api.espn.com kept working throughout (the HR
-    // leaders fetch succeeded while every site.api.espn.com call failed), so
-    // site.web.api.espn.com is worth trying: it serves the identical paths and
-    // returns identical payloads (verified on scoreboard, summary and gamelog).
-    //
-    // Costs one extra request only on an already-failed call, and degrades to
-    // exactly today's behaviour if the mirror is blocked too.
-    if ((res.status === 403 || res.status === 429) && url.includes('site.api.espn.com')) {
-      const mirrored = url.replace('site.api.espn.com', 'site.web.api.espn.com')
-      logger.warn({ url, status: res.status }, 'ESPN still blocked — trying mirror host')
-      const mirrorRes = await nativeFetch(mirrored, opts)
-      if (mirrorRes.ok) {
-        logger.info({ mirrored }, 'ESPN mirror host succeeded')
-        return mirrorRes
+    const blocked = (r) => r.status === 403 || r.status === 429
+
+    let res = await nativeFetch(primary, opts)
+    if (!blocked(res)) return res
+
+    // One backoff retry — 403/429 can be momentary throttling.
+    logger.warn({ url, status: res.status }, 'ESPN request blocked — retrying once')
+    await sleep(1500)
+    res = await nativeFetch(primary, opts)
+    if (!blocked(res)) return res
+
+    // Still blocked. When we rewrote the host, try the ORIGINAL as a last
+    // resort so this self-corrects if ESPN ever flips which of the two it
+    // blocks, instead of pinning us to a dead host.
+    if (primary !== input) {
+      logger.warn({ url, status: res.status }, 'ESPN mirror blocked — trying original host')
+      const fallbackRes = await nativeFetch(input, opts)
+      if (fallbackRes.ok) {
+        logger.info({ url }, 'ESPN original host succeeded')
+        return fallbackRes
       }
-      logger.error({ url, mirrored, status: mirrorRes.status }, 'ESPN mirror host also blocked')
-      return mirrorRes
+      logger.error({ url, status: fallbackRes.status }, 'ESPN blocked on both hosts')
+      return fallbackRes
     }
 
-    if (!res.ok && (res.status === 403 || res.status === 429)) {
-      logger.error({ url, status: res.status }, 'ESPN request still failing after retry')
-    }
+    logger.error({ url, status: res.status }, 'ESPN request still failing after retry')
 
     return res
   }
