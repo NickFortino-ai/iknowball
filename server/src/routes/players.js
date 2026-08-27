@@ -838,7 +838,12 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     const useSeasonParam = sport !== 'basketball_nba'
     const response = await fetch(`https://site.api.espn.com/apis/common/v3/sports/${espnPath}/athletes/${espnId}/gamelog${useSeasonParam ? `?season=${seasonYear}` : ''}`)
     if (!response.ok) {
-      // No ESPN gamelog. Instead of bailing straight to empty, still
+      // This is the branch that silently produces "No games available" for
+      // every non-NFL sport, and it was the one path with no logging at all
+      // — so an ESPN outage, a rate-limit, or a bad id all looked identical
+      // to a player simply having no games. Log the status.
+      logger.warn({ rawId, espnId, sport, status: response.status, url: response.url }, 'ESPN gamelog fetch not OK')
+      // Instead of bailing straight to empty, still
       // synthesize NFL upcoming-week rows from nfl_schedule so the
       // modal at least shows the player's remaining schedule (matches
       // the FF modal's behavior for players ESPN hasn't logged yet).
