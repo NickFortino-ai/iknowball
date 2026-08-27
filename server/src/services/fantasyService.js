@@ -2948,7 +2948,7 @@ export async function resizeFantasyLeague(leagueId, options = {}) {
       await createNotification(
         m.user_id,
         'fantasy_league_resized',
-        `${leagueName} was resized to ${newSize} teams because not enough people joined.`,
+        `${leagueName} was resized to ${newSize} teams.`,
         { leagueId, newSize },
       )
     } catch (err) { logger.error({ err, uid: m.user_id }, 'resize notification failed') }
