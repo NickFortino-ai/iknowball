@@ -52,7 +52,7 @@ export function buildSingleStatNarrative(format, fantasySettings) {
 
 // Condensed variant for the pre-start banner, where the full bullet list is
 // too heavy and the "see the table below" pointer has nothing to point at.
-export function buildPreStartBlurb(format, fantasySettings) {
+export function buildPreStartBlurb(format, fantasySettings, leagueSettings) {
   if (SINGLE_STAT_FORMATS.includes(format)) {
     const poolNoun = format === 'receptions' ? 'pass catcher' : 'defender'
     const stat = STAT_NOUN[format]
@@ -72,12 +72,28 @@ export function buildPreStartBlurb(format, fantasySettings) {
     ]
   }
   if (format === 'survivor') {
-    return [
-      'Pick one player each week you think will score a touchdown.',
-      'If he scores you advance. If he does not, you lose a life.',
-      'You can only use a player once, so spend your best options wisely.',
-      'Last one standing wins.',
-    ]
+    // Two different games share this format. Touchdown survivor picks a
+    // PLAYER to score; classic survivor picks a TEAM to win. Describing one
+    // as the other is worse than saying nothing, so branch on the setting
+    // the view itself uses (SurvivorView reads survivor_mode === 'touchdown').
+    const isTouchdown = leagueSettings?.survivor_mode === 'touchdown'
+    const lives = Number(leagueSettings?.lives) || 1
+    const livesLine = lives > 1
+      ? `You start with ${lives} lives — a miss costs one, and you're out when they're gone.`
+      : "One miss and you're out."
+    return isTouchdown
+      ? [
+          'Pick one player each week you think will score a touchdown.',
+          livesLine,
+          'You can only use a player once, so plan ahead.',
+          'Last one standing wins.',
+        ]
+      : [
+          'Pick one team each week you think will win.',
+          livesLine,
+          'You can only use a team once all season, so plan ahead.',
+          'Last one standing wins.',
+        ]
   }
   return null
 }

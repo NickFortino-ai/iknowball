@@ -1753,7 +1753,7 @@ function PreStartExplainer({ league, fantasySettings }) {
   const today = todaySportsDay()
   if (!startDay || !today || startDay <= today) return null
 
-  const lines = buildPreStartBlurb(league.format, fantasySettings)
+  const lines = buildPreStartBlurb(league.format, fantasySettings, league.settings)
   if (!lines?.length) return null
 
   return (

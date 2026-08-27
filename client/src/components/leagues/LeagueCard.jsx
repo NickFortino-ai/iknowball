@@ -141,7 +141,14 @@ export default function LeagueCard({ league, noLink }) {
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-text-muted min-h-[3.25rem] sm:min-h-0 content-start">
           <span className="font-semibold text-accent">
-            {FORMAT_LABELS[league.format]}
+            {/* Touchdown survivor is a different game from team survivor —
+                pick a PLAYER to score vs a TEAM to win — so it gets its own
+                label rather than reading as a standard Survivor pool.
+                HomePage, Open Leagues and Join already distinguish it; this
+                shared card was the one surface still flattening both. */}
+            {league.format === 'survivor' && league.settings?.survivor_mode === 'touchdown'
+              ? 'TD Survivor'
+              : FORMAT_LABELS[league.format]}
           </span>
           {!['nba_dfs', 'wnba_dfs', 'mlb_dfs'].includes(league.format) && (
             <span>{SPORT_LABELS[league.sport]}</span>
