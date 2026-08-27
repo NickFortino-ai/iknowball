@@ -66,7 +66,7 @@ export function buildPreStartBlurb(format, fantasySettings) {
   if (format === 'td_pass') {
     return [
       'Pick one quarterback each week and bank his passing touchdowns.',
-      "You can only use a QB once all season, so plan ahead — don't burn your best arms early.",
+      'You can only use a QB once all season, so plan ahead.',
       "Picks stay editable until that QB's game kicks off.",
       'Most passing TDs by the end of the regular season wins.',
     ]
