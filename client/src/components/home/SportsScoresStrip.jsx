@@ -248,7 +248,7 @@ function SportColumn({ sport, data, pickOutcomeByGame, onOpenGameCenter }) {
               <FinalSection sport={sport} todayRecent={todayRecent} pickOutcomeByGame={pickOutcomeByGame} onOpenGameCenter={onOpenGameCenter} />
             )}
             {upcoming.length > 0 && (
-              <BucketSection label={live.length > 0 ? 'Coming up' : 'Upcoming'} games={upcoming} sportFullKey={sport.fullKey} onOpenGameCenter={onOpenGameCenter} />
+              <BucketSection label={live.length > 0 ? 'Coming up' : 'Upcoming'} games={upcoming} sportFullKey={sport.fullKey} />
             )}
             <StatLeadersBlock sport={sport.key} mode="compact" />
           </div>
@@ -372,10 +372,10 @@ function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome, onOpenGame
   // MLB, "Q3 · 4:32" for football/basketball. Data comes from ESPN
   // via syncLiveScores (period + clock columns on games).
   const liveLabel = isLive ? formatLiveLabel(game.period, game.clock, sportFullKey) : null
-  // Upcoming games are tappable too now — Game Center shows a pre-game
-  // preview (odds, matchup predictor, season form) instead of an empty
-  // box score. Previously only live/final opened it.
-  const tappable = !!onOpenGameCenter
+  // Live/final only. The pre-game preview lives on the Picks page's Game
+  // Intel modal instead — opening Game Center from the scoreboard before
+  // kickoff was more surface than it earned.
+  const tappable = (isFinal || isLive) && !!onOpenGameCenter
   return (
     <div
       onClick={tappable ? () => onOpenGameCenter(game.id) : undefined}
