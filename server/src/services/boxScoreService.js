@@ -89,6 +89,15 @@ async function fetchSummary(sportKey, espnEventId) {
 const seasonResultsCache = new Map() // `${path}:${teamId}:${season}` → { rows, expiresAt }
 const SEASON_RESULTS_TTL_MS = 60 * 60 * 1000
 
+// Sports whose full season fits on screen — college football plays ~12
+// games, the NFL 17. Everything else keeps ESPN's trailing five, because
+// 162 MLB chips is not a design.
+const SEASON_RESULTS_SPORTS = new Set([
+  'americanfootball_ncaaf',
+  'americanfootball_nfl',
+  'americanfootball_nfl_preseason',
+])
+
 async function fetchSeasonResults(espnPath, teamId, season) {
   const key = `${espnPath}:${teamId}:${season}`
   const hit = seasonResultsCache.get(key)
@@ -96,12 +105,19 @@ async function fetchSeasonResults(espnPath, teamId, season) {
 
   let rows = []
   try {
-    const res = await fetch(`${ESPN_BASE}/${espnPath}/teams/${teamId}/schedule?season=${season}`)
+    // seasontype=2 = regular season. Without it ESPN folds preseason
+    // exhibitions in — an NFL team showed a 2-0 "This season" record in late
+    // August purely from preseason games. teamRecordsService hit the same
+    // trap and pins the same param for the same reason.
+    const res = await fetch(`${ESPN_BASE}/${espnPath}/teams/${teamId}/schedule?season=${season}&seasontype=2`)
     if (res.ok) {
       const data = await res.json()
       for (const ev of data.events || []) {
         const comp = ev.competitions?.[0]
         if (!comp?.status?.type?.completed) continue
+        // Belt and braces — the param above should already exclude these,
+        // but a stray preseason row would silently distort the record.
+        if (ev.seasonType?.id && String(ev.seasonType.id) !== '2') continue
         const competitors = comp.competitors || []
         const me = competitors.find((c) => String(c.team?.id) === String(teamId))
         const opp = competitors.find((c) => String(c.team?.id) !== String(teamId))
@@ -366,8 +382,13 @@ export async function getBoxScore(gameId) {
   // Done here rather than inside normalize() so that stays synchronous, and
   // so the extra ESPN calls only happen for upcoming NCAAF games that
   // actually have a preview.
-  if (normalized?.preview && sportKey === 'americanfootball_ncaaf') {
-    const season = new Date(game.starts_at).getUTCFullYear()
+  if (normalized?.preview && SEASON_RESULTS_SPORTS.has(sportKey)) {
+    // Football seasons straddle the new year — a January playoff game belongs
+    // to the PREVIOUS season (Super Bowl LX in Feb 2027 is the 2026 season),
+    // and college bowl games run into January too. Taking the calendar year
+    // would ask ESPN for a season that hasn't been played and come back empty.
+    const kickoff = new Date(game.starts_at)
+    const season = kickoff.getUTCMonth() < 2 ? kickoff.getUTCFullYear() - 1 : kickoff.getUTCFullYear()
     const espnPath = SPORT_TO_PATH[sportKey]
     const rows = await Promise.all(
       (normalized.teams || []).map(async (t) => ({
