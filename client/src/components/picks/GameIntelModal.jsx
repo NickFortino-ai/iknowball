@@ -253,6 +253,15 @@ function TeamSection({ teamName, starters, injuries }) {
 export default function GameIntelModal({ gameId, onClose }) {
   const { data, isLoading } = useInjuryDetail(gameId)
 
+  // True when this sport actually has lineup/injury coverage. Sports
+  // outside INJURY_SPORTS (NCAAF, MLS, NCAAB) come back with empty
+  // rosters, and printing "No injuries reported" for those would assert
+  // something we never checked.
+  const hasIntel = !!(
+    data?.home?.starters?.length || data?.home?.injuries?.length ||
+    data?.away?.starters?.length || data?.away?.injuries?.length
+  )
+
   useEffect(() => {
     if (!gameId) return
     lockScroll()
@@ -326,6 +335,11 @@ export default function GameIntelModal({ gameId, onClose }) {
               home={{ id: 'home', abbr: data.home_team, short: data.home_team }}
             />
 
+            {/* Only render the lineup/injury columns when we actually have
+                coverage for this sport. NCAAF isn't in INJURY_SPORTS, so the
+                server returns empty rosters — rendering them anyway would
+                print "No injuries reported", which claims we checked. */}
+            {hasIntel && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <TeamSection
                 teamName={data.away_team}
@@ -338,6 +352,7 @@ export default function GameIntelModal({ gameId, onClose }) {
                 injuries={data.home?.injuries}
               />
             </div>
+            )}
           </>
         )}
       </div>

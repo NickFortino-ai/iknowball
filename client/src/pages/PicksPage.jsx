@@ -36,7 +36,12 @@ const sportTabs = [
 ]
 
 const INTEL_SPORTS = new Set(['basketball_nba', 'basketball_wnba', 'americanfootball_nfl', 'icehockey_nhl'])
-const GAME_INTEL_SPORTS = new Set(['basketball_nba', 'basketball_wnba', 'americanfootball_nfl', 'baseball_mlb', 'icehockey_nhl'])
+// Sports whose cards open the Game Intel modal. Broader than INTEL_SPORTS
+// above (which is injury/lineup coverage) because the modal also carries
+// the pre-game preview — odds, matchup predictor, season form — which
+// works for any sport ESPN has a summary for. NCAAF has no lineup feed
+// but is exactly the sport the preview was built for.
+const GAME_INTEL_SPORTS = new Set(['basketball_nba', 'basketball_wnba', 'americanfootball_nfl', 'americanfootball_ncaaf', 'baseball_mlb', 'icehockey_nhl'])
 
 function getDateOffset(offset) {
   const d = new Date()
