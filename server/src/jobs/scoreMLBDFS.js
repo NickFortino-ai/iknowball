@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { generateMLBSalaries, isTwoWayPlayer, pitcherIdSuffix, refreshMLBInjuries } from '../services/mlbDfsService.js'
 import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay, leagueStartSportsDay } from '../utils/sportsDay.js'
+import { hasGamesOnDate } from '../utils/hasGamesOnDate.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 
@@ -103,6 +104,12 @@ async function timedFetch(url, timeoutMs = 8000) {
 
 export async function fetchCompletedGameStats(date) {
   const dateStr = date.replace(/-/g, '')
+  // Skip the ESPN round trip when our own schedule shows no games for
+  // this sport. These jobs run on a fixed cadence year-round, so in the
+  // offseason every cycle was a wasted request. See hasGamesOnDate.
+  if (!(await hasGamesOnDate('baseball_mlb', date))) {
+    return { playerStats: [], allFinal: true, hasGames: false }
+  }
   let events
   try {
     const res = await timedFetch(`${ESPN_BASE}/baseball/mlb/scoreboard?dates=${dateStr}`)

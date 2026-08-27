@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js'
 import { createNotification } from '../services/notificationService.js'
 import { calculateWNBAFantasyPoints, generateWNBASalaries, refreshWNBAInjuries } from '../services/wnbaDfsService.js'
 import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay, leagueStartSportsDay, leagueEndSportsDay } from '../utils/sportsDay.js'
+import { hasGamesOnDate } from '../utils/hasGamesOnDate.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 
@@ -41,6 +42,12 @@ async function wnbaSalariesAreStale(date, season) {
 
 export async function fetchCompletedWNBAGameStats(date) {
   const dateStr = date.replace(/-/g, '')
+  // Skip the ESPN round trip when our own schedule shows no games for
+  // this sport. These jobs run on a fixed cadence year-round, so in the
+  // offseason every cycle was a wasted request. See hasGamesOnDate.
+  if (!(await hasGamesOnDate('basketball_wnba', date))) {
+    return { playerStats: [], allFinal: true, hasGames: false }
+  }
   let events
   try {
     const res = await fetch(`${ESPN_BASE}/basketball/wnba/scoreboard?dates=${dateStr}`)
