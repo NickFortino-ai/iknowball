@@ -80,7 +80,9 @@ router.get('/:game_id', requireAuth, async (req, res) => {
 
   const { data: game, error: gameErr } = await supabase
     .from('games')
-    .select('id, home_team, away_team, sports!inner(key)')
+    // status drives the pre-game preview below — without it the preview
+    // guard would read undefined and never fire.
+    .select('id, home_team, away_team, status, sports!inner(key)')
     .eq('id', game_id)
     .single()
 
@@ -97,8 +99,27 @@ router.get('/:game_id', requireAuth, async (req, res) => {
   // starters and injuries in the modal.
   const canonicalSportKey = rollupSportKey(game.sports?.key)
 
+  // Pre-game preview (line, matchup predictor, season form, venue). Pulled
+  // from the box-score service, which caches its ESPN summary, so opening
+  // this modal and Game Center on the same game costs one fetch between them.
+  //
+  // Deliberately resolved BEFORE the supportedSports gate below: that set is
+  // about injury/lineup coverage (NBA, WNBA, NFL, NHL) and excludes college,
+  // so returning early would have left NCAAF — the sport this was built for —
+  // with an empty modal.
+  let preview = null
+  if (game.status === 'upcoming') {
+    try {
+      const { getBoxScore } = await import('../services/boxScoreService.js')
+      const box = await getBoxScore(game_id)
+      preview = box?.preview || null
+    } catch (err) {
+      logger.warn({ err: err.message, game_id }, 'Game intel preview fetch failed')
+    }
+  }
+
   if (!supportedSports.has(canonicalSportKey)) {
-    return res.json({ home_team: game.home_team, away_team: game.away_team, home: empty, away: empty })
+    return res.json({ home_team: game.home_team, away_team: game.away_team, home: empty, away: empty, preview })
   }
 
   const { data: intel } = await supabase
@@ -168,6 +189,7 @@ router.get('/:game_id', requireAuth, async (req, res) => {
     awayRecord,
     homeLast10,
     awayLast10,
+    preview,
   })
 })
 

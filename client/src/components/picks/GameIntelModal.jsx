@@ -3,6 +3,7 @@ import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useInjuryDetail } from '../../hooks/useInjuries'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import GamePreview from './GamePreview'
 
 function TeamLogo({ team, sportKey }) {
   const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
@@ -315,6 +316,15 @@ export default function GameIntelModal({ gameId, onClose }) {
                 Preseason: shown lineups reflect the season depth chart. Actual preseason usage varies by team — starters may sit or play limited snaps.
               </div>
             )}
+
+            {/* Pre-game preview — same component Game Center uses, so the two
+                modals describe an upcoming game identically. Renders nothing
+                when the game has started or ESPN has no preview data. */}
+            <GamePreview
+              preview={data.preview}
+              away={{ id: 'away', abbr: data.away_team, short: data.away_team }}
+              home={{ id: 'home', abbr: data.home_team, short: data.home_team }}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <TeamSection

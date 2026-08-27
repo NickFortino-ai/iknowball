@@ -252,7 +252,15 @@ function normalize(sportKey, summary) {
       name: c.team?.displayName || c.team?.name || null,
       short: c.team?.shortDisplayName || c.team?.name || null,
       abbr: c.team?.abbreviation || null,
-      logo: c.team?.logo || c.team?.logos?.[0]?.href || null,
+      // ESPN ships several logo variants; logos[0] is the "default" one,
+      // drawn for light backgrounds. On our dark UI that's how Ohio State
+      // rendered as a near-black blob. Prefer the rel:'dark' entry — same
+      // lesson as teamLogos.js, but this modal takes its logos straight from
+      // ESPN's summary rather than that helper, so it needed fixing here too.
+      logo: c.team?.logos?.find((l) => (l.rel || []).includes('dark'))?.href
+        || c.team?.logo
+        || c.team?.logos?.[0]?.href
+        || null,
       record: c.records?.find((r) => r.name === 'overall' || r.type === 'total')?.summary
         || c.records?.[0]?.summary
         || null,
