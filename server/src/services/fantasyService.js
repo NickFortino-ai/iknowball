@@ -3558,11 +3558,18 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
       weeklyProjCol = scoringFormat === 'ppr' ? 'pts_ppr'
         : scoringFormat === 'standard' ? 'pts_std'
         : 'pts_half_ppr'
-      const { data: projRows } = await supabase
-        .from('nfl_player_projections')
-        .select(`player_id, ${weeklyProjCol}, idp_sack, idp_int, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec`)
-        .eq('season', curSeason)
-        .eq('week', curWeek)
+      // fetchAll: one week of projections is ~1,050 rows, already past
+      // Supabase's silent 1000-row cap — the tail of players was losing
+      // its projection in the browser. Ordered by player_id so the
+      // paginated scan is stable.
+      const projRows = await fetchAll(
+        supabase
+          .from('nfl_player_projections')
+          .select(`player_id, ${weeklyProjCol}, idp_sack, idp_int, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec`)
+          .eq('season', curSeason)
+          .eq('week', curWeek)
+          .order('player_id', { ascending: true })
+      )
       for (const p of projRows || []) weeklyProjRowMap[p.player_id] = p
     }
   } catch (err) {
@@ -5268,10 +5275,17 @@ export async function getWaiverLockedPlayerIds(leagueId) {
 
   const lockedTeams = await getLockedTeamsForLeague(leagueId)
   if (lockedTeams.size > 0) {
-    const { data: teamPlayers } = await supabase
-      .from('nfl_players')
-      .select('id, team')
-      .in('team', Array.from(lockedTeams))
+    // fetchAll: every player on a locked team, which is ~2,600 rows with a
+    // full slate — well past the 1000 cap. Truncating here silently left
+    // ~1,600 players UNLOCKED, so a manager could add someone whose game
+    // had already kicked off. Ordered by id for stable pagination.
+    const teamPlayers = await fetchAll(
+      supabase
+        .from('nfl_players')
+        .select('id, team')
+        .in('team', Array.from(lockedTeams))
+        .order('id', { ascending: true })
+    )
     for (const p of teamPlayers || []) locked.add(p.id)
   }
   return locked
