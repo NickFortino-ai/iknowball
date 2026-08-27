@@ -106,6 +106,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
         <div className="flex-1 min-w-0">
           <PickButton
             team={game.away_team}
+            rank={game.away_rank}
             odds={game.away_odds}
             score={isFinal ? game.away_score : hasLiveScores ? game.live_away_score : null}
             isLive={hasLiveScores && !isFinal}
@@ -128,6 +129,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
         <div className="flex-1 min-w-0">
           <PickButton
             team={game.home_team}
+            rank={game.home_rank}
             odds={game.home_odds}
             score={isFinal ? game.home_score : hasLiveScores ? game.live_home_score : null}
             isLive={hasLiveScores && !isFinal}

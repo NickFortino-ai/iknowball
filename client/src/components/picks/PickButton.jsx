@@ -25,7 +25,7 @@ function PickLogo({ team, sportKey }) {
   }} />
 }
 
-export default function PickButton({ team, odds, score, isLive, state = 'default', onClick, disabled, sportKey }) {
+export default function PickButton({ team, odds, score, isLive, state = 'default', onClick, disabled, sportKey, rank }) {
   const style = stateStyles[state] || stateStyles.default
   const hasResult = score != null
   const hasLogo = !!getTeamLogoUrl(team, sportKey)
@@ -46,6 +46,9 @@ export default function PickButton({ team, odds, score, isLive, state = 'default
         : hasResult ? 'text-white'
         : 'text-text-primary'
       }`}>
+        {/* AP Top 25 badge — NCAAF only, and only for ranked teams. Accent
+            colored so it reads as a rank rather than part of the name. */}
+        {rank ? <span className="text-accent mr-1">#{rank}</span> : null}
         {team}
       </div>
       <PickLogo team={team} sportKey={sportKey} />

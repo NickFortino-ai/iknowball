@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
 import { submitPick, deletePick, getUserPicks, getUserPickHistory, getPickById, getGamePicksData, updatePickMultiplier } from '../services/pickService.js'
 import { supabase } from '../config/supabase.js'
+import { attachNcaafRanks } from '../utils/attachNcaafRanks.js'
 
 const router = Router()
 
@@ -35,6 +36,9 @@ router.get('/me', requireAuth, async (req, res) => {
 
 router.get('/me/history', requireAuth, async (req, res) => {
   const picks = await getUserPickHistory(req.user.id)
+  // Ranks live on the nested game rows — attachNcaafRanks mutates in place,
+  // so passing the games through badges them inside each pick.
+  await attachNcaafRanks(picks.map((p) => p.games).filter(Boolean))
   res.json(picks)
 })
 

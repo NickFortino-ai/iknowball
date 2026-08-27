@@ -13,6 +13,7 @@ import { expandSportFamily } from '../utils/nflFamily.js'
 import { sportsDayBoundsUtc, toSportsDay } from '../utils/sportsDay.js'
 import { getTeamRecords, lookupRecord, lookupShortName } from '../services/teamRecordsService.js'
 import { warmMlbLinescores, getMlbLinescoreForGame } from '../services/mlbLinescoresService.js'
+import { attachNcaafRanks } from '../utils/attachNcaafRanks.js'
 
 const router = Router()
 
@@ -208,30 +209,8 @@ router.get('/strip', async (req, res) => {
   const anyNcaaf = out.ncaaf.live.length + out.ncaaf.upcoming.length + out.ncaaf.recent.length > 0
   if (anyNcaaf) {
     try {
-      const { getStandingsTable } = await import('../services/teamRecordsService.js')
-      const { getNcaafApRankings } = await import('../services/ncaafRankingsService.js')
-      const [standings, rankById] = await Promise.all([
-        getStandingsTable('americanfootball_ncaaf'),
-        getNcaafApRankings(),
-      ])
-      const nameToId = new Map()
-      for (const row of standings || []) {
-        if (!row.team_id) continue
-        const id = String(row.team_id)
-        if (row.team_name) nameToId.set(row.team_name.toLowerCase(), id)
-        if (row.short_name) nameToId.set(row.short_name.toLowerCase(), id)
-      }
-      const attach = (g) => {
-        const homeId = nameToId.get((g.home_team || '').toLowerCase())
-        const awayId = nameToId.get((g.away_team || '').toLowerCase())
-        const hr = homeId ? rankById.get(homeId) : null
-        const ar = awayId ? rankById.get(awayId) : null
-        if (hr) g.home_rank = hr
-        if (ar) g.away_rank = ar
-      }
-      for (const g of out.ncaaf.live) attach(g)
-      for (const g of out.ncaaf.upcoming) attach(g)
-      for (const g of out.ncaaf.recent) attach(g)
+      await attachNcaafRanks([...out.ncaaf.live, ...out.ncaaf.upcoming, ...out.ncaaf.recent]
+        .map((g) => Object.assign(g, { sport_key: 'americanfootball_ncaaf' })))
 
       // Constrain the strip to CURRENT week only — otherwise the
       // rank-sort surfaces Week 2's Ohio State-Texas above every

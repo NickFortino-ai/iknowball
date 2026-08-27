@@ -3,6 +3,7 @@ import { supabase } from '../config/supabase.js'
 import { requireAuth } from '../middleware/auth.js'
 import { logger } from '../utils/logger.js'
 import { expandSportFamily, rollupSportKey } from '../utils/nflFamily.js'
+import { attachNcaafRanks } from '../utils/attachNcaafRanks.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 const ESPN_PATHS = {
@@ -44,6 +45,11 @@ router.get('/', requireAuth, async (req, res) => {
 
   const { data, error } = await query
   if (error) throw error
+
+  // NCAAF rows carry AP ranks so the Picks board can badge and sort marquee
+  // matchups. Previously only /scores/strip attached these, which left the
+  // Picks page's rank-based sort reading 26+26 for every game.
+  await attachNcaafRanks(data)
 
   res.json(data)
 })
