@@ -76,6 +76,93 @@ async function fetchSummary(sportKey, espnEventId) {
   return res.json()
 }
 
+// Pre-game preview, assembled from the same ESPN summary payload the box
+// score already fetches — no extra request.
+//
+// Every section is optional and independently guarded. ESPN's coverage
+// varies by sport and by how close to kickoff you ask: in Week 1 the
+// `leaders` categories come back with no athletes at all because nobody
+// has current-season stats yet, and `predictor` is missing for low-profile
+// matchups. Anything absent is simply omitted so the client renders fewer
+// cards rather than empty ones.
+function extractPreview(summary) {
+  const preview = {}
+
+  const venue = summary?.gameInfo?.venue
+  if (venue?.fullName) {
+    const addr = venue.address || {}
+    preview.venue = {
+      name: venue.fullName,
+      location: [addr.city, addr.state || addr.country].filter(Boolean).join(', ') || null,
+    }
+  }
+
+  // Betting line. `details` is already human-readable ("TCU -9.5").
+  const pick = (summary?.pickcenter || [])[0]
+  if (pick?.details || pick?.overUnder != null) {
+    preview.odds = {
+      details: pick.details || null,
+      over_under: pick.overUnder ?? null,
+      provider: pick.provider?.name || null,
+    }
+  }
+
+  // ESPN's matchup predictor. gameProjection is the HOME team's win chance.
+  const pred = summary?.predictor
+  const homePct = Number(pred?.homeTeam?.gameProjection)
+  if (Number.isFinite(homePct)) {
+    preview.predictor = {
+      home_pct: Math.round(homePct * 10) / 10,
+      away_pct: Math.round((100 - homePct) * 10) / 10,
+    }
+  }
+
+  // Recent form, most recent first. ESPN returns oldest-first.
+  const lastFive = (summary?.lastFiveGames || [])
+    .map((entry) => ({
+      team_id: entry.team?.id ? String(entry.team.id) : null,
+      team_abbr: entry.team?.abbreviation || null,
+      games: (entry.events || [])
+        .map((ev) => ({
+          date: ev.gameDate || null,
+          result: ev.gameResult || null,
+          score: ev.score || null,
+          at_vs: ev.atVs || null,
+          opponent: ev.opponent?.abbreviation || ev.opponent?.displayName || null,
+          opponent_logo: ev.opponent?.logos?.find((l) => (l.rel || []).includes('dark'))?.href
+            || ev.opponent?.logo
+            || null,
+        }))
+        .reverse(),
+    }))
+    .filter((t) => t.games.length)
+  if (lastFive.length) preview.last_five = lastFive
+
+  // Statistical leaders. Categories with no athlete are dropped, and a team
+  // with no populated categories is dropped entirely — that's the Week 1
+  // case, where including it would render a header over nothing.
+  const leaders = (summary?.leaders || [])
+    .map((entry) => ({
+      team_id: entry.team?.id ? String(entry.team.id) : null,
+      team_abbr: entry.team?.abbreviation || null,
+      categories: (entry.leaders || [])
+        .map((cat) => {
+          const top = (cat.leaders || [])[0]
+          if (!top?.athlete?.displayName) return null
+          return {
+            label: cat.displayName || cat.name || null,
+            name: top.athlete.displayName,
+            value: top.displayValue || null,
+          }
+        })
+        .filter(Boolean),
+    }))
+    .filter((t) => t.categories.length)
+  if (leaders.length) preview.leaders = leaders
+
+  return Object.keys(preview).length ? preview : null
+}
+
 function normalize(sportKey, summary) {
   const header = summary?.header || {}
   const competition = header?.competitions?.[0] || {}
@@ -181,6 +268,9 @@ function normalize(sportKey, summary) {
     line_score_headers,
     stat_groups,
     scoring_plays,
+    // Only meaningful before kickoff — once a game is live or final the box
+    // score itself is the story, and the odds/predictor become noise.
+    preview: statusState === 'pre' ? extractPreview(summary) : null,
   }
 }
 

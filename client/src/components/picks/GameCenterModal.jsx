@@ -237,6 +237,117 @@ function AllPicksBar({ totalCounts, away, home, winnerSide }) {
 // Row of squad chips: avatar + team abbr, color-coded by result if
 // settled. Tapping does nothing yet — could deep-link to their profile
 // in a follow-up.
+// Pre-game preview. Replaces the box score before kickoff, where the line
+// score and stat tables are empty by definition.
+//
+// Every section is independently optional — the server omits whatever ESPN
+// doesn't have for that matchup, which varies by sport and by how far out
+// the game is (Week 1 has no season leaders, low-profile games have no
+// predictor). Rendering nothing beats rendering an empty card.
+function GamePreview({ preview, away, home }) {
+  if (!preview) return null
+  const { venue, odds, predictor, last_five: lastFive, leaders } = preview
+
+  // last_five / leaders come keyed by ESPN team id; map to our team objects
+  // so the columns line up away-then-home like the rest of the modal.
+  const byTeam = (list) => [away, home]
+    .filter(Boolean)
+    .map((t) => ({ team: t, entry: (list || []).find((e) => String(e.team_id) === String(t.id)) }))
+    .filter((x) => x.entry)
+
+  const formRows = byTeam(lastFive)
+  const leaderRows = byTeam(leaders)
+
+  return (
+    <div className="space-y-4 mb-4">
+      {(odds || predictor) && (
+        <div className="rounded-xl border border-text-primary/15 bg-bg-primary/30 px-4 py-3">
+          {odds && (
+            <div className="flex items-baseline justify-between gap-3 flex-wrap">
+              <span className="text-sm font-semibold text-text-primary">{odds.details}</span>
+              {odds.over_under != null && (
+                <span className="text-xs text-text-muted">O/U {odds.over_under}</span>
+              )}
+            </div>
+          )}
+          {predictor && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-[11px] text-text-muted mb-1">
+                <span>{away?.abbr || away?.short} {predictor.away_pct}%</span>
+                <span className="uppercase tracking-wider">Win probability</span>
+                <span>{predictor.home_pct}% {home?.abbr || home?.short}</span>
+              </div>
+              <div className="h-2 rounded-full overflow-hidden bg-bg-secondary flex">
+                <div className="h-full bg-accent" style={{ width: `${predictor.away_pct}%` }} />
+                <div className="h-full bg-text-primary/30" style={{ width: `${predictor.home_pct}%` }} />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {formRows.length > 0 && (
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-2">Last 5</div>
+          <div className="space-y-2">
+            {formRows.map(({ team, entry }) => (
+              <div key={team.id} className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-text-primary w-12 shrink-0 truncate">
+                  {team.abbr || team.short}
+                </span>
+                <div className="flex gap-1.5 flex-wrap">
+                  {entry.games.map((g, i) => (
+                    <span
+                      key={i}
+                      title={`${g.result} ${g.score} ${g.at_vs || ''}${g.opponent || ''}`}
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        g.result === 'W'
+                          ? 'bg-correct/20 text-correct'
+                          : g.result === 'L'
+                            ? 'bg-incorrect/20 text-incorrect'
+                            : 'bg-text-primary/10 text-text-muted'
+                      }`}
+                    >
+                      {g.result || '—'} {g.at_vs || ''}{g.opponent || ''}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {leaderRows.length > 0 && (
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-2">Team leaders</div>
+          <div className="grid grid-cols-2 gap-3">
+            {leaderRows.map(({ team, entry }) => (
+              <div key={team.id}>
+                <div className="text-xs font-semibold text-text-primary mb-1.5 truncate">{team.abbr || team.short}</div>
+                <div className="space-y-1">
+                  {entry.categories.map((c, i) => (
+                    <div key={i} className="text-[11px] leading-tight">
+                      <div className="text-text-muted">{c.label}</div>
+                      <div className="text-text-primary truncate">{c.name} <span className="text-text-muted">{c.value}</span></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {venue && (
+        <div className="text-[11px] text-text-muted text-center">
+          {venue.name}{venue.location ? ` · ${venue.location}` : ''}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SquadChips({ squadPicks, away, home, onOpenProfile }) {
   if (!squadPicks?.length) return null
   return (
@@ -309,6 +420,8 @@ export default function GameCenterModal({ gameId, onClose }) {
   const home = teams.find((t) => t.home_away === 'home') || teams[1]
 
   const currentTeamId = activeTeamId ?? away?.id ?? home?.id
+  // Drives the preview-vs-box-score swap below.
+  const isUpcoming = data?.status === 'upcoming'
   const currentTeam = teams.find((t) => t.id === currentTeamId) || away
 
   const userPick = gamePicksData?.userPick
@@ -434,11 +547,20 @@ export default function GameCenterModal({ gameId, onClose }) {
                 </div>
               )}
 
+              {/* Before kickoff the line score and stat tables are empty by
+                  definition, so show the preview instead of three blank
+                  sections. Keyed off status rather than sport, so every
+                  sport gets this — NCAAF just happens to be where ESPN's
+                  pre-game payload is richest. */}
+              {isUpcoming && <GamePreview preview={data.preview} away={away} home={home} />}
+
               {/* Line score (quarters / innings / halves) — always both teams */}
-              <LineScoreTable teams={[away, home].filter(Boolean)} headers={data.line_score_headers || []} />
+              {!isUpcoming && (
+                <LineScoreTable teams={[away, home].filter(Boolean)} headers={data.line_score_headers || []} />
+              )}
 
               {/* Team-name tab switcher — one team's stat tables at a time */}
-              {teams.length > 1 && (
+              {!isUpcoming && teams.length > 1 && (
                 <div className="flex gap-1 mb-3 border-b border-text-primary/10">
                   {[away, home].filter(Boolean).map((t) => {
                     const isActive = t.id === currentTeamId
@@ -460,7 +582,7 @@ export default function GameCenterModal({ gameId, onClose }) {
                 </div>
               )}
 
-              {currentTeam && (
+              {!isUpcoming && currentTeam && (
                 <TeamStatsSection groups={data.stat_groups?.[currentTeam.id]} />
               )}
 
