@@ -1,6 +1,9 @@
 import express from 'express'
 import cors from 'cors'
 import { env } from './config/env.js'
+// Must run before any module issues an ESPN request — see espnFetch.js.
+import { installEspnFetch } from './utils/espnFetch.js'
+installEspnFetch()
 import { errorHandler } from './middleware/errorHandler.js'
 import webhooksRouter from './routes/webhooks.js'
 import healthRouter from './routes/health.js'
