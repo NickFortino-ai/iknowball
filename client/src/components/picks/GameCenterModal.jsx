@@ -246,7 +246,12 @@ function AllPicksBar({ totalCounts, away, home, winnerSide }) {
 // predictor). Rendering nothing beats rendering an empty card.
 function GamePreview({ preview, away, home }) {
   if (!preview) return null
-  const { venue, odds, predictor, last_five: lastFive, leaders } = preview
+  const { venue, odds, predictor, last_five: lastFive, season_results: seasonResults, leaders } = preview
+  // College football sends the season so far (12 games, filling in week by
+  // week); everything else sends a trailing five. Same shape, different
+  // heading — and NCAAF sends neither until its first game is played.
+  const formList = seasonResults || lastFive
+  const formLabel = seasonResults ? 'This season' : 'Last 5'
 
   // last_five / leaders come keyed by ESPN team id; map to our team objects
   // so the columns line up away-then-home like the rest of the modal.
@@ -255,7 +260,7 @@ function GamePreview({ preview, away, home }) {
     .map((t) => ({ team: t, entry: (list || []).find((e) => String(e.team_id) === String(t.id)) }))
     .filter((x) => x.entry)
 
-  const formRows = byTeam(lastFive)
+  const formRows = byTeam(formList)
   const leaderRows = byTeam(leaders)
 
   return (
@@ -288,7 +293,7 @@ function GamePreview({ preview, away, home }) {
 
       {formRows.length > 0 && (
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-2">Last 5</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-2">{formLabel}</div>
           <div className="space-y-2">
             {formRows.map(({ team, entry }) => (
               <div key={team.id} className="flex items-center gap-2">

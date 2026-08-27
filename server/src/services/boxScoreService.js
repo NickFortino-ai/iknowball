@@ -76,8 +76,59 @@ async function fetchSummary(sportKey, espnEventId) {
   return res.json()
 }
 
+// Season-to-date results for one team, cached per (sport, team, season).
+//
+// College teams play ~12 regular-season games, so the whole season fits
+// where a pro sport would need truncating — and it grows week by week
+// rather than being a fixed trailing window.
+//
+// This is the one part of the preview that costs extra ESPN requests (one
+// per team), so it's cached for an hour. Results only change when a game
+// finishes, and the cache is per team rather than per matchup, so a busy
+// Saturday shares entries across every preview involving that team.
+const seasonResultsCache = new Map() // `${path}:${teamId}:${season}` → { rows, expiresAt }
+const SEASON_RESULTS_TTL_MS = 60 * 60 * 1000
+
+async function fetchSeasonResults(espnPath, teamId, season) {
+  const key = `${espnPath}:${teamId}:${season}`
+  const hit = seasonResultsCache.get(key)
+  if (hit && hit.expiresAt > Date.now()) return hit.rows
+
+  let rows = []
+  try {
+    const res = await fetch(`${ESPN_BASE}/${espnPath}/teams/${teamId}/schedule?season=${season}`)
+    if (res.ok) {
+      const data = await res.json()
+      for (const ev of data.events || []) {
+        const comp = ev.competitions?.[0]
+        if (!comp?.status?.type?.completed) continue
+        const competitors = comp.competitors || []
+        const me = competitors.find((c) => String(c.team?.id) === String(teamId))
+        const opp = competitors.find((c) => String(c.team?.id) !== String(teamId))
+        if (!me || !opp) continue
+        const myScore = Number(me.score?.value ?? me.score?.displayValue ?? me.score)
+        const oppScore = Number(opp.score?.value ?? opp.score?.displayValue ?? opp.score)
+        rows.push({
+          date: ev.date || null,
+          result: me.winner === true ? 'W' : opp.winner === true ? 'L' : 'T',
+          score: Number.isFinite(myScore) && Number.isFinite(oppScore) ? `${myScore}-${oppScore}` : null,
+          at_vs: me.homeAway === 'home' ? 'vs' : '@',
+          opponent: opp.team?.abbreviation || opp.team?.displayName || null,
+        })
+      }
+    }
+  } catch {
+    // Preview section — never let it break the box score it rides along with.
+    rows = []
+  }
+
+  seasonResultsCache.set(key, { rows, expiresAt: Date.now() + SEASON_RESULTS_TTL_MS })
+  return rows
+}
+
 // Pre-game preview, assembled from the same ESPN summary payload the box
-// score already fetches — no extra request.
+// score already fetches — no extra request, except the optional
+// season-results lookup above.
 //
 // Every section is optional and independently guarded. ESPN's coverage
 // varies by sport and by how close to kickoff you ask: in Week 1 the
@@ -304,6 +355,33 @@ export async function getBoxScore(gameId) {
   } catch (err) {
     logger.warn({ err: err.message, gameId, sportKey }, 'Box score fetch failed')
     return null
+  }
+
+  // College football only: swap the 5-game trailing window for the season
+  // so far. A 12-game schedule fits on screen, and it fills in week by week
+  // rather than reaching back into last season — which is what ESPN's
+  // lastFiveGames does before a new season starts, so in Week 1 "Last 5"
+  // was quietly showing 2025 results.
+  //
+  // Done here rather than inside normalize() so that stays synchronous, and
+  // so the extra ESPN calls only happen for upcoming NCAAF games that
+  // actually have a preview.
+  if (normalized?.preview && sportKey === 'americanfootball_ncaaf') {
+    const season = new Date(game.starts_at).getUTCFullYear()
+    const espnPath = SPORT_TO_PATH[sportKey]
+    const rows = await Promise.all(
+      (normalized.teams || []).map(async (t) => ({
+        team_id: t.id ? String(t.id) : null,
+        team_abbr: t.abbr || null,
+        games: t.id ? await fetchSeasonResults(espnPath, t.id, season) : [],
+      }))
+    )
+    const withGames = rows.filter((r) => r.games.length)
+    // Drop the trailing-5 fallback either way — showing last season's form
+    // under a "Last 5" heading is worse than showing nothing.
+    delete normalized.preview.last_five
+    if (withGames.length) normalized.preview.season_results = withGames
+    if (!Object.keys(normalized.preview).length) normalized.preview = null
   }
 
   if (normalized) {
