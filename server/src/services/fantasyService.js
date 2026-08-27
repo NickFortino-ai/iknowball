@@ -2859,12 +2859,19 @@ export async function resizeFantasyLeague(leagueId, options = {}) {
     throw err
   }
 
-  const { data: members } = await supabase
+  // league_members has no created_at column — only joined_at. Selecting and
+  // ordering by it made PostgREST reject the whole query, and because the
+  // error was swallowed `members` came back null. list.length was therefore
+  // always 0, so every resize attempt failed the < 6 check below with
+  // "fewer than 6 members" no matter how many members the league had.
+  // Throw on error rather than silently treating a failed read as an empty
+  // league, which is what let this masquerade as a business-rule rejection.
+  const { data: members, error: membersErr } = await supabase
     .from('league_members')
-    .select('user_id, role, joined_at, created_at')
+    .select('user_id, role, joined_at')
     .eq('league_id', leagueId)
     .order('joined_at', { ascending: true, nullsFirst: true })
-    .order('created_at', { ascending: true })
+  if (membersErr) throw membersErr
   const list = members || []
   const state = computeFantasyUnderfillState(list.length, settings.num_teams)
   if (state.state === 'ok') return { dropped: 0, newSize: list.length, dropped_user_ids: [] }
@@ -2884,9 +2891,11 @@ export async function resizeFantasyLeague(leagueId, options = {}) {
     if (m.role === 'commissioner') continue
     dropTargets.push(m.user_id)
   }
-  if (!dropTargets.length) {
-    return { dropped: 0, newSize: list.length, dropped_user_ids: [] }
-  }
+  // NOTE: no early return when dropTargets is empty. willDrop is 0 whenever
+  // the member count is ALREADY a valid size (6 members in a league set to
+  // 10 teams) — nobody needs removing, but num_teams still has to come down
+  // to 6 or the league stays permanently underfilled. Returning here meant
+  // "Resize to 6 teams" reported success and changed nothing.
 
   // Get league name for notification text
   const { data: league } = await supabase
@@ -2896,12 +2905,15 @@ export async function resizeFantasyLeague(leagueId, options = {}) {
     .single()
   const leagueName = league?.name || 'your league'
 
-  // Remove the dropped members
-  await supabase
-    .from('league_members')
-    .delete()
-    .in('user_id', dropTargets)
-    .eq('league_id', leagueId)
+  // Remove the dropped members. Guarded — an empty .in() list would match
+  // nothing, but skipping the round trip is clearer about the intent.
+  if (dropTargets.length) {
+    await supabase
+      .from('league_members')
+      .delete()
+      .in('user_id', dropTargets)
+      .eq('league_id', leagueId)
+  }
 
   // Update num_teams + max_members to the new size. Explicit commish
   // action → also update initial_num_teams so subsequent notifications
