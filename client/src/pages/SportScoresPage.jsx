@@ -563,7 +563,8 @@ function formatWeekRange(startStr, endStr) {
 function DrillGameCard({ game, sportFullKey, showDate, pickOutcome, onOpenGameCenter }) {
   const isLive = game.status === 'live'
   const isFinal = game.status === 'final'
-  const tappable = (isFinal || isLive) && !!onOpenGameCenter
+  // Upcoming games open the pre-game preview — see GameCenterModal.
+  const tappable = !!onOpenGameCenter
   const showScore = isLive || isFinal
   const timeStr = new Date(game.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   const dateStr = showDate ? new Date(game.starts_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : null

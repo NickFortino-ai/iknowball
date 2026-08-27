@@ -13,10 +13,13 @@ import PickComments from '../social/PickComments'
 import UserProfileModal from '../profile/UserProfileModal'
 import { toast } from '../ui/Toast'
 
-// Game Center — the unified live/final game screen. Opened by tapping a
-// game on the landing scoreboard, sport drill-in, or a user's own
-// settled result item. Live and final only; upcoming games are not
-// tappable (nothing meaningful to show yet).
+// Game Center — the unified game screen for any state. Opened by tapping
+// a game on the landing scoreboard, sport drill-in, or a user's own
+// settled result item.
+//
+// Upcoming games show a pre-game preview (betting line, matchup predictor,
+// season form, venue) instead of the box score, whose line score and stat
+// tables are empty before kickoff. Live and final games show the box score.
 //
 // Rendering is intentionally sport-agnostic — we iterate whatever
 // stat groups ESPN's summary payload provided (Passing / Rushing /
