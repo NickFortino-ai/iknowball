@@ -240,7 +240,31 @@ router.get('/strip', async (req, res) => {
       // the strip already sent.
       const score = (g) => ((g.home_rank || 26) + (g.away_rank || 26))
       const rank = (a, b) => score(a) - score(b) || new Date(a.starts_at) - new Date(b.starts_at)
-      out.ncaaf.upcoming = [...out.ncaaf.upcoming].sort(rank).slice(0, NCAAF_STRIP_DISPLAY)
+
+      // Reserve the nearest gameday, then spend what's left on marquee games.
+      //
+      // Ranking across the whole window let matchups a week out bury
+      // everything imminent: ESPN's Week 1 spans 17 days, so 95 games
+      // competed for 15 slots and only ONE of the eight games on the nearest
+      // Saturday survived. But sorting purely by day is the opposite
+      // failure — the nearest days fill every slot with filler and #1 Ohio
+      // State disappears from the landing page entirely.
+      //
+      // So: every game on the soonest gameday is guaranteed (rank-ordered
+      // within it), and the remaining slots go to the best matchups from
+      // later days. "Up next" stays honest without losing the games people
+      // actually open the app for.
+      const dayOf = (g) => toSportsDay(g.starts_at)
+      const sortedUpcoming = [...out.ncaaf.upcoming].sort(rank)
+      const nearestDay = sortedUpcoming.length
+        ? sortedUpcoming.map(dayOf).sort()[0]
+        : null
+      const nearest = sortedUpcoming.filter((g) => dayOf(g) === nearestDay)
+      const later = sortedUpcoming.filter((g) => dayOf(g) !== nearestDay)
+      out.ncaaf.upcoming = [
+        ...nearest.slice(0, NCAAF_STRIP_DISPLAY),
+        ...later.slice(0, Math.max(0, NCAAF_STRIP_DISPLAY - nearest.length)),
+      ]
       out.ncaaf.live = [...out.ncaaf.live].sort(rank)
       out.ncaaf.recent = [...out.ncaaf.recent].sort(rank)
     } catch { /* rank attachment is best-effort */ }
