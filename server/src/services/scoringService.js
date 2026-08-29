@@ -5,6 +5,7 @@ import { checkRecordAfterSettle } from './recordService.js'
 import { BASE_RISK_POINTS } from '../config/constants.js'
 import { americanToMultiplier } from '../utils/scoring.js'
 import { fetchAll as paginate } from '../utils/fetchAll.js'
+import { resolvePickStake } from '../utils/resolvePickStake.js'
 
 export async function scoreCompletedGame(gameId, winner, sportId) {
   // Settle both 'locked' and 'pending' picks.
@@ -36,9 +37,31 @@ export async function scoreCompletedGame(gameId, winner, sportId) {
     return
   }
 
+  // A pick that slipped the lock has NULL risk_points / reward_points —
+  // those are written at lock time — so scoring it straight would settle it
+  // at `|| 0`, i.e. zero points, silently. Resolve the stake from the
+  // submission values (the same way lockPicks would have) and persist it, so
+  // the row ends up complete rather than settled-but-blank.
+  let gameRow = null
+  if (picks.some((p) => p.risk_points == null && p.odds_at_submission == null)) {
+    const { data } = await supabase
+      .from('games')
+      .select('home_odds, away_odds')
+      .eq('id', gameId)
+      .maybeSingle()
+    gameRow = data
+  }
+
   for (const pick of picks) {
     let isCorrect = null
     let pointsEarned = 0
+    let stakeBackfill = null
+    if (pick.risk_points == null || pick.reward_points == null) {
+      const { odds, risk, reward } = resolvePickStake(pick, gameRow)
+      pick.risk_points = risk
+      pick.reward_points = reward
+      stakeBackfill = { odds_at_pick: pick.odds_at_pick ?? odds, risk_points: risk, reward_points: reward }
+    }
 
     if (winner === null) {
       // Push (tie) — no points gained or lost
@@ -59,6 +82,7 @@ export async function scoreCompletedGame(gameId, winner, sportId) {
         status: 'settled',
         is_correct: isCorrect,
         points_earned: pointsEarned,
+        ...(stakeBackfill || {}),
         updated_at: new Date().toISOString(),
       })
       .eq('id', pick.id)
