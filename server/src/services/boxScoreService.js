@@ -405,6 +405,37 @@ function normalize(sportKey, summary) {
         athletes,
       })
     })
+    // Football: fold interceptions into the Defensive table as an INT column.
+    //
+    // ESPN ships them as a separate group whose defensive labels have no INT
+    // at all (TOT SOLO SACKS TFL PD QB HTS TD), so a defender's pick appeared
+    // in its own two-row table below his tackle line instead of on it.
+    //
+    // Only the count is merged — INT yards and return TDs are dropped, which
+    // is what leaves the separate group with nothing unique left to show.
+    if (sportKey.startsWith('americanfootball_')) {
+      const def = groups.find((g) => g.title === 'Defensive')
+      const ints = groups.find((g) => g.title === 'Interceptions')
+      if (def && ints?.athletes.length) {
+        const intCol = (ints.labels || []).indexOf('INT')
+        const byAthlete = new Map(
+          ints.athletes.filter((a) => a.id).map((a) => [a.id, intCol >= 0 ? a.stats[intCol] : null])
+        )
+        let matchedAll = true
+        for (const a of def.athletes) {
+          const v = a.id != null && byAthlete.has(a.id) ? byAthlete.get(a.id) : '0'
+          a.stats = [...a.stats, v ?? '0']
+          if (a.id != null) byAthlete.delete(a.id)
+        }
+        def.labels = [...def.labels, 'INT']
+        // Anyone who intercepted but never appeared in the defensive group
+        // would vanish entirely, so in that case keep the original box rather
+        // than silently dropping a player's only stat.
+        matchedAll = byAthlete.size === 0
+        if (matchedAll) groups.splice(groups.indexOf(ints), 1)
+      }
+    }
+
     stat_groups[teamId] = groups
   }
 
