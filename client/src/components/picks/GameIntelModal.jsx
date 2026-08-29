@@ -4,6 +4,8 @@ import { useInjuryDetail } from '../../hooks/useInjuries'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import GamePreview from './GamePreview'
+import ProbablePitchers from './ProbablePitchers'
+import { useGameIntel } from '../../hooks/useGames'
 
 function TeamLogo({ team, sportKey }) {
   const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
@@ -253,6 +255,13 @@ function TeamSection({ teamName, starters, injuries }) {
 export default function GameIntelModal({ gameId, onClose }) {
   const { data, isLoading } = useInjuryDetail(gameId)
 
+  // Probable starters come from ESPN's SCOREBOARD payload, which this
+  // modal's endpoint doesn't touch — hence the second request. Gated to MLB
+  // so no other sport pays for a call that would return nothing. This block
+  // used to live in GameDetailModal; when the Picks card stopped opening
+  // that modal, MLB quietly lost its probable pitchers.
+  const { data: intel } = useGameIntel(data?.sportKey === 'baseball_mlb' ? gameId : null)
+
   // True when this sport actually has lineup/injury coverage. Sports
   // outside INJURY_SPORTS (NCAAF, MLS, NCAAB) come back with empty
   // rosters, and printing "No injuries reported" for those would assert
@@ -333,6 +342,15 @@ export default function GameIntelModal({ gameId, onClose }) {
               preview={data.preview}
               away={{ id: 'away', abbr: data.away_team, short: data.away_team }}
               home={{ id: 'home', abbr: data.home_team, short: data.home_team }}
+            />
+
+            {/* MLB probable starters — headshots, record and season line.
+                Renders nothing until the (MLB-only) intel request lands. */}
+            <ProbablePitchers
+              awayPitcher={intel?.awayPitcher}
+              homePitcher={intel?.homePitcher}
+              awayTeam={data.away_team}
+              homeTeam={data.home_team}
             />
 
             {/* Only render the lineup/injury columns when we actually have
