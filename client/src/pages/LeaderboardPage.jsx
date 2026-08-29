@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, Fragment } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useLeaderboard, useUserRankOnLeaderboard } from '../hooks/useLeaderboard'
@@ -313,6 +313,7 @@ export default function LeaderboardPage() {
   const [scoringModalOpen, setScoringModalOpen] = useState(false)
   const [searchedUser, setSearchedUser] = useState(null)
   const scrollRef = useRef(null)
+  const [expandedFor, setExpandedFor] = useState(null)
 
   // Reload order when userId arrives, when server-side order changes
   // (user reordered on another device), or when admin updates the default.
@@ -336,6 +337,61 @@ export default function LeaderboardPage() {
     rankScope,
     tab.sport
   )
+
+  // Collapse the run of never-scored players on Global. Storing WHICH tab is
+  // expanded (rather than a bare boolean reset by an effect) makes switching
+  // tabs re-collapse for free. Deliberately not persisted — collapsed IS the
+  // intended default, so every visit starts there.
+  const showYetToScore = expandedFor === activeLabel
+
+  // The board arrives rank-sorted descending, so every 0-point player sits in
+  // one contiguous run. Note it lands in the MIDDLE of the list, not at the
+  // bottom: players who have picked and lost are negative and rank below it.
+  const yetToScore = useMemo(() => {
+    if (tab.scope !== 'global' || !leaders?.length) return null
+    const start = leaders.findIndex((u) => (u.total_points ?? 0) === 0)
+    if (start === -1) return null
+    let end = start
+    while (end + 1 < leaders.length && (leaders[end + 1].total_points ?? 0) === 0) end++
+    const count = end - start + 1
+    // Not worth a collapse control for a handful of rows.
+    if (count < 5) return null
+    const mine = leaders.slice(start, end + 1).find((u) => u.id === profile?.id)
+    return { start, end, count, myRank: mine?.rank ?? null }
+  }, [leaders, tab.scope, profile?.id])
+
+  // Shared by the visible rows and the collapsed run, so both render
+  // identically — rank included, since collapsing hides rows but never
+  // renumbers them.
+  const renderLeaderRow = (user) => {
+    const isMe = user.id === profile?.id
+    return (
+      <div
+        key={user.id}
+        onClick={() => setSelectedUserId(user.id)}
+        className={`grid grid-cols-[2rem_1fr_auto_auto] gap-2 md:gap-4 px-4 py-3 items-center border-b border-text-primary/10 last:border-b-0 cursor-pointer hover:bg-text-primary/5 transition-colors ${
+          isMe ? 'bg-accent/5' : ''
+        }`}
+      >
+        <span className={`font-display text-lg ${user.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>
+          {user.rank}
+        </span>
+        <div className="flex items-center gap-2 min-w-0">
+          <Avatar user={user} size="md" />
+          <div className="min-w-0">
+            <div className={`font-semibold truncate ${isMe ? 'text-accent' : 'text-text-primary'}`}>
+              {user.display_name || user.username}
+            </div>
+            <div className="text-xs text-text-muted">@{user.username}</div>
+          </div>
+        </div>
+        <TierBadge tier={user.tier} size="xs" />
+        <span className="font-display text-lg text-right">
+          {tab.scope === 'sport' ? (user.sport_points ?? 0) : tab.scope === 'picks' ? (user.pick_points ?? 0) : tab.scope === 'props' ? (user.prop_points ?? 0) : tab.scope === 'parlays' ? (user.parlay_points ?? 0) : (user.total_points ?? 0)}
+        </span>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-32">
@@ -444,34 +500,50 @@ export default function LeaderboardPage() {
             <span className="text-right">Points</span>
           </div>
 
-          {leaders.map((user) => {
-            const isMe = user.id === profile?.id
-            return (
-              <div
-                key={user.id}
-                onClick={() => setSelectedUserId(user.id)}
-                className={`grid grid-cols-[2rem_1fr_auto_auto] gap-2 md:gap-4 px-4 py-3 items-center border-b border-text-primary/10 last:border-b-0 cursor-pointer hover:bg-text-primary/5 transition-colors ${
-                  isMe ? 'bg-accent/5' : ''
-                }`}
-              >
-                <span className={`font-display text-lg ${user.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>
-                  {user.rank}
-                </span>
-                <div className="flex items-center gap-2 min-w-0">
-                  <Avatar user={user} size="md" />
-                  <div className="min-w-0">
-                    <div className={`font-semibold truncate ${isMe ? 'text-accent' : 'text-text-primary'}`}>
-                      {user.display_name || user.username}
+          {leaders.map((user, i) => {
+            if (yetToScore && i >= yetToScore.start && i <= yetToScore.end) {
+              // The whole run renders once, at its first index.
+              if (i !== yetToScore.start) return null
+              return (
+                <Fragment key="yet-to-score">
+                  <button
+                    onClick={() => setExpandedFor(showYetToScore ? null : activeLabel)}
+                    aria-expanded={showYetToScore}
+                    className="w-full flex items-center gap-3 px-4 py-3 border-b border-text-primary/10 text-left hover:bg-text-primary/5 transition-colors"
+                  >
+                    <svg
+                      width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden
+                      className={`shrink-0 text-text-muted transition-transform duration-300 ${showYetToScore ? 'rotate-90' : ''}`}
+                    >
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold text-text-secondary">
+                        {yetToScore.count} players yet to score
+                      </div>
+                      {!showYetToScore && yetToScore.myRank && (
+                        <div className="text-xs text-accent">You're #{yetToScore.myRank} here</div>
+                      )}
                     </div>
-                    <div className="text-xs text-text-muted">@{user.username}</div>
+                    <span className="text-xs text-text-muted shrink-0">{showYetToScore ? 'Hide' : 'Show'}</span>
+                  </button>
+                  {/* 0fr -> 1fr animates to the content's natural height without
+                      measuring it, so the run expands smoothly at any count. */}
+                  <div
+                    className="grid transition-[grid-template-rows] duration-300 ease-out"
+                    style={{ gridTemplateRows: showYetToScore ? '1fr' : '0fr' }}
+                  >
+                    {/* Restore the hairline `last:border-b-0` strips from the
+                        run's final row — it isn't the board's last row. */}
+                    <div className="overflow-hidden [&>*:last-child]:border-b">
+                      {leaders.slice(yetToScore.start, yetToScore.end + 1).map(renderLeaderRow)}
+                    </div>
                   </div>
-                </div>
-                <TierBadge tier={user.tier} size="xs" />
-                <span className="font-display text-lg text-right">
-                  {tab.scope === 'sport' ? (user.sport_points ?? 0) : tab.scope === 'picks' ? (user.pick_points ?? 0) : tab.scope === 'props' ? (user.prop_points ?? 0) : tab.scope === 'parlays' ? (user.parlay_points ?? 0) : (user.total_points ?? 0)}
-                </span>
-              </div>
-            )
+                </Fragment>
+              )
+            }
+            return renderLeaderRow(user)
           })}
         </div>
       )}
