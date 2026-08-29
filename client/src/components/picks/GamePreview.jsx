@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 // Pre-game preview. Replaces the box score before kickoff, where the line
 // score and stat tables are empty by definition.
 //
@@ -5,7 +7,22 @@
 // doesn't have for that matchup, which varies by sport and by how far out
 // the game is (Week 1 has no season leaders, low-profile games have no
 // predictor). Rendering nothing beats rendering an empty card.
+// Schedule dates are pinned to PT rather than the device's zone so the same
+// game never shows a different day for two users. Every football kickoff is
+// well clear of the PT midnight boundary, so this matches the ET date fans
+// expect while staying consistent with the app's sports-day anchor.
+function scheduleDate(iso) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles',
+  })
+}
+
 export default function GamePreview({ preview, away, home }) {
+  // Which team's schedule is showing. 0 = away, matching the away-then-home
+  // order used everywhere else in the modal. Hook runs before the early
+  // return below so it isn't conditional.
+  const [scheduleTeam, setScheduleTeam] = useState(0)
   if (!preview) return null
   const {
     venue, odds, predictor, leaders, blurb, season,
@@ -81,7 +98,64 @@ export default function GamePreview({ preview, away, home }) {
         </div>
       )}
 
-      {formRows.length > 0 && (
+      {/* Football sends a full 12-17 game schedule. That's a list, not a row
+          of chips — one team at a time, vertically, with a toggle. The chip
+          row below is kept for Last 5, where five items genuinely do read
+          better side by side. */}
+      {seasonResults && formRows.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">{formLabel}</span>
+            {formRows.length > 1 && (
+              <div className="flex rounded-lg border border-text-primary/15 overflow-hidden shrink-0">
+                {formRows.map(({ team, entry }, i) => (
+                  <button
+                    key={team.id}
+                    onClick={() => setScheduleTeam(i)}
+                    className={`text-[11px] font-bold px-2.5 py-1 transition-colors ${
+                      i === scheduleTeam
+                        ? 'bg-accent text-white'
+                        : 'text-text-muted hover:text-text-primary'
+                    }`}
+                  >
+                    {entry.team_abbr || team.abbr || team.short}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {(() => {
+            const active = formRows[Math.min(scheduleTeam, formRows.length - 1)]
+            return (
+              <div className="rounded-lg border border-text-primary/10 divide-y divide-text-primary/5">
+                {active.entry.games.map((g, i) => {
+                  const played = g.played !== false
+                  return (
+                    <div key={i} className="flex items-center gap-3 px-3 py-1.5 text-xs">
+                      <span className="w-12 shrink-0 text-text-muted tabular-nums">{scheduleDate(g.date)}</span>
+                      <span className="flex-1 min-w-0 truncate text-text-primary">
+                        <span className="text-text-muted">{g.at_vs === '@' ? '@' : 'vs'}</span> {g.opponent}
+                      </span>
+                      <span
+                        className={`shrink-0 tabular-nums font-semibold ${
+                          !played ? 'text-text-muted/50'
+                            : g.result === 'W' ? 'text-correct'
+                              : g.result === 'L' ? 'text-incorrect'
+                                : 'text-text-muted'
+                        }`}
+                      >
+                        {played ? `${g.result || ''} ${g.score || ''}`.trim() : '—'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
+        </div>
+      )}
+
+      {!seasonResults && formRows.length > 0 && (
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-2">{formLabel}</div>
           <div className="space-y-2">
