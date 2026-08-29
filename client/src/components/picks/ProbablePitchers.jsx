@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
-// MLB probable starters. Extracted from GameDetailModal so the Game Intel
-// modal can show them too: probables live on ESPN's SCOREBOARD payload
+// MLB probable starters. Extracted from the old GameDetailModal (deleted)
+// so the Game Intel modal can show them: probables live on ESPN's SCOREBOARD payload
 // (competitor.probables), not on the summary the preview is built from, so
 // they arrive via /games/:id/intel rather than with the rest of the preview.
 

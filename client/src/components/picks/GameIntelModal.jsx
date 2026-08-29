@@ -258,8 +258,8 @@ export default function GameIntelModal({ gameId, onClose }) {
   // Probable starters come from ESPN's SCOREBOARD payload, which this
   // modal's endpoint doesn't touch — hence the second request. Gated to MLB
   // so no other sport pays for a call that would return nothing. This block
-  // used to live in GameDetailModal; when the Picks card stopped opening
-  // that modal, MLB quietly lost its probable pitchers.
+  // used to live in GameDetailModal (since deleted); when the Picks card
+  // stopped opening that modal, MLB quietly lost its probable pitchers.
   const { data: intel } = useGameIntel(data?.sportKey === 'baseball_mlb' ? gameId : null)
 
   // True when this sport actually has lineup/injury coverage. Sports

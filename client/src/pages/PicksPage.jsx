@@ -391,8 +391,8 @@ export default function PicksPage() {
                   hasInjuryData={INTEL_SPORTS.has(sportKey)}
                   onInjuryClick={() => setInjuryGameId(game.id)}
                   // Both affordances open the pregame intel modal. Tapping the
-                  // card used to open GameDetailModal, which renders records and
-                  // a box score but NOT GamePreview — and this page only ever
+                  // card used to open the old GameDetailModal (since deleted),
+                  // which rendered records and a box score but NOT GamePreview — and this page only ever
                   // lists upcoming games, where a box score doesn't exist yet.
                   // For NCAAF, whose records are also absent pre-season, that
                   // left a modal titled "Game Intel" over nothing at all.
