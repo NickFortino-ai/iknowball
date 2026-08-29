@@ -505,12 +505,22 @@ export async function settleProps(settlements) {
       continue
     }
 
-    // Score all locked prop_picks for this prop
+    // Settle 'pending' picks alongside 'locked' ones.
+    //
+    // Picks are meant to be flipped pending -> locked by lockPicks, which
+    // also snapshots odds/risk/reward. If a pick misses that job it stays
+    // 'pending' forever, and settling only 'locked' skipped it permanently —
+    // 13 prop picks were sitting pending on games that had already finished,
+    // several against props whose own status was already 'settled'. Same
+    // failure as scoreCompletedGame had for straight picks.
+    //
+    // The prop is settled by the time we get here, so a pending pick on it
+    // is unambiguously due.
     const { data: picks, error: picksError } = await supabase
       .from('prop_picks')
       .select('*')
       .eq('prop_id', propId)
-      .eq('status', 'locked')
+      .in('status', ['locked', 'pending'])
 
     if (picksError) {
       logger.error({ picksError, propId }, 'Failed to fetch prop picks for scoring')
@@ -533,6 +543,31 @@ export async function settleProps(settlements) {
       let isCorrect = null
       let pointsEarned = 0
 
+      // odds_at_pick / risk_points / reward_points are written at LOCK time,
+      // so a pick that slipped the lock has all three NULL and would settle
+      // at `|| 0` — marked resolved, W/L recorded, zero points awarded.
+      // Resolve from the submission values the same way lockPicks does, and
+      // persist them so the row ends up complete rather than blank.
+      let stakeBackfill = null
+      if (pick.risk_points == null || pick.reward_points == null) {
+        // Mirrors lockPicks' prop branch exactly. No multiplier: unlike
+        // straight picks, prop_picks has no multiplier column and the lock
+        // job applies none.
+        let odds, risk, reward
+        if (pick.odds_at_submission != null) {
+          odds = pick.odds_at_submission
+          risk = pick.risk_at_submission || (odds ? calculateRiskPoints(odds) : 0)
+          reward = pick.reward_at_submission || (odds ? calculateRewardPoints(odds) : 0)
+        } else {
+          odds = pick.picked_side === 'over' ? prop.over_odds : prop.under_odds
+          risk = odds ? calculateRiskPoints(odds) : 0
+          reward = odds ? calculateRewardPoints(odds) : 0
+        }
+        pick.risk_points = risk
+        pick.reward_points = reward
+        stakeBackfill = { odds_at_pick: pick.odds_at_pick ?? odds, risk_points: risk, reward_points: reward }
+      }
+
       if (outcome === 'push') {
         isCorrect = null
         pointsEarned = 0
@@ -550,6 +585,7 @@ export async function settleProps(settlements) {
           status: 'settled',
           is_correct: isCorrect,
           points_earned: pointsEarned,
+          ...(stakeBackfill || {}),
           updated_at: new Date().toISOString(),
         })
         .eq('id', pick.id)
