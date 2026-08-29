@@ -80,6 +80,14 @@ export default function AppConfigPanel() {
   const [draftPrepHidden, setDraftPrepHidden] = useState(false)
   const [propsVisibility, setPropsVisibility] = useState({})
   const [propsOrder, setPropsOrder] = useState([])
+  // Snapshot of what's currently saved, keyed by config key. Save buttons
+  // stay disabled until the live value differs from it, so the panel shows
+  // at a glance whether there's anything to save.
+  //
+  // Compared against the value we LOADED, not the raw stored config: the
+  // merges above append newly-added sports, and those shouldn't count as an
+  // unsaved edit the admin didn't make.
+  const [baseline, setBaseline] = useState({})
 
   useEffect(() => {
     if (!cfg) return
@@ -113,12 +121,28 @@ export default function AppConfigPanel() {
     const knownKeys = new Set(PROPS_SPORT_OPTIONS.map((o) => o.key))
     const preserved = storedOrder.filter((k) => knownKeys.has(k))
     const missing = PROPS_SPORT_OPTIONS.map((o) => o.key).filter((k) => !preserved.includes(k))
-    setPropsOrder([...preserved, ...missing])
+    const initialPropsOrder = [...preserved, ...missing]
+    setPropsOrder(initialPropsOrder)
+    setBaseline({
+      news_tab_order: initialNews,
+      leaderboard_default_tab_order: initialLb,
+      draft_prep_hidden: !!cfg.draft_prep_hidden,
+      props_sport_visibility: merged,
+      props_sport_order: initialPropsOrder,
+    })
   }, [cfg])
+
+  // Deep-ish compare is fine here: these are small arrays of strings and flat
+  // boolean maps, and key order is stable because both sides are built from
+  // the same option lists.
+  const isDirty = (key, value) => JSON.stringify(value) !== JSON.stringify(baseline[key])
 
   async function save(key, value, label) {
     try {
       await updateCfg.mutateAsync({ key, value })
+      // Re-baseline so the button returns to disabled without waiting for
+      // the config query to refetch.
+      setBaseline((prev) => ({ ...prev, [key]: value }))
       toast(`Saved ${label}`, 'success')
     } catch (err) {
       toast(err.message || `Failed to save ${label}`, 'error')
@@ -146,7 +170,7 @@ export default function AppConfigPanel() {
         />
         <button
           onClick={() => save('news_tab_order', newsOrder, 'news tab order')}
-          disabled={updateCfg.isPending}
+          disabled={updateCfg.isPending || !isDirty('news_tab_order', newsOrder)}
           className="mt-3 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover disabled:opacity-50"
         >
           Save news order
@@ -170,7 +194,7 @@ export default function AppConfigPanel() {
         </label>
         <button
           onClick={() => save('draft_prep_hidden', draftPrepHidden, 'draft prep visibility')}
-          disabled={updateCfg.isPending}
+          disabled={updateCfg.isPending || !isDirty('draft_prep_hidden', draftPrepHidden)}
           className="mt-3 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover disabled:opacity-50"
         >
           Save
@@ -201,7 +225,7 @@ export default function AppConfigPanel() {
         </div>
         <button
           onClick={() => save('props_sport_visibility', propsVisibility, 'props sport visibility')}
-          disabled={updateCfg.isPending}
+          disabled={updateCfg.isPending || !isDirty('props_sport_visibility', propsVisibility)}
           className="mt-3 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover disabled:opacity-50"
         >
           Save props visibility
@@ -221,7 +245,7 @@ export default function AppConfigPanel() {
         />
         <button
           onClick={() => save('props_sport_order', propsOrder, 'props sport order')}
-          disabled={updateCfg.isPending}
+          disabled={updateCfg.isPending || !isDirty('props_sport_order', propsOrder)}
           className="mt-3 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover disabled:opacity-50"
         >
           Save props order
@@ -240,7 +264,7 @@ export default function AppConfigPanel() {
         />
         <button
           onClick={() => save('leaderboard_default_tab_order', leaderboardOrder, 'leaderboard default order')}
-          disabled={updateCfg.isPending}
+          disabled={updateCfg.isPending || !isDirty('leaderboard_default_tab_order', leaderboardOrder)}
           className="mt-3 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover disabled:opacity-50"
         >
           Save leaderboard order
