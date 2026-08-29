@@ -1089,10 +1089,20 @@ export function useNbaDfsPlayerLookup(name, sport) {
   })
 }
 
-export function useNbaDfsPlayerGamelog(espnId, sport = 'basketball_nba') {
+export function useNbaDfsPlayerGamelog(espnId, sport = 'basketball_nba', idType = null, hint = null) {
+  // idType disambiguates NFL ids: Sleeper and ESPN ids are both numeric
+  // strings, so the server can't tell them apart on its own. `hint` carries
+  // name/team so the server can still resolve players whose espn_id is null
+  // (about half the active NFL roster).
+  const qs = [
+    `sport=${sport}`,
+    idType ? `id_type=${idType}` : null,
+    hint?.name ? `name=${encodeURIComponent(hint.name)}` : null,
+    hint?.team ? `team=${encodeURIComponent(hint.team)}` : null,
+  ].filter(Boolean).join('&')
   return useQuery({
-    queryKey: ['nba-dfs', 'gamelog', espnId, sport],
-    queryFn: () => api.get(`/nba-dfs/player/${espnId}/gamelog?sport=${sport}`),
+    queryKey: ['nba-dfs', 'gamelog', espnId, sport, idType, hint?.name, hint?.team],
+    queryFn: () => api.get(`/nba-dfs/player/${espnId}/gamelog?${qs}`),
     enabled: !!espnId,
     staleTime: 5 * 60 * 1000, // cache for 5 min
   })

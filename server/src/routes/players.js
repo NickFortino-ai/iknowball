@@ -788,15 +788,55 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
   // blurb lookup below still keys on the original path param because
   // admin blurbs for NFL are stored under the Sleeper id.
   let espnId = rawId
+  let blurbLookupId = rawId
   let nflPlayerTeam = null
   let nflPlayerByeWeek = null
   if (sport === 'americanfootball_nfl') {
-    const { data: nflRow } = await supabase
+    // Sleeper ids and ESPN athlete ids are BOTH numeric strings with no
+    // shared structure, so an id alone is ambiguous. Callers that hold an
+    // ESPN id (the scoreboard stat-leaders rows) pass id_type=espn.
+    //
+    // Without this the route matched nfl_players.id === <espn id> and
+    // silently picked up a different player: ESPN 12483 is Matthew Stafford,
+    // but Sleeper 12483 is Jack Bech, so Stafford's modal rendered the
+    // RAIDERS' schedule and found no blurb (NFL blurbs key on Sleeper id).
+    const byEspnId = req.query.id_type === 'espn'
+    let { data: nflRow } = await supabase
       .from('nfl_players')
-      .select('espn_id, team, bye_week')
-      .eq('id', rawId)
+      .select('id, espn_id, team, bye_week')
+      .eq(byEspnId ? 'espn_id' : 'id', rawId)
       .maybeSingle()
-    if (nflRow?.espn_id) espnId = nflRow.espn_id
+
+    // Only 47% of nfl_players rows have espn_id set (1,998 ACTIVE players
+    // don't), so an ESPN-id lookup misses more often than it hits — James
+    // Cook is in the table with espn_id NULL. Fall back to the name the
+    // caller already has, narrowed by team when supplied so common names
+    // don't collide. Read-only; the null espn_id columns are left alone.
+    if (byEspnId && !nflRow && req.query.name) {
+      // ESPN and Sleeper disagree on generational suffixes — ESPN says
+      // "James Cook III", nfl_players says "James Cook" — so an exact match
+      // misses. Strip the suffix and match on the base name.
+      const baseName = String(req.query.name)
+        .replace(/\s+(Jr\.?|Sr\.?|I{2,3}|IV|V)$/i, '')
+        .trim()
+      let q = supabase
+        .from('nfl_players')
+        .select('id, espn_id, team, bye_week')
+        .ilike('full_name', baseName)
+      if (req.query.team) q = q.eq('team', req.query.team)
+      const { data: byName } = await q.limit(2)
+      // Ambiguous match (same name, no team given) is worse than none —
+      // showing the wrong player's schedule is the bug we're fixing.
+      if (byName?.length === 1) nflRow = byName[0]
+    }
+
+    if (byEspnId) {
+      // rawId already IS the ESPN id; the row only supplies team/bye and the
+      // Sleeper id that blurbs are stored under.
+      if (nflRow?.id) blurbLookupId = nflRow.id
+    } else if (nflRow?.espn_id) {
+      espnId = nflRow.espn_id
+    }
     if (nflRow?.team) nflPlayerTeam = nflRow.team
     if (nflRow?.bye_week) nflPlayerByeWeek = nflRow.bye_week
   } else if (sport === 'baseball_mlb') {
@@ -857,7 +897,7 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
       if (blurbSport) {
         try {
           const { getPublishedBlurbsForPlayer } = await import('../services/playerBlurbService.js')
-          blurbs = await getPublishedBlurbsForPlayer(rawId, 10, blurbSport)
+          blurbs = await getPublishedBlurbsForPlayer(blurbLookupId, 10, blurbSport)
         } catch { /* blurbs are best-effort */ }
       }
       let fallbackGames = []
@@ -1108,7 +1148,7 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
         const { getPublishedBlurbsForPlayer } = await import('../services/playerBlurbService.js')
         // Blurbs are keyed on the original path param (Sleeper id for NFL,
         // ESPN id for everyone else) to match how admin writes them.
-        blurbs = await getPublishedBlurbsForPlayer(rawId, 10, blurbSport)
+        blurbs = await getPublishedBlurbsForPlayer(blurbLookupId, 10, blurbSport)
       } catch {}
     }
 
