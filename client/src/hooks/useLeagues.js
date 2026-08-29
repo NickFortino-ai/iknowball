@@ -598,7 +598,15 @@ export function useUpdateFantasySettings() {
   return useMutation({
     mutationFn: ({ leagueId, ...patch }) => api.patch(`/leagues/${leagueId}/fantasy/settings`, patch),
     onSuccess: (_d, { leagueId }) => {
-      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'settings'] })
+      // Invalidate the whole 'fantasy' subtree, not just 'settings'.
+      // invalidateQueries matches by key PREFIX, so the old
+      // [...,'fantasy','settings'] key never matched [...,'fantasy','underfill']
+      // — changing num_teams left the underfill banner rendering the state
+      // from before the change, telling a resolved 6-team league it was
+      // underfilled and offering to "drop the most recent 0 signups".
+      // Derived queries keep getting added under this prefix, so scoping to
+      // the parent is what keeps the next one from silently going stale too.
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy'] })
     },
   })
 }
