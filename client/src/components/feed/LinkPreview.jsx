@@ -93,9 +93,23 @@ function TweetEmbed({ tweetId, url }) {
   )
 }
 
-export default function LinkPreview({ url }) {
+// onRendered fires once, when this actually puts something on screen. Lets a
+// caller hide the raw URL from the post text only AFTER a card exists, so a
+// link whose metadata comes back empty is never left with neither.
+export default function LinkPreview({ url, onRendered }) {
   const { data, isLoading } = useLinkPreview(url)
   const [imgError, setImgError] = useState(false)
+
+  const willRender = !!data && !!(data.title || data.youtubeVideoId || data.tweetId)
+  // Ref-guarded so an inline arrow from the parent can't retrigger this on
+  // every render, and so it reports once per url rather than once per paint.
+  const reportedRef = useRef(null)
+  useEffect(() => {
+    if (willRender && reportedRef.current !== url) {
+      reportedRef.current = url
+      onRendered?.(url)
+    }
+  }, [willRender, url, onRendered])
 
   if (isLoading) {
     return <div className="mt-2 h-20 bg-bg-secondary rounded-lg animate-pulse" />

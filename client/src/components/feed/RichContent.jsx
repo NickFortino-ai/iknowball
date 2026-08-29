@@ -17,12 +17,19 @@ function normalizeUrl(url) {
 // thumbnail card on native). A generic link preview can come back empty, and
 // hiding the text for one of those would leave the post with neither a link
 // nor a card.
-export default function RichContent({ text, className, hideEmbeddedUrl = false }) {
-  const segments = segmentContent(text).filter((seg) => !(
-    hideEmbeddedUrl
-    && seg.type === 'url'
-    && parseEmbedSource(seg.value)?.provider === 'youtube'
-  ))
+export default function RichContent({ text, className, hideEmbeddedUrl = false, hideUrl = null }) {
+  const segments = segmentContent(text).filter((seg) => {
+    if (seg.type !== 'url') return true
+    // YouTube: decidable from the URL alone, so it can be dropped
+    // immediately — no flicker while a preview loads.
+    if (hideEmbeddedUrl && parseEmbedSource(seg.value)?.provider === 'youtube') return false
+    // Everything else: only once the card has actually rendered, which the
+    // caller tells us by passing the url here. A link whose metadata comes
+    // back empty keeps its text rather than vanishing with nothing to
+    // replace it.
+    if (hideUrl && seg.value === hideUrl) return false
+    return true
+  })
   const [lightboxSrc, setLightboxSrc] = useState(null)
 
   return (

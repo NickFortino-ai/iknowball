@@ -281,14 +281,14 @@ function FeedVideo({ url }) {
 const MAX_CHARS = 2000
 const TRUNCATE_AT = 500
 
-function ExpandableContent({ text, hideEmbeddedUrl = false }) {
+function ExpandableContent({ text, hideEmbeddedUrl = false, hideUrl = null }) {
   const [expanded, setExpanded] = useState(false)
   if (!text) return null
   const needsTruncation = text.length > TRUNCATE_AT
   if (!needsTruncation || expanded) {
     return (
       <div>
-        <RichContent text={text} hideEmbeddedUrl={hideEmbeddedUrl} className="text-sm text-text-primary leading-relaxed" />
+        <RichContent text={text} hideEmbeddedUrl={hideEmbeddedUrl} hideUrl={hideUrl} className="text-sm text-text-primary leading-relaxed" />
         {needsTruncation && (
           <button
             onClick={(e) => { e.stopPropagation(); setExpanded(false) }}
@@ -306,7 +306,7 @@ function ExpandableContent({ text, hideEmbeddedUrl = false }) {
   const truncated = (lastSpace > TRUNCATE_AT * 0.7 ? slice.slice(0, lastSpace) : slice).trimEnd() + '…'
   return (
     <div>
-      <RichContent text={truncated} hideEmbeddedUrl={hideEmbeddedUrl} className="text-sm text-text-primary leading-relaxed" />
+      <RichContent text={truncated} hideEmbeddedUrl={hideEmbeddedUrl} hideUrl={hideUrl} className="text-sm text-text-primary leading-relaxed" />
       <button
         onClick={(e) => { e.stopPropagation(); setExpanded(true) }}
         className="text-xs text-accent hover:text-accent-hover transition-colors mt-1"
@@ -333,6 +333,10 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
   const { hot_take } = item
   const { session } = useAuth()
   const navigate = useNavigate()
+  // Set by LinkPreview once it has actually put a card on screen. Until
+  // then the raw URL stays in the post text, so a link whose metadata comes
+  // back empty is never left with neither a link nor a card.
+  const [renderedPreviewUrl, setRenderedPreviewUrl] = useState(null)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [carouselIndex, setCarouselIndex] = useState(0)
@@ -858,7 +862,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
           {/* Flex comment (white bold, appears ABOVE the pick card) */}
           {hot_take.post_type === 'flex' && hot_take.content && (
             <div className="text-base font-bold text-white leading-relaxed mb-3">
-              <RichContent text={hot_take.content} hideEmbeddedUrl />
+              <RichContent text={hot_take.content} hideEmbeddedUrl hideUrl={renderedPreviewUrl} />
             </div>
           )}
 
@@ -869,7 +873,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
 
           {/* Content (non-flex posts) */}
           {hot_take.post_type !== 'flex' && (
-            <ExpandableContent text={hot_take.content} hideEmbeddedUrl />
+            <ExpandableContent text={hot_take.content} hideEmbeddedUrl hideUrl={renderedPreviewUrl} />
           )}
 
           {/* Poll options */}
@@ -940,7 +944,10 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
           {/* Link preview — suppress when we have a structured embed so
               we don't show the same YouTube video twice */}
           {!hot_take.embed_provider && extractFirstUrl(hot_take.content) && (
-            <LinkPreview url={extractFirstUrl(hot_take.content)} />
+            <LinkPreview
+              url={extractFirstUrl(hot_take.content)}
+              onRendered={setRenderedPreviewUrl}
+            />
           )}
 
           {/* Team tags + user tags + remind + bookmark */}
