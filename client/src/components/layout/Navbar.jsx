@@ -502,7 +502,7 @@ export default function Navbar() {
         {isAuthenticated && (
           <div className="flex items-center gap-1 sm:gap-4">
             {/* Desktop nav links — hidden on mobile */}
-            <div className="hidden md:flex items-center gap-1 sm:gap-4">
+            <div className="hidden xl:flex items-center gap-1 sm:gap-4">
               {navLinks.map((link) => (
                 <Link
                   key={link.to}
@@ -518,7 +518,7 @@ export default function Navbar() {
               ))}
             </div>
 
-            <div className="hidden md:flex items-center gap-2 ml-2 pl-2 border-l border-border">
+            <div className="hidden xl:flex items-center gap-2 ml-2 pl-2 border-l border-border">
               {/* Messages — desktop */}
               <Link
                 to="/messages"
@@ -897,7 +897,7 @@ export default function Navbar() {
             </div>
 
             {/* Mobile: messages + notification bell + hamburger */}
-            <div className="flex items-center gap-1 md:hidden">
+            <div className="flex items-center gap-1 xl:hidden">
               {/* Messages — mobile */}
               <Link
                 to="/messages"
@@ -1130,7 +1130,7 @@ export default function Navbar() {
 
             {/* Mobile notifications dropdown (shared position) */}
             {showInvites && (
-              <div ref={mobileDropdownRef} className="absolute right-4 top-full mt-1 w-80 max-w-[calc(100vw-2rem)] bg-bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden md:hidden">
+              <div ref={mobileDropdownRef} className="absolute right-4 top-full mt-1 w-80 max-w-[calc(100vw-2rem)] bg-bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden xl:hidden">
                 <div className="px-4 py-3 border-b border-border">
                   <h3 className="font-semibold text-sm">Notifications</h3>
                 </div>
