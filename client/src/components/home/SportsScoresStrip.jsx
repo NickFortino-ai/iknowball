@@ -253,7 +253,7 @@ function SportColumn({ sport, data, pickOutcomeByGame, onOpenGameCenter, onOpenI
               <FinalSection sport={sport} todayRecent={todayRecent} pickOutcomeByGame={pickOutcomeByGame} onOpenGameCenter={onOpenGameCenter} onOpenIntel={onOpenIntel} />
             )}
             {upcoming.length > 0 && (
-              <BucketSection label={live.length > 0 ? 'Coming up' : 'Upcoming'} games={upcoming} sportFullKey={sport.fullKey} />
+              <BucketSection label={live.length > 0 ? 'Coming up' : 'Upcoming'} games={upcoming} sportFullKey={sport.fullKey} onOpenIntel={onOpenIntel} />
             )}
             <StatLeadersBlock sport={sport.key} mode="compact" />
           </div>
