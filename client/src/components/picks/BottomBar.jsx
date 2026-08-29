@@ -2,14 +2,6 @@ import { useState, useEffect, useMemo } from 'react'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { calculateRiskPoints, calculateRewardPoints } from '../../lib/scoring'
 
-function isSameDay(date1, date2) {
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate()
-  )
-}
-
 function teamName(fullName) {
   if (!fullName) return ''
   const parts = fullName.split(' ')
@@ -31,14 +23,17 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
 
   const isOnboarding = profile?.has_seen_onboarding === false
   const entries = Object.entries(picks || {})
-  const today = new Date()
+  // Every pending prop pick counts, not just today's.
+  //
+  // This used to filter to same-day, which was fine when props only ever
+  // appeared on the day of the game. Football props now publish days ahead
+  // (deliberately — it's useful for NFL/NCAAF), so a Thursday pick made on
+  // Saturday simply vanished from this bar. Straight picks were never
+  // day-filtered, so the two were inconsistent anyway: these are already
+  // scoped to status 'pending' by the caller, which is the right scope.
   const propEntries = useMemo(() => {
     if (!propPicks) return []
-    return propPicks.filter((p) => {
-      const gameStart = p.player_props?.games?.starts_at
-      if (!gameStart) return false
-      return isSameDay(new Date(gameStart), today)
-    })
+    return propPicks.filter((p) => !!p.player_props?.games?.starts_at)
   }, [propPicks])
 
   // During onboarding, show a placeholder so the tutorial can highlight this element

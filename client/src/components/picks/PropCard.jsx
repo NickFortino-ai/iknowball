@@ -48,6 +48,17 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
   const isSettled = prop.status === 'settled'
   const [showPlayerModal, setShowPlayerModal] = useState(false)
   const sportKey = prop.games?.sports?.key || prop.sport_key || 'basketball_nba'
+
+  // "Thu 9/3" when the game is on a later day, otherwise null.
+  const kickoffLabel = (() => {
+    const iso = prop.games?.starts_at
+    if (!iso) return null
+    const PT = { timeZone: 'America/Los_Angeles' }
+    const day = new Date(iso).toLocaleDateString('en-CA', PT)
+    const today = new Date().toLocaleDateString('en-CA', PT)
+    if (day === today) return null
+    return new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric', ...PT })
+  })()
   const isNba = sportKey.includes('basketball_nba')
   const { data: playerLookup } = useNbaDfsPlayerLookup(showPlayerModal ? prop.player_name : null, sportKey)
 
@@ -76,6 +87,13 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
             <div className="text-xs text-text-muted">
               {abbreviateTeam(prop.games.away_team)} @ {abbreviateTeam(prop.games.home_team)}
             </div>
+            {/* Football props publish days ahead, so the matchup alone leaves
+                you guessing when it is. Shown only when the game ISN'T today —
+                on a same-day slate the date is noise. PT-anchored to match
+                the rest of the app. */}
+            {kickoffLabel && (
+              <div className="text-[10px] text-text-muted">{kickoffLabel}</div>
+            )}
             {prop.games.status === 'live' && prop.games.period && (
               <div className="text-[10px] text-accent">
                 {/* NBA/NFL/NHL send a numeric period — prefix Q. MLB sends
