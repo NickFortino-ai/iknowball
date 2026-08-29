@@ -9,6 +9,8 @@ import { getNcaafMatchupScore } from '../lib/ncaafPrestige'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import StatLeadersBlock from '../components/home/StatLeadersBlock'
 import GameCenterModal from '../components/picks/GameCenterModal'
+import GameIntelModal from '../components/picks/GameIntelModal'
+import { hasPregameIntel } from '../lib/gameIntelSports'
 
 
 // /scores/:sport — Sleeper-style drill-in for one sport: date scrubber
@@ -57,7 +59,11 @@ export default function SportScoresPage() {
   const isNfl = sport?.toLowerCase() === 'nfl'
   const isNcaaf = sport?.toLowerCase() === 'ncaaf'
   const isWeekly = isNfl || isNcaaf
-  const [gameCenterGameId, setGameCenterGameId] = useState(null)
+  // One piece of state for both modals: { id, kind: 'center' | 'intel' }.
+  // Deliberately not two useStates — every hook in this component sits below
+  // the `if (!config) return` above, so each new one adds another
+  // conditional-hook violation to a pre-existing pile.
+  const [openGame, setOpenGame] = useState(null)
   const [rankedOnly, setRankedOnly] = useState(false)
   // React Router preserves scroll across routes; drilling into a
   // sport from the scoreboard tab was landing users mid-list on
@@ -260,7 +266,7 @@ export default function SportScoresPage() {
             return (
               <div className="space-y-2">
                 {visibleGames.map((g) => (
-                  <DrillGameCard key={g.id} game={g} sportFullKey={config.fullKey} showDate={isWeekly} pickOutcome={pickOutcomeByGame.get(g.id)} onOpenGameCenter={setGameCenterGameId} />
+                  <DrillGameCard key={g.id} game={g} sportFullKey={config.fullKey} showDate={isWeekly} pickOutcome={pickOutcomeByGame.get(g.id)} onOpenGameCenter={(id) => setOpenGame({ id, kind: 'center' })} onOpenIntel={(id) => setOpenGame({ id, kind: 'intel' })} />
                 ))}
               </div>
             )
@@ -287,7 +293,8 @@ export default function SportScoresPage() {
           <StatLeadersBlock sport={sport} mode="full" />
         </div>
       </div>
-      <GameCenterModal gameId={gameCenterGameId} onClose={() => setGameCenterGameId(null)} />
+      <GameCenterModal gameId={openGame?.kind === 'center' ? openGame.id : null} onClose={() => setOpenGame(null)} />
+      <GameIntelModal gameId={openGame?.kind === 'intel' ? openGame.id : null} onClose={() => setOpenGame(null)} />
     </div>
   )
 }
@@ -560,11 +567,16 @@ function formatWeekRange(startStr, endStr) {
 // + score on the right. showDate adds a Day, Mon DD prefix — used
 // for NFL where a week bunches Thu/Sun/Mon games together so time
 // alone doesn't tell you which day the game is on.
-function DrillGameCard({ game, sportFullKey, showDate, pickOutcome, onOpenGameCenter }) {
+function DrillGameCard({ game, sportFullKey, showDate, pickOutcome, onOpenGameCenter, onOpenIntel }) {
   const isLive = game.status === 'live'
   const isFinal = game.status === 'final'
-  // Live/final only — pre-game intel lives on the Picks page.
-  const tappable = (isFinal || isLive) && !!onOpenGameCenter
+  // Live/final open Game Center (box score); upcoming opens the pregame Game
+  // Intel modal, for the sports that have one. Routing by status matters:
+  // Game Center has its own upcoming branch, but it renders only the bare
+  // preview — no probable pitchers, injuries or records, which are wired into
+  // Game Intel.
+  const hasIntel = !isLive && !isFinal && hasPregameIntel(sportFullKey) && !!onOpenIntel
+  const tappable = ((isFinal || isLive) && !!onOpenGameCenter) || hasIntel
   const showScore = isLive || isFinal
   const timeStr = new Date(game.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   const dateStr = showDate ? new Date(game.starts_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : null
@@ -585,7 +597,7 @@ function DrillGameCard({ game, sportFullKey, showDate, pickOutcome, onOpenGameCe
 
   return (
     <div
-      onClick={tappable ? () => onOpenGameCenter(game.id) : undefined}
+      onClick={tappable ? () => (hasIntel ? onOpenIntel(game.id) : onOpenGameCenter(game.id)) : undefined}
       className={`rounded-lg border backdrop-blur-md px-4 py-3 ${outlineClass} ${tappable ? 'cursor-pointer hover:bg-bg-primary/30 transition-colors' : ''}`}
     >
       <div className="flex items-center gap-3 mb-2">

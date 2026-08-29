@@ -7,6 +7,8 @@ import { api } from '../../lib/api'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import StatLeadersBlock from './StatLeadersBlock'
 import GameCenterModal from '../picks/GameCenterModal'
+import GameIntelModal from '../picks/GameIntelModal'
+import { hasPregameIntel } from '../../lib/gameIntelSports'
 import { getNcaafMatchupScore } from '../../lib/ncaafPrestige'
 
 // PT calendar date as YYYY-MM-DD — anchored to America/Los_Angeles so
@@ -77,6 +79,7 @@ export default function SportsScoresStrip() {
   const [selectedMobileSport, setSelectedMobileSport] = useState(null)
   // Tapping any Final card opens an ESPN-style box score modal.
   const [gameCenterGameId, setGameCenterGameId] = useState(null)
+  const [intelGameId, setIntelGameId] = useState(null)
   // Settled picks let us paint a green/red border on any Final game
   // the current user picked. Only fetch for logged-in users — no need
   // to burn a request on the public landing view. Uses useQuery
@@ -188,17 +191,19 @@ export default function SportsScoresStrip() {
                 data={data[sport.key]}
                 pickOutcomeByGame={pickOutcomeByGame}
                 onOpenGameCenter={setGameCenterGameId}
+                onOpenIntel={setIntelGameId}
               />
             </div>
           )
         })}
       </div>
       <GameCenterModal gameId={gameCenterGameId} onClose={() => setGameCenterGameId(null)} />
+      <GameIntelModal gameId={intelGameId} onClose={() => setIntelGameId(null)} />
     </section>
   )
 }
 
-function SportColumn({ sport, data, pickOutcomeByGame, onOpenGameCenter }) {
+function SportColumn({ sport, data, pickOutcomeByGame, onOpenGameCenter, onOpenIntel }) {
   // Parent filters out sports with zero games across all buckets before
   // mapping, so we're guaranteed at least one bucket has rows here.
   let live = data?.live || []
@@ -242,10 +247,10 @@ function SportColumn({ sport, data, pickOutcomeByGame, onOpenGameCenter }) {
         return (
           <div className="space-y-4">
             {live.length > 0 && (
-              <BucketSection label="Live" games={live} sportFullKey={sport.fullKey} isLive onOpenGameCenter={onOpenGameCenter} />
+              <BucketSection label="Live" games={live} sportFullKey={sport.fullKey} isLive onOpenGameCenter={onOpenGameCenter} onOpenIntel={onOpenIntel} />
             )}
             {todayRecent.length > 0 && (
-              <FinalSection sport={sport} todayRecent={todayRecent} pickOutcomeByGame={pickOutcomeByGame} onOpenGameCenter={onOpenGameCenter} />
+              <FinalSection sport={sport} todayRecent={todayRecent} pickOutcomeByGame={pickOutcomeByGame} onOpenGameCenter={onOpenGameCenter} onOpenIntel={onOpenIntel} />
             )}
             {upcoming.length > 0 && (
               <BucketSection label={live.length > 0 ? 'Coming up' : 'Upcoming'} games={upcoming} sportFullKey={sport.fullKey} />
@@ -263,7 +268,7 @@ function SportColumn({ sport, data, pickOutcomeByGame, onOpenGameCenter }) {
 // Tapping the left arrow steps back one PT day and lazy-fetches that
 // day's finals via /api/scores/finals. Right arrow disabled once we're
 // back at today so users can't scroll into the future here.
-function FinalSection({ sport, todayRecent, pickOutcomeByGame, onOpenGameCenter }) {
+function FinalSection({ sport, todayRecent, pickOutcomeByGame, onOpenGameCenter, onOpenIntel }) {
   const today = todayPT()
   const [date, setDate] = useState(today)
   const isToday = date === today
@@ -322,6 +327,7 @@ function FinalSection({ sport, todayRecent, pickOutcomeByGame, onOpenGameCenter 
               isFinal
               pickOutcome={pickOutcomeByGame?.get(g.id)}
               onOpenGameCenter={onOpenGameCenter}
+              onOpenIntel={onOpenIntel}
             />
           ))
         )}
@@ -330,7 +336,7 @@ function FinalSection({ sport, todayRecent, pickOutcomeByGame, onOpenGameCenter 
   )
 }
 
-function BucketSection({ label, games, sportFullKey, isLive, isFinal, onOpenGameCenter }) {
+function BucketSection({ label, games, sportFullKey, isLive, isFinal, onOpenGameCenter, onOpenIntel }) {
   return (
     <div>
       <div className="mb-1.5 flex items-center gap-2">
@@ -341,14 +347,14 @@ function BucketSection({ label, games, sportFullKey, isLive, isFinal, onOpenGame
       </div>
       <div className="space-y-1.5">
         {games.map((g) => (
-          <GameCard key={g.id} game={g} sportFullKey={sportFullKey} isLive={isLive} isFinal={isFinal} onOpenGameCenter={onOpenGameCenter} />
+          <GameCard key={g.id} game={g} sportFullKey={sportFullKey} isLive={isLive} isFinal={isFinal} onOpenGameCenter={onOpenGameCenter} onOpenIntel={onOpenIntel} />
         ))}
       </div>
     </div>
   )
 }
 
-function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome, onOpenGameCenter }) {
+function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome, onOpenGameCenter, onOpenIntel }) {
   // Live + Final rows show the score inline next to each team.
   // Upcoming rows show a time/date pill on the right instead.
   // Sleeper-style: each matchup is its own subtle bordered card,
@@ -375,10 +381,13 @@ function GameCard({ game, sportFullKey, isLive, isFinal, pickOutcome, onOpenGame
   // Live/final only. The pre-game preview lives on the Picks page's Game
   // Intel modal instead — opening Game Center from the scoreboard before
   // kickoff was more surface than it earned.
-  const tappable = (isFinal || isLive) && !!onOpenGameCenter
+  // Upcoming games open the pregame Game Intel modal where we have one;
+  // live/final open Game Center. Same routing as the drill-in scoreboard.
+  const hasIntel = !isLive && !isFinal && hasPregameIntel(sportFullKey) && !!onOpenIntel
+  const tappable = ((isFinal || isLive) && !!onOpenGameCenter) || hasIntel
   return (
     <div
-      onClick={tappable ? () => onOpenGameCenter(game.id) : undefined}
+      onClick={tappable ? () => (hasIntel ? onOpenIntel(game.id) : onOpenGameCenter(game.id)) : undefined}
       className={`rounded-lg border backdrop-blur-md px-4 py-2.5 ${outlineClass} ${tappable ? 'cursor-pointer hover:bg-bg-primary/30 transition-colors' : ''}`}>
       {/* Live-state header (Bot 7th / Q3 · 4:32) OR MLB R/H/E header.
           Both live in the same top row: state on the left, R/H/E on
