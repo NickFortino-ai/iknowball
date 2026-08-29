@@ -296,7 +296,7 @@ export default function GameIntelModal({ gameId, onClose }) {
     >
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-primary/90 backdrop-blur-md border border-text-primary/20 w-full md:max-w-lg rounded-2xl p-6 max-h-full overflow-y-auto overscroll-contain"
+        className="relative bg-bg-primary/90 backdrop-blur-md border border-text-primary/20 w-full md:max-w-lg rounded-2xl p-4 sm:p-6 max-h-full overflow-y-auto overscroll-contain"
         onClick={(e) => e.stopPropagation()}
       >
         <button

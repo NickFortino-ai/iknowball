@@ -18,6 +18,21 @@ function scheduleDate(iso) {
   })
 }
 
+// Column header for the two-column sections (Team Leaders, form, injuries).
+//
+// Always the ESPN abbreviation, desktop included. Two columns are ~157px on a
+// 390px phone, which clips "New York Yankees" — and the abbreviation matches
+// the vocabulary of the rows underneath it ("BOS" over "L @NYY", "W vsSF"),
+// where a full name next to abbreviated opponents read as two registers.
+// Falls back to whatever name the caller passed if ESPN sent no abbreviation.
+function ColumnTeamHeading({ team, entry }) {
+  return (
+    <div className="text-xs font-semibold text-text-primary mb-1.5 truncate">
+      {entry?.team_abbr || team.abbr || team.short}
+    </div>
+  )
+}
+
 export default function GamePreview({ preview, away, home, afterOdds = null, showInjuries = false }) {
   // Which team's schedule is showing. 0 = away, matching the away-then-home
   // order used everywhere else in the modal. Hook runs before the early
@@ -121,7 +136,7 @@ export default function GamePreview({ preview, away, home, afterOdds = null, sho
           <div className="grid grid-cols-2 gap-3">
             {leaderRows.map(({ team, entry }) => (
               <div key={team.id}>
-                <div className="text-xs font-semibold text-text-primary mb-1.5 truncate">{team.abbr || team.short}</div>
+                <ColumnTeamHeading team={team} entry={entry} />
                 <div className="space-y-1">
                   {entry.categories.map((c, i) => (
                     <div key={i} className="text-[11px] leading-tight">
@@ -200,9 +215,7 @@ export default function GamePreview({ preview, away, home, afterOdds = null, sho
           <div className="grid grid-cols-2 gap-3">
             {formRows.map(({ team, entry }) => (
               <div key={team.id} className="min-w-0">
-                <div className="text-xs font-semibold text-text-primary mb-1.5 truncate">
-                  {team.abbr || team.short}
-                </div>
+                <ColumnTeamHeading team={team} entry={entry} />
                 <div className="space-y-1">
                   {entry.games.map((g, i) => (
                     <div
@@ -288,9 +301,7 @@ export default function GamePreview({ preview, away, home, afterOdds = null, sho
           <div className="grid grid-cols-2 gap-3">
             {byTeam(injuries).map(({ team, entry }) => (
               <div key={team.id} className="min-w-0">
-                <div className="text-xs font-semibold text-text-primary mb-1.5 truncate">
-                  {team.abbr || team.short}
-                </div>
+                <ColumnTeamHeading team={team} entry={entry} />
                 <div className="space-y-1">
                   {entry.players.map((pl, i) => (
                     <div key={i} className="text-[11px] leading-tight">
