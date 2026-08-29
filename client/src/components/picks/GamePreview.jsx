@@ -7,12 +7,19 @@
 // predictor). Rendering nothing beats rendering an empty card.
 export default function GamePreview({ preview, away, home }) {
   if (!preview) return null
-  const { venue, odds, predictor, last_five: lastFive, season_results: seasonResults, leaders } = preview
+  const {
+    venue, odds, predictor, leaders, blurb,
+    last_five: lastFive, season_results: seasonResults, last_five_season: lastFiveSeason,
+  } = preview
   // College football sends the season so far (12 games, filling in week by
   // week); everything else sends a trailing five. Same shape, different
-  // heading — and NCAAF sends neither until its first game is played.
+  // heading. Before a college season's first game there IS no current form,
+  // so the server falls back to last season's five and stamps the year —
+  // label it explicitly rather than letting 2025 results read as current.
   const formList = seasonResults || lastFive
-  const formLabel = seasonResults ? 'This season' : 'Last 5'
+  const formLabel = seasonResults
+    ? 'This season'
+    : lastFiveSeason ? `${lastFiveSeason} season · last 5` : 'Last 5'
 
   // last_five / leaders come keyed by ESPN team id; map to our team objects
   // so the columns line up away-then-home like the rest of the modal.
@@ -26,6 +33,17 @@ export default function GamePreview({ preview, away, home }) {
 
   return (
     <div className="space-y-4 mb-4">
+      {blurb?.headline && (
+        <div className="rounded-xl border border-text-primary/15 bg-bg-primary/30 px-4 py-3">
+          <p className="text-sm text-text-primary leading-snug">{blurb.headline}</p>
+          {blurb.broadcast && (
+            <p className="text-[11px] text-text-muted mt-1.5">
+              <span className="uppercase tracking-wider">Watch</span> · {blurb.broadcast}
+            </p>
+          )}
+        </div>
+      )}
+
       {(odds || predictor) && (
         <div className="rounded-xl border border-text-primary/15 bg-bg-primary/30 px-4 py-3">
           {odds && (

@@ -184,6 +184,23 @@ function extractPreview(summary) {
     }
   }
 
+  // ESPN's own preview article. The headline is the only genuinely
+  // game-specific prose anywhere in the payload ("Another North Carolina vs.
+  // TCU opener, this one in Ireland to open Belichick's 2nd Heels season"),
+  // and it costs no extra request. Gated on type so a finished game's RECAP
+  // headline — which gives away the result — never renders as a preview.
+  const article = summary?.article
+  if (article?.headline && /preview/i.test(article.type || '')) {
+    preview.blurb = { headline: article.headline }
+    // The description is otherwise redundant with the header (matchup + time),
+    // but it carries the TV channel, and `broadcasts` comes back empty on a
+    // lot of college games — so this is often the only place it exists.
+    const watch = /how to watch:\s*([^\r\n]+)/i.exec(article.description || '')
+    // Trailing punctuation varies by game ("ESPN" vs "ESPN.").
+    const channel = watch?.[1]?.replace(/[.\s]+$/, '')
+    if (channel) preview.blurb.broadcast = channel
+  }
+
   // Recent form, most recent first. ESPN returns oldest-first.
   const lastFive = (summary?.lastFiveGames || [])
     .map((entry) => ({
@@ -406,10 +423,19 @@ export async function getBoxScore(gameId) {
       }))
     )
     const withGames = rows.filter((r) => r.games.length)
-    // Drop the trailing-5 fallback either way — showing last season's form
-    // under a "Last 5" heading is worse than showing nothing.
-    delete normalized.preview.last_five
-    if (withGames.length) normalized.preview.season_results = withGames
+    if (withGames.length) {
+      // Season is underway — the real thing beats the trailing window.
+      delete normalized.preview.last_five
+      normalized.preview.season_results = withGames
+    } else {
+      // Week 1: no current-season results exist yet. Dropping last_five here
+      // (which is what this used to do unconditionally) left the preview with
+      // only odds, predictor and venue — the "bare modal". ESPN's
+      // lastFiveGames still holds last season's five, which is genuinely
+      // useful as long as it isn't passed off as current form, so keep it and
+      // stamp the season the client must label it with.
+      if (normalized.preview.last_five) normalized.preview.last_five_season = season - 1
+    }
     if (!Object.keys(normalized.preview).length) normalized.preview = null
   }
 
