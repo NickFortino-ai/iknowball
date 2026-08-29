@@ -162,12 +162,19 @@ router.get('/', requireAuth, async (req, res, next) => {
       // still render the embed instead of falling through to "no data".
       const tweetId = cached.tweet_id || extractTweetId(cached.url)
       const youtubeVideoId = cached.youtube_video_id || extractYoutubeVideoId(cached.url)
+      // Decode on the way OUT as well as in. Rows cached before entity
+      // decoding existed hold escaped text AND an escaped image URL — the
+      // "&amp;" between query params makes Instagram's signed CDN link 403,
+      // so the card showed entities in the title and no image at all.
+      // Healing on read fixes every existing row immediately instead of
+      // waiting out the 7-day TTL. Decoding is idempotent, so rows written
+      // after the fix are unaffected.
       return res.json({
         url: cached.url,
-        title: cached.title,
-        description: cached.description,
-        image: cached.image,
-        siteName: cached.site_name,
+        title: decodeEntities(cached.title),
+        description: decodeEntities(cached.description),
+        image: decodeEntities(cached.image),
+        siteName: decodeEntities(cached.site_name),
         youtubeVideoId,
         tweetId,
       })
