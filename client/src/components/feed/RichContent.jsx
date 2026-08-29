@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { segmentContent, displayUrl } from '../../lib/urlUtils'
+import { parseEmbedSource } from '../../lib/embedParser'
 import ImageLightbox from './ImageLightbox'
 import YouTubeEmbed from './YouTubeEmbed'
 
@@ -9,8 +10,19 @@ function normalizeUrl(url) {
   return url.startsWith('http') ? url : `https://${url}`
 }
 
-export default function RichContent({ text, className }) {
-  const segments = segmentContent(text)
+// hideEmbeddedUrl: drop a URL from the TEXT when the surrounding card is
+// already rendering it as a video, so the raw link doesn't sit above its own
+// embed. Scoped to YouTube on purpose — that's decidable client-side from the
+// URL alone, and YouTubeEmbed always renders something (iframe on web, a
+// thumbnail card on native). A generic link preview can come back empty, and
+// hiding the text for one of those would leave the post with neither a link
+// nor a card.
+export default function RichContent({ text, className, hideEmbeddedUrl = false }) {
+  const segments = segmentContent(text).filter((seg) => !(
+    hideEmbeddedUrl
+    && seg.type === 'url'
+    && parseEmbedSource(seg.value)?.provider === 'youtube'
+  ))
   const [lightboxSrc, setLightboxSrc] = useState(null)
 
   return (

@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCreateHotTake, useHotTakeImageUpload, useHotTakeVideoUpload, useTeamsForSport } from '../../hooks/useHotTakes'
 import { useActiveSports } from '../../hooks/useGames'
@@ -10,6 +10,9 @@ import TeamAutocomplete from './TeamAutocomplete'
 import { toast } from '../ui/Toast'
 import { supabase } from '../../lib/supabase'
 import { parseEmbedSource } from '../../lib/embedParser'
+import { extractFirstUrl } from '../../lib/urlUtils'
+import LinkPreview from './LinkPreview'
+import PostEmbed from './PostEmbed'
 
 const MAX_CHARS = 2000
 const IMAGE_URL_REGEX = /(?:https?:\/\/|www\.)[^\s]+\.(jpg|jpeg|png|gif|webp)(\?[^\s]*)?/gi
@@ -75,6 +78,24 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
   const [embedInput, setEmbedInput] = useState('')
   const [showEmbedInput, setShowEmbedInput] = useState(false)
   const parsedEmbed = useMemo(() => parseEmbedSource(embedInput), [embedInput])
+
+  // Live preview of a link pasted into the post body, so the author can see
+  // the video render BEFORE publishing instead of guessing.
+  //
+  // Deliberately the same <LinkPreview> the feed card uses, driven by the
+  // same extractFirstUrl — a bespoke preview could disagree with what
+  // actually publishes, which is the very doubt this is meant to remove.
+  // Suppressed when a structured embed exists, matching the feed card's rule
+  // so the same video never shows twice.
+  const contentUrl = useMemo(() => extractFirstUrl(content), [content])
+  const [debouncedUrl, setDebouncedUrl] = useState(null)
+  useEffect(() => {
+    // Each keystroke makes a distinct URL string, and useLinkPreview keys its
+    // cache on the URL — without this, typing a link fires a request per
+    // character. Settle first, then fetch once.
+    const t = setTimeout(() => setDebouncedUrl(contentUrl), 500)
+    return () => clearTimeout(t)
+  }, [contentUrl])
 
   // Extract image URLs from content, store separately, strip from visible text
   const [imageUrlsFromText, setImageUrlsFromText] = useState([])
@@ -446,6 +467,13 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
               className="w-full bg-transparent text-base text-text-primary placeholder-text-muted resize-none outline-none transition-all"
             />
 
+            {/* Draft preview — what the post will look like once published */}
+            {expanded && !parsedEmbed && debouncedUrl && (
+              <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                <LinkPreview url={debouncedUrl} />
+              </div>
+            )}
+
             {/* Inline team autocomplete dropdown */}
             {inlineDropdownPos?.show && inlineMatches.length > 0 && (
               <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-bg-primary border border-text-primary/20 rounded-lg shadow-lg max-h-40 overflow-y-auto">
@@ -581,6 +609,14 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                   >
                     ×
                   </button>
+                </div>
+              )}
+              {/* Render the actual embed, not just a label. Same PostEmbed the
+                  feed card uses, from the same (provider, refId) tuple the
+                  server will store — so the draft is the published result. */}
+              {parsedEmbed && (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <PostEmbed provider={parsedEmbed.provider} refId={parsedEmbed.refId} />
                 </div>
               )}
               {showEmbedInput && embedInput.trim() && !parsedEmbed && (

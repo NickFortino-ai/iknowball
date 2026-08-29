@@ -281,14 +281,14 @@ function FeedVideo({ url }) {
 const MAX_CHARS = 2000
 const TRUNCATE_AT = 500
 
-function ExpandableContent({ text }) {
+function ExpandableContent({ text, hideEmbeddedUrl = false }) {
   const [expanded, setExpanded] = useState(false)
   if (!text) return null
   const needsTruncation = text.length > TRUNCATE_AT
   if (!needsTruncation || expanded) {
     return (
       <div>
-        <RichContent text={text} className="text-sm text-text-primary leading-relaxed" />
+        <RichContent text={text} hideEmbeddedUrl={hideEmbeddedUrl} className="text-sm text-text-primary leading-relaxed" />
         {needsTruncation && (
           <button
             onClick={(e) => { e.stopPropagation(); setExpanded(false) }}
@@ -306,7 +306,7 @@ function ExpandableContent({ text }) {
   const truncated = (lastSpace > TRUNCATE_AT * 0.7 ? slice.slice(0, lastSpace) : slice).trimEnd() + '…'
   return (
     <div>
-      <RichContent text={truncated} className="text-sm text-text-primary leading-relaxed" />
+      <RichContent text={truncated} hideEmbeddedUrl={hideEmbeddedUrl} className="text-sm text-text-primary leading-relaxed" />
       <button
         onClick={(e) => { e.stopPropagation(); setExpanded(true) }}
         className="text-xs text-accent hover:text-accent-hover transition-colors mt-1"
@@ -858,7 +858,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
           {/* Flex comment (white bold, appears ABOVE the pick card) */}
           {hot_take.post_type === 'flex' && hot_take.content && (
             <div className="text-base font-bold text-white leading-relaxed mb-3">
-              <RichContent text={hot_take.content} />
+              <RichContent text={hot_take.content} hideEmbeddedUrl />
             </div>
           )}
 
@@ -869,7 +869,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
 
           {/* Content (non-flex posts) */}
           {hot_take.post_type !== 'flex' && (
-            <ExpandableContent text={hot_take.content} />
+            <ExpandableContent text={hot_take.content} hideEmbeddedUrl />
           )}
 
           {/* Poll options */}
