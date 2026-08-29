@@ -6,6 +6,7 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
 import UserProfileModal from '../profile/UserProfileModal'
+import PlayerHeadshot from '../ui/PlayerHeadshot'
 
 const INJURY_COLORS = {
   Out: 'text-incorrect',
@@ -221,10 +222,7 @@ export default function ReceptionsView({ league, tab = 'picks' }) {
                                 </div>
                               ) : (
                                 <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/10 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-3">
-                                  {pick.headshot_url && (
-                                    <img src={pick.headshot_url} alt="" className="w-8 h-8 lg:w-10 lg:h-10 rounded-full object-cover bg-bg-secondary shrink-0"
-                                      onError={(e) => { e.target.style.display = 'none' }} />
-                                  )}
+                                  <PlayerHeadshot name={pick.player_name} url={pick.headshot_url} size="sm" className="lg:w-10 lg:h-10" />
                                   <div className="flex-1 min-w-0">
                                     <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
                                     <div className="text-[10px] lg:text-xs text-text-muted truncate">{pick.position} · {pick.team}</div>
@@ -241,10 +239,7 @@ export default function ReceptionsView({ league, tab = 'picks' }) {
                             <div className="space-y-1.5">
                               {lastWeekPicks.map((pick, i) => (
                                 <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/10 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-3">
-                                  {pick.headshot_url && (
-                                    <img src={pick.headshot_url} alt="" className="w-8 h-8 lg:w-10 lg:h-10 rounded-full object-cover bg-bg-secondary shrink-0"
-                                      onError={(e) => { e.target.style.display = 'none' }} />
-                                  )}
+                                  <PlayerHeadshot name={pick.player_name} url={pick.headshot_url} size="sm" className="lg:w-10 lg:h-10" />
                                   <div className="flex-1 min-w-0">
                                     <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
                                     <div className="text-[10px] lg:text-xs text-text-muted truncate">{pick.position} · {pick.team}</div>
@@ -303,10 +298,7 @@ export default function ReceptionsView({ league, tab = 'picks' }) {
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setDetailPlayer(player) }}
                     className="flex items-center gap-2 bg-bg-primary/10 border border-text-primary/15 rounded-lg px-3 py-2.5 cursor-pointer hover:bg-text-primary/5 transition-colors"
                   >
-                    {player.headshot_url && (
-                      <img src={player.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
-                        onError={(e) => { e.target.style.display = 'none' }} />
-                    )}
+                    <PlayerHeadshot name={player.player_name} url={player.headshot_url} size="md" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
@@ -419,14 +411,11 @@ export default function ReceptionsView({ league, tab = 'picks' }) {
                 }`}
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  {player.headshot_url ? (
-                    <img src={player.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
-                      onError={(e) => { e.target.style.display = 'none' }} />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">
-                      {player.position}
-                    </div>
-                  )}
+                  {/* Shared component so a headshot that 404s falls back to initials
+                      instead of vanishing — the inline version only had a
+                      fallback when the URL was ABSENT, so a broken URL left
+                      the row with no avatar at all. */}
+                  <PlayerHeadshot name={player.full_name} url={player.headshot_url} size="md" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
@@ -477,10 +466,7 @@ export default function ReceptionsView({ league, tab = 'picks' }) {
                   <div className="space-y-1.5">
                     {picks.map((pick, i) => (
                       <div key={i} className="flex items-center gap-2 bg-bg-primary/10 border border-text-primary/10 rounded-lg px-2.5 py-2">
-                        {pick.headshot_url && (
-                          <img src={pick.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
-                            onError={(e) => { e.target.style.display = 'none' }} />
-                        )}
+                        <PlayerHeadshot name={pick.player_name} url={pick.headshot_url} size="sm" />
                         <div className="flex-1 min-w-0">
                           <div className="text-xs font-bold text-text-primary truncate">{pick.player_name}</div>
                           <div className="text-[10px] text-text-muted">{pick.position} · {pick.team}</div>

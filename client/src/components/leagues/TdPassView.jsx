@@ -14,6 +14,7 @@ import InjuryBadge from '../ui/InjuryBadge'
 import UserProfileModal from '../profile/UserProfileModal'
 import { toast } from '../ui/Toast'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
+import PlayerHeadshot from '../ui/PlayerHeadshot'
 
 export default function TdPassView({ league, tab = 'picks' }) {
   const { profile } = useAuth()
@@ -127,10 +128,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
                             </div>
                           ) : (
                             <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/30 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-2.5">
-                              {pick.headshot_url && (
-                                <img src={pick.headshot_url} alt="" className="w-8 h-8 lg:w-9 lg:h-9 rounded-full object-cover bg-bg-secondary shrink-0"
-                                  onError={(e) => { e.target.style.display = 'none' }} />
-                              )}
+                              <PlayerHeadshot name={pick.qb_name} url={pick.headshot_url} size="sm" className="lg:w-9 lg:h-9" />
                               <div className="flex-1 min-w-0">
                                 <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.qb_name}</div>
                                 <div className="text-[10px] lg:text-xs text-text-muted">{pick.team} · Week {pick.week}</div>
@@ -180,9 +178,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
                   background: `linear-gradient(180deg, ${teamColor} 0%, ${teamColor}b3 55%, ${teamColor}00 100%)`,
                 } : undefined}
               >
-                {myCurrentPick.headshot_url && (
-                  <img src={myCurrentPick.headshot_url} alt="" className="w-28 h-28 rounded-full object-cover bg-bg-card border-2 border-text-primary/20" onError={(e) => { e.target.style.display = 'none' }} />
-                )}
+                <PlayerHeadshot name={myCurrentPick.qb_name} url={myCurrentPick.headshot_url} size="md" />
                 <div className="flex items-center justify-center gap-2">
                   <div className={`font-display text-xl ${teamColor ? 'text-white' : 'text-text-primary'}`}>{myCurrentPick.qb_name}</div>
                   <InjuryBadge status={pickedQbData?.injury_status} />
@@ -261,11 +257,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
                       } : undefined}
                     >
                       <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider w-6 shrink-0">W{p.week}</span>
-                      {p.headshot_url ? (
-                        <img src={p.headshot_url} alt="" className="w-9 h-9 rounded-full object-cover bg-bg-card border border-text-primary/20 shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-bg-card border border-text-primary/20 shrink-0 flex items-center justify-center text-[10px] text-text-muted font-bold">QB</div>
-                      )}
+                      <PlayerHeadshot name={p.qb_name} url={p.headshot_url} size="sm" className="w-9 h-9" />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold text-text-primary truncate">{p.qb_name}</div>
                         <div className="text-[10px] text-text-muted">{p.team}</div>
@@ -316,14 +308,16 @@ export default function TdPassView({ league, tab = 'picks' }) {
                 type="button"
                 onClick={() => !qb.used && handlePick(qb)}
                 disabled={submit.isPending || qb.used}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 transition-colors ${qb.used ? 'opacity-40 cursor-not-allowed' : 'hover:bg-text-primary/5 cursor-pointer'} ${!qb.used && (qb.injury_status === 'Out' || !qb.matchup) ? 'opacity-40' : ''}`}
+                // text-left: <button> defaults to text-align:center, so the
+                // matchup line under the name rendered centred while the name
+                // itself looked left-aligned only because it's a flex child.
+                className={`w-full text-left flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 transition-colors ${qb.used ? 'opacity-40 cursor-not-allowed' : 'hover:bg-text-primary/5 cursor-pointer'} ${!qb.used && (qb.injury_status === 'Out' || !qb.matchup) ? 'opacity-40' : ''}`}
               >
-                {qb.headshot_url ? (
-                  <img src={qb.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
-                    onError={(e) => { e.target.style.display = 'none' }} />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">QB</div>
-                )}
+                {/* Shared component so a headshot that 404s falls back to initials
+                      instead of vanishing — the inline version only had a
+                      fallback when the URL was ABSENT, so a broken URL left
+                      the row with no avatar at all. */}
+                  <PlayerHeadshot name={qb.full_name} url={qb.headshot_url} size="md" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-bold text-text-primary truncate">{qb.full_name}</span>
