@@ -401,13 +401,17 @@ export default function PicksPage() {
         </>
       )}
 
-      {/* Outside the mode branches on purpose. This summarises everything
-          pending — straight picks AND prop picks — so it has to survive
-          switching to the Props or Futures tab. It used to live inside the
-          games branch, so it vanished the moment you opened Props, taking
-          your running risk/reward with it. Page root already carries pb-32,
-          so the fixed bar never covers content. */}
-      {parlayMode ? <ParlaySlip /> : <BottomBar picks={pendingPicksMap} games={allGames} propPicks={pendingPropPicks} profile={profile} onUpdateMultiplier={handleUpdateMultiplier} />}
+      {/* Shown on the games list AND the Props tab — it summarises straight
+          picks and prop picks together, so it has to survive the switch to
+          Props, where picks can still be added. It used to live inside the
+          games branch and vanished there, taking the running risk/reward
+          with it.
+          Futures is excluded on purpose: those don't feed this bar.
+          Page root already carries pb-32, so the fixed bar never covers
+          content. */}
+      {!isFuturesMode && (
+        parlayMode ? <ParlaySlip /> : <BottomBar picks={pendingPicksMap} games={allGames} propPicks={pendingPropPicks} profile={profile} onUpdateMultiplier={handleUpdateMultiplier} />
+      )}
 
       <GameIntelModal gameId={injuryGameId} onClose={() => setInjuryGameId(null)} />
     </div>
