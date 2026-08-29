@@ -321,6 +321,43 @@ export async function scoreNflDfsWeek(week, season) {
     for (const st of stats || []) statsMap[st.player_id] = st
   }
 
+  // GUARD: Sleeper is the sole upstream for nfl_player_stats. If it returns
+  // nothing for a week, statsMap is empty, applyScoringRules(undefined, ...)
+  // yields 0 for every player, and we would upsert a full slate of zeros as
+  // AUTHORITATIVE results. Users wouldn't see an outage — they'd see a
+  // completed week where everyone scored 0, which is corrupted standings and
+  // far harder to undo than downtime. Refuse to write and shout instead.
+  //
+  // Guarded on allPlayerIds.length so a genuinely empty slate (no rosters
+  // with players) still no-ops quietly rather than paging anyone.
+  if (allPlayerIds.length && !Object.keys(statsMap).length) {
+    // Before the week's first game there are legitimately no stats, so only
+    // treat this as a failure once something has actually finished.
+    const { nflWeekHasFinalGames } = await import('../utils/nflWeekHasFinalGames.js')
+    if (!(await nflWeekHasFinalGames(week, season))) {
+      logger.info({ week, season }, 'No player stats yet and no final games — nothing to score.')
+      return { scored: 0 }
+    }
+    logger.error(
+      { week, season, rosteredPlayers: allPlayerIds.length },
+      'ABORT NFL DFS (salary cap): nfl_player_stats is empty for this week. Refusing to persist zeros. Check the Sleeper sync.'
+    )
+    try {
+      const { sendAdminEmail } = await import('./emailService.js')
+      await sendAdminEmail(
+        `IKB: NFL DFS (salary cap) scoring aborted (week ${week})`,
+        `nfl_player_stats returned NO rows for season ${season}, week ${week}, `
+        + `despite ${allPlayerIds.length} rostered players.\n\n`
+        + `Scoring was skipped rather than writing zeros as real results. `
+        + `Standings are untouched.\n\n`
+        + `Check the Sleeper sync (syncWeeklyStats), then re-run scoring for this week.`
+      )
+    } catch (err) {
+      logger.error({ err: err.message }, 'Failed to send scoring-abort admin alert')
+    }
+    return { scored: 0, aborted: 'no_player_stats' }
+  }
+
   // 4. Aggregate per league using each league's own rules
   const leagueRosters = {}
   for (const r of rosters) {
