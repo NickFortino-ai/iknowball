@@ -143,7 +143,12 @@ router.post('/picks', async (req, res) => {
 
   const reuseMode = settings?.pick_reuse || 'weekly'
 
-  if (reuseMode === 'weekly') {
+  // Anything that isn't 'unlimited' is enforced as once-per-week, matching
+  // what /used already grays out. Testing for the literal 'weekly' meant an
+  // unexpected value (a legacy 'season', or a numeric the schema allows but
+  // this format's UI never offers) silently enforced NOTHING while /used
+  // still showed players as exhausted — graying without blocking.
+  if (reuseMode !== 'unlimited') {
     const weekStart = getWeekStart(date)
     const weekEnd = getWeekEnd(weekStart)
     const { data: priorPicks } = await supabase
