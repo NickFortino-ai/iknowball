@@ -134,7 +134,7 @@ export default function StatLeadersBlock({ sport, mode = 'full' }) {
               <div className="flex-1 min-w-0">
                 <div className="text-sm text-text-primary truncate">{r.athlete_name}</div>
                 <div className="text-[11px] text-text-muted flex items-center gap-1.5">
-                  {r.team_abbr && <span>{r.team_abbr}</span>}
+                  {(r.team_short || r.team_abbr) && <span className="truncate">{r.team_short || r.team_abbr}</span>}
                   {r.position && <span>· {r.position}</span>}
                 </div>
               </div>
@@ -156,7 +156,7 @@ export default function StatLeadersBlock({ sport, mode = 'full' }) {
               <PlayerAvatar name={r.athlete_name} headshot={r.headshot} size="sm" />
               <div className="flex-1 min-w-0 flex items-baseline gap-2">
                 <span className="text-sm text-text-primary truncate">{r.athlete_name}</span>
-                {r.team_abbr && <span className="text-[10px] text-text-muted shrink-0">{r.team_abbr}</span>}
+                {(r.team_short || r.team_abbr) && <span className="text-[10px] text-text-muted shrink-0 truncate max-w-[5.5rem]">{r.team_short || r.team_abbr}</span>}
               </div>
               <div className="text-sm font-semibold tabular-nums text-text-primary shrink-0">
                 {r.display_value}

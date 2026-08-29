@@ -212,6 +212,10 @@ async function dereferenceLeader(entry, categoryName, totalStatName) {
     team_id: team?.id || null,
     team_abbr: team?.abbreviation || null,
     team_name: team?.displayName || null,
+    // School without the mascot — "Drake" rather than "Drake Bulldogs" or
+    // the opaque "DRKE". Readable in a narrow column, which the full
+    // displayName is not ("Gardner-Webb Runnin' Bulldogs").
+    team_short: team?.shortDisplayName || team?.location || team?.name || null,
     team_logo: team?.logos?.[0]?.href || null,
   }
 }
