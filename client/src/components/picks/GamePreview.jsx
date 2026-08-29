@@ -9,17 +9,16 @@ export default function GamePreview({ preview, away, home }) {
   if (!preview) return null
   const {
     venue, odds, predictor, leaders, blurb, season,
-    last_five: lastFive, season_results: seasonResults,
+    season_results: seasonResults,
   } = preview
-  // College football sends the full season SCHEDULE — every game, results
-  // filling in as they're played — so the section is populated from Week 1
-  // instead of being empty until a game is in the books. Everything else
-  // still sends ESPN's trailing five, which is only ever completed games.
-  // Same shape, different heading.
-  const formList = seasonResults || lastFive
-  const formLabel = seasonResults ? `${season || ''} schedule`.trim() : 'Last 5'
+  // Football sports send the full season SCHEDULE — every game, results
+  // filling in as they're played. No other sport sends a form section at
+  // all: ESPN's trailing five was dropped because five games says little on
+  // its own, and before a season starts it quietly holds LAST season's.
+  const formList = seasonResults
+  const formLabel = `${season || ''} schedule`.trim()
 
-  // last_five / leaders come keyed by ESPN team id; map to our team objects
+  // season_results / leaders come keyed by ESPN team id; map to our team objects
   // so the columns line up away-then-home like the rest of the modal.
   //
   // Two callers pass different things: Game Center's team objects carry real
@@ -98,8 +97,9 @@ export default function GamePreview({ preview, away, home }) {
                     longer read as comparable timelines. */}
                 <div className="flex gap-1.5 overflow-x-auto pb-1 -mb-1">
                   {entry.games.map((g, i) => {
-                    // played === undefined for sports still sending the
-                    // trailing five, where every game is by definition played.
+                    // Defensive: treat a row with no `played` flag as played,
+                    // so a cached pre-change payload renders as results
+                    // rather than as an all-outlined schedule.
                     const played = g.played !== false
                     return (
                       <span
