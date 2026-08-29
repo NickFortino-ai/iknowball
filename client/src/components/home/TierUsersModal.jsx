@@ -5,6 +5,7 @@ import TierBadge from '../ui/TierBadge'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import UserProfileModal from '../profile/UserProfileModal'
+import { MODAL_INSET_STYLE } from '../../lib/modalInset'
 
 const TIER_BLURBS = {
   Learning: "They're finding their way. First step toward knowing ball is realizing you don't know ball yet.",
@@ -35,10 +36,10 @@ export default function TierUsersModal({ tier, onClose }) {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-16" onClick={onClose}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-16" style={MODAL_INSET_STYLE} onClick={onClose}>
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
         <div
-          className="relative w-full md:max-w-md rounded-2xl p-6 max-h-[calc(100vh-8rem)] flex flex-col"
+          className="relative w-full md:max-w-md rounded-2xl p-6 max-h-full flex flex-col"
           style={{
             backgroundColor: 'var(--color-bg-primary)',
             borderWidth: '1px',

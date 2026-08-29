@@ -4,6 +4,7 @@ import { useLeagueMembers, useRenewFantasyLeague } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import { MODAL_INSET_STYLE } from '../../lib/modalInset'
 
 // Renew a completed fantasy league into a fresh next-season league.
 // Commissioner picks which prior members to invite back (all checked
@@ -70,9 +71,9 @@ export default function RenewLeagueModal({ leagueId, leagueName, commissionerId,
   const noneSelected = effectiveSelected.size === 0
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" style={MODAL_INSET_STYLE} onClick={onClose}>
       <div
-        className="bg-bg-primary border border-text-primary/20 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="bg-bg-primary border border-text-primary/20 rounded-2xl w-full max-w-lg max-h-full overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5 border-b border-text-primary/10 sticky top-0 bg-bg-primary z-10">

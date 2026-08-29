@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useLeagueHistory, useLineageSeasonStandings } from '../../hooks/useLeagues'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
+import { MODAL_INSET_STYLE } from '../../lib/modalInset'
 
 // Renders the league's season-over-season lineage: each ancestor +
 // current + child. Champion snapshot inline; expand a season to load
@@ -12,9 +13,9 @@ export default function LeagueHistoryModal({ leagueId, onClose }) {
   const [expandedId, setExpandedId] = useState(null)
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" style={MODAL_INSET_STYLE} onClick={onClose}>
       <div
-        className="bg-bg-primary border border-text-primary/20 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="bg-bg-primary border border-text-primary/20 rounded-2xl w-full max-w-lg max-h-full overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5 border-b border-text-primary/10 sticky top-0 bg-bg-primary z-10 flex items-start justify-between gap-3">

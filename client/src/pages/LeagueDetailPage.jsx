@@ -53,6 +53,7 @@ import { getBackdropUrl, getBackdropFilterKey } from '../lib/backdropUrl'
 import { getSeasonEndDate, isSeasonUnderway } from '../lib/seasonDates'
 import { formatStartDateShort, formatEndDateShort, formatEndDateLong, formatDraftDateShort } from '../lib/leagueDate'
 import { todaySportsDay, leagueStartSportsDay } from '../lib/sportsDay'
+import { MODAL_INSET_STYLE } from '../lib/modalInset'
 
 const REPORT_FORMATS = ['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs']
 
@@ -2442,10 +2443,10 @@ export default function LeagueDetailPage() {
       )}
 
       {showMembersModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowMembersModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={MODAL_INSET_STYLE} onClick={() => setShowMembersModal(false)}>
           <div className="absolute inset-0 bg-black/60" />
           <div
-            className="relative bg-bg-card rounded-2xl border border-text-primary/20 w-full max-w-sm max-h-[70vh] overflow-y-auto"
+            className="relative bg-bg-card rounded-2xl border border-text-primary/20 w-full max-w-sm max-h-full overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-text-primary/10 sticky top-0 bg-bg-card z-10">
@@ -3009,11 +3010,12 @@ export default function LeagueDetailPage() {
       {showSettingsModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={MODAL_INSET_STYLE}
           onClick={() => { setShowSettingsModal(false); setSettingsView('settings') }}
         >
           <div className="absolute inset-0 bg-black/60" />
           <div
-            className="relative bg-bg-primary/80 backdrop-blur-md border border-text-primary/20 w-full max-w-lg rounded-2xl p-6 max-h-[85vh] overflow-y-auto"
+            className="relative bg-bg-primary/80 backdrop-blur-md border border-text-primary/20 w-full max-w-lg rounded-2xl p-6 max-h-full overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
