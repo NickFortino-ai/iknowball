@@ -13,7 +13,6 @@ import FeaturedPropSection from '../components/picks/FeaturedPropSection'
 import FuturesSection from '../components/picks/FuturesSection'
 import PropsSection from '../components/picks/PropsSection'
 import GameIntelModal from '../components/picks/GameIntelModal'
-import GameDetailModal from '../components/picks/GameDetailModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import { toast } from '../components/ui/Toast'
@@ -106,7 +105,6 @@ export default function PicksPage() {
   const updateMultiplier = useUpdatePickMultiplier()
   const profile = useAuthStore((s) => s.profile)
   const [injuryGameId, setInjuryGameId] = useState(null)
-  const [detailGameId, setDetailGameId] = useState(null)
 
   const { data: pendingPropPicks } = useMyPropPicks('pending')
   const { data: activeParlays } = useMyParlays('pending')
@@ -392,7 +390,13 @@ export default function PicksPage() {
                   onParlayToggle={handleParlayToggle}
                   hasInjuryData={INTEL_SPORTS.has(sportKey)}
                   onInjuryClick={() => setInjuryGameId(game.id)}
-                  onCardClick={GAME_INTEL_SPORTS.has(sportKey) ? () => setDetailGameId(game.id) : undefined}
+                  // Both affordances open the pregame intel modal. Tapping the
+                  // card used to open GameDetailModal, which renders records and
+                  // a box score but NOT GamePreview — and this page only ever
+                  // lists upcoming games, where a box score doesn't exist yet.
+                  // For NCAAF, whose records are also absent pre-season, that
+                  // left a modal titled "Game Intel" over nothing at all.
+                  onCardClick={GAME_INTEL_SPORTS.has(sportKey) ? () => setInjuryGameId(game.id) : undefined}
                   sportKey={sportKey}
                 />
               ))}
@@ -404,7 +408,6 @@ export default function PicksPage() {
       )}
 
       <GameIntelModal gameId={injuryGameId} onClose={() => setInjuryGameId(null)} />
-      <GameDetailModal gameId={detailGameId} onClose={() => setDetailGameId(null)} />
     </div>
   )
 }

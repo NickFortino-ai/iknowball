@@ -119,7 +119,17 @@ router.get('/:game_id', requireAuth, async (req, res) => {
   }
 
   if (!supportedSports.has(canonicalSportKey)) {
-    return res.json({ home_team: game.home_team, away_team: game.away_team, home: empty, away: empty, preview })
+    // sportKey is what the modal feeds TeamLogo. The full branch below sends
+    // it; omitting it here left NCAAF — the only sport that takes this path
+    // with a preview — resolving logos without a sport.
+    return res.json({
+      home_team: game.home_team,
+      away_team: game.away_team,
+      sportKey: game.sports?.key,
+      home: empty,
+      away: empty,
+      preview,
+    })
   }
 
   const { data: intel } = await supabase
