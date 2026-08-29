@@ -114,7 +114,7 @@ async function fetchSeasonResults(espnPath, teamId, season) {
       const data = await res.json()
       for (const ev of data.events || []) {
         const comp = ev.competitions?.[0]
-        if (!comp?.status?.type?.completed) continue
+        if (!comp) continue
         // Belt and braces — the param above should already exclude these,
         // but a stray preseason row would silently distort the record.
         if (ev.seasonType?.id && String(ev.seasonType.id) !== '2') continue
@@ -122,12 +122,17 @@ async function fetchSeasonResults(espnPath, teamId, season) {
         const me = competitors.find((c) => String(c.team?.id) === String(teamId))
         const opp = competitors.find((c) => String(c.team?.id) !== String(teamId))
         if (!me || !opp) continue
+        // Unplayed games are kept — this is the team's SCHEDULE, not just its
+        // results, so the section is populated from Week 1 instead of being
+        // empty until a game is in the books.
+        const played = !!comp.status?.type?.completed
         const myScore = Number(me.score?.value ?? me.score?.displayValue ?? me.score)
         const oppScore = Number(opp.score?.value ?? opp.score?.displayValue ?? opp.score)
         rows.push({
           date: ev.date || null,
-          result: me.winner === true ? 'W' : opp.winner === true ? 'L' : 'T',
-          score: Number.isFinite(myScore) && Number.isFinite(oppScore) ? `${myScore}-${oppScore}` : null,
+          played,
+          result: played ? (me.winner === true ? 'W' : opp.winner === true ? 'L' : 'T') : null,
+          score: played && Number.isFinite(myScore) && Number.isFinite(oppScore) ? `${myScore}-${oppScore}` : null,
           at_vs: me.homeAway === 'home' ? 'vs' : '@',
           opponent: opp.team?.abbreviation || opp.team?.displayName || null,
         })
@@ -438,19 +443,17 @@ export async function getBoxScore(gameId) {
       }))
     )
     const withGames = rows.filter((r) => r.games.length)
-    if (withGames.length) {
-      // Season is underway — the real thing beats the trailing window.
-      delete normalized.preview.last_five
-      normalized.preview.season_results = withGames
-    } else {
-      // Week 1: no current-season results exist yet. Dropping last_five here
-      // (which is what this used to do unconditionally) left the preview with
-      // only odds, predictor and venue — the "bare modal". ESPN's
-      // lastFiveGames still holds last season's five, which is genuinely
-      // useful as long as it isn't passed off as current form, so keep it and
-      // stamp the season the client must label it with.
-      if (normalized.preview.last_five) normalized.preview.last_five_season = season - 1
-    }
+    // Always drop ESPN's trailing five here: before a season starts it holds
+    // LAST season's games, and showing 2025 results inside a 2026 preview is
+    // misleading however it's labelled. The schedule below includes unplayed
+    // games, so it's populated from Week 1 and there's nothing to fall back to.
+    delete normalized.preview.last_five
+    if (withGames.length) normalized.preview.season_results = withGames
+    normalized.preview.season = season
+    // home/away ids and the season stamp are metadata, not content — a preview
+    // carrying only those would render an empty shell.
+    const CONTENT_KEYS = ['venue', 'odds', 'predictor', 'blurb', 'last_five', 'season_results', 'leaders']
+    if (!CONTENT_KEYS.some((k) => normalized.preview[k])) normalized.preview = null
     if (!Object.keys(normalized.preview).length) normalized.preview = null
   }
 

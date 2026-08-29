@@ -8,18 +8,16 @@
 export default function GamePreview({ preview, away, home }) {
   if (!preview) return null
   const {
-    venue, odds, predictor, leaders, blurb,
-    last_five: lastFive, season_results: seasonResults, last_five_season: lastFiveSeason,
+    venue, odds, predictor, leaders, blurb, season,
+    last_five: lastFive, season_results: seasonResults,
   } = preview
-  // College football sends the season so far (12 games, filling in week by
-  // week); everything else sends a trailing five. Same shape, different
-  // heading. Before a college season's first game there IS no current form,
-  // so the server falls back to last season's five and stamps the year —
-  // label it explicitly rather than letting 2025 results read as current.
+  // College football sends the full season SCHEDULE — every game, results
+  // filling in as they're played — so the section is populated from Week 1
+  // instead of being empty until a game is in the books. Everything else
+  // still sends ESPN's trailing five, which is only ever completed games.
+  // Same shape, different heading.
   const formList = seasonResults || lastFive
-  const formLabel = seasonResults
-    ? 'This season'
-    : lastFiveSeason ? `${lastFiveSeason} season · last 5` : 'Last 5'
+  const formLabel = seasonResults ? `${season || ''} schedule`.trim() : 'Last 5'
 
   // last_five / leaders come keyed by ESPN team id; map to our team objects
   // so the columns line up away-then-home like the rest of the modal.
@@ -94,22 +92,35 @@ export default function GamePreview({ preview, away, home }) {
                 <span className="text-xs font-semibold text-text-primary w-12 shrink-0 truncate">
                   {team.abbr || team.short}
                 </span>
-                <div className="flex gap-1.5 flex-wrap">
-                  {entry.games.map((g, i) => (
-                    <span
-                      key={i}
-                      title={`${g.result} ${g.score} ${g.at_vs || ''}${g.opponent || ''}`}
-                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                        g.result === 'W'
-                          ? 'bg-correct/20 text-correct'
-                          : g.result === 'L'
-                            ? 'bg-incorrect/20 text-incorrect'
-                            : 'bg-text-primary/10 text-text-muted'
-                      }`}
-                    >
-                      {g.result || '—'} {g.at_vs || ''}{g.opponent || ''}
-                    </span>
-                  ))}
+                {/* A full season is 12-13 chips, far more than the 5 this
+                    started as. Scroll the row instead of wrapping it — wrapped
+                    chips made the two teams' rows different heights, so they no
+                    longer read as comparable timelines. */}
+                <div className="flex gap-1.5 overflow-x-auto pb-1 -mb-1">
+                  {entry.games.map((g, i) => {
+                    // played === undefined for sports still sending the
+                    // trailing five, where every game is by definition played.
+                    const played = g.played !== false
+                    return (
+                      <span
+                        key={i}
+                        title={played
+                          ? `${g.result || ''} ${g.score || ''} ${g.at_vs || ''}${g.opponent || ''}`.trim()
+                          : `${g.at_vs || ''}${g.opponent || ''}${g.date ? ` · ${new Date(g.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}`}
+                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 ${
+                          !played
+                            ? 'bg-transparent border border-text-primary/15 text-text-muted font-medium'
+                            : g.result === 'W'
+                              ? 'bg-correct/20 text-correct'
+                              : g.result === 'L'
+                                ? 'bg-incorrect/20 text-incorrect'
+                                : 'bg-text-primary/10 text-text-muted'
+                        }`}
+                      >
+                        {played ? `${g.result || '—'} ` : ''}{g.at_vs || ''}{g.opponent || ''}
+                      </span>
+                    )
+                  })}
                 </div>
               </div>
             ))}
