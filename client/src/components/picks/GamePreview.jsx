@@ -9,14 +9,13 @@ export default function GamePreview({ preview, away, home }) {
   if (!preview) return null
   const {
     venue, odds, predictor, leaders, blurb, season,
-    season_results: seasonResults,
+    last_five: lastFive, season_results: seasonResults,
   } = preview
   // Football sports send the full season SCHEDULE — every game, results
-  // filling in as they're played. No other sport sends a form section at
-  // all: ESPN's trailing five was dropped because five games says little on
-  // its own, and before a season starts it quietly holds LAST season's.
-  const formList = seasonResults
-  const formLabel = `${season || ''} schedule`.trim()
+  // filling in as they're played. Everything else sends ESPN's trailing
+  // five, which is only ever completed games. Same shape, different heading.
+  const formList = seasonResults || lastFive
+  const formLabel = seasonResults ? `${season || ''} schedule`.trim() : 'Last 5'
 
   // season_results / leaders come keyed by ESPN team id; map to our team objects
   // so the columns line up away-then-home like the rest of the modal.
@@ -88,36 +87,43 @@ export default function GamePreview({ preview, away, home }) {
           <div className="space-y-2">
             {formRows.map(({ team, entry }) => (
               <div key={team.id} className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-text-primary w-12 shrink-0 truncate">
-                  {team.abbr || team.short}
+                {/* entry.team_abbr is ESPN's real abbreviation ("SJSU"). Prefer
+                    it: Game Center passes a proper abbr, but the Picks modal
+                    only knows the full team NAME, so this column was rendering
+                    "San Jose State Spartans" clipped to "San Jo...". */}
+                <span className="text-[11px] font-bold text-text-primary w-11 shrink-0 tracking-wide">
+                  {entry.team_abbr || team.abbr || team.short}
                 </span>
-                {/* A full season is 12-13 chips, far more than the 5 this
-                    started as. Scroll the row instead of wrapping it — wrapped
-                    chips made the two teams' rows different heights, so they no
-                    longer read as comparable timelines. */}
-                <div className="flex gap-1.5 overflow-x-auto pb-1 -mb-1">
+                {/* Scroll rather than wrap. Wrapped chips gave the two teams
+                    different row heights, so they stopped reading as two
+                    comparable timelines — and a football season is 12-17
+                    chips, not 5. */}
+                <div className="flex gap-1 overflow-x-auto pb-1 -mb-1">
                   {entry.games.map((g, i) => {
-                    // Defensive: treat a row with no `played` flag as played,
-                    // so a cached pre-change payload renders as results
-                    // rather than as an all-outlined schedule.
+                    // Defensive: a row with no `played` flag is a completed
+                    // game (that's all last_five ever contains).
                     const played = g.played !== false
+                    const tone = !played
+                      ? 'border-text-primary/15 text-text-muted'
+                      : g.result === 'W'
+                        ? 'border-correct/40 text-correct'
+                        : g.result === 'L'
+                          ? 'border-incorrect/40 text-incorrect'
+                          : 'border-text-primary/20 text-text-muted'
                     return (
                       <span
                         key={i}
                         title={played
                           ? `${g.result || ''} ${g.score || ''} ${g.at_vs || ''}${g.opponent || ''}`.trim()
                           : `${g.at_vs || ''}${g.opponent || ''}${g.date ? ` · ${new Date(g.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}`}
-                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 ${
-                          !played
-                            ? 'bg-transparent border border-text-primary/15 text-text-muted font-medium'
-                            : g.result === 'W'
-                              ? 'bg-correct/20 text-correct'
-                              : g.result === 'L'
-                                ? 'bg-incorrect/20 text-incorrect'
-                                : 'bg-text-primary/10 text-text-muted'
-                        }`}
+                        className={`inline-flex items-baseline gap-1 text-[10px] px-1.5 py-0.5 rounded border whitespace-nowrap shrink-0 ${tone}`}
                       >
-                        {played ? `${g.result || '—'} ` : ''}{g.at_vs || ''}{g.opponent || ''}
+                        {played && <span className="font-bold">{g.result || '—'}</span>}
+                        {/* Opponent sits at lower emphasis so a row of five
+                            reads as a W/L sequence first and a fixture list
+                            second — the old chips bolded both equally, which
+                            is what made the block look like noise. */}
+                        <span className="opacity-60">{g.at_vs || ''}{g.opponent || ''}</span>
                       </span>
                     )
                   })}

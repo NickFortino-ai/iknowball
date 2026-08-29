@@ -90,8 +90,8 @@ const seasonResultsCache = new Map() // `${path}:${teamId}:${season}` → { rows
 const SEASON_RESULTS_TTL_MS = 60 * 60 * 1000
 
 // Sports whose full season fits on screen — college football plays ~12
-// games, the NFL 17. Everything else shows NO form section at all: 82 NBA
-// chips is not a design, and a trailing five was worse than nothing.
+// games, the NFL 17. Everything else keeps ESPN's trailing five, because
+// 162 MLB chips is not a design.
 const SEASON_RESULTS_SPORTS = new Set([
   'americanfootball_ncaaf',
   'americanfootball_nfl',
@@ -206,12 +206,27 @@ function extractPreview(summary) {
     if (channel) preview.blurb.broadcast = channel
   }
 
-  // ESPN's lastFiveGames is deliberately NOT surfaced. A trailing five tells
-  // you very little on its own, and before a season starts it silently holds
-  // LAST season's games. Football sports get the real thing instead — the
-  // full season schedule, results filling in as they're played — via
-  // SEASON_RESULTS_SPORTS below. Sports with too many games for that (NBA at
-  // 82, MLB at 162) simply don't show a form section.
+  // Recent form, most recent first. ESPN returns oldest-first.
+  //
+  // Football sports overwrite this with the full season schedule (see
+  // SEASON_RESULTS_SPORTS below) — including, crucially, before a season
+  // starts, when ESPN's lastFiveGames still holds LAST season's games.
+  const lastFive = (summary?.lastFiveGames || [])
+    .map((entry) => ({
+      team_id: entry.team?.id ? String(entry.team.id) : null,
+      team_abbr: entry.team?.abbreviation || null,
+      games: (entry.events || [])
+        .map((ev) => ({
+          date: ev.gameDate || null,
+          result: ev.gameResult || null,
+          score: ev.score || null,
+          at_vs: ev.atVs || null,
+          opponent: ev.opponent?.abbreviation || ev.opponent?.displayName || null,
+        }))
+        .reverse(),
+    }))
+    .filter((t) => t.games.length)
+  if (lastFive.length) preview.last_five = lastFive
 
   // Statistical leaders. Categories with no athlete are dropped, and a team
   // with no populated categories is dropped entirely — that's the Week 1
@@ -429,11 +444,14 @@ export async function getBoxScore(gameId) {
       }))
     )
     const withGames = rows.filter((r) => r.games.length)
+    // Drop the trailing five once the schedule is available — before a
+    // season starts it holds LAST season's games, which read as current form.
+    delete normalized.preview.last_five
     if (withGames.length) normalized.preview.season_results = withGames
     normalized.preview.season = season
     // home/away ids and the season stamp are metadata, not content — a preview
     // carrying only those would render an empty shell.
-    const CONTENT_KEYS = ['venue', 'odds', 'predictor', 'blurb', 'season_results', 'leaders']
+    const CONTENT_KEYS = ['venue', 'odds', 'predictor', 'blurb', 'last_five', 'season_results', 'leaders']
     if (!CONTENT_KEYS.some((k) => normalized.preview[k])) normalized.preview = null
     if (!Object.keys(normalized.preview).length) normalized.preview = null
   }
