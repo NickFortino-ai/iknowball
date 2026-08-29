@@ -63,6 +63,38 @@ function extractTweetId(urlStr) {
   }
 }
 
+// OG content attributes arrive HTML-escaped, and these values are rendered
+// as TEXT, so without decoding a card reads:
+//   NFL on Instagram: &quot;running through tacklers&quot; ... &#064;NFLPlus
+// Affects any site whose title contains quotes, apostrophes or ampersands —
+// Instagram just makes it obvious because it puts the caption in the title.
+//
+// Hand-rolled rather than adding a dependency: this only ever runs over a
+// title/description/site_name we are about to render as plain text, and the
+// named set below covers what actually shows up in OG tags. Numeric forms
+// (&#64; and &#x40;) cover the rest.
+const NAMED_ENTITIES = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
+  hellip: '…', mdash: '—', ndash: '–', lsquo: '\u2018', rsquo: '\u2019',
+  ldquo: '\u201C', rdquo: '\u201D', middot: '·', bull: '•', trade: '™',
+  reg: '\u00AE', copy: '\u00A9', deg: '°',
+}
+
+function decodeEntities(str) {
+  if (!str || !str.includes('&')) return str
+  return str
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+      const n = parseInt(hex, 16)
+      return Number.isFinite(n) ? String.fromCodePoint(n) : _
+    })
+    .replace(/&#(\d+);/g, (_, dec) => {
+      const n = parseInt(dec, 10)
+      return Number.isFinite(n) ? String.fromCodePoint(n) : _
+    })
+    // &amp; last so "&amp;quot;" doesn't become a live quote entity.
+    .replace(/&([a-z]+);/gi, (m, name) => NAMED_ENTITIES[name.toLowerCase()] ?? m)
+}
+
 function parseOgTags(html, baseUrl) {
   const meta = {}
   // Match og: meta tags
@@ -70,16 +102,16 @@ function parseOgTags(html, baseUrl) {
   const ogRegex2 = /<meta[^>]+content=["']([^"']*?)["'][^>]+property=["']og:(\w+)["'][^>]*>/gi
   let match
   while ((match = ogRegex.exec(html)) !== null) {
-    meta[match[1]] = match[2]
+    meta[match[1]] = decodeEntities(match[2])
   }
   while ((match = ogRegex2.exec(html)) !== null) {
-    meta[match[2]] = match[1]
+    meta[match[2]] = decodeEntities(match[1])
   }
 
   // Fallback to <title> tag
   if (!meta.title) {
     const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i)
-    if (titleMatch) meta.title = titleMatch[1].trim()
+    if (titleMatch) meta.title = decodeEntities(titleMatch[1].trim())
   }
 
   // Resolve relative image URLs
