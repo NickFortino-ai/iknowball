@@ -5,6 +5,7 @@ import PropCard from './PropCard'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
 import { triggerHaptic } from '../../lib/haptics'
+import { getNcaafMatchupScore } from '../../lib/ncaafPrestige'
 
 // Sport tile display order + labels. The actual order in the grid comes
 // from the props_sport_order remote-config knob (admin-reorderable); this
@@ -115,8 +116,26 @@ function oddsImbalance(overOdds, underOdds) {
 // props like HR (line 0.5 for all players), everyone shares the primary
 // key so imbalance decides — Judge (-180 to homer) sits above utility
 // infielder (+700 to homer).
-function sortProps(props) {
+//
+// College football gets a matchup key ahead of both. Props are loaded for
+// EVERY game in a rolling 7-day window, so without this the list is
+// effectively ordered by kickoff time and a Tuesday MAC game buries the
+// Saturday night marquee. Same getNcaafMatchupScore the Picks and drill-in
+// scoreboards already sort games by, so the three surfaces agree on what
+// "marquee" means.
+//
+// Note it degrades gracefully: the props payload carries team names but not
+// AP ranks, so the score falls back to prestige tiers alone. That still
+// floats Ohio State over Jacksonville State — ranks would only sharpen the
+// ordering between two ranked opponents.
+function sortProps(props, sportKey) {
+  const isNcaaf = sportKey === 'ncaaf' || sportKey === 'americanfootball_ncaaf'
   return [...props].sort((a, b) => {
+    if (isNcaaf) {
+      // Lower score = more marquee.
+      const m = getNcaafMatchupScore(a.games) - getNcaafMatchupScore(b.games)
+      if (m !== 0) return m
+    }
     const lineDelta = (b.line || 0) - (a.line || 0)
     if (lineDelta !== 0) return lineDelta
     return oddsImbalance(a.over_odds, a.under_odds) - oddsImbalance(b.over_odds, b.under_odds)
@@ -276,8 +295,8 @@ function MarketGroup({ sport, market, expanded, onToggle }) {
       if (p.games?.starts_at && new Date(p.games.starts_at).getTime() <= now) return false
       return true
     })
-    return sortProps(filtered)
-  }, [props])
+    return sortProps(filtered, sport)
+  }, [props, sport])
 
   function getPick(propId) {
     if (!myPropPicks) return null
