@@ -44,11 +44,6 @@ export default function NflSalaryCapView({ league }) {
     return { text: `${op.is_home ? 'vs' : '@'} ${op.opponent}`, isBye: false }
   }
 
-  // Edit mode: true when the user hasn't submitted yet OR has explicitly
-  // tapped "Edit Roster" after submit. Gates the X (remove) and + (add)
-  // affordances so the roster doesn't silently mutate after submit.
-  const isEditing = !roster?.submitted_at || editingAfterSubmit
-
   const [posFilter, setPosFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [detailPlayerId, setDetailPlayerId] = useState(null)
@@ -57,6 +52,19 @@ export default function NflSalaryCapView({ league }) {
   // their changes. Resets on successful resubmit (handleSubmit) so the
   // badge comes back when they commit.
   const [editingAfterSubmit, setEditingAfterSubmit] = useState(false)
+
+  // Edit mode: true when the user hasn't submitted yet OR has explicitly
+  // tapped "Edit Roster" after submit. Gates the X (remove) and + (add)
+  // affordances so the roster doesn't silently mutate after submit.
+  //
+  // Declared AFTER editingAfterSubmit, which it reads. This used to sit
+  // above that useState and only survived because || short-circuits: while
+  // submitted_at was null the left side was true and the right was never
+  // evaluated. The moment a roster was submitted, submitted_at became set,
+  // JS evaluated editingAfterSubmit inside its temporal dead zone, and the
+  // page crashed with "Cannot access 'E' before initialization" — every
+  // time, for every user, immediately after submitting.
+  const isEditing = !roster?.submitted_at || editingAfterSubmit
 
   // Build current lineup from saved roster
   const lineup = useMemo(() => {
