@@ -146,6 +146,7 @@ async function fetchSeasonResults(espnPath, teamId, season) {
         const oppScore = Number(opp.score?.value ?? opp.score?.displayValue ?? opp.score)
         rows.push({
           date: ev.date || null,
+          week: ev.week?.number ?? null,
           played,
           result: played ? (me.winner === true ? 'W' : opp.winner === true ? 'L' : 'T') : null,
           score: played && Number.isFinite(myScore) && Number.isFinite(oppScore) ? `${myScore}-${oppScore}` : null,
@@ -480,6 +481,24 @@ export async function getBoxScore(gameId) {
         games: t.id ? await fetchSeasonResults(espnPath, t.id, season) : [],
       }))
     )
+    // The NFL plays a fixed 18-week regular season with one bye per team, so
+    // a missing week number IS the bye and can be filled in — the same way
+    // the fantasy player modal shows it. College week numbering is looser
+    // (Week 0 exists, teams have several open dates), so it keeps dates.
+    const isNfl = sportKey.startsWith('americanfootball_nfl')
+    if (isNfl) {
+      for (const row of rows) {
+        const byWeek = new Map(row.games.filter((g) => g.week != null).map((g) => [g.week, g]))
+        if (!byWeek.size) continue
+        const filled = []
+        for (let w = 1; w <= 18; w++) {
+          filled.push(byWeek.get(w) || { week: w, bye: true, played: false, result: null, score: null, at_vs: null, opponent: null, date: null })
+        }
+        row.games = filled
+      }
+      normalized.preview.season_uses_weeks = true
+    }
+
     const withGames = rows.filter((r) => r.games.length)
     // Drop the trailing five once the schedule is available — before a
     // season starts it holds LAST season's games, which read as current form.

@@ -335,12 +335,6 @@ export default function GameIntelModal({ gameId, onClose }) {
                 series or sit entirely, and ESPN's depth chart is a
                 season-level snapshot. Flag it so users don't assume a
                 Q1 Burrow appearance in a preseason opener. */}
-            {data.sportKey?.endsWith('_preseason') && (
-              <div className="mb-4 px-3 text-[11px] text-yellow-400 leading-snug">
-                Preseason: shown lineups reflect the season depth chart. Actual preseason usage varies by team — starters may sit or play limited snaps.
-              </div>
-            )}
-
             {/* Pre-game preview — same component Game Center uses, so the two
                 modals describe an upcoming game identically. Renders nothing
                 when the game has started or ESPN has no preview data. */}
@@ -361,6 +355,14 @@ export default function GameIntelModal({ gameId, onClose }) {
               )}
               showInjuries={!hasIntel}
             />
+
+            {/* Gated on hasIntel too — the note describes the lineups, so it
+                would be orphaned above nothing when we have no roster feed. */}
+            {data.sportKey?.endsWith('_preseason') && hasIntel && (
+              <div className="mb-4 px-3 text-[11px] text-yellow-400 leading-snug">
+                Preseason: shown lineups reflect the season depth chart. Actual preseason usage varies by team — starters may sit or play limited snaps.
+              </div>
+            )}
 
             {/* Only render the lineup/injury columns when we actually have
                 coverage for this sport. NCAAF isn't in INJURY_SPORTS, so the
