@@ -7,12 +7,24 @@ import { americanToMultiplier } from '../utils/scoring.js'
 import { fetchAll as paginate } from '../utils/fetchAll.js'
 
 export async function scoreCompletedGame(gameId, winner, sportId) {
-  // Get all locked picks for this game
+  // Settle both 'locked' and 'pending' picks.
+  //
+  // Picks are meant to be flipped pending -> locked by the lockPicks job,
+  // which finds games that are still status='upcoming' with starts_at in the
+  // past. If anything else moves a game out of 'upcoming' first — the ESPN
+  // score sync marking it live or final — lockPicks never sees that game and
+  // its picks stay 'pending'. Scoring then skipped them forever, because it
+  // only looked for 'locked'. That race left 84 picks across 21 users
+  // unsettled between Feb and Aug 2026.
+  //
+  // The game is final by the time we get here, so a pending pick on it is
+  // unambiguously due for settlement — there is no state in which we should
+  // leave it alone.
   const { data: picks, error } = await supabase
     .from('picks')
     .select('*')
     .eq('game_id', gameId)
-    .eq('status', 'locked')
+    .in('status', ['locked', 'pending'])
 
   if (error) {
     logger.error({ error, gameId }, 'Failed to fetch picks for scoring')
