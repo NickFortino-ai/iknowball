@@ -12,8 +12,11 @@
 // expect while staying consistent with the app's sports-day anchor.
 function scheduleDate(iso) {
   if (!iso) return ''
+  // Numeric (9/5, 9/12) rather than "Sep 5" / "Sep 12": the column is fixed
+  // width, and the short-month form wrapped to two lines for two-digit days,
+  // so half the rows in a schedule were double height.
   return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles',
+    month: 'numeric', day: 'numeric', timeZone: 'America/Los_Angeles',
   })
 }
 
@@ -149,7 +152,9 @@ export default function GamePreview({ preview, away, home, afterOdds = null, sho
                     const played = g.played !== false
                     return (
                       <div key={i} className="flex items-center gap-1.5 px-1.5 py-1 text-[11px]">
-                        <span className="w-7 shrink-0 text-text-muted tabular-nums">
+                        {/* nowrap + enough width for the widest value ("Wk 18")
+                            so a row can never become two lines. */}
+                        <span className="w-10 shrink-0 whitespace-nowrap text-text-muted tabular-nums">
                           {usesWeeks && g.week != null ? `Wk ${g.week}` : scheduleDate(g.date)}
                         </span>
                         {g.bye ? (
