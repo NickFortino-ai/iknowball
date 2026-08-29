@@ -7519,6 +7519,18 @@ export async function scoreFantasyMatchupsWeek(week, season) {
 
   if (!matchups.length) {
     logger.info({ week, season }, 'No fantasy H2H matchups for week')
+    // Still run the playoff lifecycle. "No matchups this week" is exactly
+    // the state a league is in when its bracket was never generated, so
+    // returning here would strand the leagues most in need of recovery.
+    // weekIsFinal isn't computed yet at this point, and the lifecycle's
+    // steps are all idempotent, so gate on the same Tuesday-3am-ET rule.
+    if (isWeekFinalNow()) {
+      try {
+        await runPlayoffLifecycle(week, season)
+      } catch (err) {
+        logger.error({ err, week, season }, 'Playoff lifecycle failed (no-matchup path)')
+      }
+    }
     return { scored: 0 }
   }
 
@@ -7689,11 +7701,7 @@ export async function scoreFantasyMatchupsWeek(week, season) {
   // For now we mark status='active' until the cron explicitly finalizes via the
   // late-night Monday tick. The complete-leagues code already accepts 'completed'
   // matchups for standings; we'll flip status to 'completed' once Monday games end.
-  const now = new Date()
-  const easternHour = parseInt(new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' })).getHours(), 10)
-  const easternDay = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' })).getDay()
-  // Mark completed if it's after 3 AM Tuesday Eastern (post-MNF)
-  const weekIsFinal = (easternDay === 2 && easternHour >= 3) || (easternDay > 2 && easternDay !== 0)
+  const weekIsFinal = isWeekFinalNow()
 
   // 7. Update each matchup with home/away points
   let scored = 0
@@ -7771,37 +7779,86 @@ export async function scoreFantasyMatchupsWeek(week, season) {
 
   logger.info({ week, season, scored, leagues: leagueIds.length }, 'Fantasy H2H matchup scoring complete')
 
-  // After scoring, handle playoff lifecycle for each league
-  if (weekIsFinal) {
-    for (const leagueId of leagueIds) {
-      const settings = await getFantasySettings(leagueId)
-      if (!settings || settings.format === 'salary_cap') continue
-      const startWeek = settings.playoff_start_week || 15
+  // Playoff lifecycle runs over its OWN league set — see runPlayoffLifecycle.
+  if (weekIsFinal) await runPlayoffLifecycle(week, season)
 
-      if (week === startWeek - 1) {
-        // Last regular season week → generate playoff bracket
-        try {
-          await generatePlayoffBracket(leagueId)
-        } catch (err) {
-          logger.error({ err, leagueId }, 'Failed to generate playoff bracket')
-        }
-      } else if (week >= startWeek) {
-        // Playoff week → advance winners to next round
+  return { scored }
+}
+
+// An NFL week is considered complete after 3 AM Tuesday Eastern (post-MNF)
+// through Saturday. Extracted so the no-matchup path and the normal path
+// can't drift on when a week counts as done.
+function isWeekFinalNow() {
+  const et = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
+  const day = et.getDay()
+  const hour = et.getHours()
+  return (day === 2 && hour >= 3) || (day > 2 && day !== 0)
+}
+
+// Playoff lifecycle: generate the bracket, advance rounds, flag clinches.
+//
+// Deliberately queries its own leagues rather than reusing the set that had
+// matchups scored this week. Two reasons that mattered:
+//
+//   * A league whose bracket was never generated has NO playoff-week
+//     matchups, so it would be absent from that set — the exact league
+//     needing recovery is the one that can't be reached.
+//   * scoreFantasyMatchupsWeek returns early when no league has matchups for
+//     the week, which skipped this entirely.
+//
+// Runs for every traditional fantasy league in the season regardless of
+// whether it had matchups this week. All three steps are safe to re-run:
+// generatePlayoffBracket returns early if matchups at/after startWeek
+// already exist, advancePlayoffRound returns early with nothing completed,
+// and checkAndMarkClinch is one-shot per team.
+export async function runPlayoffLifecycle(week, season) {
+  const { data: leagues } = await supabase
+    .from('leagues')
+    .select('id')
+    .eq('format', 'fantasy')
+    .in('status', ['open', 'active'])
+
+  for (const { id: leagueId } of leagues || []) {
+    const settings = await getFantasySettings(leagueId)
+    if (!settings || settings.format === 'salary_cap') continue
+    // Don't act on a league still pointed at a previous season.
+    if (settings.season != null && Number(settings.season) !== Number(season)) continue
+    const startWeek = settings.playoff_start_week || 15
+
+    if (week >= startWeek - 1) {
+      // At or past the last regular-season week.
+      //
+      // Generation used to require week === startWeek - 1 EXACTLY, but
+      // `week` comes from Sleeper's state.week, which advances on Sleeper's
+      // own schedule (typically Tuesday) while weekIsFinal only opens at 3am
+      // ET Tuesday. If Sleeper moved first, the one qualifying call never
+      // happened: the bracket was never generated, and the next run took the
+      // advance branch and found nothing to advance. Silent — no crash, no
+      // error log, playoffs simply never start, and there is no admin
+      // endpoint to build one by hand.
+      //
+      // Ensuring the bracket on every playoff-or-later week makes a missed
+      // week self-healing. generatePlayoffBracket returns early when
+      // matchups at/after startWeek already exist, so re-running is safe.
+      try {
+        await generatePlayoffBracket(leagueId)
+      } catch (err) {
+        logger.error({ err, leagueId }, 'Failed to generate playoff bracket')
+      }
+      if (week >= startWeek) {
         try {
           await advancePlayoffRound(leagueId, week)
         } catch (err) {
           logger.error({ err, leagueId }, 'Failed to advance playoff round')
         }
-      } else {
-        // Mid-regular-season week → check if anyone just clinched
-        try {
-          await checkAndMarkClinch(leagueId, week)
-        } catch (err) {
-          logger.error({ err, leagueId }, 'Failed to check playoff clinch')
-        }
+      }
+    } else {
+      // Mid-regular-season week → check if anyone just clinched
+      try {
+        await checkAndMarkClinch(leagueId, week)
+      } catch (err) {
+        logger.error({ err, leagueId }, 'Failed to check playoff clinch')
       }
     }
   }
-
-  return { scored }
 }
