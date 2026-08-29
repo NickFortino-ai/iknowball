@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import { useAppConfig } from '../../hooks/useAppConfig'
 import { useLoadedProps, useMyPropPicks, useMyPropLiveStats, useSubmitPropPick, useDeletePropPick } from '../../hooks/useProps'
 import PropCard from './PropCard'
@@ -231,6 +231,31 @@ function SportPropsView({ sport, onBack }) {
   // absorbs concurrent opens across users).
   const [expanded, setExpanded] = useState(() => new Set(markets[0] ? [markets[0].key] : []))
 
+  // Player search. Markets are normally fetched lazily per accordion
+  // section, so a cross-market search has to pull every market — done only
+  // once the user actually types, via the headless MarketLoaders below.
+  const [query, setQuery] = useState('')
+  const searching = query.trim().length >= 2
+  const [loadedByMarket, setLoadedByMarket] = useState({})
+  const handleLoaded = useCallback((marketKey, rows) => {
+    setLoadedByMarket((prev) => (prev[marketKey] === rows ? prev : { ...prev, [marketKey]: rows }))
+  }, [])
+
+  const searchResults = useMemo(() => {
+    if (!searching) return []
+    const needle = query.trim().toLowerCase()
+    const all = Object.values(loadedByMarket).flat()
+    const seen = new Set()
+    const hits = []
+    for (const p of all) {
+      if (!p?.player_name || seen.has(p.id)) continue
+      if (!p.player_name.toLowerCase().includes(needle)) continue
+      seen.add(p.id)
+      hits.push(p)
+    }
+    return pickableProps(hits, sport)
+  }, [searching, query, loadedByMarket, sport])
+
   function toggle(marketKey) {
     setExpanded((prev) => {
       const next = new Set(prev)
@@ -253,6 +278,24 @@ function SportPropsView({ sport, onBack }) {
         <h2 className="font-display text-2xl">{label} Props</h2>
       </div>
 
+      <div className="relative mb-4">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={`Search ${label} players…`}
+          className="w-full bg-bg-primary border border-text-primary/20 rounded-lg pl-3 pr-9 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+        />
+        {query && (
+          <button
+            onClick={() => setQuery('')}
+            aria-label="Clear search"
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-text-muted hover:text-text-primary"
+          >
+            ×
+          </button>
+        )}
+      </div>
+
       {markets.length === 0 ? (
         <div className="text-center py-12 text-text-secondary">
           <div className="font-display text-lg mb-2">No markets configured for {label}</div>
@@ -260,43 +303,50 @@ function SportPropsView({ sport, onBack }) {
         </div>
       ) : (
         <div className="space-y-3">
-          {markets.map((market) => (
-            <MarketGroup
-              key={market.key}
-              sport={sport}
-              market={market}
-              expanded={expanded.has(market.key)}
-              onToggle={() => toggle(market.key)}
-            />
+          {/* Headless fetchers — mounted only while searching, so the lazy
+              per-section loading is preserved for normal browsing. */}
+          {searching && markets.map((market) => (
+            <MarketLoader key={`load-${market.key}`} sport={sport} marketKey={market.key} onLoaded={handleLoaded} />
           ))}
+
+          {searching ? (
+            <div className="bg-bg-primary border border-text-primary/20 rounded-xl p-3">
+              <div className="px-1 pb-2 text-xs text-text-muted">
+                {searchResults.length
+                  ? `${searchResults.length} prop${searchResults.length === 1 ? '' : 's'} across all markets`
+                  : 'Searching all markets…'}
+              </div>
+              <PropList
+                props={searchResults}
+                isLoading={false}
+                emptyText={`No open ${label} props for a player matching “${query.trim()}”.`}
+              />
+            </div>
+          ) : (
+            markets.map((market) => (
+              <MarketGroup
+                key={market.key}
+                sport={sport}
+                market={market}
+                expanded={expanded.has(market.key)}
+                onToggle={() => toggle(market.key)}
+              />
+            ))
+          )}
         </div>
       )}
     </div>
   )
 }
 
-function MarketGroup({ sport, market, expanded, onToggle }) {
-  const { data: props, isLoading } = useLoadedProps(sport, market.key, { enabled: expanded })
+// Pick handling + card rendering, shared by the market accordion and the
+// player-search results so the two can't drift on what a pick does.
+function PropList({ props, isLoading, emptyText }) {
   const { data: myPropPicks } = useMyPropPicks()
   const hasLockedProps = (myPropPicks || []).some((p) => p.status === 'locked')
   const { data: liveStatsMap } = useMyPropLiveStats({ hasLive: hasLockedProps })
   const submitPick = useSubmitPropPick()
   const deletePick = useDeletePropPick()
-
-  // Only surface pickable rows in the list — 'locked' props are past
-  // start-of-game and 'settled' are already resolved. Belt-and-suspenders:
-  // also drop any published prop whose game.starts_at has already passed
-  // in case the lock job is late.
-  const activeProps = useMemo(() => {
-    if (!props?.length) return []
-    const now = Date.now()
-    const filtered = props.filter((p) => {
-      if (p.status !== 'published') return false
-      if (p.games?.starts_at && new Date(p.games.starts_at).getTime() <= now) return false
-      return true
-    })
-    return sortProps(filtered, sport)
-  }, [props, sport])
 
   function getPick(propId) {
     if (!myPropPicks) return null
@@ -325,6 +375,54 @@ function MarketGroup({ sport, market, expanded, onToggle }) {
     }
   }
 
+  if (isLoading) return <div className="py-8"><LoadingSpinner /></div>
+  if (!props.length) return <div className="py-8 text-center text-sm text-text-muted">{emptyText}</div>
+
+  return (
+    <div className="space-y-2">
+      {props.map((p) => (
+        <PropCard
+          key={p.id}
+          prop={p}
+          pick={getPick(p.id)}
+          onPick={handlePick}
+          onUndoPick={handleUndoPick}
+          isSubmitting={submitPick.isPending || deletePick.isPending}
+        />
+      ))}
+    </div>
+  )
+}
+
+// Only pickable rows: 'locked' props are past start-of-game and 'settled'
+// are resolved. Belt-and-suspenders — also drop anything whose game has
+// already started, in case the lock job is late.
+function pickableProps(props, sport) {
+  if (!props?.length) return []
+  const now = Date.now()
+  return sortProps(props.filter((p) => {
+    if (p.status !== 'published') return false
+    if (p.games?.starts_at && new Date(p.games.starts_at).getTime() <= now) return false
+    return true
+  }), sport)
+}
+
+// Headless: fetches one market and hands the rows up. Search needs every
+// market at once, but markets are otherwise fetched lazily per accordion
+// section — rendering one of these per market is how the search reaches
+// them without hooks-in-a-loop.
+function MarketLoader({ sport, marketKey, onLoaded }) {
+  const { data, isLoading } = useLoadedProps(sport, marketKey, { enabled: true })
+  useEffect(() => {
+    onLoaded(marketKey, data || [], isLoading)
+  }, [data, isLoading, marketKey, onLoaded])
+  return null
+}
+
+function MarketGroup({ sport, market, expanded, onToggle }) {
+  const { data: props, isLoading } = useLoadedProps(sport, market.key, { enabled: expanded })
+  const activeProps = useMemo(() => pickableProps(props, sport), [props, sport])
+
   return (
     <div className="bg-bg-primary border border-text-primary/20 rounded-xl overflow-hidden">
       <button
@@ -342,26 +440,11 @@ function MarketGroup({ sport, market, expanded, onToggle }) {
 
       {expanded && (
         <div className="border-t border-text-primary/10 p-3">
-          {isLoading ? (
-            <div className="py-8"><LoadingSpinner /></div>
-          ) : activeProps.length === 0 ? (
-            <div className="py-8 text-center text-sm text-text-muted">
-              No props available right now — either no games today, or this market isn't offered for tonight's slate.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {activeProps.map((p) => (
-                <PropCard
-                  key={p.id}
-                  prop={p}
-                  pick={getPick(p.id)}
-                  onPick={handlePick}
-                  onUndoPick={handleUndoPick}
-                  isSubmitting={submitPick.isPending || deletePick.isPending}
-                />
-              ))}
-            </div>
-          )}
+          <PropList
+            props={activeProps}
+            isLoading={isLoading}
+            emptyText="No props available right now — either no games today, or this market isn't offered for tonight's slate."
+          />
         </div>
       )}
     </div>
