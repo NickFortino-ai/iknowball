@@ -47,7 +47,7 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
     return (
       <div
         data-onboarding="bottom-bar"
-        className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 bg-bg-secondary border-t border-border px-4 py-3 z-40"
+        className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] xl:bottom-0 left-0 right-0 bg-bg-secondary border-t border-border px-4 py-3 z-40"
       >
         <div className="max-w-2xl mx-auto flex items-center gap-2">
           <div className="flex-1 text-sm text-text-muted text-center">
@@ -129,7 +129,7 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
     return (
       <div
         data-onboarding="bottom-bar"
-        className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 bg-bg-secondary border-t border-border px-4 py-3 z-40 cursor-pointer"
+        className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] xl:bottom-0 left-0 right-0 bg-bg-secondary border-t border-border px-4 py-3 z-40 cursor-pointer"
         onClick={() => setExpanded(true)}
       >
         <div className="max-w-2xl mx-auto flex items-center gap-2">
@@ -143,7 +143,7 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
   }
 
   return (
-    <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 bg-bg-secondary border-t border-border z-40">
+    <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] xl:bottom-0 left-0 right-0 bg-bg-secondary border-t border-border z-40">
       <div className="max-w-2xl mx-auto px-4 py-3">
         {/* Top row: Multiply toggle + close */}
         <div className="flex items-center justify-between mb-3">

@@ -293,7 +293,11 @@ input[type="time"] {
   animation-delay: 0.2s;
 }
 
-@media (min-width: 768px) {
+/* Matches the nav breakpoint in Navbar/BottomTabBar (Tailwind xl = 1280px).
+   Below this the bottom tab bar is on screen, so anything pinned to the
+   bottom has to clear it. Kept in sync by hand — this is raw CSS, so a
+   Tailwind `md:`/`xl:` sweep will not find it. */
+@media (min-width: 1280px) {
   .bottom-nav-offset {
     bottom: 0;
   }
