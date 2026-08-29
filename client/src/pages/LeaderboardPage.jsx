@@ -416,14 +416,24 @@ export default function LeaderboardPage() {
         <p className="text-[10px] text-text-muted -mt-4 mb-4 px-1">Drag tabs to reorder. Tap the dots again when finished.</p>
       )}
 
-      {tab.sport === 'soccer_world_cup' && (
-        <h2 className="font-display text-2xl text-text-primary -mt-4 mb-1">World Cup</h2>
-      )}
-      {tab.scope === 'sport' && (
-        <p className="text-xs text-text-muted -mt-4 mb-4">Straight picks only</p>
-      )}
-      {tab.scope === 'picks' && (
-        <p className="text-xs text-text-primary -mt-4 mb-4">Straight picks across all sports</p>
+      {/* One wrapper owns the negative margin that tucks this under the tab
+          strip. The heading and the subtitle each used to carry their own
+          -mt-4, so on the soccer tab — the only tab that renders both — the
+          subtitle was pulled up over the heading and the two overlapped. */}
+      {(tab.sport === 'soccer_world_cup' || tab.scope === 'sport' || tab.scope === 'picks') && (
+        <div className="-mt-4 mb-4">
+          {tab.sport === 'soccer_world_cup' && (
+            // Never "World Cup" — Apple flags 5.2.1 on that string during FIFA
+            // tournament windows. Matches sports.name from migration 256.
+            <h2 className="font-display text-2xl text-text-primary">{"Int'l Soccer"}</h2>
+          )}
+          {tab.scope === 'sport' && (
+            <p className="text-xs text-text-muted">Picks, props, and league finishes</p>
+          )}
+          {tab.scope === 'picks' && (
+            <p className="text-xs text-text-primary">Straight picks across all sports</p>
+          )}
+        </div>
       )}
 
       {searchedUser ? (
