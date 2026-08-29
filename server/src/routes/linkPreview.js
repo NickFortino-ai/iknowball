@@ -49,6 +49,21 @@ function extractYoutubeVideoId(urlStr) {
   }
 }
 
+// Instagram post / reel / IGTV shortcode. Their /embed endpoint is
+// frameable (no X-Frame-Options, no frame-ancestors CSP) and needs no API
+// token for public posts, so the client can render a real embed instead of
+// a link card that bounces the user out to the app.
+function extractInstagramId(urlStr) {
+  try {
+    const parsed = new URL(urlStr)
+    if (!/(^|\.)instagram\.com$/.test(parsed.hostname)) return null
+    const match = parsed.pathname.match(/\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/)
+    return match ? match[1] : null
+  } catch {
+    return null
+  }
+}
+
 function extractTweetId(urlStr) {
   try {
     const parsed = new URL(urlStr)
@@ -162,6 +177,9 @@ router.get('/', requireAuth, async (req, res, next) => {
       // still render the embed instead of falling through to "no data".
       const tweetId = cached.tweet_id || extractTweetId(cached.url)
       const youtubeVideoId = cached.youtube_video_id || extractYoutubeVideoId(cached.url)
+      // Derived from the url, so rows cached before Instagram embeds existed
+      // pick it up without a refetch — same reasoning as the two above.
+      const instagramId = extractInstagramId(cached.url)
       // Decode on the way OUT as well as in. Rows cached before entity
       // decoding existed hold escaped text AND an escaped image URL — the
       // "&amp;" between query params makes Instagram's signed CDN link 403,
@@ -177,12 +195,14 @@ router.get('/', requireAuth, async (req, res, next) => {
         siteName: decodeEntities(cached.site_name),
         youtubeVideoId,
         tweetId,
+        instagramId,
       })
     }
 
     // Extract YouTube video ID or tweet ID
     const youtubeVideoId = extractYoutubeVideoId(url)
     const tweetId = extractTweetId(url)
+    const instagramId = extractInstagramId(url)
 
     // Fetch the URL
     let html = ''
@@ -228,6 +248,9 @@ router.get('/', requireAuth, async (req, res, next) => {
       siteName: og.site_name || null,
       youtubeVideoId,
       tweetId,
+      // Not persisted — it's derived from the url, so there's no column to
+      // add and no migration to run.
+      instagramId,
     }
 
     // Upsert into cache

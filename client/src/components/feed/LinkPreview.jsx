@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useLinkPreview } from '../../hooks/useLinkPreview'
 import { displayUrl } from '../../lib/urlUtils'
 import YouTubeEmbed from './YouTubeEmbed'
+import InstagramEmbed from './InstagramEmbed'
 
 function TweetEmbed({ tweetId, url }) {
   const containerRef = useRef(null)
@@ -100,7 +101,7 @@ export default function LinkPreview({ url, onRendered }) {
   const { data, isLoading } = useLinkPreview(url)
   const [imgError, setImgError] = useState(false)
 
-  const willRender = !!data && !!(data.title || data.youtubeVideoId || data.tweetId)
+  const willRender = !!data && !!(data.title || data.youtubeVideoId || data.tweetId || data.instagramId)
   // Ref-guarded so an inline arrow from the parent can't retrigger this on
   // every render, and so it reports once per url rather than once per paint.
   const reportedRef = useRef(null)
@@ -115,7 +116,14 @@ export default function LinkPreview({ url, onRendered }) {
     return <div className="mt-2 h-20 bg-bg-secondary rounded-lg animate-pulse" />
   }
 
-  if (!data || (!data.title && !data.youtubeVideoId && !data.tweetId)) return null
+  if (!data || (!data.title && !data.youtubeVideoId && !data.tweetId && !data.instagramId)) return null
+
+  // Instagram embed. Falls through to the generic OG card below if the id
+  // is missing — the card still has the thumbnail and caption, so a change
+  // on Instagram's side degrades rather than breaks.
+  if (data.instagramId) {
+    return <InstagramEmbed instagramId={data.instagramId} url={url} />
+  }
 
   // Tweet embed
   if (data.tweetId) {
