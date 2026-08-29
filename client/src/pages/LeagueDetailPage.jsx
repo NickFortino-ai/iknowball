@@ -46,7 +46,7 @@ import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
 import LeagueStartsBanner from '../components/leagues/LeagueStartsBanner'
-import { buildSingleStatNarrative, buildPreStartBlurb } from '../lib/leagueNarrative'
+import { buildSingleStatNarrative, buildPreStartBlurb, SINGLE_STAT_FORMATS } from '../lib/leagueNarrative'
 import { toast } from '../components/ui/Toast'
 import { api } from '../lib/api'
 import { getBackdropUrl, getBackdropFilterKey } from '../lib/backdropUrl'
@@ -1782,7 +1782,17 @@ export default function LeagueDetailPage() {
   const { profile } = useAuth()
   const navigate = useNavigate()
   const { data: league, isLoading } = useLeague(id)
-  const { data: fantasySettings } = useFantasySettings(league?.format === 'fantasy' ? id : null)
+  // PreStartExplainer needs this too, not just the fantasy-only surfaces
+  // below: buildPreStartBlurb reads fantasy_settings.pick_reuse, and with it
+  // undefined maxUsesFromSettings falls through to 1, so every single-stat
+  // league claimed "only be used once all season" no matter what the
+  // commissioner set. Uses the shared constant deliberately — the hardcoded
+  // format lists elsewhere in this file are what let the two drift apart.
+  // React Query dedupes against LeagueConditions' identical key, so this
+  // costs no extra request.
+  const { data: fantasySettings } = useFantasySettings(
+    league?.format === 'fantasy' || SINGLE_STAT_FORMATS.includes(league?.format) ? id : null
+  )
   // Lightweight lineage probe — only used to decide whether to show the
   // "League History" button. Fetches nothing heavy: one leagues row per
   // ancestor/descendant plus a champion snapshot per season.
