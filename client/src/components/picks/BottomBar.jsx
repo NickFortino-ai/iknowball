@@ -8,6 +8,13 @@ function teamName(fullName) {
   return parts[parts.length - 1]
 }
 
+// A prop pick still counts toward the bar only while its game is in the
+// future. Module scope keeps the Date.now() call out of render.
+function isStillPickable(pick) {
+  const start = pick?.player_props?.games?.starts_at
+  return !!start && new Date(start).getTime() > Date.now()
+}
+
 export default function BottomBar({ picks, games, propPicks, profile, onUpdateMultiplier }) {
   const [expanded, setExpanded] = useState(false)
   const [multiplyOn, setMultiplyOn] = useState(false)
@@ -23,18 +30,17 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
 
   const isOnboarding = profile?.has_seen_onboarding === false
   const entries = Object.entries(picks || {})
-  // Every pending prop pick counts, not just today's.
+  // Pending prop picks whose game HASN'T STARTED yet.
   //
-  // This used to filter to same-day, which was fine when props only ever
-  // appeared on the day of the game. Football props now publish days ahead
-  // (deliberately — it's useful for NFL/NCAAF), so a Thursday pick made on
-  // Saturday simply vanished from this bar. Straight picks were never
-  // day-filtered, so the two were inconsistent anyway: these are already
-  // scoped to status 'pending' by the caller, which is the right scope.
-  const propEntries = useMemo(() => {
-    if (!propPicks) return []
-    return propPicks.filter((p) => !!p.player_props?.games?.starts_at)
-  }, [propPicks])
+  // This used to filter to same-day, which worked only while props were
+  // same-day. Football props publish days ahead now, so a Thursday pick made
+  // on Saturday vanished from the bar entirely.
+  //
+  // Not-yet-started is the right scope rather than simply 'pending': a prop
+  // pick that never got locked stays 'pending' forever even after its game
+  // finishes, so dropping the date filter alone resurfaced a LeBron pick
+  // from February. Same guard PropsSection uses to decide what's pickable.
+  const propEntries = useMemo(() => (propPicks || []).filter(isStillPickable), [propPicks])
 
   // During onboarding, show a placeholder so the tutorial can highlight this element
   if (entries.length === 0 && propEntries.length === 0) {
