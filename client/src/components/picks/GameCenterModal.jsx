@@ -239,9 +239,15 @@ function AllPicksBar({ totalCounts, away, home, winnerSide }) {
   )
 }
 
-// Row of squad chips: avatar + team abbr, color-coded by result if
-// settled. Tapping does nothing yet — could deep-link to their profile
-// in a follow-up.
+// Row of squad picks.
+//
+// Before the game settles: a pill with the avatar AND the team abbreviation,
+// because the pick is the only information there is.
+//
+// Once settled: just the avatar, ringed green or red. The ring already says
+// whether they were right, and the winner is on screen right above — so the
+// abbreviation is redundant, and dropping it leaves a cleaner row of faces.
+// The team is still available on hover/long-press via the title attribute.
 function SquadChips({ squadPicks, away, home, onOpenProfile }) {
   if (!squadPicks?.length) return null
   return (
@@ -251,19 +257,36 @@ function SquadChips({ squadPicks, away, home, onOpenProfile }) {
         {squadPicks.map((sp) => {
           const team = sp.picked_team === 'home' ? home : away
           const settled = sp.status === 'settled'
-          const colorClass = settled
-            ? sp.is_correct === true ? 'border-correct/60 bg-correct/10'
-              : sp.is_correct === false ? 'border-incorrect/60 bg-incorrect/10'
-              : 'border-yellow-500/60 bg-yellow-500/10'
-            : 'border-text-primary/15 bg-bg-primary/30'
+          const teamLabel = team?.abbr || team?.short || '—'
+          const who = sp.display_name || sp.username || 'Squad member'
+
+          if (settled) {
+            // Push (tie/draw) keeps yellow — neither right nor wrong.
+            const ringClass = sp.is_correct === true ? 'ring-correct'
+              : sp.is_correct === false ? 'ring-incorrect'
+              : 'ring-yellow-500'
+            return (
+              <button
+                key={sp.pick_id || sp.id}
+                onClick={() => sp.id && onOpenProfile?.(sp.id)}
+                title={`${who} — ${teamLabel}`}
+                aria-label={`${who} picked ${teamLabel}`}
+                className={`rounded-full ring-2 ring-offset-1 ring-offset-bg-primary transition hover:brightness-125 ${ringClass}`}
+              >
+                <Avatar user={sp} size="sm" />
+              </button>
+            )
+          }
+
           return (
             <button
               key={sp.pick_id || sp.id}
               onClick={() => sp.id && onOpenProfile?.(sp.id)}
-              className={`flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full border transition-colors hover:brightness-125 ${colorClass}`}
+              title={`${who} — ${teamLabel}`}
+              className="flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full border transition-colors hover:brightness-125 border-text-primary/15 bg-bg-primary/30"
             >
               <Avatar user={sp} size="xs" />
-              <span className="text-[11px] font-semibold text-text-primary">{team?.abbr || team?.short || '—'}</span>
+              <span className="text-[11px] font-semibold text-text-primary">{teamLabel}</span>
             </button>
           )
         })}
