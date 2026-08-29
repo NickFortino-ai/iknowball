@@ -8,6 +8,8 @@ const ESPN_SPORT_PATHS = {
   nba: 'basketball/nba',
   mlb: 'baseball/mlb',
   nhl: 'hockey/nhl',
+  ncaaf: 'football/college-football',
+  wnba: 'basketball/wnba',
 }
 
 // In-memory cache: { [sport]: { data, fetchedAt } }
@@ -17,7 +19,7 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 router.get('/', async (req, res) => {
   const sport = req.query.sport || 'nfl'
   const espnPath = ESPN_SPORT_PATHS[sport]
-  if (!espnPath) return res.status(400).json({ error: 'Invalid sport. Use: nfl, nba, mlb, nhl' })
+  if (!espnPath) return res.status(400).json({ error: `Invalid sport. Use: ${Object.keys(ESPN_SPORT_PATHS).join(', ')}` })
 
   // Check cache
   const cached = cache[sport]

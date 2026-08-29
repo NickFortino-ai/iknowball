@@ -8,8 +8,10 @@ const TAB_DEFS = {
   nfl: { key: 'nfl', label: 'NFL' },
   mlb: { key: 'mlb', label: 'MLB' },
   nhl: { key: 'nhl', label: 'NHL' },
+  ncaaf: { key: 'ncaaf', label: 'NCAAF' },
+  wnba: { key: 'wnba', label: 'WNBA' },
 }
-const FALLBACK_ORDER = ['nba', 'nfl', 'mlb', 'nhl']
+const FALLBACK_ORDER = ['nba', 'nfl', 'mlb', 'nhl', 'ncaaf', 'wnba']
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -25,9 +27,16 @@ function timeAgo(dateStr) {
 export default function NewsFeed({ compact }) {
   const { data: cfg } = useAppConfig()
   const sportTabs = useMemo(() => {
-    const order = Array.isArray(cfg?.news_tab_order) && cfg.news_tab_order.length
+    const stored = Array.isArray(cfg?.news_tab_order) && cfg.news_tab_order.length
       ? cfg.news_tab_order
       : FALLBACK_ORDER
+    // Append any tab the code knows about that the stored order predates.
+    // Without this, a sport added in code never appears until an admin
+    // re-saves the order — the stored list is authoritative and unknown keys
+    // are filtered out below. AppConfigPanel already does exactly this for
+    // the leaderboard order, for the same reason; news never got it.
+    // The admin's chosen ORDER still wins for everything it lists.
+    const order = [...stored, ...Object.keys(TAB_DEFS).filter((k) => !stored.includes(k))]
     return order.map((k) => TAB_DEFS[k]).filter(Boolean)
   }, [cfg?.news_tab_order])
 
