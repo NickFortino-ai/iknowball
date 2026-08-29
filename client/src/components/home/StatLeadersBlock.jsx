@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useSportLeaders } from '../../hooks/useScoresStrip'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import PlayerDetailModal from '../ui/PlayerDetailModal'
 
 // Circular player avatar with graceful fallback. When the headshot
 // image is missing or fails to load, we render the player's initials
@@ -48,9 +49,40 @@ function PlayerAvatar({ name, headshot, size = 'sm' }) {
 // so the user can flip which stat is showing without loading a
 // separate view. Server returns all categories up front, so the tabs
 // switch is a client-only state change.
+// This block is handed a SHORT sport key ('mlb'); the player modal and its
+// gamelog endpoint want the full key ('baseball_mlb').
+const SHORT_TO_FULL = {
+  nfl: 'americanfootball_nfl',
+  nba: 'basketball_nba',
+  mlb: 'baseball_mlb',
+  wnba: 'basketball_wnba',
+  nhl: 'icehockey_nhl',
+  mls: 'soccer_usa_mls',
+  ncaaf: 'americanfootball_ncaaf',
+  ncaab: 'basketball_ncaab',
+}
+
+// Only these have a gamelog behind them (players.js ESPN_SPORT_PATHS).
+// Rows stay inert for the rest rather than opening a modal with nothing in
+// it — NCAAF, NCAAB and MLS leaders are display-only.
+const TAPPABLE_SPORTS = new Set(['americanfootball_nfl', 'basketball_nba', 'basketball_wnba', 'baseball_mlb', 'icehockey_nhl'])
+
 export default function StatLeadersBlock({ sport, mode = 'full' }) {
   const { data, isLoading } = useSportLeaders(sport)
   const [activeIdx, setActiveIdx] = useState(0)
+  const [selected, setSelected] = useState(null)
+
+  const fullSport = SHORT_TO_FULL[sport] || sport
+  const tappable = TAPPABLE_SPORTS.has(fullSport)
+  // Map a leaders row onto the shape PlayerDetailModal reads. athlete_id is
+  // an ESPN athlete id, which is exactly the lookup key it prefers.
+  const openPlayer = (r) => setSelected({
+    espn_player_id: r.athlete_id,
+    player_name: r.athlete_name,
+    headshot_url: r.headshot,
+    position: r.position,
+    team: r.team_abbr,
+  })
 
   if (isLoading) return mode === 'compact' ? null : <LoadingSpinner />
   const cats = data?.categories || []
@@ -92,7 +124,11 @@ export default function StatLeadersBlock({ sport, mode = 'full' }) {
       {mode === 'full' ? (
         <div className="rounded-xl border border-text-primary/15 bg-bg-primary/20 backdrop-blur-md overflow-hidden">
           {rows.map((r) => (
-            <div key={`${r.athlete_id}-${r.rank}`} className="flex items-center gap-3 px-3 py-2 border-b border-text-primary/5 last:border-0">
+            <div
+              key={`${r.athlete_id}-${r.rank}`}
+              onClick={tappable ? () => openPlayer(r) : undefined}
+              className={`flex items-center gap-3 px-3 py-2 border-b border-text-primary/5 last:border-0${tappable ? ' cursor-pointer hover:bg-text-primary/5 transition-colors' : ''}`}
+            >
               <span className="w-6 text-center text-xs text-text-muted tabular-nums shrink-0">{r.rank}</span>
               <PlayerAvatar name={r.athlete_name} headshot={r.headshot} size="lg" />
               <div className="flex-1 min-w-0">
@@ -111,7 +147,11 @@ export default function StatLeadersBlock({ sport, mode = 'full' }) {
       ) : (
         <div className="space-y-1.5">
           {rows.map((r) => (
-            <div key={`${r.athlete_id}-${r.rank}`} className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-3 py-2 flex items-center gap-2.5">
+            <div
+              key={`${r.athlete_id}-${r.rank}`}
+              onClick={tappable ? () => openPlayer(r) : undefined}
+              className={`rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-3 py-2 flex items-center gap-2.5${tappable ? ' cursor-pointer hover:bg-bg-primary/30 transition-colors' : ''}`}
+            >
               <span className="w-4 text-center text-xs text-text-muted tabular-nums shrink-0">{r.rank}</span>
               <PlayerAvatar name={r.athlete_name} headshot={r.headshot} size="sm" />
               <div className="flex-1 min-w-0 flex items-baseline gap-2">
@@ -124,6 +164,16 @@ export default function StatLeadersBlock({ sport, mode = 'full' }) {
             </div>
           ))}
         </div>
+      )}
+
+      {/* showFantasyPoints stays at its default false: this is the scoreboard,
+          outside any fantasy league, so the modal shows real stats only. */}
+      {selected && (
+        <PlayerDetailModal
+          player={selected}
+          sport={fullSport}
+          onClose={() => setSelected(null)}
+        />
       )}
     </div>
   )
