@@ -9,6 +9,8 @@ const NEWS_OPTIONS = [
   { key: 'nfl', label: 'NFL' },
   { key: 'mlb', label: 'MLB' },
   { key: 'nhl', label: 'NHL' },
+  { key: 'ncaaf', label: 'NCAAF' },
+  { key: 'wnba', label: 'WNBA' },
 ]
 
 // Mirror of DEFAULT_TABS in LeaderboardPage. Keep in sync when adding
@@ -81,9 +83,14 @@ export default function AppConfigPanel() {
 
   useEffect(() => {
     if (!cfg) return
-    const initialNews = Array.isArray(cfg.news_tab_order) && cfg.news_tab_order.length
-      ? cfg.news_tab_order
-      : NEWS_OPTIONS.map((o) => o.key)
+    // Same merge the leaderboard order gets below: an order saved before a
+    // sport existed would otherwise hide it from this reorder list forever,
+    // leaving no way to position NCAAF or WNBA.
+    const storedNews = Array.isArray(cfg.news_tab_order) ? cfg.news_tab_order : []
+    const allNews = NEWS_OPTIONS.map((o) => o.key)
+    const initialNews = storedNews.length
+      ? [...storedNews, ...allNews.filter((k) => !storedNews.includes(k))]
+      : allNews
     // Merge any newly-added tabs (e.g. 'WC') into the stored order so the
     // admin can position them — otherwise a stored order saved before the
     // tab existed would hide it from the reorder list forever.

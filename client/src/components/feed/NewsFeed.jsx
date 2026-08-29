@@ -55,12 +55,15 @@ export default function NewsFeed({ compact }) {
   return (
     <div>
       {/* Sport tabs */}
-      <div className="flex gap-1.5 mb-3">
+      {/* Scrolls on its own. Without overflow handling here the row just
+          overflows its parent, so reaching the last tab dragged the whole
+          article column sideways with it. */}
+      <div className="flex gap-1.5 mb-3 overflow-x-auto scrollbar-hide -mx-1 px-1">
         {sportTabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setSelectedSport(tab.key)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
               sport === tab.key ? 'bg-bg-primary/50 border-accent text-accent' : 'bg-bg-primary/50 border-text-primary/20 text-text-secondary hover:border-text-primary/40'
             }`}
           >
