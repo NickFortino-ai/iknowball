@@ -34,6 +34,7 @@ const SPORT_TO_PATH = {
   basketball_nba: 'basketball/nba',
   basketball_wnba: 'basketball/wnba',
   basketball_ncaab: 'basketball/mens-college-basketball',
+  basketball_wncaab: 'basketball/womens-college-basketball',
   baseball_mlb: 'baseball/mlb',
   icehockey_nhl: 'hockey/nhl',
   soccer_usa_mls: 'soccer/usa.1',
@@ -49,6 +50,7 @@ const FALLBACK_GROUP_TITLES = {
   basketball_nba: ['Player Stats'],
   basketball_wnba: ['Player Stats'],
   basketball_ncaab: ['Player Stats'],
+  basketball_wncaab: ['Player Stats'],
   soccer_usa_mls: ['Field Players', 'Goalkeepers'],
   soccer_world_cup: ['Field Players', 'Goalkeepers'],
 }
@@ -357,6 +359,12 @@ function normalize(sportKey, summary) {
   if (lineLen > 0) {
     if (sportKey.startsWith('americanfootball_')) {
       line_score_headers = Array.from({ length: lineLen }, (_, i) => (i < 4 ? `Q${i + 1}` : `OT${i - 3}`))
+    } else if (sportKey === 'basketball_ncaab') {
+      // Men's college basketball plays two 20-minute HALVES. Every other
+      // basketball league here plays quarters, so this was labelling a
+      // two-period line score "Q1 Q2". Women's college basketball went to
+      // quarters in 2015-16 and correctly falls through to the branch below.
+      line_score_headers = Array.from({ length: lineLen }, (_, i) => (i < 2 ? `H${i + 1}` : `OT${i - 1}`))
     } else if (sportKey.startsWith('basketball_')) {
       line_score_headers = Array.from({ length: lineLen }, (_, i) => (i < 4 ? `Q${i + 1}` : `OT${i - 3}`))
     } else if (sportKey === 'baseball_mlb') {
