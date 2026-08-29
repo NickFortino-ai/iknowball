@@ -106,6 +106,10 @@ const RECENT_FORM_SPORTS = new Set([
   'baseball_mlb',
   'basketball_nba',
   'basketball_wnba',
+  // Ten for hockey too: NHL standings carry their own "L10" column, so it's
+  // the sport's native form window, and five games is barely ten days in a
+  // schedule that dense.
+  'icehockey_nhl',
 ])
 const RECENT_FORM_COUNT = 10
 
