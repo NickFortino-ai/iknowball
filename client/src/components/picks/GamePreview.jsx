@@ -23,9 +23,24 @@ export default function GamePreview({ preview, away, home }) {
 
   // last_five / leaders come keyed by ESPN team id; map to our team objects
   // so the columns line up away-then-home like the rest of the modal.
-  const byTeam = (list) => [away, home]
-    .filter(Boolean)
-    .map((t) => ({ team: t, entry: (list || []).find((e) => String(e.team_id) === String(t.id)) }))
+  //
+  // Two callers pass different things: Game Center's team objects carry real
+  // ESPN ids, while the Picks Game Intel modal only knows team names and
+  // passes {id:'away'} / {id:'home'} — which matched nothing, so form and
+  // leaders silently vanished there for every sport. Fall back to the ids the
+  // preview now publishes so both callers resolve.
+  const byTeam = (list) => [
+    { team: away, espnId: preview.away_team_id },
+    { team: home, espnId: preview.home_team_id },
+  ]
+    .filter((p) => p.team)
+    .map(({ team, espnId }) => ({
+      team,
+      entry: (list || []).find((e) => (
+        String(e.team_id) === String(team.id)
+        || (espnId && String(e.team_id) === String(espnId))
+      )),
+    }))
     .filter((x) => x.entry)
 
   const formRows = byTeam(formList)

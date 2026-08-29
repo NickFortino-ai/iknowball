@@ -244,7 +244,22 @@ function extractPreview(summary) {
     .filter((t) => t.categories.length)
   if (leaders.length) preview.leaders = leaders
 
-  return Object.keys(preview).length ? preview : null
+  if (!Object.keys(preview).length) return null
+
+  // last_five / season_results / leaders are keyed by ESPN team id. Game
+  // Center matches them against its own team objects, which carry those ids —
+  // but the Picks Game Intel modal only knows team NAMES and passes synthetic
+  // {id:'away'} / {id:'home'} objects, so every one of those sections silently
+  // matched nothing there. Publishing the two ids lets that caller resolve
+  // them without having to plumb ESPN ids through the injuries payload.
+  const competitors = summary?.header?.competitions?.[0]?.competitors || []
+  for (const c of competitors) {
+    if (!c.team?.id) continue
+    if (c.homeAway === 'home') preview.home_team_id = String(c.team.id)
+    if (c.homeAway === 'away') preview.away_team_id = String(c.team.id)
+  }
+
+  return preview
 }
 
 function normalize(sportKey, summary) {
