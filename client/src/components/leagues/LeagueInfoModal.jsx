@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { getBackdropUrl } from '../../lib/backdropUrl'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { formatStartDateShort, formatEndDateShort, formatDraftDateShort } from '../../lib/leagueDate'
@@ -102,14 +103,25 @@ export default function LeagueInfoModal({ league, onClose, onJoin, joining }) {
   const runsUntil = formatRunsUntil(league)
   const runsLine = formatLeagueRuns(league)
 
-  return (
+  // Portalled to body: an inline overlay inherits the page's stacking
+  // context, which is what left users unable to dismiss a modal in a shipped
+  // iOS build. Same pattern as GameCenterModal — note most other modals in
+  // this codebase still do NOT portal; see the audit note in the commit.
+  return createPortal((
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-16"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      // py-16 was 64px, but the top has to clear the navbar (3.5rem) PLUS
+      // env(safe-area-inset-top) — ~110px on a notched iPhone — so the card
+      // was tucking under the header and losing its top edge.
+      style={{
+        paddingTop: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-top) + 1rem))',
+        paddingBottom: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-bottom) + 1rem))',
+      }}
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-primary border border-text-primary/20 w-full md:max-w-md rounded-2xl overflow-hidden max-h-[calc(100vh-8rem)] flex flex-col"
+        className="relative bg-bg-primary border border-text-primary/20 w-full md:max-w-md rounded-2xl overflow-hidden max-h-full flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with backdrop */}
@@ -229,5 +241,5 @@ export default function LeagueInfoModal({ league, onClose, onJoin, joining }) {
         </div>
       </div>
     </div>
-  )
+  ), document.body)
 }
