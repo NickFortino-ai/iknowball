@@ -12,6 +12,7 @@ import GameCenterModal from '../components/picks/GameCenterModal'
 import GameIntelModal from '../components/picks/GameIntelModal'
 import { hasPregameIntel } from '../lib/gameIntelSports'
 import { formatLiveLabel } from '../lib/liveLabel'
+import { todaySportsDay } from '../lib/sportsDay'
 
 
 // /scores/:sport — Sleeper-style drill-in for one sport: date scrubber
@@ -257,11 +258,29 @@ export default function SportScoresPage() {
                 return new Date(a.starts_at) - new Date(b.starts_at)
               })
             }
-            // Live games rise to the top, whatever the sport. Sorting on the
-            // live flag ALONE keeps this stable: Array.prototype.sort is
-            // stable in modern JS, so the marquee order above is preserved
-            // inside the live block and inside the rest, and finals/upcoming
-            // keep their existing order relative to each other.
+            // Passes run lowest-priority first, each sorting on ONE key.
+            // Array.prototype.sort is stable in modern JS, so every earlier
+            // pass survives inside the groups the next one creates — the
+            // marquee order holds within each day, and within live/not-live.
+            //
+            // 1) Today before later days. On the weekly NFL/NCAAF views a
+            //    whole week is on screen at once, so without this a marquee
+            //    game next Saturday outranked everything playing tonight.
+            //    PT-anchored via todaySportsDay(), matching the rest of the
+            //    app — a UTC date would flip games into "tomorrow" for
+            //    western users during the evening, which is exactly when
+            //    they're looking.
+            const today = todaySportsDay()
+            const isToday = (g) => (
+              g.starts_at
+                ? new Date(g.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) === today
+                : false
+            )
+            visibleGames = [...visibleGames].sort(
+              (a, b) => (isToday(b) ? 1 : 0) - (isToday(a) ? 1 : 0)
+            )
+
+            // 2) Live above everything, whatever day it belongs to.
             visibleGames = [...visibleGames].sort(
               (a, b) => (b.status === 'live' ? 1 : 0) - (a.status === 'live' ? 1 : 0)
             )
