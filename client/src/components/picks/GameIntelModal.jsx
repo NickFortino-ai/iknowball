@@ -260,7 +260,13 @@ export default function GameIntelModal({ gameId, onClose }) {
   // so no other sport pays for a call that would return nothing. This block
   // used to live in GameDetailModal (since deleted); when the Picks card
   // stopped opening that modal, MLB quietly lost its probable pitchers.
-  const { data: intel } = useGameIntel(data?.sportKey === 'baseball_mlb' ? gameId : null)
+  // Also the only source of team RECORDS for sports outside INJURY_SPORTS:
+  // those take the injuries route's early-return branch, which never computes
+  // them, which is why MLB showed no record under the logos.
+  const needsIntel = !!data && (data.sportKey === 'baseball_mlb' || (!data.homeRecord && !data.awayRecord))
+  const { data: intel } = useGameIntel(needsIntel ? gameId : null)
+  const awayRecord = data?.awayRecord || intel?.awayRecord
+  const homeRecord = data?.homeRecord || intel?.homeRecord
 
   // True when this sport actually has lineup/injury coverage. Sports
   // outside INJURY_SPORTS (NCAAF, MLS, NCAAB) come back with empty
@@ -314,13 +320,13 @@ export default function GameIntelModal({ gameId, onClose }) {
             <div className="flex items-center justify-between mb-4 px-2">
               <div className="text-center flex-1">
                 <TeamLogo team={data.away_team} sportKey={data.sportKey} />
-                {data.awayRecord && <div className="text-sm font-bold text-text-primary">{data.awayRecord}</div>}
+                {awayRecord && <div className="text-sm font-bold text-text-primary">{awayRecord}</div>}
                 {data.awayLast10 && <div className="text-[10px] text-text-muted">L10: {data.awayLast10}</div>}
               </div>
               <div className="text-xs text-text-muted font-semibold">vs</div>
               <div className="text-center flex-1">
                 <TeamLogo team={data.home_team} sportKey={data.sportKey} />
-                {data.homeRecord && <div className="text-sm font-bold text-text-primary">{data.homeRecord}</div>}
+                {homeRecord && <div className="text-sm font-bold text-text-primary">{homeRecord}</div>}
                 {data.homeLast10 && <div className="text-[10px] text-text-muted">L10: {data.homeLast10}</div>}
               </div>
             </div>
@@ -338,19 +344,22 @@ export default function GameIntelModal({ gameId, onClose }) {
             {/* Pre-game preview — same component Game Center uses, so the two
                 modals describe an upcoming game identically. Renders nothing
                 when the game has started or ESPN has no preview data. */}
+            {/* afterOdds puts probable pitchers ABOVE Team Leaders, inside
+                the preview. showInjuries is suppressed where team_intel already
+                supplies a richer injury list (NBA/WNBA/NFL/NHL). */}
             <GamePreview
               preview={data.preview}
               away={{ id: 'away', abbr: data.away_team, short: data.away_team }}
               home={{ id: 'home', abbr: data.home_team, short: data.home_team }}
-            />
-
-            {/* MLB probable starters — headshots, record and season line.
-                Renders nothing until the (MLB-only) intel request lands. */}
-            <ProbablePitchers
-              awayPitcher={intel?.awayPitcher}
-              homePitcher={intel?.homePitcher}
-              awayTeam={data.away_team}
-              homeTeam={data.home_team}
+              afterOdds={(
+                <ProbablePitchers
+                  awayPitcher={intel?.awayPitcher}
+                  homePitcher={intel?.homePitcher}
+                  awayTeam={data.away_team}
+                  homeTeam={data.home_team}
+                />
+              )}
+              showInjuries={!hasIntel}
             />
 
             {/* Only render the lineup/injury columns when we actually have

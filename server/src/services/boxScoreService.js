@@ -98,8 +98,23 @@ const SEASON_RESULTS_SPORTS = new Set([
   'americanfootball_nfl_preseason',
 ])
 
+// Sports that play too many games to list in full, but few enough per week
+// that a trailing window is meaningful. These get the last N COMPLETED
+// games, newest first, instead of ESPN's lastFiveGames — which caps at five
+// and, before a season starts, silently holds last season's.
+const RECENT_FORM_SPORTS = new Set([
+  'baseball_mlb',
+  'basketball_nba',
+  'basketball_wnba',
+])
+const RECENT_FORM_COUNT = 10
+
 async function fetchSeasonResults(espnPath, teamId, season) {
-  const key = `${espnPath}:${teamId}:${season}`
+  // season omitted -> ESPN returns the CURRENT season, which is what the
+  // recent-form sports want. Avoids reimplementing each league's
+  // straddle rule (the NBA's 2026-27 season is season=2027, the WNBA's
+  // and MLB's are plain calendar years).
+  const key = `${espnPath}:${teamId}:${season ?? 'current'}`
   const hit = seasonResultsCache.get(key)
   if (hit && hit.expiresAt > Date.now()) return hit.rows
 
@@ -109,7 +124,8 @@ async function fetchSeasonResults(espnPath, teamId, season) {
     // exhibitions in — an NFL team showed a 2-0 "This season" record in late
     // August purely from preseason games. teamRecordsService hit the same
     // trap and pins the same param for the same reason.
-    const res = await fetch(`${ESPN_BASE}/${espnPath}/teams/${teamId}/schedule?season=${season}&seasontype=2`)
+    const qs = season ? `season=${season}&seasontype=2` : 'seasontype=2'
+    const res = await fetch(`${ESPN_BASE}/${espnPath}/teams/${teamId}/schedule?${qs}`)
     if (res.ok) {
       const data = await res.json()
       for (const ev of data.events || []) {
@@ -249,6 +265,27 @@ function extractPreview(summary) {
     }))
     .filter((t) => t.categories.length)
   if (leaders.length) preview.leaders = leaders
+
+  // Injuries straight off the summary. Intended for sports OUTSIDE
+  // INJURY_SPORTS — NBA / WNBA / NFL / NHL get a richer feed from team_intel
+  // (starters plus depth-chart promotion), and the client suppresses this one
+  // there so the two don't double up. MLB has no such feed, so this is its
+  // only injury source, and it costs nothing: the payload is already in hand.
+  const injuries = (summary?.injuries || [])
+    .map((entry) => ({
+      team_id: entry.team?.id ? String(entry.team.id) : null,
+      team_abbr: entry.team?.abbreviation || null,
+      players: (entry.injuries || [])
+        .map((e) => ({
+          name: e.athlete?.displayName || null,
+          position: e.athlete?.position?.abbreviation || null,
+          status: e.status || null,
+          detail: e.details?.type || e.type?.description || null,
+        }))
+        .filter((p) => p.name),
+    }))
+    .filter((t) => t.players.length)
+  if (injuries.length) preview.injuries = injuries
 
   if (!Object.keys(preview).length) return null
 
@@ -451,9 +488,42 @@ export async function getBoxScore(gameId) {
     normalized.preview.season = season
     // home/away ids and the season stamp are metadata, not content — a preview
     // carrying only those would render an empty shell.
-    const CONTENT_KEYS = ['venue', 'odds', 'predictor', 'blurb', 'last_five', 'season_results', 'leaders']
+    const CONTENT_KEYS = ['venue', 'odds', 'predictor', 'blurb', 'last_five', 'season_results', 'leaders', 'injuries']
     if (!CONTENT_KEYS.some((k) => normalized.preview[k])) normalized.preview = null
-    if (!Object.keys(normalized.preview).length) normalized.preview = null
+  }
+
+  // Recent form for the high-volume sports: the last N COMPLETED games,
+  // newest first. Replaces ESPN's lastFiveGames, which caps at five and
+  // before a season starts quietly holds LAST season's games.
+  //
+  // No season is passed — ESPN defaults to the current one, which avoids
+  // reimplementing each league's straddle rule (the NBA's 2026-27 season is
+  // season=2027; MLB's and the WNBA's are plain calendar years).
+  if (normalized?.preview && RECENT_FORM_SPORTS.has(sportKey)) {
+    const espnPath = SPORT_TO_PATH[sportKey]
+    const rows = await Promise.all(
+      (normalized.teams || []).map(async (t) => {
+        const all = t.id ? await fetchSeasonResults(espnPath, t.id) : []
+        return {
+          team_id: t.id ? String(t.id) : null,
+          team_abbr: t.abbr || null,
+          // Oldest-first from ESPN; take the tail, then flip so the most
+          // recent game reads first.
+          games: all.filter((g) => g.played).slice(-RECENT_FORM_COUNT).reverse(),
+        }
+      })
+    )
+    const withGames = rows.filter((r) => r.games.length)
+    // Drop the trailing five unconditionally, exactly as the football branch
+    // does. In an offseason the current-season schedule has no completed
+    // games, and lastFiveGames would fill the gap with LAST season's results
+    // under a "Last 10" heading — the misleading case, not a useful fallback.
+    // Better to show no form section until the season produces one.
+    delete normalized.preview.last_five
+    if (withGames.length) {
+      normalized.preview.recent_form = withGames
+      normalized.preview.recent_form_count = RECENT_FORM_COUNT
+    }
   }
 
   if (normalized) {

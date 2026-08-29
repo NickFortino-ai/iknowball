@@ -18,7 +18,7 @@ function scheduleDate(iso) {
   })
 }
 
-export default function GamePreview({ preview, away, home }) {
+export default function GamePreview({ preview, away, home, afterOdds = null, showInjuries = false }) {
   // Which team's schedule is showing. 0 = away, matching the away-then-home
   // order used everywhere else in the modal. Hook runs before the early
   // return below so it isn't conditional.
@@ -27,12 +27,20 @@ export default function GamePreview({ preview, away, home }) {
   const {
     venue, odds, predictor, leaders, blurb, season,
     last_five: lastFive, season_results: seasonResults,
+    recent_form: recentForm, recent_form_count: recentFormCount,
+    injuries,
   } = preview
   // Football sports send the full season SCHEDULE — every game, results
   // filling in as they're played. Everything else sends ESPN's trailing
   // five, which is only ever completed games. Same shape, different heading.
-  const formList = seasonResults || lastFive
-  const formLabel = seasonResults ? `${season || ''} schedule`.trim() : 'Last 5'
+  // Three shapes, by sport:
+  //   season_results — football: every game, results filling in (vertical, toggled)
+  //   recent_form    — MLB/NBA/WNBA: last N completed, newest first (two columns)
+  //   last_five      — NHL/MLS: ESPN's trailing five (chips)
+  const formList = seasonResults || recentForm || lastFive
+  const formLabel = seasonResults
+    ? `${season || ''} schedule`.trim()
+    : recentForm ? `Last ${recentFormCount || 10}` : 'Last 5'
 
   // season_results / leaders come keyed by ESPN team id; map to our team objects
   // so the columns line up away-then-home like the rest of the modal.
@@ -98,10 +106,36 @@ export default function GamePreview({ preview, away, home }) {
         </div>
       )}
 
+      {/* Probable pitchers / lineups slot — sits above Team Leaders, below the
+          line. Passed in by the caller because the data comes from a
+          different endpoint than the preview. */}
+      {afterOdds}
+
       {/* Football sends a full 12-17 game schedule. That's a list, not a row
           of chips — one team at a time, vertically, with a toggle. The chip
           row below is kept for Last 5, where five items genuinely do read
           better side by side. */}
+      {leaderRows.length > 0 && (
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-2">Team leaders</div>
+          <div className="grid grid-cols-2 gap-3">
+            {leaderRows.map(({ team, entry }) => (
+              <div key={team.id}>
+                <div className="text-xs font-semibold text-text-primary mb-1.5 truncate">{team.abbr || team.short}</div>
+                <div className="space-y-1">
+                  {entry.categories.map((c, i) => (
+                    <div key={i} className="text-[11px] leading-tight">
+                      <div className="text-text-muted">{c.label}</div>
+                      <div className="text-text-primary truncate">{c.name} <span className="text-text-muted">{c.value}</span></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {seasonResults && formRows.length > 0 && (
         <div>
           <div className="flex items-center justify-between gap-3 mb-2">
@@ -155,7 +189,44 @@ export default function GamePreview({ preview, away, home }) {
         </div>
       )}
 
-      {!seasonResults && formRows.length > 0 && (
+      {/* MLB / NBA / WNBA: last N completed games, newest first, in two
+          columns aligned under each team — the same two-column grid Team
+          Leaders uses, so the eye tracks one team down a single column.
+          Opponent text stays white; only the row's border carries W/L, which
+          keeps a column of ten rows from reading as coloured noise. */}
+      {recentForm && formRows.length > 0 && (
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-2">{formLabel}</div>
+          <div className="grid grid-cols-2 gap-3">
+            {formRows.map(({ team, entry }) => (
+              <div key={team.id} className="min-w-0">
+                <div className="text-xs font-semibold text-text-primary mb-1.5 truncate">
+                  {team.abbr || team.short}
+                </div>
+                <div className="space-y-1">
+                  {entry.games.map((g, i) => (
+                    <div
+                      key={i}
+                      title={`${g.result || ''} ${g.score || ''} ${g.at_vs || ''}${g.opponent || ''}`.trim()}
+                      className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded border text-[11px] ${
+                        g.result === 'W' ? 'border-correct/50'
+                          : g.result === 'L' ? 'border-incorrect/50'
+                            : 'border-text-primary/20'
+                      }`}
+                    >
+                      <span className="font-bold text-text-primary w-2 shrink-0">{g.result || '-'}</span>
+                      <span className="text-text-primary truncate">{g.at_vs || ''}{g.opponent || ''}</span>
+                      <span className="ml-auto text-text-muted tabular-nums shrink-0">{g.score || ''}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!seasonResults && !recentForm && formRows.length > 0 && (
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-2">{formLabel}</div>
           <div className="space-y-2">
@@ -208,18 +279,28 @@ export default function GamePreview({ preview, away, home }) {
         </div>
       )}
 
-      {leaderRows.length > 0 && (
+      {/* Summary-derived injuries. Only rendered when the caller has no
+          richer team_intel feed (MLB), so NBA/WNBA/NFL don't show two
+          injury lists. */}
+      {showInjuries && injuries?.length > 0 && (
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-2">Team leaders</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-2">Injuries</div>
           <div className="grid grid-cols-2 gap-3">
-            {leaderRows.map(({ team, entry }) => (
-              <div key={team.id}>
-                <div className="text-xs font-semibold text-text-primary mb-1.5 truncate">{team.abbr || team.short}</div>
+            {byTeam(injuries).map(({ team, entry }) => (
+              <div key={team.id} className="min-w-0">
+                <div className="text-xs font-semibold text-text-primary mb-1.5 truncate">
+                  {team.abbr || team.short}
+                </div>
                 <div className="space-y-1">
-                  {entry.categories.map((c, i) => (
+                  {entry.players.map((pl, i) => (
                     <div key={i} className="text-[11px] leading-tight">
-                      <div className="text-text-muted">{c.label}</div>
-                      <div className="text-text-primary truncate">{c.name} <span className="text-text-muted">{c.value}</span></div>
+                      <div className="text-text-primary truncate">
+                        {pl.position && <span className="text-text-muted mr-1">{pl.position}</span>}
+                        {pl.name}
+                      </div>
+                      <div className="text-text-muted truncate">
+                        {[pl.status, pl.detail].filter(Boolean).join(' · ')}
+                      </div>
                     </div>
                   ))}
                 </div>
