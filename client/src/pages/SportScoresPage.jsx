@@ -11,6 +11,7 @@ import StatLeadersBlock from '../components/home/StatLeadersBlock'
 import GameCenterModal from '../components/picks/GameCenterModal'
 import GameIntelModal from '../components/picks/GameIntelModal'
 import { hasPregameIntel } from '../lib/gameIntelSports'
+import { formatLiveLabel } from '../lib/liveLabel'
 
 
 // /scores/:sport — Sleeper-style drill-in for one sport: date scrubber
@@ -588,7 +589,11 @@ function DrillGameCard({ game, sportFullKey, showDate, pickOutcome, onOpenGameCe
   const showScore = isLive || isFinal
   const timeStr = new Date(game.starts_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   const dateStr = showDate ? new Date(game.starts_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : null
-  const timeLabel = isLive ? 'LIVE' : isFinal ? 'FINAL' : timeStr
+  // Live games show the period and clock ("Q3 · 4:32"), matching the strip.
+  // Falls back to a bare LIVE if ESPN hasn't sent a period yet.
+  const timeLabel = isLive
+    ? (formatLiveLabel(game.period, game.clock, sportFullKey) || 'LIVE')
+    : isFinal ? 'FINAL' : timeStr
   const dateLabel = showDate && !isLive ? dateStr : null
   // Same pick-outcome styling as the landing scoreboard so the drill-in
   // preserves the at-a-glance win/loss signal on finals.

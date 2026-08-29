@@ -9,6 +9,7 @@ import StatLeadersBlock from './StatLeadersBlock'
 import GameCenterModal from '../picks/GameCenterModal'
 import GameIntelModal from '../picks/GameIntelModal'
 import { hasPregameIntel } from '../../lib/gameIntelSports'
+import { formatLiveLabel } from '../../lib/liveLabel'
 import { getNcaafMatchupScore } from '../../lib/ncaafPrestige'
 
 // PT calendar date as YYYY-MM-DD — anchored to America/Los_Angeles so
@@ -496,23 +497,6 @@ function TeamRow({ team, logoLookupTeam, record, score, hits, errors, sportFullK
 // and clock is a display clock like "4:32" — join as "Q3 · 4:32".
 // For soccer, period 1 = first half, 2 = second half, 3 = extra time;
 // clock renders as "45'+2" style — join as "1H · 34'".
-function formatLiveLabel(period, clock, sportFullKey) {
-  if (!period) return clock || null
-  const p = String(period)
-  // MLB style — already contains letters (Top/Bot/Mid) so hand it back verbatim.
-  if (/[a-zA-Z]/.test(p)) return p.toUpperCase()
-  const num = parseInt(p, 10)
-  if (isNaN(num)) return clock ? `${p} · ${clock}` : p
-
-  if (sportFullKey?.startsWith('soccer_')) {
-    const half = num === 1 ? '1H' : num === 2 ? '2H' : num === 3 ? 'ET' : num === 4 ? 'PK' : `P${num}`
-    // Strip trailing colon/seconds from the ESPN clock (e.g. "34:22" → "34'")
-    const mins = clock ? String(clock).split(':')[0] : null
-    return mins ? `${half} · ${mins}'` : half
-  }
-  const quarter = `Q${num}`
-  return clock ? `${quarter} · ${clock}` : quarter
-}
 
 function TimeBox({ startsAt }) {
   if (!startsAt) return null
