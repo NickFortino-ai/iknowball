@@ -256,6 +256,14 @@ export default function SportScoresPage() {
                 return new Date(a.starts_at) - new Date(b.starts_at)
               })
             }
+            // Live games rise to the top, whatever the sport. Sorting on the
+            // live flag ALONE keeps this stable: Array.prototype.sort is
+            // stable in modern JS, so the marquee order above is preserved
+            // inside the live block and inside the rest, and finals/upcoming
+            // keep their existing order relative to each other.
+            visibleGames = [...visibleGames].sort(
+              (a, b) => (b.status === 'live' ? 1 : 0) - (a.status === 'live' ? 1 : 0)
+            )
             if (visibleGames.length === 0) {
               return (
                 <div className="rounded-lg border border-text-primary/10 bg-bg-primary/20 backdrop-blur-md px-4 py-6 text-sm text-text-muted text-center">
