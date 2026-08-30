@@ -1505,8 +1505,26 @@ router.get('/fantasy/nfl-state', async (req, res) => {
   res.json(state)
 })
 
+// Current NFL week + season, read from OUR nfl_schedule (not Sleeper's
+// state, which drifts). The salary editor opens on this instead of a
+// hardcoded Week 1 — a helper landing on Week 1 in December would edit
+// prices no user will ever see, and nothing would surface the mistake.
+router.get('/dfs/current-week', async (req, res) => {
+  try {
+    const { getCurrentNflWeek } = await import('../services/tdPassService.js')
+    const state = await getCurrentNflWeek()
+    res.json({ week: state.week, season: state.season, isPreSeason: !!state.isPreSeason })
+  } catch (err) {
+    logger.error({ err }, 'Failed to resolve current NFL week')
+    res.status(500).json({ error: 'Failed to resolve current NFL week' })
+  }
+})
+
 // DFS Salary Management
-router.post('/dfs/generate-salaries', async (req, res) => {
+// Full admins only — regenerating a week is the one destructive-ish action
+// on this panel, and the weekly cron already handles the happy path. This
+// stays as the recovery lever if generation ever fails.
+router.post('/dfs/generate-salaries', requireFullAdmin, async (req, res) => {
   const { week = 1, season = 2026 } = req.body
   // Run in background — too many ESPN API calls to complete in request timeout.
   // New rows insert with published=false so admins can preview + tweak
@@ -1553,25 +1571,38 @@ router.get('/dfs/salaries', async (req, res) => {
   const position = req.query.position && req.query.position !== 'ALL' ? String(req.query.position) : null
   const search = req.query.search ? String(req.query.search).trim() : ''
 
-  let query = supabase
-    .from('dfs_weekly_salaries')
-    .select('id, player_id, salary, algorithm_salary, manually_set, hidden, published, updated_at, nfl_players!inner(id, full_name, position, team, headshot_url, injury_status, bye_week)')
-    .eq('nfl_week', week)
-    .eq('season', season)
-    .order('salary', { ascending: false })
-    .limit(1000)
-
-  if (position) {
-    query = query.eq('nfl_players.position', position)
+  // Page through instead of .limit(1000). Supabase silently caps a
+  // request at 1000 rows, and this endpoint then reported rows.length as
+  // the total — so the panel always read "1000 players" no matter how
+  // many existed. Week 1 2026 has 1112, meaning the 112 CHEAPEST players
+  // (kickers, deep bench) were invisible and unpriceable.
+  //
+  // .order('id') is the tiebreak, and it is load-bearing: salary has many
+  // ties, and an unstable sort lets rows shift between page boundaries,
+  // which both skips and duplicates.
+  function buildQuery() {
+    let q = supabase
+      .from('dfs_weekly_salaries')
+      .select('id, player_id, salary, algorithm_salary, manually_set, hidden, published, updated_at, nfl_players!inner(id, full_name, position, team, headshot_url, injury_status, bye_week)')
+      .eq('nfl_week', week)
+      .eq('season', season)
+      .order('salary', { ascending: false })
+      .order('id', { ascending: true })
+    if (position) q = q.eq('nfl_players.position', position)
+    if (search) q = q.ilike('nfl_players.full_name', `%${search}%`)
+    return q
   }
-  if (search) {
-    query = query.ilike('nfl_players.full_name', `%${search}%`)
-  }
 
-  const { data, error } = await query
-  if (error) {
-    logger.error({ error, week, season }, 'Failed to fetch DFS salaries')
-    return res.status(500).json({ error: error.message })
+  const PAGE = 1000
+  const data = []
+  for (let from = 0; ; from += PAGE) {
+    const { data: page, error } = await buildQuery().range(from, from + PAGE - 1)
+    if (error) {
+      logger.error({ error, week, season }, 'Failed to fetch DFS salaries')
+      return res.status(500).json({ error: error.message })
+    }
+    data.push(...(page || []))
+    if (!page || page.length < PAGE) break
   }
 
   // Flatten the player join for easier client consumption

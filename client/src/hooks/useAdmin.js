@@ -145,6 +145,17 @@ export function useSyncNFLSalaries() {
   })
 }
 
+// Current NFL week + season from our nfl_schedule. The salary editor
+// opens on this rather than a hardcoded Week 1 — see the note on
+// GET /admin/dfs/current-week.
+export function useAdminCurrentNflWeek() {
+  return useQuery({
+    queryKey: ['admin', 'dfs-current-week'],
+    queryFn: () => api.get('/admin/dfs/current-week'),
+    staleTime: 5 * 60_000,
+  })
+}
+
 // Publish draft rows for a (week, season) so users can see the pool.
 export function usePublishNFLSalaries() {
   const queryClient = useQueryClient()

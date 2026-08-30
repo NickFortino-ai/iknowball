@@ -1,27 +1,50 @@
-import { useState } from 'react'
-import { useAdminDFSSalaries, useUpdateDFSSalary, useResetDFSSalary, useSyncNFLSalaries, usePublishNFLSalaries, useAdminDFSUnpublishedCount, useToggleDFSHidden } from '../../hooks/useAdmin'
+import { useState, useEffect } from 'react'
+import { useAdminDFSSalaries, useUpdateDFSSalary, useResetDFSSalary, useSyncNFLSalaries, usePublishNFLSalaries, useAdminDFSUnpublishedCount, useToggleDFSHidden, useAdminCurrentNflWeek } from '../../hooks/useAdmin'
+import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 
 const POSITION_FILTERS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'DEF']
+
+// Salary cap runs the NFL REGULAR season only. Weeks 19-22 (playoffs) have
+// no salary rows, so allowing them just yields a confusing empty table
+// with a "Generate Week 20" prompt.
+const MAX_WEEK = 18
 
 // NFL seasons are named after the year they START (Sept Y → Feb Y+1).
 // Default to the "current" season from an admin's POV:
 //   Mar-Dec → current calendar year (offseason prep through regular season)
 //   Jan-Feb → previous year (playoffs of the season that began last fall)
-function defaultWeekAndSeason() {
+// The WEEK is not guessable from the calendar, so it comes from the server
+// (nfl_schedule) — see the effect below. Week 1 is only the placeholder
+// shown for the moment before that resolves.
+function defaultSeason() {
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth() + 1 // 1-12
-  const season = month <= 2 ? year - 1 : year
-  return { week: 1, season }
+  return month <= 2 ? year - 1 : year
 }
 
 export default function NFLSalariesEditor() {
-  const { week: defaultWeek, season: defaultSeason } = defaultWeekAndSeason()
-  const [week, setWeek] = useState(defaultWeek)
-  const [season, setSeason] = useState(defaultSeason)
+  const { profile } = useAuth()
+  const isHelperAdmin = profile?.admin_role === 'helper'
+  const { data: current } = useAdminCurrentNflWeek()
+  const [week, setWeek] = useState(1)
+  const [season, setSeason] = useState(defaultSeason())
+  const [weekPinned, setWeekPinned] = useState(false)
   const [position, setPosition] = useState('ALL')
   const [search, setSearch] = useState('')
+
+  // Snap to the live week once the server answers, unless the admin has
+  // already moved the selector themselves.
+  useEffect(() => {
+    if (weekPinned || !current) return
+    if (Number.isInteger(current.week) && current.week >= 1) {
+      setWeek(Math.min(current.week, MAX_WEEK))
+    }
+    if (Number.isInteger(current.season)) setSeason(current.season)
+  }, [current, weekPinned])
+
+  const isCurrentWeek = current?.week != null && week === current.week
 
   const { data, isLoading, error, refetch } = useAdminDFSSalaries({ week, season, position, search })
   const updateSalary = useUpdateDFSSalary()
@@ -62,8 +85,10 @@ export default function NFLSalariesEditor() {
       <div>
         <h2 className="font-display text-xl mb-1">NFL Salary Editor</h2>
         <p className="text-xs text-text-muted">
-          Manually override prices for any player. Edits are preserved across regens until you reset.
-          Algorithm $ shows what the generator computed; salary is what users see.
+          Prices generate automatically each week and publish to users <strong>Tuesday at 10:00 AM PT</strong>.
+          Edit any player and press Save — edits before the 10 AM release go out with it, edits after it
+          are live immediately. Overrides survive future regens until you Reset.
+          Algorithm $ is what the generator computed; Current Salary is what users see.
         </p>
       </div>
 
@@ -74,23 +99,27 @@ export default function NFLSalariesEditor() {
           <input
             type="number"
             min="1"
-            max="22"
+            max={MAX_WEEK}
             value={week}
-            onChange={(e) => setWeek(parseInt(e.target.value, 10) || 1)}
-            className="w-20 rounded-md border border-text-primary/20 bg-bg-primary px-2 py-1 text-sm"
+            onChange={(e) => {
+              const v = parseInt(e.target.value, 10)
+              setWeekPinned(true)
+              setWeek(Math.min(Math.max(Number.isInteger(v) ? v : 1, 1), MAX_WEEK))
+            }}
+            className={`w-20 rounded-md border bg-bg-primary px-2 py-1 text-sm ${
+              isCurrentWeek ? 'border-text-primary/20' : 'border-yellow-500/60'
+            }`}
           />
         </label>
-        <label className="text-xs">
+        {/* Season is derived, not chosen. A typo here used to render an
+            empty table whose empty state invited "Generate Week N" — i.e.
+            it made fabricating a bogus historical week one click away. */}
+        <div className="text-xs">
           <div className="mb-1 text-text-muted">Season</div>
-          <input
-            type="number"
-            min="2020"
-            max="2035"
-            value={season}
-            onChange={(e) => setSeason(parseInt(e.target.value, 10) || 2026)}
-            className="w-24 rounded-md border border-text-primary/20 bg-bg-primary px-2 py-1 text-sm"
-          />
-        </label>
+          <div className="w-24 rounded-md border border-transparent px-2 py-1 text-sm text-text-muted tabular-nums">
+            {season}
+          </div>
+        </div>
         <div className="text-xs">
           <div className="mb-1 text-text-muted">Position</div>
           <div className="flex gap-1">
@@ -120,19 +149,35 @@ export default function NFLSalariesEditor() {
           />
         </label>
         <div className="ml-auto flex items-center gap-3">
-          {hasDrafts && (
-            <span className="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-yellow-500">
-              {unpubCount} draft{unpubCount === 1 ? '' : 's'} — users can't see
-            </span>
+          {/* Always rendered, both states. The single most useful fact on
+              this page is whether the week users are about to draft from is
+              live yet — showing it only in the draft state meant "no badge"
+              was ambiguous between live and not-yet-generated. */}
+          {!isLoading && totalCount > 0 && (
+            hasDrafts ? (
+              <span className="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-yellow-500">
+                {unpubCount} draft{unpubCount === 1 ? '' : 's'} — users can't see
+              </span>
+            ) : (
+              <span className="rounded-full border border-correct/40 bg-correct/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-correct">
+                Live to users
+              </span>
+            )
           )}
-          <button
-            onClick={handleGenerate}
-            disabled={generateSalaries.isPending}
-            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
-            title="Force-generate algorithmic salaries for the selected week. New rows start as drafts. Preserves any manual edits already saved for that week."
-          >
-            {generateSalaries.isPending ? 'Starting…' : `Generate Week ${week}`}
-          </button>
+          {/* Full admins only. The weekly cron generates every week on its
+              own; this is the recovery lever for when it doesn't. Helpers
+              get the editor without the one button that can reshape a
+              whole week. Server enforces it too (requireFullAdmin). */}
+          {!isHelperAdmin && (
+            <button
+              onClick={handleGenerate}
+              disabled={generateSalaries.isPending}
+              className="rounded-lg border border-accent px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent/10 disabled:opacity-50"
+              title="Recovery only — the weekly cron normally does this. Force-generates algorithmic salaries for the selected week. New rows start as drafts. Preserves manual edits already saved for that week."
+            >
+              {generateSalaries.isPending ? 'Starting…' : `Generate Week ${week}`}
+            </button>
+          )}
           {hasDrafts && (
             <button
               onClick={handlePublish}
@@ -149,6 +194,19 @@ export default function NFLSalariesEditor() {
         </div>
       </div>
 
+      {/* Editing a week that isn't live changes nothing users will see.
+          Silent before — the panel opened on Week 1 year-round. */}
+      {current?.week != null && !isCurrentWeek && (
+        <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 p-3 text-sm text-yellow-500">
+          You're viewing <strong>Week {week}</strong>, but the live NFL week is{' '}
+          <strong>Week {current.week}</strong>. Edits here won't affect the pool users
+          are drafting from.{' '}
+          <button onClick={() => { setWeekPinned(false); setWeek(current.week) }} className="underline font-semibold">
+            Go to Week {current.week}
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="rounded-md border border-incorrect/40 bg-incorrect/10 p-3 text-sm text-incorrect">
           {error.message || 'Failed to load salaries.'}
@@ -157,7 +215,10 @@ export default function NFLSalariesEditor() {
 
       {!isLoading && rows.length === 0 && (
         <div className="rounded-md border border-text-primary/10 bg-bg-primary/40 p-6 text-center text-sm text-text-muted">
-          No salary rows for week {week}, season {season}. Click <span className="font-semibold text-accent">Generate Week {week}</span> above to create them.
+          No salary rows for Week {week}, {season}.{' '}
+          {isHelperAdmin
+            ? 'These generate automatically each week and publish to users Tuesday at 10:00 AM PT.'
+            : <>They generate automatically each week — use <span className="font-semibold text-accent">Generate Week {week}</span> above only if that didn't run.</>}
         </div>
       )}
 
