@@ -21,6 +21,25 @@ const SLOTS = [
 
 const POS_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'DEF', 'OUT']
 
+// Copy for an empty player pool.
+//
+// Salaries are generated overnight but held in draft until Tuesday 10:00 AM
+// PT (see the publish gate in scheduler.js), which gives the admin the
+// morning to reprice. During that window the pool is legitimately empty, so
+// say exactly when it opens rather than leaving users guessing.
+//
+// Keyed off the pool being empty, not off the clock alone — the moment
+// salaries publish, `players` fills and this disappears on its own. If a
+// publish is ever late, the note stays up instead of claiming availability
+// that isn't there.
+function salaryAvailabilityNote(week) {
+  const pt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
+  if (pt.getDay() === 2 && pt.getHours() < 10) {
+    return `Player salaries for Week ${week} become available at 10:00 AM PT today.`
+  }
+  return `Players and salaries for Week ${week} become available Tuesday at 10:00 AM PT.`
+}
+
 export default function NflSalaryCapView({ league }) {
   const { profile } = useAuth()
   const { data: settings } = useFantasySettings(league.id)
@@ -334,7 +353,7 @@ export default function NflSalaryCapView({ league }) {
         {!available.length ? (
           <div className="px-4 py-6 text-center text-xs text-text-muted">
             {!players?.length
-              ? `Players and salaries for Week ${currentWeek} will be available no later than Wednesday morning.`
+              ? salaryAvailabilityNote(currentWeek)
               : 'No players match your filters.'}
           </div>
         ) : (
