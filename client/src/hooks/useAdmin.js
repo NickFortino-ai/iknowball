@@ -151,7 +151,12 @@ export function usePublishNFLSalaries() {
   return useMutation({
     mutationFn: ({ week, season }) => api.post('/admin/dfs/publish-salaries', { week, season }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['adminDFSSalaries'] })
+      // Must match the query's real key: ['admin', 'dfs-salaries', week,
+      // season, position, search]. 'adminDFSSalaries' was never a query key
+      // anywhere — it only appeared in these two invalidations, so the POST
+      // succeeded server-side and the table never refetched. The hide toggle
+      // looked completely dead as a result.
+      queryClient.invalidateQueries({ queryKey: ['admin', 'dfs-salaries'] })
       queryClient.invalidateQueries({ queryKey: ['adminDFSUnpublishedCount'] })
     },
   })
@@ -165,7 +170,12 @@ export function useToggleDFSHidden() {
   return useMutation({
     mutationFn: ({ id, hidden }) => api.post(`/admin/dfs/salaries/${id}/hide`, { hidden }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['adminDFSSalaries'] })
+      // Must match the query's real key: ['admin', 'dfs-salaries', week,
+      // season, position, search]. 'adminDFSSalaries' was never a query key
+      // anywhere — it only appeared in these two invalidations, so the POST
+      // succeeded server-side and the table never refetched. The hide toggle
+      // looked completely dead as a result.
+      queryClient.invalidateQueries({ queryKey: ['admin', 'dfs-salaries'] })
     },
   })
 }
