@@ -73,6 +73,45 @@ export function startScheduler() {
     // loop has stored the final week's numbers and after the daily
     // record recalc so the resolved picks feed into fresh standings
     // on next paint.
+    // NFL DFS salary publish gate — Tuesdays 10:00 AM PT.
+    //
+    // Generation happens nightly and leaves rows in draft; this is what
+    // makes them visible. The gap gives the admin Tuesday morning to
+    // reprice before anyone can build a roster off the new slate.
+    //
+    // The week comes from getCurrentNflWeek(), which reads OUR nfl_schedule
+    // table, not Sleeper's state.week. Sleeper advances its week on its own
+    // clock, so keying a fixed-time job off it risks firing before the week
+    // has rolled — the same trap that silently broke playoff bracket
+    // generation. nfl_schedule is loaded months ahead and never moves.
+    //
+    // Runs every hour rather than once at 10:00 so a missed tick (deploy,
+    // restart, outage) doesn't strand a slate unpublished for a week. The
+    // publish itself only touches rows where published = false, so repeat
+    // runs are no-ops.
+    cron.schedule('0 * * * *', async () => {
+      try {
+        const nowPt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
+        const isTuesday = nowPt.getDay() === 2
+        const pastGate = nowPt.getHours() >= 10
+        // Tuesday from 10 AM PT onward, or any later day in the week — the
+        // catch-up half, so a slate generated Wednesday still goes live.
+        if (!((isTuesday && pastGate) || nowPt.getDay() > 2)) return
+
+        const { getCurrentNflWeek } = await import('../services/tdPassService.js')
+        const { season, week, isPreSeason } = await getCurrentNflWeek()
+        if (isPreSeason || !season || !week) return
+
+        const result = await publishNflDfsSalaries(week, season)
+        if (result.published > 0) {
+          logger.info({ week, season, published: result.published }, 'NFL DFS salaries published (Tuesday 10 AM PT gate)')
+        }
+      } catch (err) {
+        logger.error({ err }, 'NFL DFS salary publish gate failed')
+      }
+    }, { timezone: 'America/New_York' })
+    logger.info('NFL DFS salary publish gate scheduled: hourly, releases Tue 10:00 AM PT')
+
     cron.schedule('30 4 * * *', async () => {
       try {
         const { autoResolveDueStatLeaderFutures } = await import('../services/statLeaderFuturesService.js')
@@ -245,14 +284,23 @@ export function startScheduler() {
       // pre-price weeks the user can't enter yet. Runs after the
       // projection sync so prices reflect the freshest Sleeper numbers.
       try {
-        const state2 = await getNFLState()
-        if (state2?.season && state2?.week) {
+        // Week comes from getCurrentNflWeek() (our nfl_schedule), NOT
+        // Sleeper's state.week. Sleeper advances on its own clock, so on the
+        // 3 AM ET Tuesday run it may still report the week that just ended —
+        // which would regenerate the OLD slate and leave the new one
+        // missing when the 10 AM PT gate fires. nfl_schedule is loaded
+        // months ahead, so "which week is next" is deterministic.
+        const { getCurrentNflWeek } = await import('../services/tdPassService.js')
+        const state2 = await getCurrentNflWeek()
+        if (state2?.season && state2?.week && !state2.isPreSeason) {
           try {
             await generateNflDfsSalaries(state2.week, state2.season)
-            // Auto path: publish immediately so users see the fresh
-            // pool. Manual admin path (from NFLSalariesEditor) skips
-            // this and leaves rows in draft until the admin publishes.
-            await publishNflDfsSalaries(state2.week, state2.season)
+            // Deliberately NOT published here. Salaries stay in draft until
+            // the Tuesday 10:00 AM PT gate below, which gives the admin
+            // Tuesday morning to reprice before members can build rosters
+            // off them. The catch-up in that same job publishes anything
+            // still unpublished once the gate has passed, so a slate
+            // generated later in the week doesn't sit invisible.
           } catch (err) {
             logger.error({ err, season: state2.season, week: state2.week }, 'NFL DFS salary generation failed')
           }
