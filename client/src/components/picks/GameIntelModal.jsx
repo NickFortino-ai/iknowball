@@ -295,8 +295,12 @@ export default function GameIntelModal({ gameId, onClose }) {
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/60" />
+      {/* Width matches GameCenterModal (sm:max-w-3xl) so the two game modals
+          are the same object at the same size. Was md:max-w-lg — half the
+          width, and switching a breakpoint later, so on a 700px-wide window
+          Game Center was already wide while this was still phone-sized. */}
       <div
-        className="relative bg-bg-primary/90 backdrop-blur-md border border-text-primary/20 w-full md:max-w-lg rounded-2xl p-4 sm:p-6 max-h-full overflow-y-auto overscroll-contain"
+        className="relative bg-bg-primary/90 backdrop-blur-md border border-text-primary/20 w-full sm:max-w-3xl rounded-2xl p-4 sm:p-6 max-h-full overflow-y-auto overscroll-contain"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -317,7 +321,11 @@ export default function GameIntelModal({ gameId, onClose }) {
             {/* Team logos + records. Logos always show so the modal has
                 identity even during preseason / offseason when records
                 are null. Record + L10 lines render only when present. */}
-            <div className="flex items-center justify-between mb-4 px-2">
+            {/* Capped and centered. Left to flex-1 in a 768px shell the two
+                logos drift to opposite edges with a lonely "vs" marooned in
+                the middle — the matchup stops reading as a matchup. Same
+                max-w-md + mx-auto treatment Game Center gives its strips. */}
+            <div className="flex items-center justify-between mb-4 px-2 w-full max-w-md mx-auto">
               <div className="text-center flex-1">
                 <TeamLogo team={data.away_team} sportKey={data.sportKey} />
                 {awayRecord && <div className="text-sm font-bold text-text-primary">{awayRecord}</div>}
@@ -368,8 +376,12 @@ export default function GameIntelModal({ gameId, onClose }) {
                 coverage for this sport. NCAAF isn't in INJURY_SPORTS, so the
                 server returns empty rosters — rendering them anyway would
                 print "No injuries reported", which claims we checked. */}
+            {/* Grid switches at sm:, not md:. The container now widens at sm,
+                so the lineup columns have to switch on the same breakpoint —
+                otherwise 640-767px renders one stacked column inside a shell
+                that's already twice as wide as it needs to be. */}
             {hasIntel && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <TeamSection
                 teamName={data.away_team}
                 starters={data.away?.starters}
