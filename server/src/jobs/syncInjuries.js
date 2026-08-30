@@ -84,7 +84,10 @@ async function fetchWnbaInjuriesByTeamId() {
 // on a DNP) still shows up if she started earlier. Positions are
 // pulled from whichever game the player first appears as a starter.
 const WNBA_GAMES_TO_SCAN = 5
-async function fetchWnbaTeamStarters(espnTeamId) {
+// Enough bench names to cover a team with several starters out at once —
+// Golden State had 2 of 5 out on 2026-08-30, Phoenix and Portland 1 each.
+const BENCH_DEPTH_SIZE = 8
+export async function fetchWnbaTeamStarters(espnTeamId) {
   try {
     const scheduleUrl = `https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/teams/${espnTeamId}/schedule`
     const scheduleRes = await fetch(scheduleUrl)
@@ -98,8 +101,14 @@ async function fetchWnbaTeamStarters(espnTeamId) {
     if (!completed.length) return []
 
     const byName = new Map() // name → starter object, first-seen wins
+    // Bench pool, name → { minutes, position, shortName }. Every starter
+    // gets this appended as depth so the client's next-man-up promotion
+    // has somebody to promote. Without it each starter's depth was just
+    // herself, so an Out starter left the slot EMPTY and the lineup
+    // rendered with 3 or 4 names instead of 5.
+    const bench = new Map()
+
     for (const game of completed) {
-      if (byName.size >= 5) break
       let summary
       try {
         const summaryRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/summary?event=${game.id}`)
@@ -111,22 +120,53 @@ async function fetchWnbaTeamStarters(espnTeamId) {
       if (!teamEntry) continue
 
       for (const statGroup of teamEntry.statistics || []) {
+        // Locate MIN by label rather than assuming index 0.
+        const labels = statGroup.names || statGroup.labels || []
+        const minIdx = labels.findIndex((l) => String(l).toUpperCase() === 'MIN')
+
         for (const a of statGroup.athletes || []) {
-          if (!a.starter || !a.athlete?.displayName) continue
-          const name = a.athlete.displayName
-          if (byName.has(name)) continue
-          byName.set(name, {
-            position: a.athlete?.position?.abbreviation?.toUpperCase() || '',
+          const name = a.athlete?.displayName
+          if (!name) continue
+          const position = a.athlete?.position?.abbreviation?.toUpperCase() || ''
+
+          if (a.starter) {
+            if (byName.size < 5 && !byName.has(name)) {
+              byName.set(name, { position, name, shortName: a.athlete.shortName })
+            }
+            continue
+          }
+          // Non-starter: accumulate minutes so the pool is ordered by who
+          // actually plays, which is the best available signal for who
+          // steps in. ESPN publishes no WNBA projected lineups.
+          if (a.didNotPlay) continue
+          const mins = minIdx >= 0 ? parseInt(a.stats?.[minIdx], 10) : 0
+          const prev = bench.get(name)
+          bench.set(name, {
             name,
             shortName: a.athlete.shortName,
-            depth: [{ name, shortName: a.athlete.shortName }],
+            position: prev?.position || position,
+            minutes: (prev?.minutes || 0) + (Number.isFinite(mins) ? mins : 0),
           })
-          if (byName.size >= 5) break
         }
-        if (byName.size >= 5) break
       }
     }
-    return [...byName.values()].slice(0, 5)
+
+    const starters = [...byName.values()].slice(0, 5)
+    if (!starters.length) return []
+
+    const starterNames = new Set(starters.map((s) => s.name))
+    const benchPool = [...bench.values()]
+      .filter((b) => !starterNames.has(b.name))
+      .sort((a, b) => b.minutes - a.minutes)
+      .slice(0, BENCH_DEPTH_SIZE)
+      .map(({ name, shortName, position }) => ({ name, shortName, position }))
+
+    // Shared pool on every slot. The client tracks players it has already
+    // used, so two Out starters promote two DIFFERENT bench players.
+    return starters.map((s) => ({
+      ...s,
+      depth: [{ name: s.name, shortName: s.shortName, position: s.position }, ...benchPool],
+    }))
   } catch {
     return []
   }

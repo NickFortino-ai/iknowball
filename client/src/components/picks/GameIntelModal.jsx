@@ -168,7 +168,11 @@ function TeamSection({ teamName, starters, injuries }) {
       const status = injuryMap[player.name] || injuryMap[player.shortName]
       if (status === 'Out' || status === 'Doubtful') continue
       usedPlayers.add(player.name)
-      return { position: s.position, name: player.name, shortName: player.shortName, side: s.side || null, status: status || null }
+      // Prefer the promoted player's OWN position. Falling back to the
+      // slot's position labelled a promoted guard with the outgoing
+      // forward's "F". NFL depth entries carry no position, so they keep
+      // using the slot's — unchanged there.
+      return { position: player.position || s.position, name: player.name, shortName: player.shortName, side: s.side || null, status: status || null }
     }
     // All available players at this position are out
     return null
