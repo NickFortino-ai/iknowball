@@ -42,8 +42,22 @@ async function updateRecord(key, holderId, value, metadata = {}) {
 
   const previousHolderId = existing.record_holder_id
   const previousValue = existing.record_value
-  // For percentage records, same holder beating their own record is silent (avoids feed spam from tiny increments)
-  const isSilentUpdate = previousHolderId === holderId && existing.category === 'percentage'
+  // Beating your OWN record is silent, for every category.
+  //
+  // You break a record once — when you take it off someone else (or claim
+  // it first, where previousHolderId is null and this stays loud). Every
+  // step after that is you extending it, and firing on each step scales
+  // with activity, not achievement: settling two prop picks in one batch
+  // sent two "You now hold the record for Longest Prop Streak!" alerts
+  // six seconds apart (9->10 off another user, then 10->11 off himself),
+  // and one NCAAF streak fired four times in an evening walking 1->2->3->4.
+  //
+  // This was already the rule for 'percentage' records for exactly this
+  // reason; the reasoning applies at least as strongly to streaks, which
+  // advance by one on every settle. The record itself still updates and
+  // still displays the new value — only the "broke a record" EVENT is
+  // suppressed, which is both the notification and the ActivityFeed item.
+  const isSilentUpdate = previousHolderId === holderId
 
   // Update the record
   const { error: updateError } = await supabase
@@ -61,10 +75,11 @@ async function updateRecord(key, holderId, value, metadata = {}) {
     return false
   }
 
-  // For percentage records, same holder beating their own record updates silently
-  // (no history entry, notification, or email — avoids feed spam from tiny increments)
+  // Same holder extending their own record: the value above is already
+  // written, so the record and its metadata stay current. We just skip
+  // the history row (ActivityFeed item) and the notification.
   if (isSilentUpdate) {
-    logger.info({ key, holderId, value, previousValue }, 'Record value updated by same holder (silent)')
+    logger.info({ key, holderId, value, previousValue }, 'Record extended by same holder (silent)')
     return true
   }
 
