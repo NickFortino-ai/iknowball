@@ -902,22 +902,56 @@ export async function getRoyaltyData() {
     .maybeSingle()
 
 
-  // Get sport leaders
+  // Get sport leaders.
+  //
+  // Preseason and regular season are separate `sports` rows, which is
+  // right for scheduling and picks but wrong for the royal table — it
+  // seated a second "NFL Preseason" king next to the NFL one. For crowns
+  // they're one sport: points from both count toward a single NFL seat.
+  // The merged seat carries the PRIMARY key/name, so it reads "NFL".
+  const MERGED_SPORTS = { americanfootball_nfl_preseason: 'americanfootball_nfl' }
+
   const { data: sports } = await supabase.from('sports').select('id, key, name')
-  const sportCrowns = []
+  const sportById = new Map((sports || []).map((s) => [s.id, s]))
+
+  // Group sport ids by the key they crown under.
+  const groups = new Map()
   for (const sport of sports || []) {
-    const { data: stats } = await supabase
+    const primaryKey = MERGED_SPORTS[sport.key] || sport.key
+    if (!groups.has(primaryKey)) groups.set(primaryKey, [])
+    groups.get(primaryKey).push(sport.id)
+  }
+
+  const sportCrowns = []
+  for (const [primaryKey, sportIds] of groups) {
+    // A merged group can't use .limit(1) — the winner is whoever has the
+    // highest COMBINED total, which may be nobody's per-row max.
+    const { data: statRows } = await supabase
       .from('user_sport_stats')
       .select('user_id, total_points, users(id, username, display_name, avatar_url, avatar_emoji, tier)')
-      .eq('sport_id', sport.id)
+      .in('sport_id', sportIds)
       .gt('total_points', 0)
       .order('total_points', { ascending: false })
-      .limit(1)
-      .maybeSingle()
 
-    if (stats?.users) {
-      sportCrowns.push({ scope: sport.name, sportKey: sport.key, holder: stats.users, points: stats.total_points })
+    const totals = new Map()
+    for (const row of statRows || []) {
+      if (!row.users) continue
+      const prev = totals.get(row.user_id)
+      totals.set(row.user_id, {
+        points: (prev?.points || 0) + (row.total_points || 0),
+        users: prev?.users || row.users,
+      })
     }
+
+    let top = null
+    for (const entry of totals.values()) {
+      if (!top || entry.points > top.points) top = entry
+    }
+    if (!top) continue
+
+    // Name the seat after the primary sport, not whichever row won.
+    const primary = (sports || []).find((s) => s.key === primaryKey) || sportById.get(sportIds[0])
+    sportCrowns.push({ scope: primary?.name, sportKey: primaryKey, holder: top.users, points: top.points })
   }
 
   // Props leader
