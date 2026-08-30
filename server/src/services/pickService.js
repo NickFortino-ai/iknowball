@@ -236,7 +236,10 @@ export async function getUserPickHistory(userId) {
 export async function getPickById(pickId) {
   const { data, error } = await supabase
     .from('picks')
-    .select('*, games(*, sports(key, name))')
+    // users(...) joined so a pick opened from someone else's profile can
+    // name whose call it is ("Alice picked UNLV"). Adding the column to
+    // the table isn't enough — this SELECT is what puts it on the wire.
+    .select('*, games(*, sports(key, name)), users(id, username, display_name, avatar_url, avatar_emoji)')
     .eq('id', pickId)
     .single()
 

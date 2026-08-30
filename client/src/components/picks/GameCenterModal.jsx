@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useBoxScore } from '../../hooks/useScoresStrip'
 import { useGamePicks } from '../../hooks/usePicks'
 import { useAuth } from '../../hooks/useAuth'
+import { useConnectionStatus } from '../../hooks/useConnections'
 import { useCreateFlex } from '../../hooks/useHotTakes'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { formatOdds } from '../../lib/scoring'
@@ -206,6 +207,55 @@ function YourPickStrip({ userPick, away, home }) {
   )
 }
 
+// Same strip, but for SOMEONE ELSE'S pick — shown when this modal was
+// opened by tapping a pick in another user's profile. Names the owner so
+// it's unambiguous whose call you're looking at (and whose thread the
+// discussion below belongs to).
+function FocusPickStrip({ pick, away, home }) {
+  const pickedTeamName = pick.picked_team === 'home'
+    ? (home?.short || home?.name || 'Home')
+    : (away?.short || away?.name || 'Away')
+  const settled = pick.status === 'settled'
+  const isCorrect = settled && pick.is_correct === true
+  const isLost = settled && pick.is_correct === false
+  const isPush = settled && pick.is_correct === null
+
+  const ringClass = isCorrect ? 'ring-correct'
+    : isLost ? 'ring-incorrect'
+    : isPush ? 'ring-yellow-500'
+    : 'ring-text-primary/20'
+
+  const points = pick.points_earned
+  const ptsClass = points > 0 ? 'text-correct'
+    : points < 0 ? 'text-incorrect'
+    : 'text-text-muted'
+  const owner = pick.users
+
+  return (
+    <div className="flex items-center gap-2 mb-3 mx-auto w-full max-w-md px-3 py-2 rounded-lg bg-bg-primary/40 border border-text-primary/10">
+      <span className={`shrink-0 rounded-full ring-2 ${ringClass}`}>
+        <Avatar user={owner} size="sm" />
+      </span>
+      <span className="text-xs text-text-muted shrink-0 truncate max-w-[90px]">
+        {owner?.display_name || owner?.username || 'They'}
+      </span>
+      <span className="text-xs text-text-muted shrink-0">picked</span>
+      <span className="text-sm font-semibold text-text-primary truncate min-w-0">{pickedTeamName}</span>
+      {pick.multiplier > 1 && (
+        <span className="text-[10px] font-bold text-accent shrink-0">{pick.multiplier}x</span>
+      )}
+      {pick.odds_at_pick != null && (
+        <span className="text-[11px] text-text-muted shrink-0 ml-auto">{formatOdds(pick.odds_at_pick)}</span>
+      )}
+      {settled && points != null && (
+        <span className={`text-sm font-display font-bold tabular-nums shrink-0 ${ptsClass} ${pick.odds_at_pick != null ? '' : 'ml-auto'}`}>
+          {points > 0 ? '+' : ''}{points}
+        </span>
+      )}
+    </div>
+  )
+}
+
 // Horizontal split showing what % of IKB'ers picked each team.
 // Once the game is final, winning team's segment turns green and
 // losing team's turns red. Live/upcoming games use neutral colors.
@@ -295,11 +345,17 @@ function SquadChips({ squadPicks, away, home, onOpenProfile }) {
   )
 }
 
-export default function GameCenterModal({ gameId, onClose }) {
+// focusPick: set when this modal was opened by tapping ANOTHER user's
+// pick (profile history, notifications). It names whose call it is and
+// re-anchors the reaction/comment thread to THEIR pick — otherwise a
+// comment you left on Alice's call would silently land on your own.
+export default function GameCenterModal({ gameId, onClose, focusPick = null }) {
   const { session } = useAuth()
   const isAuthed = !!session
   const { data, isLoading } = useBoxScore(gameId)
   const { data: gamePicksData } = useGamePicks(isAuthed ? gameId : null)
+  const focusOwnerId = focusPick?.user_id || null
+  const { data: focusConn } = useConnectionStatus(focusOwnerId)
   const createFlex = useCreateFlex()
   const [activeTeamId, setActiveTeamId] = useState(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -344,13 +400,19 @@ export default function GameCenterModal({ gameId, onClose }) {
   const userPick = gamePicksData?.userPick
   const totalCounts = gamePicksData?.totalCounts
   const squadPicks = gamePicksData?.squadPicks || []
-  const hasPickContext = !!(userPick || (totalCounts && (totalCounts.home + totalCounts.away) > 0) || squadPicks.length)
+  const hasPickContext = !!(focusPick || userPick || (totalCounts && (totalCounts.home + totalCounts.away) > 0) || squadPicks.length)
   // Winner side is only meaningful once the game is final — during a
   // live game we don't want to color the bar as if it's decided.
   const winnerSide = data?.status === 'final' && away?.score != null && home?.score != null && away.score !== home.score
     ? (away.score > home.score ? 'away' : 'home')
     : null
   const canFlex = userPick?.status === 'settled' && userPick?.is_correct === true
+
+  // Whose thread the drawer shows. Viewing someone else's pick discusses
+  // THEIR call; otherwise it's your own. Flex stays tied to userPick —
+  // you can only flex a pick you actually made.
+  const discussionPick = focusPick || userPick
+  const canComment = !focusPick || focusConn?.status === 'connected'
 
   async function handleSubmitFlex() {
     if (!userPick?.id) return
@@ -458,6 +520,7 @@ export default function GameCenterModal({ gameId, onClose }) {
               {/* Pick context — hidden when there's nothing to show */}
               {hasPickContext && (
                 <div className="mb-4 pb-4 border-b border-text-primary/10">
+                  {focusPick && <FocusPickStrip pick={focusPick} away={away} home={home} />}
                   {userPick && <YourPickStrip userPick={userPick} away={away} home={home} />}
                   <AllPicksBar totalCounts={totalCounts} away={away} home={home} winnerSide={winnerSide} />
                   <SquadChips squadPicks={squadPicks} away={away} home={home} onOpenProfile={setProfileUserId} />
@@ -521,10 +584,17 @@ export default function GameCenterModal({ gameId, onClose }) {
                   </div>
                   {drawerOpen && (
                     <div className="mt-3 space-y-3">
-                      {userPick ? (
+                      {discussionPick ? (
                         <>
-                          <PickReactions pickId={userPick.id} />
-                          <PickComments pickId={userPick.id} initialExpanded />
+                          <PickReactions pickId={discussionPick.id} />
+                          <PickComments pickId={discussionPick.id} initialExpanded hideForm={!canComment} />
+                          {/* Carried over from PickDetailModal — commenting on
+                              someone's pick requires a connection. */}
+                          {!canComment && (
+                            <div className="text-xs text-text-muted text-center">
+                              Connect with this user to comment on their picks.
+                            </div>
+                          )}
                         </>
                       ) : (
                         <p className="text-sm text-text-muted text-center py-6">

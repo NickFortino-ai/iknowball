@@ -14,8 +14,9 @@ function TeamLogo({ team, sportKey }) {
   }} />
 }
 
-// Reusable pick result display: matchup card + user pick + ALL PICKS bar
-// Used in PickDetailModal and feed FlexTargetCard
+// Reusable pick result display: matchup card + user pick + ALL PICKS bar.
+// Live surface for this is the feed's flex card (HotTakeFeedCard) — pick
+// taps from a profile now open GameCenterModal via PickModalRouter.
 export default function PickResultCard({ pick, game, totalCounts }) {
   if (!pick || !game) return null
 
