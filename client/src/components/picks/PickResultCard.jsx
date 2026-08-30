@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { formatOdds } from '../../lib/scoring'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
+import { formatLiveLabel } from '../../lib/liveLabel'
 
 function TeamLogo({ team, sportKey }) {
   const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
@@ -55,8 +56,14 @@ export default function PickResultCard({ pick, game, totalCounts }) {
             <div className="text-sm font-semibold text-text-primary truncate">{game.away_team}</div>
             {hasScores && <div className="text-2xl font-display font-bold text-text-primary mt-0.5">{awayScore}</div>}
           </div>
-          <div className={`text-xs font-semibold shrink-0 ${isPostponed ? 'text-yellow-500' : 'text-text-muted'}`}>
-            {isPostponed ? 'POSTPONED' : isSettled ? 'FINAL' : isLive ? 'LIVE' : '@'}
+          {/* Live games show period + clock, same as the scoreboard and the
+              drill-in. games(*) already carries period/clock; this card was
+              just never wired to them and showed a bare "LIVE". */}
+          <div className={`text-xs font-semibold shrink-0 text-center ${isPostponed ? 'text-yellow-500' : isLive ? 'text-accent' : 'text-text-muted'}`}>
+            {isPostponed ? 'POSTPONED'
+              : isSettled ? 'FINAL'
+              : isLive ? (formatLiveLabel(game.period, game.clock, game.sports?.key) || 'LIVE')
+              : '@'}
           </div>
           <div className="text-center flex-1 min-w-0">
             <TeamLogo team={game.home_team} sportKey={game.sports?.key} />
