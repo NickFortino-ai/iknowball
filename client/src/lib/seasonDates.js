@@ -35,7 +35,11 @@ export function getSeasonEndDate(sportKey) {
   const year = new Date().getFullYear()
   const dates = {
     basketball_nba: `${year}-04-12`,
-    americanfootball_nfl: `${year + 1}-01-05`,
+    // Last day of the NFL REGULAR season = the Monday after Week 18's
+    // Sunday slate. Was Jan 5, which is the day after Week 17 — every
+    // full-season NFL league was ending four days before Week 18 was
+    // played. Admin-defined season_dates rows override this.
+    americanfootball_nfl: `${year + 1}-01-11`,
     baseball_mlb: `${year}-09-29`,
     basketball_ncaab: `${year}-03-08`,
     basketball_wncaab: `${year}-03-08`,

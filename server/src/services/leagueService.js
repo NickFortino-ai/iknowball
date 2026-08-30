@@ -302,7 +302,7 @@ function regularSeasonEnd(sportKey, startsAt) {
   // [month0, day] of the last regular-season game day
   const endMd = {
     basketball_nba: [3, 12],         // Apr 12
-    americanfootball_nfl: [0, 5],    // Jan 5
+    americanfootball_nfl: [0, 11],   // Jan 11 — Monday after Week 18
     baseball_mlb: [8, 29],           // Sep 29
     basketball_ncaab: [2, 8],        // Mar 8
     basketball_wncaab: [2, 8],
