@@ -145,26 +145,46 @@ function FuturesDetail({ futuresPick }) {
   )
 }
 
-function PropStreakDetail({ propPicks }) {
+function PropStreakDetail({ propPicks, isActive, recordValue }) {
   return (
-    <div className="space-y-2">
-      {propPicks.map((p, i) => (
-        <div key={p.id} className="flex items-center justify-between bg-bg-secondary rounded-lg px-3 py-2 text-sm">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-text-muted text-xs w-5 text-center shrink-0">{i + 1}</span>
-            <div className="min-w-0">
-              <div className="text-text-primary font-medium truncate">{p.player_name}</div>
-              <div className="text-text-muted text-xs truncate">{p.market_label} {p.line}</div>
+    <div className="space-y-4">
+      {/* Same still-alive line the pick-streak view has had all along. */}
+      <div className={`text-sm font-medium px-3 py-2 rounded-lg ${isActive ? 'text-correct' : 'text-text-muted'}`}>
+        {isActive
+          ? `${recordValue} prop streak is still active!`
+          : 'Streak no longer active'}
+      </div>
+
+      <div className="space-y-2">
+        {propPicks.map((p, i) => {
+          // Name / market / line live on the joined player_props row.
+          const prop = p.player_props || {}
+          const side = p.picked_side ? String(p.picked_side).toUpperCase() : null
+          return (
+            <div key={p.id} className="flex items-center justify-between bg-bg-secondary rounded-lg px-3 py-2 text-sm">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-text-muted text-xs w-5 text-center shrink-0">{i + 1}</span>
+                {prop.player_headshot_url && (
+                  <img src={prop.player_headshot_url} alt="" className="w-7 h-7 rounded-full object-cover bg-bg-primary shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <div className="text-text-primary font-medium truncate">{prop.player_name}</div>
+                  <div className="text-text-muted text-xs truncate">
+                    {side} {prop.line} {prop.market_label}
+                    {prop.actual_value != null && ` · hit ${prop.actual_value}`}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {p.points_earned != null && (
+                  <span className="text-correct text-xs font-semibold">+{p.points_earned}</span>
+                )}
+                <span className="text-correct">&#10003;</span>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {p.points_earned != null && (
-              <span className="text-correct text-xs font-semibold">+{p.points_earned}</span>
-            )}
-            <span className="text-correct">&#10003;</span>
-          </div>
-        </div>
-      ))}
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -254,7 +274,7 @@ export default function RecordDetailModal({ recordHistoryId, onClose }) {
               <ParlayStreakDetail parlays={data.detail.parlays} />
             )}
             {data.type === 'prop_streak' && data.detail && (
-              <PropStreakDetail propPicks={data.detail.propPicks} />
+              <PropStreakDetail propPicks={data.detail.propPicks} isActive={data.detail.isActive} recordValue={newValue} />
             )}
             {data.type === 'pick' && data.detail && (
               <SinglePickDetail pick={data.detail.pick} />

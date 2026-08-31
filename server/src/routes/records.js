@@ -147,16 +147,41 @@ router.get('/history/:id/detail', requireAuth, async (req, res, next) => {
       result.type = 'parlay_streak'
       result.detail = { parlays: parlays || [] }
     }
-    // Prop streak: fetch the constituent prop picks
+    // Prop streak: fetch the constituent prop picks.
+    //
+    // player_name / market_label / line live on player_props, NOT on
+    // prop_picks — the old select asked prop_picks for them directly, so
+    // PostgREST returned "column prop_picks.player_name does not exist".
+    // The error was never checked, propPicks came back null, and the modal
+    // rendered a bare title and number with no picks under it.
     else if (meta.propPickIds?.length) {
-      const { data: propPicks } = await supabase
+      const { data: propPicks, error: propErr } = await supabase
         .from('prop_picks')
-        .select('id, user_id, player_name, market_label, line, is_correct, points_earned, updated_at')
+        .select('id, user_id, picked_side, is_correct, points_earned, odds_at_pick, updated_at, player_props(player_name, market_label, line, actual_value, player_headshot_url, games(home_team, away_team, starts_at, sports(key, name)))')
         .in('id', meta.propPickIds)
         .order('updated_at', { ascending: true })
+      if (propErr) return next(propErr)
+
+      // Is the streak still alive? Same question the pick-streak branch
+      // above answers, which prop streaks never did. A prop settled as a
+      // loss after the streak's last pick ends it.
+      let isActive = false
+      const lastAt = propPicks?.[propPicks.length - 1]?.updated_at
+      if (lastAt) {
+        const { data: laterLoss } = await supabase
+          .from('prop_picks')
+          .select('id')
+          .eq('user_id', entry.new_holder_id)
+          .eq('status', 'settled')
+          .eq('is_correct', false)
+          .gt('updated_at', lastAt)
+          .limit(1)
+          .maybeSingle()
+        isActive = !laterLoss
+      }
 
       result.type = 'prop_streak'
-      result.detail = { propPicks: propPicks || [] }
+      result.detail = { propPicks: propPicks || [], isActive }
     }
     // Single pick record (biggest underdog hit)
     else if (meta.pickId) {
