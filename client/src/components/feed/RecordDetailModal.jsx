@@ -157,8 +157,10 @@ function PropStreakDetail({ propPicks, isActive, recordValue }) {
 
       <div className="space-y-2">
         {propPicks.map((p, i) => {
-          // Name / market / line live on the joined player_props row.
-          const prop = p.player_props || {}
+          // Flat fields, flattened server-side from the joined player_props
+          // row. Falls back to the nested object so this renders correctly
+          // against either response shape.
+          const prop = { ...(p.player_props || {}), ...p }
           const side = p.picked_side ? String(p.picked_side).toUpperCase() : null
           return (
             <div key={p.id} className="flex items-center justify-between bg-bg-secondary rounded-lg px-3 py-2 text-sm">

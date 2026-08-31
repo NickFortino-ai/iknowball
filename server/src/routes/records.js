@@ -180,8 +180,24 @@ router.get('/history/:id/detail', requireAuth, async (req, res, next) => {
         isActive = !laterLoss
       }
 
+      // Flatten player_name / market_label / line onto the row.
+      //
+      // Older shipped clients (1.2.7 and earlier) read these as flat
+      // fields. Returning them only nested would render 14 rows of blank
+      // text on every already-installed app — worse than the empty modal
+      // this fix replaced. Flat is also the shape the client uses now, so
+      // there is one contract rather than two.
+      const flattened = (propPicks || []).map((p) => ({
+        ...p,
+        player_name: p.player_props?.player_name ?? null,
+        market_label: p.player_props?.market_label ?? null,
+        line: p.player_props?.line ?? null,
+        actual_value: p.player_props?.actual_value ?? null,
+        player_headshot_url: p.player_props?.player_headshot_url ?? null,
+      }))
+
       result.type = 'prop_streak'
-      result.detail = { propPicks: propPicks || [], isActive }
+      result.detail = { propPicks: flattened, isActive }
     }
     // Single pick record (biggest underdog hit)
     else if (meta.pickId) {
