@@ -134,7 +134,7 @@ router.get('/history/:id/detail', requireAuth, async (req, res, next) => {
       })
 
       result.type = 'streak'
-      result.detail = { picks: sortedPicks, isActive }
+      result.detail = { picks: sortedPicks, isActive, currentValue: sortedPicks.length }
     }
     // Parlay streak: fetch the constituent parlays
     else if (meta.parlayIds?.length) {
@@ -196,8 +196,13 @@ router.get('/history/:id/detail', requireAuth, async (req, res, next) => {
         player_headshot_url: p.player_props?.player_headshot_url ?? null,
       }))
 
+      // currentValue is where the streak stands NOW, which can exceed the
+      // value that broke the record. `meta` above already prefers the live
+      // records row over the frozen history snapshot when this user still
+      // holds it, so the leg count IS the current streak. The hub card
+      // keeps showing new_value — that's the moment the record fell.
       result.type = 'prop_streak'
-      result.detail = { propPicks: flattened, isActive }
+      result.detail = { propPicks: flattened, isActive, currentValue: flattened.length }
     }
     // Single pick record (biggest underdog hit)
     else if (meta.pickId) {

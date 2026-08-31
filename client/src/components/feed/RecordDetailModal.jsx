@@ -18,9 +18,7 @@ function StreakDetail({ picks, isActive, recordValue }) {
           ? 'text-correct'
           : 'text-text-muted'
       }`}>
-        {isActive
-          ? `${recordValue} win streak is still active!`
-          : 'Streak no longer active'}
+        {isActive ? 'Streak is still active!' : 'Streak no longer active'}
       </div>
 
       {/* Picks list */}
@@ -148,11 +146,11 @@ function FuturesDetail({ futuresPick }) {
 function PropStreakDetail({ propPicks, isActive, recordValue }) {
   return (
     <div className="space-y-4">
-      {/* Same still-alive line the pick-streak view has had all along. */}
+      {/* No number here — the header above already shows the live count,
+          and repeating a stale one read as a contradiction (green said 11
+          while the list showed 14 legs). */}
       <div className={`text-sm font-medium px-3 py-2 rounded-lg ${isActive ? 'text-correct' : 'text-text-muted'}`}>
-        {isActive
-          ? `${recordValue} prop streak is still active!`
-          : 'Streak no longer active'}
+        {isActive ? 'Streak is still active!' : 'Streak no longer active'}
       </div>
 
       <div className="space-y-2">
@@ -235,9 +233,16 @@ export default function RecordDetailModal({ recordHistoryId, onClose }) {
   // record_key lives on the joined `records` row; we need it for the formatter
   // so e.g. futures odds render as IKB points instead of raw odds (+900 → +90 pts).
   const recordKey = data?.record?.records?.record_key
-  const newValue = newValueRaw != null
-    ? formatRecordValue({ record_key: recordKey, new_value: newValueRaw })
-    : newValueRaw
+  // Prefer where the streak stands NOW over the value that broke the
+  // record. A streak that was 11 when it took the record and has since
+  // run to 14 should read 14 here, with 14 legs listed below. The hub
+  // card still shows 11 — that's the moment the record fell, not a live
+  // counter. Non-streak records send no currentValue and are unaffected.
+  const liveValue = data?.detail?.currentValue
+  const displayValueRaw = liveValue ?? newValueRaw
+  const newValue = displayValueRaw != null
+    ? formatRecordValue({ record_key: recordKey, new_value: displayValueRaw })
+    : displayValueRaw
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
