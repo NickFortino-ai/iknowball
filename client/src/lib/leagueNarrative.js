@@ -71,6 +71,47 @@ export function buildPreStartBlurb(format, fantasySettings, leagueSettings) {
       'Most passing TDs by the end of the regular season wins.',
     ]
   }
+  // Salary cap fantasy. Every claim here is checked against what the app
+  // actually enforces, not against fantasy_settings.roster_slots — that blob
+  // still carries traditional-fantasy defaults (k / ir / bench) that the
+  // salary cap builder ignores entirely, so describing it would promise a
+  // kicker slot that doesn't exist. The lineup is the fixed 9 in
+  // NflSalaryCapView's SLOTS.
+  if (format === 'fantasy' && fantasySettings?.format === 'salary_cap') {
+    // Mirrors the server's own `settings.salary_cap || 60000` in
+    // routes/dfs.js — this is the enforced number, not an invented default.
+    const cap = Number(fantasySettings?.salary_cap) || 60000
+    const capText = `$${cap.toLocaleString()}`
+    const scoringLabel = {
+      ppr: 'Full PPR',
+      half_ppr: 'Half PPR',
+      std: 'Standard',
+      standard: 'Standard',
+    }[fantasySettings?.scoring_format] || null
+    const isSingleWeek = fantasySettings?.season_type === 'single_week'
+    const cadence = isSingleWeek ? 'this week' : 'each week'
+
+    const lines = [
+      `Build a 9-player lineup ${cadence} under a ${capText} salary cap — QB, 2 RB, 3 WR, TE, FLEX and a defense. No kicker.`,
+      'FLEX takes a RB, WR or TE. Every player carries a price, so the cap is the whole puzzle.',
+      'Prices are reset every week and unlock Tuesdays at 10:00 AM PT.',
+      "Each player locks at his own kickoff — you can set the rest of your lineup after the early games start.",
+    ]
+    if (scoringLabel) lines.push(`${scoringLabel} scoring.`)
+    // champion_metric is the setting the standings sort actually reads
+    // (getFantasyLeagueStandings in completeLeagues.js). There are no
+    // head-to-head matchups and no W-L records here: dfs_weekly_results
+    // ranks every member by points and flags is_week_winner on rank 1
+    // only, so a "win" is finishing first that week.
+    if (isSingleWeek) {
+      lines.push('Highest score this week takes it.')
+    } else if (fantasySettings?.champion_metric === 'most_wins') {
+      lines.push('Everyone plays for themselves each week — the highest score takes the week. Most weekly wins at the end takes the league.')
+    } else {
+      lines.push('Everyone plays for themselves each week. Most total points across the season takes the league.')
+    }
+    return lines
+  }
   if (format === 'survivor') {
     // Two different games share this format. Touchdown survivor picks a
     // PLAYER to score; classic survivor picks a TEAM to win. Describing one
