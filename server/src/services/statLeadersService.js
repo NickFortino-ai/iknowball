@@ -17,6 +17,65 @@ import { logger } from '../utils/logger.js'
 const CACHE_TTL_MS = 60 * 60 * 1000
 const cache = new Map() // sportKey → { categories, expiresAt }
 
+// ── FBS filter for college football ──────────────────────────────────
+//
+// ESPN's college-football leaders endpoint spans every division, and early
+// in the season it is dominated by FCS and lower — the Week 1 top 15 for
+// passing yards had ZERO FBS players. Worse, small-school box scores carry
+// bad data: a Gardner-Webb defender led Sacks with 6 on a line that also
+// read 0 tackles-for-loss, which is impossible.
+//
+// `?groups=80` is ignored on both the leaders and teams endpoints (the
+// latter returns all 760 teams), so the division has to come from the
+// group hierarchy: groups/80 = FBS -> 11 conferences -> their teams. 138
+// ids, ~23 requests, cached for a day.
+//
+// Filtering is free: each leader entry carries its team as a $ref URL with
+// the id in the path, so we can drop non-FBS BEFORE dereferencing anyone.
+// Only the surviving top 10 get resolved, exactly as before.
+const FBS_CACHE_TTL_MS = 24 * 60 * 60 * 1000
+let fbsCache = null // { ids: Set<string>, expiresAt }
+
+async function getFbsTeamIds(season) {
+  if (fbsCache && fbsCache.expiresAt > Date.now()) return fbsCache.ids
+  try {
+    const root = await fetchJson(
+      `https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/${season}/types/2/groups/80`,
+    )
+    if (!root?.children?.$ref) return null
+    const kids = await fetchJson(root.children.$ref + '&limit=100')
+    const ids = new Set()
+    await Promise.all((kids.items || []).map(async (item) => {
+      try {
+        const conf = await fetchJson(item.$ref)
+        if (!conf?.teams?.$ref) return
+        const teams = await fetchJson(conf.teams.$ref + '&limit=100')
+        for (const ref of teams.items || []) {
+          const m = String(ref.$ref).match(/teams\/(\d+)/)
+          if (m) ids.add(m[1])
+        }
+      } catch { /* one conference failing shouldn't void the set */ }
+    }))
+    // Sanity floor — FBS is ~134 teams. A partial fetch would silently
+    // filter out real leaders, so treat a short set as unusable and let
+    // the caller fall through to unfiltered.
+    if (ids.size < 100) {
+      logger.warn({ count: ids.size }, 'FBS team set looks short — skipping filter')
+      return null
+    }
+    fbsCache = { ids, expiresAt: Date.now() + FBS_CACHE_TTL_MS }
+    return ids
+  } catch (err) {
+    logger.warn({ err: err.message }, 'FBS team set fetch failed — leaders will be unfiltered')
+    return null
+  }
+}
+
+function teamIdFromRef(ref) {
+  const m = String(ref || '').match(/teams\/(\d+)/)
+  return m ? m[1] : null
+}
+
 // Which sports we support + their ESPN league path + which categories
 // to surface (name = ESPN's stat name, label = display).
 const SPORT_CONFIG = {
@@ -122,7 +181,12 @@ async function fetchJson(url) {
 // Try current season; if the leaders array is empty (offseason /
 // preseason), fall back to the prior season.
 async function fetchCategoriesForSport(espnPath, categoryNames, typeCode = 2, season = CURRENT_YEAR, allowFallback = true) {
-  const url = `https://sports.core.api.espn.com/v2/sports/${espnPath}/seasons/${season}/types/${typeCode}/leaders?limit=15`
+  // College football pulls a much deeper list because most of it gets
+  // filtered out by division below — at limit=15 the FBS survivors were
+  // 0-3 per category. Still ONE request either way (~150ms), and the
+  // dereference count is unchanged since filtering happens first.
+  const limit = espnPath.includes('college-football') ? 200 : 15
+  const url = `https://sports.core.api.espn.com/v2/sports/${espnPath}/seasons/${season}/types/${typeCode}/leaders?limit=${limit}`
   let data
   try {
     data = await fetchJson(url)
@@ -227,11 +291,31 @@ async function fetchOne(sportKey) {
   const { categories: rawCats, season } = await fetchCategoriesForSport(config.espnPath, config.categories, config.typeCode || 2)
   if (!rawCats.length) return { categories: [], season }
 
+  // Narrow college football to FBS. Done on the raw entries, before any
+  // dereferencing, so it costs nothing beyond the cached id set.
+  //
+  // Per-category fallback: if a category has no FBS leaders at all (a stat
+  // nobody has recorded yet in Week 1), keep it unfiltered rather than
+  // blanking the tab. Better an FCS name than an empty list.
+  let fbsIds = null
+  if (config.espnPath.includes('college-football')) {
+    fbsIds = await getFbsTeamIds(season)
+  }
+  const cats = fbsIds
+    ? rawCats.map((cat) => {
+        const filtered = (cat.leaders || []).filter((l) => {
+          const id = teamIdFromRef(l.team?.$ref)
+          return id && fbsIds.has(id)
+        })
+        return filtered.length ? { ...cat, leaders: filtered } : cat
+      })
+    : rawCats
+
   // For each category, dereference in parallel. For total categories
   // (ESPN only ranks per-game), fetch a wider window and re-sort by
   // the actual total we just dereferenced so top-10 reflects raw
   // totals, not per-game rank.
-  const results = await Promise.all(rawCats.map(async (cat) => {
+  const results = await Promise.all(cats.map(async (cat) => {
     const requestedName = cat.requestedName || cat.name
     const cfgEntry = config.categories.find((c) => c.name === requestedName)
     const label = cfgEntry?.label || cat.displayName

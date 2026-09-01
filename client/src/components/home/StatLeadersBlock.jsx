@@ -89,17 +89,24 @@ export default function StatLeadersBlock({ sport, mode = 'full' }) {
   if (!cats.length) return null
 
   const active = cats[Math.min(activeIdx, cats.length - 1)]
+  // College football leaders are filtered to FBS server-side (ESPN's own
+  // group 80). Say so, rather than letting the omission of every FCS name
+  // read as missing data.
+  const isNcaaf = fullSport === 'americanfootball_ncaaf'
+  const headingText = isNcaaf ? 'FBS Stat Leaders' : 'Stat Leaders'
+  const compactLabel = isNcaaf ? 'FBS Leaders' : 'Leaders'
+
   const rowCount = mode === 'compact' ? 5 : 10
   const rows = (active?.leaders || []).slice(0, rowCount)
 
   return (
     <div>
       {mode === 'full' && (
-        <h2 className="font-display text-xl text-text-primary mb-3">Stat Leaders</h2>
+        <h2 className="font-display text-xl text-text-primary mb-3">{headingText}</h2>
       )}
       {mode === 'compact' && (
         <div className="mb-1.5 flex items-center gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Leaders</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">{compactLabel}</span>
           {data?.season && data.season !== new Date().getFullYear() && (
             <span className="text-[9px] text-text-muted">({data.season} season)</span>
           )}
