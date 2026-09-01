@@ -5,6 +5,7 @@ import SurveyModal from '../components/leagues/SurveyModal'
 import { useAcceptInvitation } from '../hooks/useInvitations'
 import { buildJoinLink } from '../lib/shareLink'
 import { useAuth } from '../hooks/useAuth'
+import { useReadState, useMarkRead, READ_KINDS } from '../hooks/useReadState'
 import MembersList from '../components/leagues/MembersList'
 import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
 import RenewLeagueModal from '../components/leagues/RenewLeagueModal'
@@ -1842,19 +1843,21 @@ export default function LeagueDetailPage() {
       return stored !== '1' // default expanded unless user explicitly collapsed
     } catch { return true }
   })
-  const [noteSeenAt, setNoteSeenAt] = useState(() => {
-    try { return localStorage.getItem(`note-seen-${id}`) || null } catch { return null }
-  })
+  // Read state is per-user and synced across devices now, so expanding
+  // the note on your phone clears it on your laptop too. useReadState
+  // merges the local mirror with the server map, so this is populated on
+  // first render rather than flashing unseen.
+  const readState = useReadState()
+  const markReadFn = useMarkRead()
+  const noteSeenAt = readState[READ_KINDS.LEAGUE_NOTE]?.[id] || null
 
   // Mark note as seen when rendered expanded
   useEffect(() => {
     if (noteExpanded && league?.commissioner_note && league?.updated_at) {
-      const now = new Date().toISOString()
-      try {
-        localStorage.setItem(`note-seen-${id}`, now)
-        setNoteSeenAt(now)
-      } catch {}
+      markReadFn(READ_KINDS.LEAGUE_NOTE, id, new Date().toISOString())
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- markReadFn is
+  // recreated each render; including it would re-fire the mark every render.
   }, [noteExpanded, league?.commissioner_note, league?.updated_at, id])
 
   // Fantasy team name
@@ -2563,13 +2566,10 @@ export default function LeagueDetailPage() {
               setNoteExpanded((v) => {
                 const next = !v
                 try {
+                  // note-collapsed stays device-local on purpose — it's a
+                  // viewing preference, not read state.
                   localStorage.setItem(`note-collapsed-${league.id}`, next ? '0' : '1')
-                  if (next) {
-                    // Mark as seen when expanding
-                    const now = new Date().toISOString()
-                    localStorage.setItem(`note-seen-${league.id}`, now)
-                    setNoteSeenAt(now)
-                  }
+                  if (next) markReadFn(READ_KINDS.LEAGUE_NOTE, league.id, new Date().toISOString())
                 } catch {}
                 return next
               })

@@ -57,6 +57,7 @@ import publicLandingRouter from './routes/publicLanding.js'
 import scoresRouter from './routes/scores.js'
 import surveysRouter from './routes/surveys.js'
 import appConfigRouter from './routes/appConfig.js'
+import readStateRouter from './routes/readState.js'
 import appSettingsRouter from './routes/appSettings.js'
 import seasonDatesRouter from './routes/seasonDates.js'
 
@@ -125,6 +126,7 @@ app.use('/api/public', publicLandingRouter)
 app.use('/api/scores', scoresRouter)
 app.use('/api/surveys', surveysRouter)
 app.use('/api/app-config', appConfigRouter)
+app.use('/api/read-state', readStateRouter)
 
 app.use(errorHandler)
 

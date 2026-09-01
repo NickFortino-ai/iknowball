@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useReadState, useMarkRead, READ_KINDS } from '../../hooks/useReadState'
 import { useFantasyMatchupLive, useFantasyMatchupWeek, useBlurbPlayerIds, usePlayoffBracket } from '../../hooks/useLeagues'
 import Avatar from '../ui/Avatar'
 import { SkeletonCard } from '../ui/Skeleton'
@@ -607,10 +608,14 @@ export default function FantasyMatchup({ league, fantasySettings }) {
 
   // Matchup result banner (current week, completed)
   const myMatchup = matchups.find((m) => m.status === 'completed' && (m.home_user?.id === profile?.id || m.away_user?.id === profile?.id))
-  const [resultDismissed, setResultDismissed] = useState(() => {
-    if (!myMatchup) return false
-    return localStorage.getItem(`matchup-result-seen-${myMatchup?.id}`) === '1'
-  })
+  // Dismissal is per-user and synced now. Derived rather than lazy
+  // useState: myMatchup arrives async, and the old initializer ran once
+  // with it still undefined, so a dismissed banner reappeared on reload.
+  const readState = useReadState()
+  const markReadFn = useMarkRead()
+  const [justDismissed, setJustDismissed] = useState(false)
+  const resultDismissed = justDismissed
+    || (!!myMatchup && readState[READ_KINDS.MATCHUP_RESULT]?.[myMatchup.id] === '1')
   const myResult = !resultDismissed && myMatchup && isCurrent ? (() => {
     const isHome = myMatchup.home_user?.id === profile?.id
     const myPts = isHome ? myMatchup.home_points : myMatchup.away_points
@@ -657,7 +662,7 @@ export default function FantasyMatchup({ league, fantasySettings }) {
           myResult.won ? 'border-correct/40 bg-correct/10' : myResult.tied ? 'border-accent/40 bg-accent/10' : 'border-incorrect/40 bg-incorrect/10'
         }`}>
           <button
-            onClick={() => { localStorage.setItem(`matchup-result-seen-${myMatchup.id}`, '1'); setResultDismissed(true) }}
+            onClick={() => { markReadFn(READ_KINDS.MATCHUP_RESULT, myMatchup.id, '1'); setJustDismissed(true) }}
             className="absolute top-2 right-2 text-text-muted hover:text-text-primary text-lg leading-none"
           >&times;</button>
           <div className={`font-display text-lg ${myResult.won ? 'text-correct' : myResult.tied ? 'text-accent' : 'text-incorrect'}`}>
