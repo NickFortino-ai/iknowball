@@ -2882,16 +2882,14 @@ export default function LeagueDetailPage() {
         )
       })()}
       {tabs[activeTab] === 'Roster' && league.format === 'fantasy' && fantasySettings?.format === 'salary_cap' && (() => {
-        const notStartedYet = league.status === 'open' && league.starts_at && new Date(league.starts_at) > new Date()
         return (
           <div className="relative z-10">
-            {notStartedYet && (
-              <LeagueStartsBanner
-                countdownTo={league.starts_at}
-                headline="Kicks off NFL Week 1"
-                subtitle="Set your roster before Thursday's opener."
-              />
-            )}
+            {/* Same explainer every other format gets — the bullets spell out
+                the cap, the lineup shape, when prices unlock and how the
+                league is won, all from this league's settings. Replaces a
+                two-line generic banner that said none of it. Gating lives
+                inside PreStartExplainer. */}
+            <PreStartExplainer league={league} fantasySettings={fantasySettings} />
             <NflSalaryCapView league={league} />
           </div>
         )
