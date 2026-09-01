@@ -5,6 +5,7 @@ import { validate } from '../middleware/validate.js'
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { fetchAll } from '../utils/fetchAll.js'
+import { salaryCapStartsForPairs } from '../utils/salaryCapStart.js'
 import {
   createLeague,
   joinLeague,
@@ -362,31 +363,12 @@ router.get('/open', requireAuth, async (req, res) => {
     }
   }
 
-  // Compute effective starts_at for salary_cap fantasy leagues from the
-  // NFL schedule (Week 1 first game, or single_week's first game). Batch
-  // the lookup by unique (season, week) pairs so a room full of salary
-  // cap leagues only fires one nfl_schedule query per pair.
-  const seasonWeekPairs = new Set(
+  // Effective starts_at for salary_cap leagues — see utils/salaryCapStart.js
+  // for why leagues.starts_at can't be trusted here. Batched by unique
+  // (season, week) so a page full of Week 1 leagues costs one lookup.
+  const firstGameByPair = await salaryCapStartsForPairs(
     Object.values(salaryCapSeasonByLeague).map((s) => `${s.season}:${s.week}`),
   )
-  const firstGameByPair = new Map()
-  for (const pair of seasonWeekPairs) {
-    const [season, week] = pair.split(':').map(Number)
-    const { data: schedRows } = await supabase
-      .from('nfl_schedule')
-      .select('game_date')
-      .eq('season', season)
-      .eq('week', week)
-      .order('game_date', { ascending: true })
-      .limit(1)
-    const firstDate = schedRows?.[0]?.game_date
-    if (firstDate) {
-      // Interpret game_date as 10:00 UTC (~6 AM ET) — same anchor the
-      // activation gate in completeLeagues uses so the two agree on
-      // "the league begins here."
-      firstGameByPair.set(pair, new Date(`${firstDate}T10:00:00Z`).toISOString())
-    }
-  }
 
   const result = (leagues || [])
     .filter((l) => !userLeagues.has(l.id)) // exclude leagues user already joined

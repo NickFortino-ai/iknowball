@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js'
 import { createTournament, getBracketStandings } from './bracketService.js'
 import { getLeaguePickStandings } from './leaguePickService.js'
 import { toSportsDay } from '../utils/sportsDay.js'
+import { salaryCapEffectiveStart } from '../utils/salaryCapStart.js'
 
 /**
  * Check whether a league is still joinable based on its format and start date.
@@ -1095,36 +1096,6 @@ export async function getMyLeagues(userId, userTz) {
   })
 
   return result
-}
-
-/**
- * When a salary cap league actually begins: the first kickoff of its
- * relevant NFL week. Returns null for every other format, and for salary
- * cap leagues whose schedule row is missing, so callers fall back to the
- * stored starts_at.
- *
- * The 10:00 UTC anchor (~6 AM ET) matches the activation gate in
- * completeLeagues, so "the league begins here" means the same thing in
- * both places. Mirrors the batched version in routes/leagues.js used by
- * the Open Leagues list.
- */
-export async function salaryCapEffectiveStart(league) {
-  if (league?.format !== 'fantasy') return null
-  const { data: fs } = await supabase
-    .from('fantasy_settings')
-    .select('format, season, single_week')
-    .eq('league_id', league.id)
-    .maybeSingle()
-  if (fs?.format !== 'salary_cap' || !fs.season) return null
-  const { data: rows } = await supabase
-    .from('nfl_schedule')
-    .select('game_date')
-    .eq('season', fs.season)
-    .eq('week', fs.single_week || 1)
-    .order('game_date', { ascending: true })
-    .limit(1)
-  const firstDate = rows?.[0]?.game_date
-  return firstDate ? new Date(`${firstDate}T10:00:00Z`).toISOString() : null
 }
 
 export async function getLeagueDetails(leagueId, userId) {

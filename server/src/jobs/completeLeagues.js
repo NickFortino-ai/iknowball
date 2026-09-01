@@ -4,6 +4,7 @@ import { getLeaguePickStandings } from '../services/leaguePickService.js'
 import { getBracketStandings } from '../services/bracketService.js'
 import { createNotification } from '../services/notificationService.js'
 import { fetchAll } from '../utils/fetchAll.js'
+import { salaryCapWeekStart } from '../utils/salaryCapStart.js'
 import { connectAutoConnectMembers } from '../services/connectionService.js'
 import { generateLeagueReport } from '../services/leagueReportService.js'
 
@@ -943,25 +944,14 @@ export async function completeLeagues() {
         // schedule rows fall through (rare pre-schedule edge) so a
         // stalled ingest can't strand the league in 'open' forever.
         if (fs && fs.format === 'salary_cap') {
-          const targetWeek = fs.single_week || 1
-          const targetSeason = fs.season
-          if (targetSeason) {
-            const { data: schedRows } = await supabase
-              .from('nfl_schedule')
-              .select('game_date')
-              .eq('season', targetSeason)
-              .eq('week', targetWeek)
-              .order('game_date', { ascending: true })
-              .limit(1)
-            const firstGameDate = schedRows?.[0]?.game_date
-            if (firstGameDate) {
-              // Interpret game_date as start-of-day ET (10:00 UTC ≈ 6 AM ET)
-              // so a Thursday-night game still gates activation to that
-              // Thursday, not the Monday of the week.
-              const gateTs = new Date(`${firstGameDate}T10:00:00Z`).getTime()
-              if (gateTs > nowMs) continue
-            }
-          }
+          // salaryCapWeekStart applies the same 10:00 UTC (~6 AM ET)
+          // anchor this block used inline, so a Thursday-night opener
+          // still gates on that Thursday rather than the Monday of the
+          // week. It returns null both when season is unset and when the
+          // schedule row is missing — the two cases that already fell
+          // through here — so this guard is behaviour-identical.
+          const startIso = await salaryCapWeekStart(fs.season, fs.single_week || 1)
+          if (startIso && new Date(startIso).getTime() > nowMs) continue
         }
       }
       // Survivor: stay 'open' until the first real game of period 1
