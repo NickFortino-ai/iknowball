@@ -75,6 +75,28 @@ const WNBA_ABBRS = {
 // D1 + most D2/D3 schools ESPN tracks, so a game between any covered
 // schools renders logos in every sport that uses NCAA_IDS below.
 const NCAA_IDS = {
+  // ── Odds-feed name variants ──────────────────────────────────────────
+  // Our games rows carry the odds provider's spelling, which doesn't always
+  // match ESPN's canonical displayName used for the keys below. Each of
+  // these rendered a blank circle instead of a logo. Found by diffing every
+  // distinct NCAAF team name in `games` against this map; all 10 point at
+  // ids already present here under a different name, and every URL was
+  // HEAD-checked 200 on both the -dark and standard variants.
+  //
+  // "Albany" is UAlbany (399), not Albany State (2013) — 2013 is Division
+  // II and never appears on a betting line. The game that surfaced this was
+  // Albany @ Buffalo, and it's UAlbany who plays Buffalo.
+  "Albany": 399,
+  "Appalachian State Mountaineers": 2026,      // ESPN: "App State Mountaineers"
+  "Citadel Bulldogs": 2643,                    // ESPN: "The Citadel Bulldogs"
+  "Houston Baptist Huskies": 2277,             // renamed Houston Christian in 2022
+  "LIU Sharks": 2341,                          // ESPN: "Long Island University Sharks"
+  "Nicholls State Colonels": 2447,             // ESPN: "Nicholls Colonels"
+  "Sam Houston State Bearkats": 2534,          // ESPN: "Sam Houston Bearkats"
+  "Southeastern Louisiana Lions": 2545,        // ESPN: "SE Louisiana Lions"
+  "Southern Mississippi Golden Eagles": 2572,  // ESPN: "Southern Miss Golden Eagles"
+  "Youngstown St Penguins": 2754,              // ESPN: "Youngstown State Penguins"
+  // ─────────────────────────────────────────────────────────────────────
   "Abilene Christian Wildcats": 2000,
   "Adams State Grizzlies": 2001,
   "Adrian Bulldogs": 2003,
