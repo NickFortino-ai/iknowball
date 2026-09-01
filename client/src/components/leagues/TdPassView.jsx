@@ -178,7 +178,17 @@ export default function TdPassView({ league, tab = 'picks' }) {
                   background: `linear-gradient(180deg, ${teamColor} 0%, ${teamColor}b3 55%, ${teamColor}00 100%)`,
                 } : undefined}
               >
-                <PlayerHeadshot name={myCurrentPick.qb_name} url={myCurrentPick.headshot_url} size="md" />
+                {/* Hero, not a list row. Restores the w-28 the pre-
+                    PlayerHeadshot markup had — the switch to the shared
+                    component silently took it to w-10. bg-bg-card is opaque
+                    so the team tint behind the card doesn't bleed through. */}
+                <PlayerHeadshot
+                  name={myCurrentPick.qb_name}
+                  url={myCurrentPick.headshot_url}
+                  size="xl"
+                  bgClass="bg-bg-card"
+                  className="border-2 border-text-primary/20"
+                />
                 <div className="flex items-center justify-center gap-2">
                   <div className={`font-display text-xl ${teamColor ? 'text-white' : 'text-text-primary'}`}>{myCurrentPick.qb_name}</div>
                   <InjuryBadge status={pickedQbData?.injury_status} />

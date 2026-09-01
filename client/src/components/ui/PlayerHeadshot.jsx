@@ -18,9 +18,16 @@ const SIZE_CLASSES = {
   sm: 'w-8 h-8 text-[11px]',
   md: 'w-10 h-10 text-xs',
   lg: 'w-12 h-12 text-sm',
+  // Hero size for a contest's "current pick" card, where the headshot is
+  // the focal point rather than a list adornment.
+  xl: 'w-28 h-28 text-3xl',
 }
 
-export default function PlayerHeadshot({ name, url, size = 'md', className = '', onClick }) {
+// bgClass is separate because the tinted TD Pass hero needs an opaque
+// bg-bg-card behind it — the team colour bleeds through otherwise. Passing
+// it via className wouldn't reliably win: two same-specificity Tailwind
+// background utilities resolve by stylesheet order, not attribute order.
+export default function PlayerHeadshot({ name, url, size = 'md', className = '', bgClass = 'bg-bg-secondary', onClick }) {
   const sizeClass = SIZE_CLASSES[size] || SIZE_CLASSES.md
   const [errored, setErrored] = useState(false)
   const interactive = onClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''
@@ -36,7 +43,7 @@ export default function PlayerHeadshot({ name, url, size = 'md', className = '',
         // instead of being capped.
         loading="lazy"
         decoding="async"
-        className={`${sizeClass} rounded-full object-cover bg-bg-secondary shrink-0 ${interactive} ${className}`}
+        className={`${sizeClass} rounded-full object-cover ${bgClass} shrink-0 ${interactive} ${className}`}
         onClick={onClick}
         onError={() => setErrored(true)}
       />
@@ -44,7 +51,7 @@ export default function PlayerHeadshot({ name, url, size = 'md', className = '',
   }
   return (
     <div
-      className={`${sizeClass} rounded-full bg-bg-secondary border border-text-primary/15 shrink-0 flex items-center justify-center font-semibold text-text-secondary ${interactive} ${className}`}
+      className={`${sizeClass} rounded-full ${bgClass} border border-text-primary/15 shrink-0 flex items-center justify-center font-semibold text-text-secondary ${interactive} ${className}`}
       onClick={onClick}
     >
       {initialsFor(name)}
