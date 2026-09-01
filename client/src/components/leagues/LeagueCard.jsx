@@ -146,9 +146,17 @@ export default function LeagueCard({ league, noLink }) {
                 label rather than reading as a standard Survivor pool.
                 HomePage, Open Leagues and Join already distinguish it; this
                 shared card was the one surface still flattening both. */}
+            {/* Salary cap is a materially different game from a traditional
+                draft league — weekly lineup under a cap vs a season-long
+                roster — so it gets named on the card rather than reading as
+                plain Fantasy Football. Open Leagues already did this; this
+                shared card is what My Leagues renders, so it was the surface
+                still flattening the two. */}
             {league.format === 'survivor' && league.settings?.survivor_mode === 'touchdown'
               ? 'TD Survivor'
-              : FORMAT_LABELS[league.format]}
+              : league.format === 'fantasy' && league.fantasy_format === 'salary_cap'
+                ? 'Salary Cap Fantasy Football'
+                : FORMAT_LABELS[league.format]}
           </span>
           {!['nba_dfs', 'wnba_dfs', 'mlb_dfs'].includes(league.format) && (
             <span>{SPORT_LABELS[league.sport]}</span>

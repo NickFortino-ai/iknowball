@@ -959,12 +959,19 @@ export async function getMyLeagues(userId, userTz) {
     .map((l) => l.id)
   const fantasyMeta = {}
   if (fantasyLeagueIds.length) {
+    // `format` here is the FANTASY format (traditional vs salary_cap), not
+    // leagues.format. The card labels salary cap distinctly, the same way
+    // the Open Leagues list already does.
     const { data: fs } = await supabase
       .from('fantasy_settings')
-      .select('league_id, draft_date, draft_status')
+      .select('league_id, draft_date, draft_status, format')
       .in('league_id', fantasyLeagueIds)
     for (const row of fs || []) {
-      fantasyMeta[row.league_id] = { draft_date: row.draft_date, draft_status: row.draft_status }
+      fantasyMeta[row.league_id] = {
+        draft_date: row.draft_date,
+        draft_status: row.draft_status,
+        fantasy_format: row.format,
+      }
     }
   }
 
@@ -1056,6 +1063,9 @@ export async function getMyLeagues(userId, userTz) {
     display_order: orderMap[league.id] ?? null,
     draft_date: fantasyMeta[league.id]?.draft_date || null,
     draft_status: fantasyMeta[league.id]?.draft_status || null,
+    // Matches the key the Open Leagues payload already uses, so LeagueCard
+    // reads one field name regardless of which list it's rendering in.
+    fantasy_format: fantasyMeta[league.id]?.fantasy_format || null,
     survivor_alive: survivorAlive[league.id] ?? null,
     survivor_eliminated: league.format === 'survivor' && league.status === 'active' && aliveMap[league.id] === false ? true : undefined,
     bracket_submitted_count: bracketSubmittedCount[league.id] ?? null,
