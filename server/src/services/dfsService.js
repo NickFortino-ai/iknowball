@@ -44,10 +44,27 @@ export async function getPlayerPool(week, season, position = null) {
   // across page boundaries.
   const data = await fetchAll(query.order('id', { ascending: true }))
 
-  return (data || []).map((d) => ({
-    ...d.nfl_players,
-    salary: d.salary,
-  }))
+  // Only positions the salary-cap lineup can actually hold. The lineup is
+  // a fixed 9 slots — QB / RB1 / RB2 / WR1 / WR2 / WR3 / TE / FLEX / DEF
+  // (SLOTS in NflSalaryCapView.jsx) — with no kicker. 49 kickers were
+  // being listed that no slot would accept, so tapping one did nothing.
+  //
+  // Deliberately NOT read from the league's roster_slots: that blob still
+  // carries k/ir/bench values from the traditional-fantasy defaults and
+  // the salary-cap builder ignores it entirely. If SLOTS ever becomes
+  // configurable, this has to follow it.
+  //
+  // Filtered here rather than as a nested .in() — PostgREST filters on an
+  // embedded table without !inner return the parent row with a null child
+  // instead of dropping it.
+  const ROSTERABLE = new Set(['QB', 'RB', 'WR', 'TE', 'DEF'])
+
+  return (data || [])
+    .filter((d) => ROSTERABLE.has(d.nfl_players?.position))
+    .map((d) => ({
+      ...d.nfl_players,
+      salary: d.salary,
+    }))
 }
 
 /**
