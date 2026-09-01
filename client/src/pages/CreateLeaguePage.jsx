@@ -722,6 +722,36 @@ export default function CreateLeaguePage() {
   const [sportPresetLocked, setSportPresetLocked] = useState(false)
   const [collapsedCategories, setCollapsedCategories] = useState(() => new Set())
   const settingsRef = useRef(null)
+  // Scroll to the settings panel when a format is picked.
+  //
+  // Was fired inline from the card's onClick behind a single
+  // requestAnimationFrame. The panel mounts on the render that setFormat
+  // triggers, so the ref existed — but smooth scrolling resolves against a
+  // position computed up front, and any reflow above the marker after that
+  // point shifts the document under it. On desktop that landed the user
+  // down at League Visibility, having to scroll back up to name the league.
+  //
+  // An effect runs after commit, and the second rAF gives layout a full
+  // frame to settle before the target is measured.
+  //
+  // Seeded with the mount-time format so arriving with one preselected
+  // (?format= deep links) doesn't yank the page on load — only an actual
+  // change scrolls.
+  const lastScrolledFormat = useRef(format)
+  useEffect(() => {
+    if (!format || lastScrolledFormat.current === format) return
+    lastScrolledFormat.current = format
+    let inner
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => {
+        settingsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    })
+    return () => {
+      cancelAnimationFrame(outer)
+      if (inner) cancelAnimationFrame(inner)
+    }
+  }, [format])
   const [sport, setSport] = useState(initialSport)
   const [duration, setDuration] = useState('')
   const [maxMembers, setMaxMembers] = useState('')
@@ -1222,11 +1252,9 @@ export default function CreateLeaguePage() {
                           // Generic Survivor (All Sports tab) defaults to standard mode.
                           setSurvivorMode('standard')
                         }
-                        // Settings panel mounts on the next render once
-                        // `format` is set — wait a frame, then scroll to it.
-                        requestAnimationFrame(() => {
-                          settingsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                        })
+                        // Scrolling is handled by the effect on `format` —
+                        // see the note there. Doing it inline fired before
+                        // layout settled.
                       }}
                       className="flex-1 text-left p-4 md:p-5 min-w-0"
                     >
@@ -1318,7 +1346,9 @@ export default function CreateLeaguePage() {
             selected — no point asking for sport/duration/visibility before
             the user has decided what they're creating. */}
         {format && <>
-        <div ref={settingsRef} aria-hidden="true" />
+        {/* scroll-mt clears the fixed navbar — block:'start' otherwise parks
+            this marker at viewport top, tucking League Name under the header. */}
+        <div ref={settingsRef} aria-hidden="true" className="scroll-mt-20 md:scroll-mt-24" />
 
         {/* League Name */}
         <div>
