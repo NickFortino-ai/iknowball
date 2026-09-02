@@ -360,6 +360,30 @@ function getWeekBounds(date, sport) {
   return { start, end }
 }
 
+/**
+ * Rebuild a league's periods after starts_at was corrected during
+ * creation.
+ *
+ * createLeague generates periods immediately after insert, when
+ * starts_at is still the `new Date()` default. Two later blocks then
+ * snap starts_at to the real opening kickoff — football survivor, and
+ * the NFL contest formats — and nothing rebuilt the periods, so they
+ * stayed anchored to the creation week.
+ *
+ * Concretely: a survivor league created Sep 1 for a Sep 9 opener got a
+ * phantom Week 1 (Sep 1-8) containing zero games, real Week 1 shifted to
+ * period 2, and 19 periods instead of 18 -- which pushes the final week
+ * off the end of the season.
+ *
+ * Safe to delete-and-rebuild because this only runs inside createLeague,
+ * before any pick can exist. Anywhere else, use
+ * regenerateSurvivorPeriods, which remaps picks onto the new periods.
+ */
+async function regeneratePeriodsForNewLeague(league) {
+  await supabase.from('league_weeks').delete().eq('league_id', league.id)
+  await generateLeagueWeeks(league)
+}
+
 export async function createLeague(userId, data) {
   // Generate unique invite code
   let inviteCode
@@ -578,6 +602,9 @@ export async function createLeague(userId, data) {
       }
       if (Object.keys(updates).length) {
         await supabase.from('leagues').update(updates).eq('id', league.id)
+        // Periods were generated above from the creation-time starts_at.
+        // If we just moved it, they're anchored to the wrong week.
+        if (updates.starts_at) await regeneratePeriodsForNewLeague(league)
       }
     } catch (err) {
       logger.error({ err, leagueId: league.id, sport: league.sport }, 'Failed to set football survivor starts_at / joins_locked_at')
@@ -625,6 +652,7 @@ export async function createLeague(userId, data) {
       }
       if (Object.keys(updates).length) {
         await supabase.from('leagues').update(updates).eq('id', league.id)
+        if (updates.starts_at) await regeneratePeriodsForNewLeague(league)
       }
     } catch (err) {
       logger.error({ err, leagueId: league.id, format: league.format }, 'Failed to set NFL contest start/lock dates')
