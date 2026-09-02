@@ -34,7 +34,7 @@ const ONBOARDING_STEPS = [
     page: '/',
     targetSelector: '[data-onboarding="scoreboard"]',
     title: 'The Scoreboard',
-    body: "Live scores, upcoming games, and finals across NFL, MLB, WNBA, and NBA — right from the home page. Tap any sport header to drill in for standings, stat leaders, and the full week or day of scores.",
+    body: "Live scores, upcoming games, and finals across every sport we cover — right from the home page. Tap a sport header to drill in for standings, stat leaders, and the full slate. Tap any matchup for records, injuries, starting lineups and team leaders before kickoff, or the full box score once it's underway.",
     position: 'top',
     freeScroll: true,
   },
