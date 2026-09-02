@@ -25,7 +25,11 @@ export default function LeagueStartsBanner({
     : `Starts in ${daysUntil} days`
 
   return (
-    <div className="rounded-2xl border border-text-primary/20 bg-bg-primary/25 backdrop-blur-sm p-8 mb-4 text-center max-w-md mx-auto">
+    // max-w-md is inert on phones (the viewport is already narrower), so
+    // widening at md: leaves mobile byte-identical and only affects
+    // desktop, where 448px forced every pre-start bullet onto two or
+    // three lines and made the card unnecessarily tall.
+    <div className="rounded-2xl border border-text-primary/20 bg-bg-primary/25 backdrop-blur-sm p-8 mb-4 text-center max-w-md md:max-w-4xl mx-auto">
       {countdownLabel && (
         <div className="inline-flex items-center justify-center px-5 py-2 rounded-full border border-accent/60 bg-accent/10 text-accent text-sm font-bold tracking-wide mb-5 shadow-lg shadow-accent/10">
           {countdownLabel}
