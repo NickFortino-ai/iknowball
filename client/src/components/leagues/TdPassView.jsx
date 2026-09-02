@@ -337,14 +337,14 @@ export default function TdPassView({ league, tab = 'picks' }) {
                     {!qb.matchup && !qb.used && (
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-text-primary/10 text-text-muted">BYE</span>
                     )}
+                    {/* Shared badge — colored letter, no pill. This row had its
+                        own inline version with a tinted background, which was
+                        the last place an injury status still rendered as a
+                        filled chip. It also only knew Out / Questionable /
+                        Doubtful, so IR, PUP, DTD and suspensions printed the
+                        raw status string in a gray pill. */}
                     {qb.injury_status && !qb.used && (
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                        qb.injury_status === 'Out' ? 'bg-incorrect/20 text-incorrect'
-                        : qb.injury_status === 'Questionable' ? 'bg-yellow-500/20 text-yellow-500'
-                        : 'bg-text-primary/10 text-text-muted'
-                      }`}>
-                        {qb.injury_status === 'Questionable' ? 'Q' : qb.injury_status === 'Doubtful' ? 'D' : qb.injury_status}
-                      </span>
+                      <InjuryBadge status={qb.injury_status} />
                     )}
                   </div>
                   <div className="text-xs text-text-muted">
