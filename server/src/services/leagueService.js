@@ -638,12 +638,18 @@ export async function createLeague(userId, data) {
       const updates = {}
       updates.starts_at = resolvedStartsAt
       league.starts_at = resolvedStartsAt
-      // TD Pass auto-locks joins at the last kickoff of the current NFL
-      // week (one shot per week — late joiners after kickoff have less
-      // info than they should). Sacks + Ints stay open longer because
-      // commissioners can plausibly want late joiners across the season,
-      // so we leave joins_locked_at as the user-provided value.
-      if (league.format === 'td_pass') {
+      // Auto-lock joins at the last kickoff of the current NFL week —
+      // late joiners after that have seen results the field hasn't.
+      //
+      // This used to apply to td_pass only, on the reasoning that sacks /
+      // ints / tackles / receptions should "stay open longer" and could
+      // keep the user-provided value. But when the commissioner provides
+      // nothing that value is NULL, and the invite UI treats a null lock
+      // on an active league as closed — so those four closed to joiners
+      // the moment the league activated, which is EARLIER than td_pass,
+      // the opposite of the intent. A commissioner who explicitly set a
+      // lock time still keeps it (the guard below only fills a gap).
+      if (!league.joins_locked_at) {
         const lastKickoff = await getCurrentWeekLastKickoff()
         if (lastKickoff && new Date(lastKickoff).getTime() > nowMs) {
           updates.joins_locked_at = lastKickoff
