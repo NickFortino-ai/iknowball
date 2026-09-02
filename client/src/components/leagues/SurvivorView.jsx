@@ -44,7 +44,19 @@ export default function SurvivorView({ league }) {
   const periodLabel = isDaily ? 'Day' : 'Week'
   const { data: board, isLoading } = useSurvivorBoard(league.id)
   const { data: usedTeams } = useUsedTeams(league.id)
-  const { data: games } = useGames(league.sport === 'all' ? null : league.sport, 'upcoming', isDaily ? 2 : 3)
+  // Fetch window must cover the whole pick period, because /games cuts off
+  // at now + days and the form can only show what came back.
+  //
+  // Weekly periods run Tue -> Mon (7 days), so a 3-day window meant that on
+  // the Tuesday a period opened, users saw only Wed/Thu games -- the entire
+  // Sunday and Monday slate was missing from the pick form. It also meant an
+  // NFL league sat on "Not open yet" until 3 days before kickoff even though
+  // picks were legitimately open. 9 days covers a full period from its first
+  // day plus slack for advance picks.
+  //
+  // Over-fetching is harmless: pickWeekGames below still filters to the
+  // pick period's window, so extra days never widen what's selectable.
+  const { data: games } = useGames(league.sport === 'all' ? null : league.sport, 'upcoming', isDaily ? 2 : 9)
   const submitPick = useSubmitSurvivorPick()
   const deletePick = useDeleteSurvivorPick()
   const session = useAuthStore((s) => s.session)
