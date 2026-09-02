@@ -205,7 +205,10 @@ function formatDateRange(startsAt, endsAt) {
   return null
 }
 
-function ScoringRulesDisplay({ rules, format }) {
+// hideKicking: salary cap lineups have no K slot (see SLOTS in
+// NflSalaryCapView), so kicking rules are unreachable scoring — listing
+// them implies you can roster a kicker.
+function ScoringRulesDisplay({ rules, format, hideKicking = false }) {
   const [open, setOpen] = useState(false)
   if (!rules) return null
 
@@ -254,13 +257,15 @@ function ScoringRulesDisplay({ rules, format }) {
             <div className="text-xs uppercase tracking-wider text-text-primary font-bold mb-1.5">Misc</div>
             <Row label="Fumble Lost" value={rules.fum_lost} />
           </div>
-          <div>
-            <div className="text-xs uppercase tracking-wider text-text-primary font-bold mb-1.5">Kicking</div>
-            <Row label="FG 0-39 Yards" value={rules.fgm_0_39} />
-            <Row label="FG 40-49 Yards" value={rules.fgm_40_49} />
-            <Row label="FG 50+ Yards" value={rules.fgm_50_plus} />
-            <Row label="Extra Point" value={rules.xpm} />
-          </div>
+          {!hideKicking && (
+            <div>
+              <div className="text-xs uppercase tracking-wider text-text-primary font-bold mb-1.5">Kicking</div>
+              <Row label="FG 0-39 Yards" value={rules.fgm_0_39} />
+              <Row label="FG 40-49 Yards" value={rules.fgm_40_49} />
+              <Row label="FG 50+ Yards" value={rules.fgm_50_plus} />
+              <Row label="Extra Point" value={rules.xpm} />
+            </div>
+          )}
           <div>
             <div className="text-xs uppercase tracking-wider text-text-primary font-bold mb-1.5">Team Defense</div>
             <Row label="Sack" value={rules.def_sack} />
@@ -984,7 +989,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         </div>
       {/* Scoring rules display — visible to all members in fantasy leagues */}
       {league.format === 'fantasy' && fantasySettings?.scoring_rules && !collapsed && (
-        <ScoringRulesDisplay rules={fantasySettings.scoring_rules} format={fantasySettings.scoring_format} />
+        <ScoringRulesDisplay rules={fantasySettings.scoring_rules} format={fantasySettings.scoring_format} hideKicking={fantasySettings.format === 'salary_cap'} />
       )}
 
       {league.is_member !== false && league.status !== 'completed' && !league.all_members_connected && (
@@ -1291,6 +1296,60 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
           </p>
         </div>
       )}
+
+      {/* Champion Determined By — salary cap fantasy + NBA/WNBA DFS.
+          Set only at creation until now, and displayed read-only on the
+          Info tab, so a commissioner who picked the wrong one had no way
+          to correct it. "Salary and Peanut Butter" sat on most_wins while
+          its own commissioner's note promised total points, which would
+          have decided the champion the wrong way.
+
+          Locked once the league leaves 'open': changing how a champion is
+          decided mid-season would move the standings under everyone. */}
+      {(fantasySettings?.format === 'salary_cap' || league.format === 'nba_dfs' || league.format === 'wnba_dfs')
+        && fantasySettings?.season_type !== 'single_week' && (() => {
+        const locked = league.status !== 'open'
+        const isWeekly = league.format === 'fantasy'
+        const current = fantasySettings?.champion_metric || 'total_points'
+        const opts = [
+          { value: 'total_points', label: 'Most Total Points' },
+          { value: 'most_wins', label: isWeekly ? 'Most Weekly Wins' : 'Most Nightly Wins' },
+        ]
+        return (
+          <div>
+            <label className="block text-xs text-text-muted mb-2">Champion Determined By</label>
+            <div className="flex flex-wrap gap-2">
+              {opts.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={async () => {
+                    if (locked) return
+                    try {
+                      await updateFantasySettings.mutateAsync({ leagueId: league.id, champion_metric: opt.value })
+                      toast('Champion setting updated', 'success')
+                    } catch (err) {
+                      toast(err.message || 'Failed to update', 'error')
+                    }
+                  }}
+                  disabled={locked || updateFantasySettings.isPending}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    current === opt.value
+                      ? 'bg-accent text-white border border-accent'
+                      : 'bg-bg-primary text-text-secondary border border-text-primary/20'
+                  } ${(locked || (updateFantasySettings.isPending && current !== opt.value)) ? 'opacity-40 cursor-not-allowed' : ''}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-text-primary mt-1">
+              {locked
+                ? 'Locked — the league has started. This decides the champion, so it can\'t change mid-season.'
+                : 'Decides the champion. Members see this in the league info and the pre-start guide.'}
+            </p>
+          </div>
+        )
+      })()}
 
       {(league.format === 'sacks' || league.format === 'ints' || league.format === 'tackles' || league.format === 'receptions') && (() => {
         const isOffense = league.format === 'receptions'

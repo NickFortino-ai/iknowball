@@ -1343,7 +1343,26 @@ router.get('/:id/fantasy/settings', requireAuth, async (req, res) => {
 })
 
 // Update fantasy settings (commissioner, pre-draft)
+//
+// The comment above described the intent but nothing enforced it: this
+// route had requireAuth only, and updateFantasySettings does no
+// authorization of its own, so ANY signed-in user could PATCH ANY
+// league's scoring rules, salary cap, roster slots, team count, draft
+// date or champion metric. Every other commissioner action in this file
+// checks (reorderDraft, undoDraftPick, startOfflineDraft, updateLeague).
+//
+// Guarded here rather than in the service because this route is its only
+// caller, so the service signature stays stable for future internal use.
 router.patch('/:id/fantasy/settings', requireAuth, async (req, res) => {
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('commissioner_id')
+    .eq('id', req.params.id)
+    .single()
+  if (!league) return res.status(404).json({ error: 'League not found' })
+  if (league.commissioner_id !== req.user.id) {
+    return res.status(403).json({ error: 'Only the commissioner can update league settings' })
+  }
   const data = await updateFantasySettings(req.params.id, req.body)
   res.json(data)
 })
