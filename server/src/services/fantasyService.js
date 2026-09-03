@@ -1069,6 +1069,29 @@ export async function makeDraftPick(leagueId, userId, playerId) {
     throw err
   }
 
+  // The room can be opened before the scheduled time so people can look
+  // around and build a queue, but no pick may land early. Without this the
+  // deferred autopick clock would be pointless: one eager manager picking
+  // two days out sets lastPick.picked_at, which becomes the baseline for
+  // pick 2, and the whole draft cascades forward off-schedule.
+  //
+  // Offline drafts are exempt — the commissioner is transcribing a draft
+  // that already happened, whenever they get to it.
+  if (settings.draft_date && settings.draft_mode !== 'offline') {
+    const scheduledMs = new Date(settings.draft_date).getTime()
+    if (Number.isFinite(scheduledMs) && Date.now() < scheduledMs) {
+      const err = new Error(
+        `The draft begins ${new Date(settings.draft_date).toLocaleString('en-US', {
+          timeZone: 'America/Los_Angeles',
+          weekday: 'short', month: 'short', day: 'numeric',
+          hour: 'numeric', minute: '2-digit',
+        })} PT. Set your queue until then.`,
+      )
+      err.status = 400
+      throw err
+    }
+  }
+
   // Get next pick
   const { data: nextPick } = await supabase
     .from('fantasy_draft_picks')
@@ -2564,7 +2587,7 @@ export async function processScheduledDraftStarts() {
 export async function processDraftAutopicks() {
   const { data: liveDrafts } = await supabase
     .from('fantasy_settings')
-    .select('league_id, draft_pick_timer, draft_started_at, draft_resumed_at, draft_mode, auto_drafting_users')
+    .select('league_id, draft_pick_timer, draft_started_at, draft_resumed_at, draft_date, draft_mode, auto_drafting_users')
     .eq('draft_status', 'in_progress')
 
   if (!liveDrafts?.length) return 0
@@ -2605,11 +2628,23 @@ export async function processDraftAutopicks() {
         .limit(1)
         .maybeSingle()
 
-      // Baseline = max(last pick, draft start, draft resume)
+      // Baseline = max(last pick, draft start, draft resume, SCHEDULED time)
+      //
+      // draft_date is in there so a commissioner who opens the room early
+      // doesn't put pick 1 on the clock early. "Start Draft" reads like
+      // "enter the draft room" -- every other platform ties the first
+      // timer to the scheduled start -- so a commissioner poking around
+      // two days out used to burn their first-round manager's 90 seconds
+      // without realising it. Now the room opens, queues can be set, and
+      // the clock genuinely begins at the scheduled minute.
+      //
+      // A draft_date in the past contributes nothing to max(), so drafts
+      // started on time or late behave exactly as before.
       const candidates = []
       if (lastPick?.picked_at) candidates.push(new Date(lastPick.picked_at).getTime())
       if (d.draft_started_at) candidates.push(new Date(d.draft_started_at).getTime())
       if (d.draft_resumed_at) candidates.push(new Date(d.draft_resumed_at).getTime())
+      if (d.draft_date) candidates.push(new Date(d.draft_date).getTime())
       const baselineMs = candidates.length ? Math.max(...candidates) : null
       if (baselineMs == null) continue
       const elapsedSec = (Date.now() - baselineMs) / 1000
