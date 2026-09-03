@@ -2119,7 +2119,19 @@ router.post('/:id/fantasy/waivers/process', requireAuth, async (req, res) => {
 })
 
 // Generate matchups (commissioner, after draft)
+// Commissioner only. generateMatchups takes just a leagueId, and this had
+// requireAuth alone -- so any signed-in user could regenerate another
+// league's schedule. Mirrors the check on lineups/auto-fill below.
 router.post('/:id/fantasy/matchups/generate', requireAuth, async (req, res) => {
+  const { data: member } = await supabase
+    .from('league_members')
+    .select('role')
+    .eq('league_id', req.params.id)
+    .eq('user_id', req.user.id)
+    .maybeSingle()
+  if (member?.role !== 'commissioner') {
+    return res.status(403).json({ error: 'Only the commissioner can generate matchups' })
+  }
   const result = await generateMatchups(req.params.id)
   res.json(result)
 })
