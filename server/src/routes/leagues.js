@@ -1368,7 +1368,19 @@ router.patch('/:id/fantasy/settings', requireAuth, async (req, res) => {
 })
 
 // Initialize draft (randomize order, create pick slots)
+// Commissioner only — same gap as draft/start had. initializeDraft takes
+// only a leagueId and does no authorization, so any signed-in user could
+// randomize another league's draft order.
 router.post('/:id/fantasy/draft/init', requireAuth, async (req, res) => {
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('commissioner_id')
+    .eq('id', req.params.id)
+    .single()
+  if (!league) return res.status(404).json({ error: 'League not found' })
+  if (league.commissioner_id !== req.user.id) {
+    return res.status(403).json({ error: 'Only the commissioner can set the draft order' })
+  }
   const result = await initializeDraft(req.params.id)
   res.json(result)
 })
@@ -1556,7 +1568,21 @@ router.post('/:id/fantasy/postpone-draft', requireAuth, async (req, res) => {
 })
 
 // Start the draft
+// Commissioner only. startDraft takes just a leagueId and does no
+// authorization of its own, and this route had requireAuth alone -- so
+// any signed-in user could start ANY league's draft, days before its
+// scheduled date, locking every member into a live clock they weren't
+// sitting at. startOfflineDraft right below already guards this way.
 router.post('/:id/fantasy/draft/start', requireAuth, async (req, res) => {
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('commissioner_id')
+    .eq('id', req.params.id)
+    .single()
+  if (!league) return res.status(404).json({ error: 'League not found' })
+  if (league.commissioner_id !== req.user.id) {
+    return res.status(403).json({ error: 'Only the commissioner can start the draft' })
+  }
   const result = await startDraft(req.params.id)
   res.json(result)
 })
