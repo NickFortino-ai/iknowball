@@ -133,7 +133,16 @@ export default function PlayerPositionPanel() {
         {selectedPlayer && (
           <div className="bg-bg-primary border border-text-primary/20 rounded-lg p-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-semibold text-text-primary">{selectedPlayer.player_name}</span>
+              {/* Team alongside the name — two rostered players can share a
+                  name (Byron Young LB LAR / DL PHI), and without the team
+                  there's no way to confirm which one you selected before
+                  saving an override against it. */}
+              <span className="text-sm font-semibold text-text-primary">
+                {selectedPlayer.player_name}
+                {selectedPlayer.team && (
+                  <span className="ml-2 text-xs font-semibold text-text-secondary">{selectedPlayer.team}</span>
+                )}
+              </span>
               <span className="text-xs text-text-muted">Current: <span className="text-text-secondary font-bold">{selectedPlayer.position}</span></span>
             </div>
             <div className="flex items-center gap-2">
