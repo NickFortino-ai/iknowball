@@ -1652,14 +1652,18 @@ export async function autoDraftPick(leagueId, userId) {
     const syncInfo = await getLeagueSyncInfo(leagueId, userId)
     let rankingRows = null
     if (syncInfo.isSynced) {
-      const { data } = await supabase
-        .from('draft_prep_rankings')
-        .select('player_id')
-        .eq('user_id', userId)
-        .eq('roster_config_hash', syncInfo.roster_config_hash)
-        .eq('scoring_format', syncInfo.scoring_format)
-        .order('rank', { ascending: true })
-      rankingRows = data
+      // Paged for the same reason as getMyRankings — clipping here would
+      // make a late-round autopick fall through to ADP even though the
+      // user had ranked that player.
+      rankingRows = await fetchAll(
+        supabase
+          .from('draft_prep_rankings')
+          .select('player_id')
+          .eq('user_id', userId)
+          .eq('roster_config_hash', syncInfo.roster_config_hash)
+          .eq('scoring_format', syncInfo.scoring_format)
+          .order('rank', { ascending: true }),
+      )
     } else {
       const { data } = await supabase
         .from('fantasy_user_rankings')
@@ -1893,14 +1897,19 @@ export async function getMyRankings(leagueId, userId) {
   // Check if this league is synced to draft prep
   const syncInfo = await getLeagueSyncInfo(leagueId, userId)
   if (syncInfo.isSynced) {
-    const { data, error } = await supabase
-      .from('draft_prep_rankings')
-      .select('player_id, rank, nfl_players(id, full_name, position, team, headshot_url, injury_status, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_std, search_rank)')
-      .eq('user_id', userId)
-      .eq('roster_config_hash', syncInfo.roster_config_hash)
-      .eq('scoring_format', syncInfo.scoring_format)
-      .order('rank', { ascending: true })
-    if (error) throw error
+    // Paged: a synced prep board can exceed Supabase's silent 1000-row cap
+    // (largest live board is 1097). Ordered by rank ascending, an unpaged
+    // read clips the LOWEST-ranked players -- exactly the deep bench that
+    // late-round autodraft falls back on.
+    const data = await fetchAll(
+      supabase
+        .from('draft_prep_rankings')
+        .select('player_id, rank, nfl_players(id, full_name, position, team, headshot_url, injury_status, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_std, search_rank)')
+        .eq('user_id', userId)
+        .eq('roster_config_hash', syncInfo.roster_config_hash)
+        .eq('scoring_format', syncInfo.scoring_format)
+        .order('rank', { ascending: true }),
+    )
     return data || []
   }
 
