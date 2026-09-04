@@ -551,6 +551,61 @@ export async function unsyncLeague(userId, leagueId) {
   return { unsynced: true }
 }
 
+/**
+ * Copy one prep board's ORDER into another roster config for the same
+ * user, replacing whatever was there.
+ *
+ * "Sync to All Leagues" is supposed to push the rankings you're looking at
+ * to every traditional league. It didn't: syncLeague derives the board
+ * from the LEAGUE's roster_slots, so a 1-FLEX "Master Rankings" board
+ * could never reach a 2-FLEX league — that league kept its own
+ * auto-seeded board and the panel still said "Synced", with only a small
+ * amber "Different roster" hinting otherwise.
+ *
+ * Players in the source that the target config can't roster are copied
+ * anyway; they simply never come up as legal picks. That's preferable to
+ * dropping them and silently reordering everything below.
+ *
+ * No-op when source and target are the same board.
+ */
+async function copyRankingsIntoConfig(userId, srcHash, srcFormat, targetHash, targetFormat) {
+  if (srcHash === targetHash && srcFormat === targetFormat) return { copied: 0, skipped: 'same-config' }
+
+  const source = await fetchAll(
+    supabase
+      .from('draft_prep_rankings')
+      .select('player_id, rank')
+      .eq('user_id', userId)
+      .eq('roster_config_hash', srcHash)
+      .eq('scoring_format', srcFormat)
+      .order('rank', { ascending: true }),
+  )
+  if (!source.length) return { copied: 0, skipped: 'empty-source' }
+
+  await supabase
+    .from('draft_prep_rankings')
+    .delete()
+    .eq('user_id', userId)
+    .eq('roster_config_hash', targetHash)
+    .eq('scoring_format', targetFormat)
+
+  // Re-rank 0..N-1 so the target board is dense even if the source had
+  // gaps from earlier edits.
+  const rows = source.map((r, i) => ({
+    user_id: userId,
+    roster_config_hash: targetHash,
+    scoring_format: targetFormat,
+    player_id: r.player_id,
+    rank: i,
+    is_customized: true,
+  }))
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await supabase.from('draft_prep_rankings').insert(rows.slice(i, i + 500))
+    if (error) throw error
+  }
+  return { copied: rows.length }
+}
+
 export async function syncAllLeagues(userId, mode, configHash, scoringFormat) {
   // Reuse the matching-leagues logic — it already filters out salary cap,
   // completed drafts, and non-fantasy formats.
@@ -559,10 +614,23 @@ export async function syncAllLeagues(userId, mode, configHash, scoringFormat) {
 
   const synced = []
   for (const c of candidates) {
-    if (c.isSynced) continue
     if (mode === 'matching' && !c.isMatching) continue
     try {
-      await syncLeague(userId, c.leagueId)
+      // "All" means all: push the board being viewed into each league's own
+      // config, including leagues already synced — those are precisely the
+      // ones holding a stale auto-seeded board. "Matching" only touches
+      // leagues whose config already equals the source, so there is nothing
+      // to copy there.
+      if (mode !== 'matching' && configHash) {
+        await copyRankingsIntoConfig(
+          userId,
+          configHash,
+          scoringFormat || 'half_ppr',
+          c.configHash,
+          c.scoringFormat,
+        )
+      }
+      if (!c.isSynced) await syncLeague(userId, c.leagueId)
       synced.push({ leagueId: c.leagueId, name: c.name })
     } catch (e) {
       // Skip leagues that fail (e.g. no settings)
