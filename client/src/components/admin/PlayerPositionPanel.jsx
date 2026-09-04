@@ -43,7 +43,17 @@ export default function PlayerPositionPanel() {
     const name = selectedPlayer?.player_name || searchText.trim()
     if (!name || !position.trim()) return
     try {
-      await createOverride.mutateAsync({ player_name: name, position: position.trim(), sport_key: sportKey })
+      // Send the team when the name came from a search result, so the
+      // override targets ONE player. Five rostered NFL players share a
+      // name with another (Byron Young LB LAR / DL PHI, Justin Jefferson
+      // LB CLE / WR MIN) — without a team, the override hits both.
+      // Free-typed names have no team and stay name-only, as before.
+      await createOverride.mutateAsync({
+        player_name: name,
+        position: position.trim(),
+        sport_key: sportKey,
+        team: selectedPlayer?.team || null,
+      })
       toast('Position override saved', 'success')
       setSearchText('')
       setSelectedPlayer(null)
@@ -86,7 +96,9 @@ export default function PlayerPositionPanel() {
               <div className="absolute top-full left-0 right-0 mt-1 bg-bg-primary border border-text-primary/20 rounded-xl shadow-lg z-10 overflow-hidden max-h-60 overflow-y-auto">
                 {searchResults.map((p) => (
                   <button
-                    key={p.player_name}
+                    // name+team, not name — two Byron Youngs (LB LAR and
+                    // DL PHI) would collide on a name-only key.
+                    key={`${p.player_name}|${p.team || ''}`}
                     type="button"
                     onClick={() => handleSelectPlayer(p)}
                     className="w-full text-left px-4 py-2.5 flex items-center justify-between hover:bg-text-primary/5 transition-colors border-b border-text-primary/10 last:border-b-0"
@@ -158,6 +170,7 @@ export default function PlayerPositionPanel() {
               <div className="flex items-center gap-3 min-w-0">
                 <span className="text-sm font-semibold text-text-primary truncate">{o.player_name}</span>
                 <span className="text-xs font-bold text-accent">{o.position}</span>
+                {o.team && <span className="text-[10px] font-semibold text-text-secondary">{o.team}</span>}
                 <span className="text-[10px] text-text-muted">{SPORT_OPTIONS.find((s) => s.key === o.sport_key)?.label || o.sport_key}</span>
               </div>
               <button

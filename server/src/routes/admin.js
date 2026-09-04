@@ -1313,13 +1313,26 @@ router.get('/player-position-overrides', async (req, res) => {
 })
 
 router.post('/player-position-overrides', async (req, res) => {
-  const { player_name, position, sport_key } = req.body
+  // team is optional and narrows the override to ONE player when two
+  // share a name. Omitted, it applies to every match, which is the
+  // historical behaviour the 8 existing rows rely on.
+  const { player_name, position, sport_key, team } = req.body
   if (!player_name?.trim() || !position?.trim()) {
     return res.status(400).json({ error: 'player_name and position are required' })
   }
   const { data, error } = await supabase
     .from('player_position_overrides')
-    .upsert({ player_name: player_name.trim(), position: position.trim(), sport_key: sport_key || 'basketball_nba' }, { onConflict: 'player_name,sport_key' })
+    .upsert(
+      {
+        player_name: player_name.trim(),
+        position: position.trim(),
+        sport_key: sport_key || 'basketball_nba',
+        team: team?.trim() || null,
+      },
+      // Conflict target includes team so a Rams override and an Eagles
+      // override for the same name coexist instead of overwriting.
+      { onConflict: 'player_name,sport_key,team' },
+    )
     .select()
     .single()
   if (error) throw error
@@ -1368,12 +1381,17 @@ router.get('/player-search', async (req, res) => {
     return res.status(500).json({ error: error.message })
   }
 
-  // Deduplicate by name, keep most recent. Normalise to player_name so the
-  // client renders one shape regardless of source table.
+  // Deduplicate by name+TEAM, not name alone. Five rostered NFL players
+  // share a name with another rostered player (Byron Young LB LAR / DL
+  // PHI, Justin Jefferson LB CLE / WR MIN, ...), and a name-only dedupe
+  // collapsed each pair to one row — the other player was unreachable.
+  // Four of the five pairs are IDP, which is most of what this panel edits.
   const seen = new Map()
   for (const p of data || []) {
     const name = p[src.name]
-    if (name && !seen.has(name)) seen.set(name, { player_name: name, position: p.position, team: p.team })
+    if (!name) continue
+    const key = `${name}|${p.team || ''}`
+    if (!seen.has(key)) seen.set(key, { player_name: name, position: p.position, team: p.team })
   }
   res.json([...seen.values()].slice(0, 10))
 })

@@ -59,13 +59,22 @@ export async function getWNBAPlayerPool(date) {
 
   const { data: overrides } = await supabase
     .from('player_position_overrides')
-    .select('player_name, position')
+    .select('player_name, position, team')
 
   if (overrides?.length) {
     const overrideMap = {}
-    for (const o of overrides) overrideMap[o.player_name.toLowerCase()] = o.position
+    // Team-scoped rows win over name-only rows so two players sharing a
+    // name can be overridden independently. Name-only rows keep applying
+    // to every match, which is the historical behaviour.
+    for (const o of overrides) {
+      const n = o.player_name.toLowerCase()
+      if (o.team) overrideMap[`${n}|${o.team.toLowerCase()}`] = o.position
+      else overrideMap[n] = o.position
+    }
     for (const player of data) {
-      const override = overrideMap[player.player_name.toLowerCase()]
+      const pn = player.player_name.toLowerCase()
+      const override = (player.team ? overrideMap[`${pn}|${player.team.toLowerCase()}`] : null)
+        ?? overrideMap[pn]
       if (override) player.position = override
     }
   }

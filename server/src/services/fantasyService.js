@@ -3340,11 +3340,18 @@ function isPositionEligibleForSlot(playerPosition, slotAllowed) {
 async function loadNflPositionOverrides() {
   const { data } = await supabase
     .from('player_position_overrides')
-    .select('player_name, position, sport_key')
+    .select('player_name, position, sport_key, team')
     .eq('sport_key', 'americanfootball_nfl')
-  const map = {}
+  // Two maps: team-scoped wins, name-only is the fallback. Without this,
+  // an override on "Byron Young" hit both the Rams LB and the Eagles DL —
+  // and an override on the Browns' Justin Jefferson would have rewritten
+  // the Vikings receiver.
+  const map = { byNameTeam: {}, byName: {} }
   for (const o of data || []) {
-    if (o.player_name && o.position) map[o.player_name.toLowerCase()] = o.position
+    if (!o.player_name || !o.position) continue
+    const name = o.player_name.toLowerCase()
+    if (o.team) map.byNameTeam[`${name}|${o.team.toLowerCase()}`] = o.position
+    else map.byName[name] = o.position
   }
   return map
 }
@@ -3355,7 +3362,12 @@ function applyNflPositionOverride(row, overrideMap) {
   if (!row || !overrideMap) return row
   const name = row.full_name || row.nfl_players?.full_name
   if (!name) return row
-  const override = overrideMap[name.toLowerCase()]
+  const team = row.team || row.nfl_players?.team
+  const key = name.toLowerCase()
+  // Team-scoped override wins; fall back to the name-only form so the
+  // pre-existing rows (which carry no team) keep working unchanged.
+  const override = (team ? overrideMap.byNameTeam?.[`${key}|${team.toLowerCase()}`] : null)
+    ?? overrideMap.byName?.[key]
   if (!override) return row
   if (row.position !== undefined) row.position = override
   if (row.nfl_players?.position !== undefined) row.nfl_players.position = override
