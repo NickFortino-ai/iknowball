@@ -865,27 +865,32 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
   const activePeriod = (leagueWeeks || []).find((w) => w.starts_at <= nowIso && w.ends_at > nowIso)
   const nextPeriod = activePeriod || (leagueWeeks || []).find((w) => w.starts_at > nowIso)
 
-  // Pre-league state: no active period AND the next period is in the
-  // future. Server returns an empty player list + opens_at so the
-  // client can show a friendly 'opens Sep 8' message instead of a
-  // list the user can't pick from.
-  if (!activePeriod && nextPeriod) {
-    return res.json({
-      not_open_yet: true,
-      opens_at: nextPeriod.starts_at,
-      players: [],
-    })
-  }
+  // Serve the UPCOMING period's players before it opens, matching what
+  // standard survivor does — its pick form shows the coming week's games
+  // ahead of time rather than an empty state. This used to return
+  // { not_open_yet: true, players: [] }, so TD Survivor sat blank while
+  // the standard pool next to it was populated.
+  //
+  // Safe because submitTouchdownPick already allows pre-start picks: it
+  // validates against the PLAYER'S next game (starts_at >= now), not the
+  // period, so an advance pick is accepted rather than rejected.
+  //
+  // The original bug that motivated the empty state was using the
+  // real-world NFL week, which surfaced PRESEASON games in an
+  // August-browsed league. Scoping to the league's own next period keeps
+  // that fixed — the dates below come from league_weeks either way.
+  const targetPeriod = activePeriod || nextPeriod
+
   // No periods at all (league schedule not generated). Return empty
-  // gracefully — same shape as pre-league.
-  if (!activePeriod && !nextPeriod) {
+  // gracefully.
+  if (!targetPeriod) {
     return res.json({ not_open_yet: true, opens_at: null, players: [] })
   }
 
   // Find the NFL games happening during this period. Match by
   // game_date between the period's start and end.
-  const startDate = activePeriod.starts_at.slice(0, 10)
-  const endDate = activePeriod.ends_at.slice(0, 10)
+  const startDate = targetPeriod.starts_at.slice(0, 10)
+  const endDate = targetPeriod.ends_at.slice(0, 10)
   const { data: weekGames } = await supabase
     .from('nfl_schedule')
     .select('home_team, away_team, game_date')
@@ -902,7 +907,7 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
 
   // Derive the NFL season from the period's start (nfl_player_stats
   // is keyed by season year).
-  const season = new Date(activePeriod.starts_at).getUTCFullYear()
+  const season = new Date(targetPeriod.starts_at).getUTCFullYear()
 
   // Season TD aggregation for the leaderboard sort. fetchAll bypasses
   // the 1000-row cap on nfl_player_stats (~36k rows across a season).
@@ -938,7 +943,11 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
     return (a.search_rank || 999) - (b.search_rank || 999)
   })
 
-  res.json({ players, period: { id: activePeriod.id, week_number: activePeriod.week_number, ends_at: activePeriod.ends_at } })
+  // targetPeriod, not activePeriod — activePeriod is null before the
+  // period opens and this would throw. It also has to be the upcoming
+  // period's id, because the client passes period.id back as week_id
+  // when submitting an advance pick.
+  res.json({ players, period: { id: targetPeriod.id, week_number: targetPeriod.week_number, ends_at: targetPeriod.ends_at } })
 })
 
 router.get('/:id/survivor/board', requireAuth, async (req, res) => {
