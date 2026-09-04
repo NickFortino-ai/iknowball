@@ -13,6 +13,8 @@ import Avatar from '../components/ui/Avatar'
 import { getBackdropUrl } from '../lib/backdropUrl'
 import { useLandingPreview } from '../hooks/useLandingPreview'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../lib/teamLogos'
+import { Capacitor } from '@capacitor/core'
+import { WEB_ORIGIN } from '../lib/shareLink'
 
 const tiers = [
   { name: 'Learning', points: '<0', color: 'border-tier-lost text-tier-lost', desc: 'Finding your way' },
@@ -734,6 +736,24 @@ export default function HomePage() {
           <span>·</span>
           <Link to="/privacy" className="hover:text-text-secondary transition-colors">Privacy</Link>
         </div>
+        {/* Native app only. Someone in a phone browser is already on the web,
+            and a viewport check would both tell them something useless and
+            hide it from iPad app users, who are exactly the audience that
+            doesn't know the site exists. Same isNativePlatform() check
+            shareLink.js uses to choose an origin.
+
+            Deliberately a plain statement of availability — no pricing, no
+            "subscribe", nothing that reads as steering toward the web's
+            Stripe checkout instead of IAP. */}
+        {Capacitor.isNativePlatform() && (
+          <p className="text-center px-6">
+            Also on the web at{' '}
+            <a href={WEB_ORIGIN} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+              iknowball.club
+            </a>
+            {' '}— same account, same leagues.
+          </p>
+        )}
       </footer>
 
       <TierUsersModal tier={selectedTier} onClose={() => setSelectedTier(null)} />

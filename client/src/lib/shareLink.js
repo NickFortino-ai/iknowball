@@ -5,7 +5,7 @@ import { Capacitor } from '@capacitor/core'
 // app — useless for sharing outside the app. All share URLs must point
 // at the live web origin so iMessage / X / WhatsApp / etc. can preview
 // and other recipients can actually open them.
-const WEB_ORIGIN = 'https://www.iknowball.club'
+export const WEB_ORIGIN = 'https://www.iknowball.club'
 
 /**
  * Return the right base URL for share links.
