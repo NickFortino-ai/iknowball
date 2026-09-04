@@ -3,6 +3,7 @@ import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../config/supabase.js'
 import { getCurrentNflWeek, getLockedTeamSet, getCurrentWeekMatchups } from '../services/tdPassService.js'
 import { logger } from '../utils/logger.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -44,11 +45,18 @@ router.get('/players', async (req, res) => {
   const { season, week } = await getCurrentNflWeek()
   const lockedTeams = await getLockedTeamSet()
 
-  const { data: defenders } = await supabase
-    .from('nfl_players')
-    .select('id, full_name, position, team, headshot_url, injury_status')
-    .in('position', DEFENSIVE_POSITIONS)
-    .not('team', 'is', null)
+  // Paged: 1278 rostered defenders exceed Supabase's silent 1000-row cap,
+  // so a plain select dropped 278 of them from the pool with no error --
+  // Travon Walker among them. .order('id') makes the paging deterministic;
+  // without a stable sort, rows shift between pages and get skipped.
+  const defenders = await fetchAll(
+    supabase
+      .from('nfl_players')
+      .select('id, full_name, position, team, headshot_url, injury_status')
+      .in('position', DEFENSIVE_POSITIONS)
+      .not('team', 'is', null)
+      .order('id', { ascending: true }),
+  )
 
   // Aggregate season idp_sack from nfl_player_stats
   const { data: sackStats } = await supabase
