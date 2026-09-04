@@ -702,20 +702,24 @@ export function useUnmuteUser() {
 }
 
 // Player Search (for position overrides)
-export function useAdminPlayerSearch(query) {
+// sportKey is part of the key AND the request — without it the endpoint
+// only ever searched NBA, so picking NFL in the panel returned nothing.
+export function useAdminPlayerSearch(query, sportKey) {
   return useQuery({
-    queryKey: ['admin', 'player-search', query],
-    queryFn: () => api.get(`/admin/player-search?q=${encodeURIComponent(query)}`),
+    queryKey: ['admin', 'player-search', query, sportKey],
+    queryFn: () => api.get(`/admin/player-search?q=${encodeURIComponent(query)}&sport=${encodeURIComponent(sportKey || '')}`),
     enabled: !!query && query.length >= 2,
     staleTime: 30_000,
   })
 }
 
 // Player Position Overrides
-export function usePlayerPositionOverrides() {
+// Scoped to the panel's selected sport so NBA overrides don't linger on
+// screen while NFL is selected. Omitting sportKey returns all sports.
+export function usePlayerPositionOverrides(sportKey) {
   return useQuery({
-    queryKey: ['admin', 'position-overrides'],
-    queryFn: () => api.get('/admin/player-position-overrides'),
+    queryKey: ['admin', 'position-overrides', sportKey],
+    queryFn: () => api.get(`/admin/player-position-overrides${sportKey ? `?sport=${encodeURIComponent(sportKey)}` : ''}`),
   })
 }
 

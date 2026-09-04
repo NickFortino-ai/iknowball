@@ -11,17 +11,20 @@ const SPORT_OPTIONS = [
 ]
 
 export default function PlayerPositionPanel() {
-  const { data: overrides, isLoading } = usePlayerPositionOverrides()
-  const createOverride = useCreatePositionOverride()
-  const deleteOverride = useDeletePositionOverride()
+  // sportKey is declared first because both queries below read it —
+  // referencing it above its `const` would be a temporal dead zone crash.
+  const [sportKey, setSportKey] = useState('basketball_nba')
   const [searchText, setSearchText] = useState('')
   const [selectedPlayer, setSelectedPlayer] = useState(null)
   const [position, setPosition] = useState('')
-  const [sportKey, setSportKey] = useState('basketball_nba')
   const [showDropdown, setShowDropdown] = useState(false)
   const inputRef = useRef(null)
 
-  const { data: searchResults } = useAdminPlayerSearch(showDropdown ? searchText : null)
+  const { data: overrides, isLoading } = usePlayerPositionOverrides(sportKey)
+  const createOverride = useCreatePositionOverride()
+  const deleteOverride = useDeletePositionOverride()
+
+  const { data: searchResults } = useAdminPlayerSearch(showDropdown ? searchText : null, sportKey)
 
   function handleSelectPlayer(player) {
     setSelectedPlayer(player)

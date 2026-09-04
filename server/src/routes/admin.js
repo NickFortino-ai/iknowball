@@ -1298,10 +1298,16 @@ router.post('/users/:id/writer', requireFullAdmin, async (req, res) => {
 // ============================================
 
 router.get('/player-position-overrides', async (req, res) => {
-  const { data, error } = await supabase
+  // Optional sport filter — the panel shows one sport at a time, so an
+  // unfiltered list meant NBA overrides stayed on screen while NFL was
+  // selected. Omitting the param still returns everything.
+  const { sport } = req.query
+  let query = supabase
     .from('player_position_overrides')
     .select('*')
     .order('player_name')
+  if (sport) query = query.eq('sport_key', sport)
+  const { data, error } = await query
   if (error) throw error
   res.json(data || [])
 })
@@ -1320,22 +1326,48 @@ router.post('/player-position-overrides', async (req, res) => {
   res.status(201).json(data)
 })
 
+// Player name search for the position-override panel.
+//
+// Was hardcoded to nba_dfs_salaries, so selecting NFL in the panel and
+// typing a name returned nothing — the query could only ever match NBA
+// players. Now routed per sport. Each DFS salary table keys the name as
+// player_name; nfl_players uses full_name and has no game_date, so its
+// shape is normalised below.
+const PLAYER_SEARCH_SOURCES = {
+  basketball_nba: { table: 'nba_dfs_salaries', name: 'player_name', recency: 'game_date' },
+  basketball_wnba: { table: 'wnba_dfs_salaries', name: 'player_name', recency: 'game_date' },
+  baseball_mlb: { table: 'mlb_dfs_salaries', name: 'player_name', recency: 'game_date' },
+  americanfootball_nfl: { table: 'nfl_players', name: 'full_name', recency: null },
+}
+
 router.get('/player-search', async (req, res) => {
-  const { q } = req.query
+  const { q, sport } = req.query
   if (!q || q.length < 2) return res.json([])
 
-  // Search DFS salaries for recent players
-  const { data } = await supabase
-    .from('nba_dfs_salaries')
-    .select('player_name, position, team')
-    .ilike('player_name', `%${q}%`)
-    .order('game_date', { ascending: false })
-    .limit(50)
+  const src = PLAYER_SEARCH_SOURCES[sport || 'basketball_nba']
+  // Sports with no searchable roster table (NHL) return empty rather than
+  // silently falling back to another sport's players.
+  if (!src) return res.json([])
 
-  // Deduplicate by player name, keep most recent
+  let query = supabase
+    .from(src.table)
+    .select(`${src.name}, position, team`)
+    .ilike(src.name, `%${q}%`)
+    .limit(50)
+  if (src.recency) query = query.order(src.recency, { ascending: false })
+
+  const { data, error } = await query
+  if (error) {
+    logger.error({ error, sport, table: src.table }, 'Admin player search failed')
+    return res.status(500).json({ error: error.message })
+  }
+
+  // Deduplicate by name, keep most recent. Normalise to player_name so the
+  // client renders one shape regardless of source table.
   const seen = new Map()
   for (const p of data || []) {
-    if (!seen.has(p.player_name)) seen.set(p.player_name, p)
+    const name = p[src.name]
+    if (name && !seen.has(name)) seen.set(name, { player_name: name, position: p.position, team: p.team })
   }
   res.json([...seen.values()].slice(0, 10))
 })
