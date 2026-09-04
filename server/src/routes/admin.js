@@ -1337,7 +1337,11 @@ const PLAYER_SEARCH_SOURCES = {
   basketball_nba: { table: 'nba_dfs_salaries', name: 'player_name', recency: 'game_date' },
   basketball_wnba: { table: 'wnba_dfs_salaries', name: 'player_name', recency: 'game_date' },
   baseball_mlb: { table: 'mlb_dfs_salaries', name: 'player_name', recency: 'game_date' },
-  americanfootball_nfl: { table: 'nfl_players', name: 'full_name', recency: null },
+  // nfl_players has no game_date; rank by search_rank instead and drop
+  // free agents. Unordered, a search for "watt" surfaced Shane Watts,
+  // Ronald Awatt and a teamless J.J. Watt above T.J. Watt — unusable for
+  // IDP editing, which is most of what this panel is for.
+  americanfootball_nfl: { table: 'nfl_players', name: 'full_name', recency: null, rank: 'search_rank', rosteredOnly: true },
 }
 
 router.get('/player-search', async (req, res) => {
@@ -1354,7 +1358,9 @@ router.get('/player-search', async (req, res) => {
     .select(`${src.name}, position, team`)
     .ilike(src.name, `%${q}%`)
     .limit(50)
+  if (src.rosteredOnly) query = query.not('team', 'is', null)
   if (src.recency) query = query.order(src.recency, { ascending: false })
+  if (src.rank) query = query.order(src.rank, { ascending: true, nullsFirst: false })
 
   const { data, error } = await query
   if (error) {
