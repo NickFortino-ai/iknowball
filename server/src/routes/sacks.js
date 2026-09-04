@@ -59,10 +59,18 @@ router.get('/players', async (req, res) => {
   )
 
   // Aggregate season idp_sack from nfl_player_stats
-  const { data: sackStats } = await supabase
-    .from('nfl_player_stats')
-    .select('player_id, idp_sack')
-    .eq('season', season)
+  // Paged: this grows to one row per player per week, so it crosses
+  // Supabase's silent 1000-row cap a few weeks into the season. Unpaged,
+  // season totals would quietly go wrong for most of the pool -- and the
+  // contest sorts on those totals. .order('player_id') keeps paging
+  // deterministic.
+  const sackStats = await fetchAll(
+    supabase
+      .from('nfl_player_stats')
+      .select('player_id, idp_sack')
+      .eq('season', season)
+      .order('player_id', { ascending: true }),
+  )
 
   const sackMap = {}
   for (const s of (sackStats || [])) {

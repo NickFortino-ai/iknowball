@@ -3,6 +3,7 @@ import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../config/supabase.js'
 import { getCurrentNflWeek, getLockedTeamSet, getCurrentWeekMatchups } from '../services/tdPassService.js'
 import { logger } from '../utils/logger.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -40,16 +41,30 @@ router.get('/players', async (req, res) => {
   const { season, week } = await getCurrentNflWeek()
   const lockedTeams = await getLockedTeamSet()
 
-  const { data: receivers } = await supabase
-    .from('nfl_players')
-    .select('id, full_name, position, team, headshot_url, injury_status')
-    .in('position', RECEIVER_POSITIONS)
-    .not('team', 'is', null)
+  // 700 receivers today -- under the 1000-row cap, but paged anyway so it
+  // can't silently start dropping players as rosters grow. The defensive
+  // pools already crossed it (1278) and lost 278 players with no error.
+  const receivers = await fetchAll(
+    supabase
+      .from('nfl_players')
+      .select('id, full_name, position, team, headshot_url, injury_status')
+      .in('position', RECEIVER_POSITIONS)
+      .not('team', 'is', null)
+      .order('id', { ascending: true }),
+  )
 
-  const { data: recStats } = await supabase
-    .from('nfl_player_stats')
-    .select('player_id, rec')
-    .eq('season', season)
+  // Paged: this grows to one row per player per week, so it crosses
+  // Supabase's silent 1000-row cap a few weeks into the season. Unpaged,
+  // season totals would quietly go wrong for most of the pool -- and the
+  // contest sorts on those totals. .order('player_id') keeps paging
+  // deterministic.
+  const recStats = await fetchAll(
+    supabase
+      .from('nfl_player_stats')
+      .select('player_id, rec')
+      .eq('season', season)
+      .order('player_id', { ascending: true }),
+  )
 
   const recMap = {}
   for (const s of (recStats || [])) {

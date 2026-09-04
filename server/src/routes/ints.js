@@ -54,10 +54,18 @@ router.get('/players', async (req, res) => {
       .order('id', { ascending: true }),
   )
 
-  const { data: intStats } = await supabase
-    .from('nfl_player_stats')
-    .select('player_id, idp_int')
-    .eq('season', season)
+  // Paged: this grows to one row per player per week, so it crosses
+  // Supabase's silent 1000-row cap a few weeks into the season. Unpaged,
+  // season totals would quietly go wrong for most of the pool -- and the
+  // contest sorts on those totals. .order('player_id') keeps paging
+  // deterministic.
+  const intStats = await fetchAll(
+    supabase
+      .from('nfl_player_stats')
+      .select('player_id, idp_int')
+      .eq('season', season)
+      .order('player_id', { ascending: true }),
+  )
 
   const intMap = {}
   for (const s of (intStats || [])) {
