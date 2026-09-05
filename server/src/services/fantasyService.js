@@ -1750,13 +1750,21 @@ export async function autoDraftPick(leagueId, userId) {
     // No .limit(): matches searchAvailablePlayers/getAdpList depth so a
     // late-round autopick in a deep league never falls off the end of a
     // 300-cap and returns null.
-    const bestAvailable = await fetchAll(
-      supabase
-        .from('nfl_players')
-        .select('id, position')
-        .in('position', positionFilter)
-        .not('team', 'is', null)
-        .order('search_rank', { ascending: true })
+    // Cached: this is a global ADP-ordered list, identical for every league
+    // and every user, but it was re-scanning ~800 rows on every single
+    // autopick. With several drafts running at once the autopick loop is
+    // serial, so each uncached scan delayed every other league's clock.
+    const bestAvailable = await cached(
+      `nflAdpFallback:${positionFilter.join(',')}`,
+      PLAYER_POOL_TTL_MS,
+      () => fetchAll(
+        supabase
+          .from('nfl_players')
+          .select('id, position')
+          .in('position', positionFilter)
+          .not('team', 'is', null)
+          .order('search_rank', { ascending: true })
+      )
     )
     for (const p of bestAvailable || []) {
       if (drafted.has(p.id)) continue
