@@ -3250,10 +3250,48 @@ export async function getDraftBoard(leagueId) {
 
   if (settingsRes.error) throw settingsRes.error
 
-  return {
-    settings: settingsRes.data,
-    picks: picksRes.data || [],
+  const settings = settingsRes.data
+  const picks = picksRes.data || []
+
+  // Report the last completed pick's picked_at AS the effective clock
+  // baseline, so the on-screen timer matches what the server will actually
+  // do.
+  //
+  // Every client computes the pick clock as
+  //   remaining = timer - (now - lastPick.picked_at)
+  // but processDraftAutopicks deadlines from
+  //   max(last pick, draft_started_at, draft_resumed_at, draft_date).
+  // After a pause the whole pause counted as elapsed, so the next drafter's
+  // clock read 0:00 while the server was giving them a full timer from
+  // draft_resumed_at -- reported live on 2026-09-04 as "when I resumed, the
+  // next guy only had 10 seconds to pick". He had the full clock.
+  //
+  // Fixed in the client too, but the native iOS/Android builds bundle their
+  // own copy of the client and can't be updated before the drafts happening
+  // this week. Doing it here reaches every client immediately. picked_at is
+  // read in exactly two places app-wide (the draft room timer and the live
+  // banner timer) and is never displayed as a timestamp, so overriding it in
+  // this response changes nothing else. The stored row is untouched.
+  if (settings?.draft_status === 'in_progress') {
+    const ts = (v) => (v ? new Date(v).getTime() : 0)
+    // Clamped to now: a draft_date still in the future (commissioner opened
+    // the room early) would otherwise report a baseline ahead of the clock
+    // and old clients, which don't cap at the timer, would show more time
+    // than the pick is worth.
+    const baseline = Math.min(
+      Date.now(),
+      Math.max(ts(settings.draft_started_at), ts(settings.draft_resumed_at), ts(settings.draft_date)),
+    )
+    let lastIdx = -1
+    for (let i = picks.length - 1; i >= 0; i--) {
+      if (picks[i].player_id) { lastIdx = i; break }
+    }
+    if (lastIdx >= 0 && baseline > ts(picks[lastIdx].picked_at)) {
+      picks[lastIdx] = { ...picks[lastIdx], picked_at: new Date(baseline).toISOString() }
+    }
   }
+
+  return { settings, picks }
 }
 
 /**
