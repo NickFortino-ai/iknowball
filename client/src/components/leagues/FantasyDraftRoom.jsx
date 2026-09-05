@@ -399,6 +399,9 @@ export default function FantasyDraftRoom({ league }) {
     const draftDateValid = draftDate && !isNaN(draftDate.getTime())
     const msUntilDraft = draftDateValid ? draftDate.getTime() - Date.now() : Infinity
     const withinOneHour = hasPickSlots && draftDateValid && msUntilDraft <= 60 * 60 * 1000 && msUntilDraft > 0
+    // Scheduled time has passed but the server hasn't flipped us to
+    // in_progress yet — the auto-start tick is up to 10s behind.
+    const draftTimeReached = draftDateValid && msUntilDraft <= 0
 
     // ── Board preview with countdown (T-60min) ──────────────────────
     if (withinOneHour) {
@@ -481,13 +484,26 @@ export default function FantasyDraftRoom({ league }) {
             </button>
           )}
           {isCommissioner && hasPickSlots && settings?.draft_mode !== 'offline' && (
-            <button
-              onClick={handleStartDraft}
-              disabled={startDraft.isPending}
-              className="px-6 py-3 rounded-xl text-sm font-semibold bg-correct text-white hover:bg-correct/80 transition-colors disabled:opacity-50"
-            >
-              {startDraft.isPending ? 'Starting...' : 'Start Draft'}
-            </button>
+            // Once the scheduled time passes, the server starts this draft on
+            // its own — but the autopick loop only ticks every 10s, and the
+            // countdown view disappears the instant the clock hits zero. That
+            // left the commissioner staring at a bare "Start Draft" button
+            // during the gap, reading it as "this needs me". On 2026-09-04 the
+            // commissioner beat the server to it by 298ms and assumed
+            // auto-start was broken. The button stays (it's the escape hatch
+            // if the loop is wedged) but no longer implies action is required.
+            <div className="flex flex-col items-center gap-1.5">
+              <button
+                onClick={handleStartDraft}
+                disabled={startDraft.isPending}
+                className="px-6 py-3 rounded-xl text-sm font-semibold bg-correct text-white hover:bg-correct/80 transition-colors disabled:opacity-50"
+              >
+                {startDraft.isPending ? 'Starting...' : draftTimeReached ? 'Start Now' : 'Start Draft'}
+              </button>
+              {draftTimeReached && (
+                <span className="text-[11px] text-text-muted">Starting automatically — no action needed</span>
+              )}
+            </div>
           )}
         </div>
 
