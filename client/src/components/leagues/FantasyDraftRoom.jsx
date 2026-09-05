@@ -240,22 +240,50 @@ export default function FantasyDraftRoom({ league }) {
       return
     }
 
-    // Calculate time remaining based on last pick
+    // Mirror the SERVER's deadline baseline exactly. processDraftAutopicks
+    // uses max(last pick, draft_started_at, draft_resumed_at, draft_date);
+    // this used only the last pick, so the two disagreed whenever anything
+    // other than a pick restarted the clock:
+    //
+    //   After a pause, the entire pause counted as elapsed time. Pause five
+    //   minutes on a 60s timer and the next player's clock read 0:00 while
+    //   the server was actually giving them a full 60s from draft_resumed_at
+    //   -- reported live on 2026-09-04 as "the next guy only had 10 seconds".
+    //
+    //   Opening the room before the scheduled time burned pick 1's clock
+    //   immediately, then sat at 0:00, and never recovered: draft_date wasn't
+    //   in the dependency list, so nothing recomputed at the start time.
+    const ts = (v) => (v ? new Date(v).getTime() : 0)
     const lastPick = completedPicks[completedPicks.length - 1]
-    const lastPickTime = lastPick?.picked_at ? new Date(lastPick.picked_at) : new Date()
-    const elapsed = (Date.now() - lastPickTime.getTime()) / 1000
-    const remaining = Math.max(0, settings.draft_pick_timer - elapsed)
-    setTimerSeconds(Math.ceil(remaining))
+    const baseline = Math.max(
+      ts(lastPick?.picked_at),
+      ts(settings.draft_started_at),
+      ts(settings.draft_resumed_at),
+      ts(settings.draft_date),
+    ) || Date.now()
 
-    const interval = setInterval(() => {
-      setTimerSeconds((prev) => {
-        if (prev <= 0) return 0
-        return prev - 1
-      })
-    }, 1000)
+    // Recompute from the baseline each tick rather than decrementing, so the
+    // clock self-corrects after a backgrounded tab or a sleeping phone
+    // instead of drifting. Clamped to the timer so a not-yet-reached
+    // draft_date shows a full clock rather than more than one.
+    const compute = () => {
+      const elapsed = (Date.now() - baseline) / 1000
+      return Math.ceil(Math.min(settings.draft_pick_timer, Math.max(0, settings.draft_pick_timer - elapsed)))
+    }
+
+    setTimerSeconds(compute())
+    const interval = setInterval(() => setTimerSeconds(compute()), 1000)
 
     return () => clearInterval(interval)
-  }, [draftStatus, currentPick?.pick_number, settings?.draft_pick_timer])
+  }, [
+    draftStatus,
+    currentPick?.pick_number,
+    settings?.draft_pick_timer,
+    settings?.draft_started_at,
+    settings?.draft_resumed_at,
+    settings?.draft_date,
+    completedPicks.length,
+  ])
 
   // Tick beeps during the final countdown of YOUR pick. Fires once at
   // 10s remaining (gentle warning), then short blips at 5/4/3/2/1 with
