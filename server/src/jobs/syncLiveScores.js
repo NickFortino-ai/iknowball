@@ -133,6 +133,22 @@ async function syncSportLiveScores(sportKey) {
         logger.warn({ gameId: game.id, startsAt: game.starts_at }, 'ESPN reports in-progress but game has not reached start time, skipping')
         continue
       }
+      // Skip the write when nothing actually changed. This ran every 60s
+      // for every in-progress game and always stamped updated_at, so each
+      // tick produced a WAL record even when the score, period and clock
+      // were identical. `games` is in the Realtime publication, so every
+      // one of those rows was then RLS-evaluated and fanned out to every
+      // connected client -- realtime.apply_rls is the single most expensive
+      // thing in this database by a factor of four (24.5M calls, ~36 hours
+      // of database time). A baseball game between innings, or any game the
+      // poll catches twice in the same state, no longer costs anything.
+      const unchanged = game.status === 'live'
+        && game.live_home_score === match.homeScore
+        && game.live_away_score === match.awayScore
+        && game.period === match.period
+        && game.clock === match.clock
+      if (unchanged) continue
+
       const { error } = await supabase
         .from('games')
         .update({
