@@ -1635,12 +1635,37 @@ export async function autoDraftPick(leagueId, userId) {
     return parts.some((p) => (IDP_RAW.has(p) ? hasIdpSlots : OFFENSE_RAW.has(p)))
   }
 
-  // K/DEF forcing: if remaining rounds equal or fewer than unfilled
-  // required K/DEF slots, we MUST pick those next. Prevents autodraft
-  // from ending with an empty K or DEF slot.
-  const needK = Math.max(0, (rosterSlots.k || 0) - have.K)
-  const needD = Math.max(0, (rosterSlots.def || 0) - have.DEF)
-  const kdefForced = roundsRemaining <= (needK + needD) && (needK > 0 || needD > 0)
+  // Starter forcing: once there are no more rounds to spare than unfilled
+  // REQUIRED starting slots, autopick may only take players who fill one.
+  //
+  // This used to cover K and DEF only, so nothing stopped an autodrafted
+  // team from finishing with zero running backs. The caps above merely
+  // prevent hoarding -- in a 14-team superflex league the QB cap is 3, so
+  // a queue listing three quarterbacks got all three before a single RB.
+  // Yahoo and ESPN both draft for need rather than pure best-available for
+  // exactly this reason; a fully autodrafted roster has to be startable.
+  //
+  // Only true starting slots count. flex / superflex / bench / IR are
+  // deliberately excluded: they accept several positions, so they create
+  // no specific need and would otherwise force picks that aren't required.
+  const SLOT_KEY_BY_FAMILY = {
+    QB: 'qb', RB: 'rb', WR: 'wr', TE: 'te', K: 'k', DEF: 'def',
+    DL: 'dl', LB: 'lb', DB: 'db', S: 's',
+  }
+  const need = {}
+  for (const [family, key] of Object.entries(SLOT_KEY_BY_FAMILY)) {
+    need[family] = Math.max(0, (rosterSlots[key] || 0) - (have[family] || 0))
+  }
+  const totalNeed = Object.values(need).reduce((sum, n) => sum + n, 0)
+  const mustFillStarters = totalNeed > 0 && roundsRemaining <= totalNeed
+
+  // Does this player fill one of the still-empty required slots? Raw NFL
+  // codes are normalized to slot families first (DE -> DL, CB -> DB), and
+  // it's split-aware so a two-way "WR/DB" can satisfy either.
+  function fillsNeed(pos) {
+    return String(pos || '').split('/').map((p) => p.trim()).filter(Boolean)
+      .some((p) => (need[normalizeSinglePosition(p)] || 0) > 0)
+  }
 
   // Helper: is this position still eligible for this user?
   // Split-aware: a two-way player is eligible if ANY of his positions has
@@ -1655,7 +1680,7 @@ export async function autoDraftPick(leagueId, userId) {
     return parts.some((p) => {
       if ((have[p] || 0) >= (maxByPos[p] || 0)) return false
       // Delay K/DEF unless forced (mock-draft logic: no K/DEF before final rounds)
-      if (!kdefForced && (p === 'K' || p === 'DEF') && roundNum < 11) return false
+      if (!mustFillStarters && (p === 'K' || p === 'DEF') && roundNum < 11) return false
       return true
     })
   }
@@ -1684,8 +1709,11 @@ export async function autoDraftPick(leagueId, userId) {
       // Draft Prep boards span every format), so they routinely contain
       // players this particular league has no slot for.
       if (!inLeaguePool(pos)) continue
-      if (kdefForced) {
-        if ((needK > 0 && pos === 'K') || (needD > 0 && pos === 'DEF')) return id
+      if (mustFillStarters) {
+        // Still honours the user's ORDER — it walks the queue, then the
+        // rankings, and takes the first entry that fills a hole. It only
+        // skips players who would leave a starting slot empty.
+        if (fillsNeed(pos)) return id
         continue
       }
       if (isEligible(pos)) return id
@@ -1742,10 +1770,17 @@ export async function autoDraftPick(leagueId, userId) {
     let positionFilter = hasIdpSlots
       ? ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', ...IDP_RAW]
       : ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
-    if (kdefForced) {
-      positionFilter = []
-      if (needK > 0) positionFilter.push('K')
-      if (needD > 0) positionFilter.push('DEF')
+    if (mustFillStarters) {
+      // Narrow to the raw NFL codes that roll up to a still-unfilled slot
+      // family, so the query itself can't return a player who doesn't help.
+      const RAW_BY_FAMILY = {
+        QB: ['QB'], RB: ['RB'], WR: ['WR'], TE: ['TE'], K: ['K'], DEF: ['DEF'],
+        DL: ['DE', 'DT', 'NT', 'DL'], LB: ['LB', 'ILB', 'OLB', 'MLB'],
+        DB: ['CB', 'DB'], S: ['S', 'FS', 'SS'],
+      }
+      positionFilter = Object.keys(need)
+        .filter((family) => need[family] > 0)
+        .flatMap((family) => RAW_BY_FAMILY[family] || [])
     }
     // No .limit(): matches searchAvailablePlayers/getAdpList depth so a
     // late-round autopick in a deep league never falls off the end of a
@@ -1768,7 +1803,7 @@ export async function autoDraftPick(leagueId, userId) {
     )
     for (const p of bestAvailable || []) {
       if (drafted.has(p.id)) continue
-      if (!kdefForced && !isEligible(p.position)) continue
+      if (!mustFillStarters && !isEligible(p.position)) continue
       pickId = p.id
       break
     }
