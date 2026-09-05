@@ -1571,15 +1571,25 @@ export async function autoDraftPick(leagueId, userId) {
 
   const { data: userPickRows } = await supabase
     .from('fantasy_draft_picks')
-    .select('nfl_players(position)')
+    .select('nfl_players(full_name, position, team)')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
     .not('player_id', 'is', null)
 
+  // Overrides matter here too, or autopick counts a roster differently
+  // than every other surface. searchAvailablePlayers, getRoster and both
+  // setLineup paths already overlay them; this was the one that didn't,
+  // so an overridden player counted toward the wrong position cap.
+  const autoOverrideMap = await loadNflPositionOverrides()
   const have = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DEF: 0, DL: 0, LB: 0, DB: 0, S: 0 }
   for (const p of userPickRows || []) {
-    const pos = p.nfl_players?.position
-    if (pos && have[pos] != null) have[pos] += 1
+    const row = p.nfl_players
+    if (!row) continue
+    applyNflPositionOverride(row, autoOverrideMap)
+    // Count a two-way player against the first slot family he fits.
+    for (const part of String(row.position || '').split('/').map((x) => x.trim())) {
+      if (part && have[part] != null) { have[part] += 1; break }
+    }
   }
   const userPicksMade = userPickRows?.length || 0
   const roundsRemaining = totalRounds - userPicksMade
@@ -1633,13 +1643,21 @@ export async function autoDraftPick(leagueId, userId) {
   const kdefForced = roundsRemaining <= (needK + needD) && (needK > 0 || needD > 0)
 
   // Helper: is this position still eligible for this user?
+  // Split-aware: a two-way player is eligible if ANY of his positions has
+  // room. Travis Hunter overrides to "WR/DB" — matching on the whole
+  // string found no cap entry and silently rejected him, so autopick would
+  // never take a player the drafters can see and select by hand.
   function isEligible(pos) {
     if (!pos) return true
-    if ((have[pos] || 0) >= (maxByPos[pos] || 0)) return false
-    // Delay K/DEF unless forced (mock-draft logic: no K/DEF before final rounds)
+    const parts = String(pos).split('/').map((p) => p.trim()).filter(Boolean)
+    if (!parts.length) return true
     const roundNum = userPicksMade + 1
-    if (!kdefForced && (pos === 'K' || pos === 'DEF') && roundNum < 11) return false
-    return true
+    return parts.some((p) => {
+      if ((have[p] || 0) >= (maxByPos[p] || 0)) return false
+      // Delay K/DEF unless forced (mock-draft logic: no K/DEF before final rounds)
+      if (!kdefForced && (p === 'K' || p === 'DEF') && roundNum < 11) return false
+      return true
+    })
   }
 
   // Given a list of candidate player IDs, filter to eligible ones by
@@ -1651,10 +1669,13 @@ export async function autoDraftPick(leagueId, userId) {
     // Fetch positions for the candidates. Preserve the input order.
     const { data: rows } = await supabase
       .from('nfl_players')
-      .select('id, position')
+      .select('id, full_name, position, team')
       .in('id', undrafted)
     const posById = {}
-    for (const r of rows || []) posById[r.id] = r.position
+    for (const r of rows || []) {
+      applyNflPositionOverride(r, autoOverrideMap)
+      posById[r.id] = r.position
+    }
     // If K/DEF is forced, only return K or DEF candidates.
     for (const id of undrafted) {
       const pos = posById[id]
@@ -3427,12 +3448,18 @@ async function loadNflPositionOverrides() {
   // an override on "Byron Young" hit both the Rams LB and the Eagles DL —
   // and an override on the Browns' Justin Jefferson would have rewritten
   // the Vikings receiver.
-  const map = { byNameTeam: {}, byName: {} }
+  const map = { byNameTeam: {}, byName: {}, names: [] }
+  const seen = new Set()
   for (const o of data || []) {
     if (!o.player_name || !o.position) continue
     const name = o.player_name.toLowerCase()
     if (o.team) map.byNameTeam[`${name}|${o.team.toLowerCase()}`] = o.position
     else map.byName[name] = o.position
+    // Original casing, for looking these players up in nfl_players. An
+    // override may reclassify someone INTO the pool whose raw position
+    // would have excluded them from the position-filtered queries — see
+    // the override-players fetch in searchAvailablePlayers.
+    if (!seen.has(o.player_name)) { seen.add(o.player_name); map.names.push(o.player_name) }
   }
   return map
 }
@@ -3635,17 +3662,42 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
       ...idpRows,
     ]
   })
-  // Shallow-copy every row before touching it. applyNflPositionOverride
-  // mutates .position in place, and these objects are shared by every
-  // concurrent caller — writing through to the cache would strand an old
-  // override on the cached row after an admin deletes it.
-  const allPlayers = poolRows.map((p) => ({ ...p }))
-  const error = null
-
   // Overlay admin position overrides before anything downstream reads
   // .position — including the IDP family split, per-position rank
   // counter, filter matching, and the returned player rows.
   const overrideMap = await cached('nflPositionOverrides', OVERRIDES_TTL_MS, () => loadNflPositionOverrides())
+
+  // Pull in players an override reclassifies INTO the pool. The queries
+  // above filter on the RAW position, so a two-way player is dropped
+  // before the override can ever apply: Travis Hunter is listed DB by
+  // Sleeper but is a fantasy WR, and was invisible in every league —
+  // searching "hunter" in the draft room returned only Hunter Henry.
+  // Overrides are a handful of rows, so this stays a cheap lookup.
+  const overrideRows = overrideMap.names.length
+    ? await cached(
+        `nflOverridePlayers:${overrideMap.names.join(',')}`,
+        PLAYER_POOL_TTL_MS,
+        () => fetchAll(
+          supabase
+            .from('nfl_players')
+            .select(PLAYER_SELECT)
+            .in('full_name', overrideMap.names)
+            .not('team', 'is', null)
+            .order('id', { ascending: true })
+        )
+      )
+    : []
+
+  // Shallow-copy every row before touching it. applyNflPositionOverride
+  // mutates .position in place, and these objects are shared by every
+  // concurrent caller — writing through to the cache would strand an old
+  // override on the cached row after an admin deletes it.
+  const poolIds = new Set(poolRows.map((p) => p.id))
+  const allPlayers = [
+    ...poolRows,
+    ...overrideRows.filter((p) => !poolIds.has(p.id)),
+  ].map((p) => ({ ...p }))
+  const error = null
   for (const p of allPlayers) applyNflPositionOverride(p, overrideMap)
 
   // YTD aggregate stats for browse + sorting.
@@ -3830,13 +3882,23 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   const inFamily = (pos, family) => positionParts(pos).some((p) => normalizeSinglePosition(p) === family)
 
   // IDP leagues drop team DEF entirely; team-DEF leagues drop IDPs.
+  // Two-way players belong to offense. Requiring !isIdpPlayer here dropped
+  // them out of BOTH slices: a "WR/DB" has an IDP part so offense rejected
+  // him, and the IDP slice is empty in a team-DEF league. Travis Hunter
+  // (Sleeper lists him DB; he's a fantasy WR) was therefore invisible in
+  // every non-IDP league — searching "hunter" returned only Hunter Henry.
+  // Offense wins the tie so he's listed exactly once, and the split-aware
+  // slot-eligibility check still lets an IDP league start him at DB.
   const offenseSlice = availableAll
-    .filter((p) => isOffensePlayer(p.position) && !isIdpPlayer(p.position))
+    .filter((p) => isOffensePlayer(p.position))
     .sort(sortFn)
     .slice(0, 400)
   const kickerSlice = availableAll.filter((p) => p.position === 'K').sort(sortFn)
   const defSlice = hasIdp ? [] : availableAll.filter((p) => p.position === 'DEF').sort(sortFn)
-  const idpSlice = hasIdp ? availableAll.filter((p) => isIdpPlayer(p.position)).sort(sortFn) : []
+  // ...and are excluded here so they aren't returned twice in an IDP league.
+  const idpSlice = hasIdp
+    ? availableAll.filter((p) => isIdpPlayer(p.position) && !isOffensePlayer(p.position)).sort(sortFn)
+    : []
   const ranked = [...offenseSlice, ...kickerSlice, ...defSlice, ...idpSlice]
 
   // Per-position rank from the same sort. Dual-eligible players count
