@@ -3920,7 +3920,16 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   // Apply user filters AFTER ranks are assigned. For IDP families and
   // 'DEF' match any-part; for offense positions (QB/RB/WR/TE/K) also
   // any-part so an override like 'RB/WR' would appear in both filters.
-  let filtered = ranked
+  // A name search runs against the FULL undrafted pool, not the browsable
+  // slice. `ranked` caps offense at the top 400, which in a 14-team,
+  // 18-round league leaves ~396 undrafted players — Ty Johnson, Elijah
+  // Moore, Darius Slayton and other genuinely rosterable names — that no
+  // amount of typing could reach, because the search filtered a list they
+  // had already been cut from. The cap is right for browsing; it should
+  // never bound what you can look up by name. Ranks were assigned above
+  // off `ranked`, so a deep hit carries a null pos_rank rather than a
+  // wrong one.
+  let filtered = query ? availableAll.sort(sortFn) : ranked
   if (position) {
     if (IDP_FAMILIES.has(position)) {
       filtered = filtered.filter((p) => inFamily(p.position, position))
