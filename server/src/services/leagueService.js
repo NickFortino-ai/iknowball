@@ -1575,6 +1575,45 @@ export async function leaveLeague(leagueId, userId) {
     throw err
   }
 
+  // Same draft-state rule as removeMember, and this side matters more: any
+  // member can hit "Leave League" at any time. Walking out mid-draft left
+  // their pick slots behind, so the draft stalled on their turn with
+  // autopick trying to draft for someone no longer in the league. After the
+  // draft it would strand their roster and matchups instead.
+  const { data: fantasy, error: fantasyError } = await supabase
+    .from('fantasy_settings')
+    .select('draft_status')
+    .eq('league_id', leagueId)
+    .maybeSingle()
+  throwIfInfra(fantasyError)
+
+  if (fantasy && fantasy.draft_status && fantasy.draft_status !== 'pending') {
+    const err = new Error('You can\'t leave a fantasy league once the draft has started. Ask your commissioner.')
+    err.status = 400
+    throw err
+  }
+
+  // Clear league-scoped data before dropping the membership so nothing is
+  // left pointing at a league this user is no longer in.
+  for (const table of ['fantasy_draft_queues', 'fantasy_user_rankings', 'fantasy_rosters']) {
+    const { error: cleanupError } = await supabase
+      .from(table)
+      .delete()
+      .eq('league_id', leagueId)
+      .eq('user_id', userId)
+    throwIfInfra(cleanupError)
+  }
+
+  // The snake order is built around a fixed manager count, so it has to be
+  // rebuilt without them. Self-healing: autoInitializeDraftOrder recreates
+  // it at T-60min and processScheduledDraftStarts at start time, both keyed
+  // off a zero pick count.
+  const { error: picksError } = await supabase
+    .from('fantasy_draft_picks')
+    .delete()
+    .eq('league_id', leagueId)
+  throwIfInfra(picksError)
+
   const { error } = await supabase
     .from('league_members')
     .delete()
@@ -1602,6 +1641,52 @@ export async function removeMember(leagueId, commissionerId, targetUserId) {
     err.status = 400
     throw err
   }
+
+  // Fantasy leagues: only before the draft. Removing a manager mid-draft
+  // strands the pick slots already assigned to them — the draft would stall
+  // on their turn and autopick would try to draft for someone who is no
+  // longer in the league.
+  const { data: fantasy, error: fantasyError } = await supabase
+    .from('fantasy_settings')
+    .select('draft_status')
+    .eq('league_id', leagueId)
+    .maybeSingle()
+  throwIfInfra(fantasyError)
+
+  if (fantasy && fantasy.draft_status && fantasy.draft_status !== 'pending') {
+    const err = new Error(
+      fantasy.draft_status === 'completed'
+        ? 'The draft is complete — managers can no longer be removed.'
+        : 'The draft has started. Pause and reset it before removing a manager.',
+    )
+    err.status = 400
+    throw err
+  }
+
+  // Clear this manager's league-scoped data before dropping the membership,
+  // so nothing is left pointing at a non-member. Each table is independent;
+  // a league without fantasy simply has nothing to delete.
+  for (const table of ['fantasy_draft_queues', 'fantasy_user_rankings', 'fantasy_rosters']) {
+    const { error: cleanupError } = await supabase
+      .from(table)
+      .delete()
+      .eq('league_id', leagueId)
+      .eq('user_id', targetUserId)
+    // Don't fail the removal if one of these tables isn't part of this
+    // league's format — but do surface a genuine outage.
+    throwIfInfra(cleanupError)
+  }
+
+  // Drop the whole draft order, not just their slots. A snake order is
+  // built around a fixed manager count, so removing one invalidates every
+  // later round. autoInitializeDraftOrder rebuilds it at T-60min, and
+  // processScheduledDraftStarts rebuilds it at start time if that missed —
+  // both trigger on a zero pick count, so this is self-healing.
+  const { error: picksError } = await supabase
+    .from('fantasy_draft_picks')
+    .delete()
+    .eq('league_id', leagueId)
+  throwIfInfra(picksError)
 
   const { error } = await supabase
     .from('league_members')

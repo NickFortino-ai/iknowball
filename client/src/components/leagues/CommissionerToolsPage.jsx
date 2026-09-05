@@ -3,7 +3,8 @@ import Avatar from '../ui/Avatar'
 import ForceLineupModal from './ForceLineupModal'
 import CommissionerAddDropModal from './CommissionerAddDropModal'
 import ReportProblemSection from './ReportProblemSection'
-import { useMyReports, useMarkMyReportsRead } from '../../hooks/useLeagues'
+import { useMyReports, useMarkMyReportsRead, useFantasySettings, useLeaveLeague } from '../../hooks/useLeagues'
+import { toast } from '../ui/Toast'
 
 /**
  * Full-tab Commissioner Tools page. Rendered when the "Commish" tab is
@@ -21,8 +22,18 @@ export default function CommissionerToolsPage({ league, onOpenSettings }) {
   const [openTool, setOpenTool] = useState(null) // 'force_lineup' | 'add_drop' | 'report_problem' | null
   const [forceLineupTarget, setForceLineupTarget] = useState(null) // { userId, name } | null
   const [addDropTarget, setAddDropTarget] = useState(null) // { userId, name } | null
+  const [removeTarget, setRemoveTarget] = useState(null) // { userId, name } | null
 
   const members = (league.members || []).filter((m) => m.user_id !== league.commissioner_id)
+
+  // Removing a manager is only offered before the draft. Once picks exist,
+  // the snake order is built around a fixed manager count and pulling
+  // someone out strands every slot already assigned to them — the server
+  // rejects it too, this just avoids showing an action that can't succeed.
+  const { data: fantasySettings } = useFantasySettings(league.id)
+  const draftStatus = fantasySettings?.draft_status
+  const canRemoveManagers = !draftStatus || draftStatus === 'pending'
+  const removeMember = useLeaveLeague()
 
   // Surface how many admin replies are waiting on the tool card so the
   // commissioner sees the signal without having to enter the tool.
@@ -66,14 +77,55 @@ export default function CommissionerToolsPage({ league, onOpenSettings }) {
           </div>
           <ReportProblemSection league={league} embedded={true} onEmbeddedBack={() => setOpenTool(null)} />
         </div>
-      ) : openTool === 'force_lineup' || openTool === 'add_drop' ? (
+      ) : removeTarget ? (
+        // Inline confirmation rather than a modal — this is destructive and
+        // deliberately not a one-tap action.
+        <div className="space-y-3">
+          <div className="rounded-xl border border-incorrect/40 bg-bg-primary p-4">
+            <div className="font-display text-lg text-text-primary">Remove {removeTarget.name}?</div>
+            <p className="text-sm text-text-primary/80 mt-2">
+              They'll be dropped from the league and lose any queue or rankings they've set here.
+              The draft order will be rebuilt without them before the draft starts.
+            </p>
+            <p className="text-xs text-text-muted mt-2">They can rejoin if the league is open, so lock it in settings first if that's the point.</p>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => setRemoveTarget(null)}
+                className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold border border-text-primary/20 text-text-primary hover:bg-text-primary/5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={removeMember.isPending}
+                onClick={async () => {
+                  try {
+                    await removeMember.mutateAsync({ leagueId: league.id, userId: removeTarget.userId })
+                    toast(`${removeTarget.name} removed from the league`, 'success')
+                    setRemoveTarget(null)
+                  } catch (err) {
+                    toast(err.message || 'Failed to remove manager', 'error')
+                  }
+                }}
+                className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold bg-incorrect text-white hover:bg-incorrect/80 transition-colors disabled:opacity-50"
+              >
+                {removeMember.isPending ? 'Removing...' : 'Remove manager'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : openTool === 'force_lineup' || openTool === 'add_drop' || openTool === 'remove_member' ? (
         <ManagerPicker
           members={members}
-          promptText={openTool === 'force_lineup' ? 'Pick a manager to force' : 'Pick a manager to add/drop for'}
+          promptText={
+            openTool === 'force_lineup' ? 'Pick a manager to force'
+              : openTool === 'remove_member' ? 'Pick a manager to remove'
+                : 'Pick a manager to add/drop for'
+          }
           onBack={() => setOpenTool(null)}
           onPick={(target) => {
             if (openTool === 'force_lineup') setForceLineupTarget(target)
             else if (openTool === 'add_drop') setAddDropTarget(target)
+            else if (openTool === 'remove_member') setRemoveTarget(target)
             setOpenTool(null)
           }}
         />
@@ -97,6 +149,17 @@ export default function CommissionerToolsPage({ league, onOpenSettings }) {
             title="Add/drop for a manager"
             description="Execute a roster move on someone's behalf — add a free agent, drop a rostered player."
             onClick={() => setOpenTool('add_drop')}
+          />
+          <ToolCard
+            icon="🚪"
+            title="Remove a manager"
+            description={canRemoveManagers
+              ? 'Drop someone from the league before the draft — for anyone who joined by mistake or is no longer playing.'
+              : draftStatus === 'completed'
+                ? 'Unavailable — the draft is complete.'
+                : 'Unavailable once the draft has started.'}
+            disabled={!canRemoveManagers || members.length === 0}
+            onClick={() => setOpenTool('remove_member')}
           />
           <ToolCard
             icon="⚙️"
