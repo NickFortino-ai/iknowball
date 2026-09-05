@@ -1,4 +1,13 @@
-import admin from 'firebase-admin'
+// Modular imports, NOT the `import admin from 'firebase-admin'` namespace.
+// firebase-admin v14 (what package.json pins and the lockfile installs)
+// dropped `credential` and `messaging` from the default export, so
+// `admin.credential.cert(...)` threw "Cannot read properties of undefined
+// (reading 'cert')" on every single notification and `admin.messaging(app)`
+// would have thrown next. Android push was dead from the day it shipped;
+// it was misdiagnosed for two months as a malformed env var, but the JSON
+// parses fine — the namespace was the problem.
+import { initializeApp, cert, getApps } from 'firebase-admin/app'
+import { getMessaging } from 'firebase-admin/messaging'
 import { supabase } from '../config/supabase.js'
 import { env } from '../config/env.js'
 import { logger } from '../utils/logger.js'
@@ -16,9 +25,10 @@ function getFcm() {
   }
   try {
     const serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT_JSON)
-    fcmApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    })
+    // Reuse an existing named app if one is already registered — otherwise
+    // a second initializeApp() with the same name throws.
+    const existing = getApps().find((a) => a.name === 'ikb-fcm')
+    fcmApp = existing || initializeApp({ credential: cert(serviceAccount) }, 'ikb-fcm')
     logger.info({ projectId: serviceAccount.project_id, clientEmail: serviceAccount.client_email }, 'FCM admin initialized')
     return fcmApp
   } catch (err) {
@@ -78,7 +88,7 @@ export async function sendFcmToUser(userId, title, body, url) {
 
   let result
   try {
-    result = await admin.messaging(app).sendEachForMulticast(message)
+    result = await getMessaging(app).sendEachForMulticast(message)
   } catch (err) {
     logger.error({ err: err.message, userId }, 'FCM send threw')
     return
