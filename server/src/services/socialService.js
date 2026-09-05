@@ -197,16 +197,46 @@ export async function getReactionsForPick(pickId) {
   return Object.values(grouped)
 }
 
+// PostgREST puts .in() values in the QUERY STRING, so a long id list
+// becomes a very long URL. At ~500 pick ids that URL hit 19,314 characters
+// and undici rejected the request outright with UND_ERR_HEADERS_OVERFLOW
+// ("HTTP headers exceeded server limits (typically 16KB)"), so the whole
+// batch failed and no reactions rendered on the feed.
+//
+// The POST route above already solved this for the CLIENT -> server hop.
+// This is the server -> PostgREST hop, which .in() rebuilds as a URL
+// regardless of how the ids arrived. 100 uuids is ~3.7 KB of query string,
+// comfortably inside the limit with room for the rest of the request.
+const REACTION_ID_CHUNK = 100
+
 export async function getReactionsForPicks(pickIds) {
   if (!pickIds.length) return {}
 
-  const { data, error } = await supabase
-    .from('feed_reactions')
-    .select('target_id, reaction_type, user_id, users(username)')
-    .eq('target_type', 'pick')
-    .in('target_id', pickIds)
+  // De-dupe BEFORE chunking. A single .in() collapses repeated ids in SQL,
+  // but a duplicate split across two chunks returns the same reaction row
+  // twice and double-counts it — verified turning a count of 1 into 2 with
+  // the same user listed twice. Callers do pass repeats (the same pick can
+  // appear more than once in a feed payload).
+  const uniqueIds = [...new Set(pickIds)]
 
-  if (error) throw error
+  const chunks = []
+  for (let i = 0; i < uniqueIds.length; i += REACTION_ID_CHUNK) {
+    chunks.push(uniqueIds.slice(i, i + REACTION_ID_CHUNK))
+  }
+
+  const responses = await Promise.all(chunks.map((chunk) =>
+    supabase
+      .from('feed_reactions')
+      .select('target_id, reaction_type, user_id, users(username)')
+      .eq('target_type', 'pick')
+      .in('target_id', chunk)
+  ))
+
+  const data = []
+  for (const res of responses) {
+    if (res.error) throw res.error
+    data.push(...(res.data || []))
+  }
 
   const result = {}
   for (const row of data || []) {
