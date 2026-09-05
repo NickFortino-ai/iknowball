@@ -203,7 +203,11 @@ export default function FantasyDraftRoom({ league }) {
 
   const { data: availablePlayers } = useAvailablePlayers(
     league.id,
-    searchQuery || undefined,
+    // Don't search on a single character. Every keystroke is its own
+    // request (each query string is a distinct React Query key), and a
+    // one-letter query matches hundreds of players — the heaviest response
+    // the endpoint can produce, fired first, on every search anyone types.
+    searchQuery.trim().length >= 2 ? searchQuery : undefined,
     posFilter !== 'All' ? posFilter : undefined
   )
 
@@ -1425,7 +1429,8 @@ function PreDraftBrowser({ leagueId }) {
   const { data: settings } = useFantasySettings(leagueId)
   const { data: availablePlayers } = useAvailablePlayers(
     leagueId,
-    searchQuery || undefined,
+    // Same one-character guard as the live draft room above.
+    searchQuery.trim().length >= 2 ? searchQuery : undefined,
     posFilter !== 'All' ? posFilter : undefined,
   )
   const { data: queue } = useDraftQueue(leagueId)

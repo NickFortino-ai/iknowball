@@ -3491,6 +3491,9 @@ const SEASON_STATS_TTL_MS = 10 * 60 * 1000
 const WEEKLY_PROJ_TTL_MS = 5 * 60 * 1000
 const OVERRIDES_TTL_MS = 5 * 60 * 1000
 const NFL_WEEK_TTL_MS = 5 * 60 * 1000
+// Ceiling on name-search results. Keeps a one-character query from
+// out-weighing a full board browse.
+const SEARCH_RESULT_CAP = 150
 
 /**
  * getCurrentNflWeek() behind the memo cache. The answer is global and
@@ -3940,12 +3943,27 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   if (query) {
     const q = query.toLowerCase()
     filtered = filtered.filter((p) => p.full_name?.toLowerCase().includes(q))
+    // Bound the worst case. Searching the full pool is what makes deep
+    // players reachable, but the client fires a request per keystroke with
+    // no minimum length, so the first character of any name matches
+    // hundreds: "a" returned 653 players / 709 KB, heavier than browsing
+    // the whole board. Results are already in sort order, so the best
+    // matches survive the cut and nobody scrolls past 150 to find a name
+    // they are actively typing.
+    if (filtered.length > SEARCH_RESULT_CAP) filtered = filtered.slice(0, SEARCH_RESULT_CAP)
   }
 
   return filtered.map((p) => {
     const s = p._stats || {}
+    // Strip the internal sort scratch. `_stats` was being spread into the
+    // response alongside the formatted `stats` object below — the same
+    // numbers twice, 149 KB of the 522 KB body, ~29% of every payload
+    // fourteen drafters pull on every refresh. `_adp` is likewise internal
+    // (overall_rank / adp_rank already expose the ranking). Nothing in the
+    // client reads either.
+    const { _stats, _adp, ...rest } = p
     return {
-      ...p,
+      ...rest,
       // Roll up granular NFL codes (DE/DT/NT → DL, ILB/OLB/MLB → LB,
       // CB → DB, FS/SS → S) so the UI shows the fantasy-slot family
       // name that matches roster slots, filter tabs, and stat lines.
@@ -3972,20 +3990,26 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
         fum_lost: s.fum_lost || 0,
         fgm: s.fgm || 0,
         xpm: s.xpm || 0,
-        def_sack: Math.round((s.def_sack || 0) * 10) / 10,
-        def_int: s.def_int || 0,
-        def_fum_rec: s.def_fum_rec || 0,
-        def_td: s.def_td || 0,
-        def_safety: s.def_safety || 0,
-        def_pts_allowed: s.def_pts_allowed || 0,
-        idp_tkl_solo: Math.round((s.idp_tkl_solo || 0) * 10) / 10,
-        idp_tkl_ast: Math.round((s.idp_tkl_ast || 0) * 10) / 10,
-        idp_tkl_loss: Math.round((s.idp_tkl_loss || 0) * 10) / 10,
-        idp_sack: Math.round((s.idp_sack || 0) * 10) / 10,
-        idp_int: s.idp_int || 0,
-        idp_pass_def: s.idp_pass_def || 0,
-        idp_ff: s.idp_ff || 0,
-        idp_fum_rec: s.idp_fum_rec || 0,
+        // Only one of these families can apply: an IDP league drops team
+        // DEF entirely, a team-DEF league has no IDPs. Sending both meant
+        // 8 guaranteed-zero fields on all 470 players in every response.
+        ...(hasIdp ? {
+          idp_tkl_solo: Math.round((s.idp_tkl_solo || 0) * 10) / 10,
+          idp_tkl_ast: Math.round((s.idp_tkl_ast || 0) * 10) / 10,
+          idp_tkl_loss: Math.round((s.idp_tkl_loss || 0) * 10) / 10,
+          idp_sack: Math.round((s.idp_sack || 0) * 10) / 10,
+          idp_int: s.idp_int || 0,
+          idp_pass_def: s.idp_pass_def || 0,
+          idp_ff: s.idp_ff || 0,
+          idp_fum_rec: s.idp_fum_rec || 0,
+        } : {
+          def_sack: Math.round((s.def_sack || 0) * 10) / 10,
+          def_int: s.def_int || 0,
+          def_fum_rec: s.def_fum_rec || 0,
+          def_td: s.def_td || 0,
+          def_safety: s.def_safety || 0,
+          def_pts_allowed: s.def_pts_allowed || 0,
+        }),
       },
       on_waivers: waiverLockedSet.has(p.id),
       // Opponent / home-away for the current NFL week. Undefined when
