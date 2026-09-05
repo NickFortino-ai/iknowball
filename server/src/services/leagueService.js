@@ -4,6 +4,7 @@ import { createTournament, getBracketStandings } from './bracketService.js'
 import { getLeaguePickStandings } from './leaguePickService.js'
 import { toSportsDay } from '../utils/sportsDay.js'
 import { salaryCapEffectiveStart } from '../utils/salaryCapStart.js'
+import { throwIfInfra } from '../utils/dbError.js'
 
 /**
  * Check whether a league is still joinable based on its format and start date.
@@ -1138,13 +1139,16 @@ export async function getLeagueDetails(leagueId, userId) {
   // committing. The response carries an `is_member` flag the client uses
   // to gate write-action UI (picks, settings, thread) and surface a
   // prominent "Join League" CTA instead.
-  const { data: member } = await supabase
+  const { data: member, error: memberError } = await supabase
     .from('league_members')
     .select('role, auto_connect')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
     .maybeSingle()
 
+  // Guard before deriving membership: a failed lookup would otherwise
+  // silently demote a real member to a non-member and hide their league.
+  throwIfInfra(memberError)
   const isMember = !!member
 
   const { data: league, error } = await supabase
@@ -1153,6 +1157,7 @@ export async function getLeagueDetails(leagueId, userId) {
     .eq('id', leagueId)
     .single()
 
+  throwIfInfra(error)
   if (error || !league) {
     const err = new Error('League not found')
     err.status = 404
@@ -1332,12 +1337,13 @@ async function checkLeagueHasLockedPicks(leagueId, league) {
 }
 
 export async function updateLeague(leagueId, userId, data) {
-  const { data: league } = await supabase
+  const { data: league, error: leagueError } = await supabase
     .from('leagues')
     .select('commissioner_id, status, format, settings, starts_at')
     .eq('id', leagueId)
     .single()
 
+  throwIfInfra(leagueError)
   if (!league) {
     const err = new Error('League not found')
     err.status = 404
@@ -1528,13 +1534,18 @@ export async function updateLeague(leagueId, userId, data) {
 
 export async function getLeagueMembers(leagueId, userId) {
   // Verify membership
-  const { data: member } = await supabase
+  const { data: member, error: memberError } = await supabase
     .from('league_members')
     .select('id')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
     .single()
 
+  // A dropped connection must never be reported as "you're not a member" —
+  // that's what told 14 drafters they'd been removed from their own league
+  // when the pool emptied on 2026-09-04. PGRST116 (no rows) isn't an infra
+  // code, so a genuine non-member still falls through to the 403 below.
+  throwIfInfra(memberError)
   if (!member) {
     const err = new Error('You are not a member of this league')
     err.status = 403
@@ -1603,13 +1614,18 @@ export async function removeMember(leagueId, commissionerId, targetUserId) {
 
 export async function getLeagueWeeks(leagueId, userId) {
   // Verify membership
-  const { data: member } = await supabase
+  const { data: member, error: memberError } = await supabase
     .from('league_members')
     .select('id')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
     .single()
 
+  // A dropped connection must never be reported as "you're not a member" —
+  // that's what told 14 drafters they'd been removed from their own league
+  // when the pool emptied on 2026-09-04. PGRST116 (no rows) isn't an infra
+  // code, so a genuine non-member still falls through to the 403 below.
+  throwIfInfra(memberError)
   if (!member) {
     const err = new Error('You are not a member of this league')
     err.status = 403
@@ -1661,12 +1677,13 @@ export async function getLeagueWeeks(leagueId, userId) {
 }
 
 export async function getPickemStandings(leagueId) {
-  const { data: league } = await supabase
+  const { data: league, error: leagueError } = await supabase
     .from('leagues')
     .select('*')
     .eq('id', leagueId)
     .single()
 
+  throwIfInfra(leagueError)
   if (!league) {
     const err = new Error('League not found')
     err.status = 404
@@ -1795,12 +1812,13 @@ export async function getPickemStandings(leagueId) {
 }
 
 export async function selectPickemGames(leagueId, userId, weekId, gameIds) {
-  const { data: league } = await supabase
+  const { data: league, error: leagueError } = await supabase
     .from('leagues')
     .select('settings')
     .eq('id', leagueId)
     .single()
 
+  throwIfInfra(leagueError)
   if (!league) {
     const err = new Error('League not found')
     err.status = 404
@@ -1849,6 +1867,7 @@ export async function deleteLeague(leagueId, userId) {
     .eq('id', leagueId)
     .single()
 
+  throwIfInfra(fetchError)
   if (fetchError || !league) {
     const err = new Error('League not found')
     err.status = 404
@@ -1890,13 +1909,18 @@ export async function deleteLeague(leagueId, userId) {
 
 export async function getLeagueStandings(leagueId, userId) {
   // Verify membership
-  const { data: member } = await supabase
+  const { data: member, error: memberError } = await supabase
     .from('league_members')
     .select('id')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
     .single()
 
+  // A dropped connection must never be reported as "you're not a member" —
+  // that's what told 14 drafters they'd been removed from their own league
+  // when the pool emptied on 2026-09-04. PGRST116 (no rows) isn't an infra
+  // code, so a genuine non-member still falls through to the 403 below.
+  throwIfInfra(memberError)
   if (!member) {
     const err = new Error('You are not a member of this league')
     err.status = 403

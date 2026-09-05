@@ -18,6 +18,7 @@ import {
   getAllFeaturedProps,
 } from '../services/propService.js'
 import { getPlayerHeadshotUrl, refreshPlayerHeadshotCache } from '../services/espnService.js'
+import { invalidate, cacheStats } from '../utils/memoCache.js'
 import { supabase } from '../config/supabase.js'
 import {
   createTemplate,
@@ -1297,6 +1298,14 @@ router.post('/users/:id/writer', requireFullAdmin, async (req, res) => {
 // Player Position Overrides
 // ============================================
 
+// Cache visibility. During the Monday draft this answers "is the memo
+// cache actually working in production?" without redeploying to add a log
+// line — a populated nflSeasonStats key means the 6.8 MB season scan is
+// being served from memory rather than re-queried per user.
+router.get('/cache-stats', requireFullAdmin, async (req, res) => {
+  res.json(cacheStats())
+})
+
 router.get('/player-position-overrides', async (req, res) => {
   // Optional sport filter — the panel shows one sport at a time, so an
   // unfiltered list meant NBA overrides stayed on screen while NFL was
@@ -1336,6 +1345,10 @@ router.post('/player-position-overrides', async (req, res) => {
     .select()
     .single()
   if (error) throw error
+  // Draft/roster reads cache the override map for a few minutes; drop it
+  // now so a saved override shows up on the next request instead of when
+  // the TTL happens to lapse.
+  invalidate('nflPositionOverrides')
   res.status(201).json(data)
 })
 
@@ -1402,6 +1415,7 @@ router.delete('/player-position-overrides/:id', async (req, res) => {
     .delete()
     .eq('id', req.params.id)
   if (error) throw error
+  invalidate('nflPositionOverrides')
   res.status(204).end()
 })
 

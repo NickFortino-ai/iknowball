@@ -3,6 +3,8 @@ import { logger } from '../utils/logger.js'
 import { effectiveAdp as computeEffectiveAdp } from '../utils/effectiveAdp.js'
 import { getLeagueSyncInfo } from './draftPrepService.js'
 import { fetchAll } from '../utils/fetchAll.js'
+import { cached } from '../utils/memoCache.js'
+import { throwIfInfra } from '../utils/dbError.js'
 
 // =====================================================================
 // SCORING RULES
@@ -1093,7 +1095,7 @@ export async function makeDraftPick(leagueId, userId, playerId) {
   }
 
   // Get next pick
-  const { data: nextPick } = await supabase
+  const { data: nextPick, error: nextPickError } = await supabase
     .from('fantasy_draft_picks')
     .select('*')
     .eq('league_id', leagueId)
@@ -1102,6 +1104,11 @@ export async function makeDraftPick(leagueId, userId, playerId) {
     .limit(1)
     .single()
 
+  // Without this, a pool timeout here surfaces to the drafter as "No picks
+  // remaining" or "It is not your turn to pick" — both of which read as a
+  // draft-state bug rather than a transient server problem, and neither of
+  // which tells them to just try again. Seen live on 2026-09-04.
+  throwIfInfra(nextPickError)
   if (!nextPick) {
     const err = new Error('No picks remaining')
     err.status = 400
@@ -2123,23 +2130,63 @@ export async function setDraftQueue(leagueId, userId, playerIds) {
     err.status = 400
     throw err
   }
-  // Wipe existing
-  await supabase
-    .from('fantasy_draft_queues')
-    .delete()
-    .eq('league_id', leagueId)
-    .eq('user_id', userId)
+  // De-dupe while preserving order. A repeated id in one payload violates
+  // UNIQUE (league_id, user_id, player_id) and 500s the whole request.
+  const unique = [...new Set(playerIds)]
 
-  if (!playerIds.length) return { count: 0 }
+  if (!unique.length) {
+    const { error: wipeError } = await supabase
+      .from('fantasy_draft_queues')
+      .delete()
+      .eq('league_id', leagueId)
+      .eq('user_id', userId)
+    throwIfInfra(wipeError)
+    if (wipeError) throw wipeError
+    return { count: 0 }
+  }
 
-  const rows = playerIds.map((pid, i) => ({
+  const rows = unique.map((pid, i) => ({
     league_id: leagueId,
     user_id: userId,
     player_id: pid,
     rank: i,
   }))
-  const { error } = await supabase.from('fantasy_draft_queues').insert(rows)
+
+  // Upsert rather than wipe-then-insert. The old order was DELETE followed
+  // by INSERT, which is not atomic: two concurrent saves interleave as
+  // delete/delete/insert/insert and the second insert dies on the unique
+  // constraint. That is exactly what happened on 2026-09-04 — the same
+  // player queued three times inside 190ms, three unhandled 23505s, three
+  // 500s back to a drafter who was just reordering their queue.
+  // Upserting is idempotent, so identical concurrent saves both succeed.
+  const { error } = await supabase
+    .from('fantasy_draft_queues')
+    .upsert(rows, { onConflict: 'league_id,user_id,player_id' })
+  throwIfInfra(error)
   if (error) throw error
+
+  // Drop anything the user removed from the queue. Done after the upsert
+  // so a failure here leaves a superset (harmless — the autopicker skips
+  // drafted players) rather than an empty queue.
+  const { data: existing, error: readError } = await supabase
+    .from('fantasy_draft_queues')
+    .select('player_id')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+  throwIfInfra(readError)
+  const wanted = new Set(unique)
+  const stale = (existing || []).map((r) => r.player_id).filter((pid) => !wanted.has(pid))
+  if (stale.length) {
+    const { error: pruneError } = await supabase
+      .from('fantasy_draft_queues')
+      .delete()
+      .eq('league_id', leagueId)
+      .eq('user_id', userId)
+      .in('player_id', stale)
+    throwIfInfra(pruneError)
+    if (pruneError) throw pruneError
+  }
+
   return { count: rows.length }
 }
 
@@ -3374,6 +3421,28 @@ function applyNflPositionOverride(row, overrideMap) {
   return row
 }
 
+// TTLs for the static reads inside searchAvailablePlayers. All of this data
+// is identical across users and refreshes on a sync cadence measured in
+// hours, so the only thing a longer TTL costs is how quickly a Sleeper sync
+// becomes visible. Kept to minutes so nothing looks stuck during a draft.
+const PLAYER_POOL_TTL_MS = 10 * 60 * 1000
+const SEASON_STATS_TTL_MS = 10 * 60 * 1000
+const WEEKLY_PROJ_TTL_MS = 5 * 60 * 1000
+const OVERRIDES_TTL_MS = 5 * 60 * 1000
+const NFL_WEEK_TTL_MS = 5 * 60 * 1000
+
+/**
+ * getCurrentNflWeek() behind the memo cache. The answer is global and
+ * changes once a week; searchAvailablePlayers alone called it twice per
+ * request, each time re-importing the module and re-querying.
+ */
+async function cachedCurrentNflWeek() {
+  return cached('nflCurrentWeek', NFL_WEEK_TTL_MS, async () => {
+    const { getCurrentNflWeek } = await import('./tdPassService.js')
+    return getCurrentNflWeek()
+  })
+}
+
 export async function searchAvailablePlayers(leagueId, query, position = null, sort = null) {
   // Read league settings first — we need draft_status to decide whether to
   // exclude drafted-but-not-yet-rostered players (only meaningful during a
@@ -3487,51 +3556,62 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   // prunes to on-roster players (~1000 offensive, ~500 IDP). fetchAll
   // paginates past Supabase's silent 1000-row default so we never clip a
   // legitimate draftable in deep-league configs (20-team superflex, etc.).
-  const idpPromise = hasIdp
-    ? fetchAll(
+  // Cached: the draftable pool is the same for every user in every league
+  // and turns over on Sleeper's sync cadence, not per request. Before this
+  // was cached, 14 users in one draft room each ran these four queries on
+  // every poll and drained the Supabase connection pool (2026-09-04).
+  const poolRows = await cached(`nflPool:${hasIdp}`, PLAYER_POOL_TTL_MS, async () => {
+    const idpPromise = hasIdp
+      ? fetchAll(
+          supabase
+            .from('nfl_players')
+            .select(PLAYER_SELECT)
+            .in('position', ['DE', 'DT', 'NT', 'DL', 'LB', 'ILB', 'OLB', 'MLB', 'CB', 'S', 'FS', 'SS', 'DB'])
+            .not('team', 'is', null)
+            .order('search_rank', { ascending: true, nullsFirst: false })
+        )
+      : Promise.resolve([])
+    const [offensiveRows, kickerRes, defRes, idpRows] = await Promise.all([
+      fetchAll(
         supabase
           .from('nfl_players')
           .select(PLAYER_SELECT)
-          .in('position', ['DE', 'DT', 'NT', 'DL', 'LB', 'ILB', 'OLB', 'MLB', 'CB', 'S', 'FS', 'SS', 'DB'])
+          .in('position', ['QB', 'RB', 'WR', 'TE'])
           .not('team', 'is', null)
           .order('search_rank', { ascending: true, nullsFirst: false })
-      )
-    : Promise.resolve([])
-  const [offensiveRows, kickerRes, defRes, idpRows] = await Promise.all([
-    fetchAll(
+      ),
       supabase
         .from('nfl_players')
         .select(PLAYER_SELECT)
-        .in('position', ['QB', 'RB', 'WR', 'TE'])
-        .not('team', 'is', null)
-        .order('search_rank', { ascending: true, nullsFirst: false })
-    ),
-    supabase
-      .from('nfl_players')
-      .select(PLAYER_SELECT)
-      .eq('position', 'K')
-      .not('team', 'is', null),
-    supabase
-      .from('nfl_players')
-      .select(PLAYER_SELECT)
-      .eq('position', 'DEF')
-      .not('team', 'is', null),
-    idpPromise,
-  ])
-  if (kickerRes.error) throw kickerRes.error
-  if (defRes.error) throw defRes.error
-  const allPlayers = [
-    ...offensiveRows,
-    ...(kickerRes.data || []),
-    ...(defRes.data || []),
-    ...idpRows,
-  ]
+        .eq('position', 'K')
+        .not('team', 'is', null),
+      supabase
+        .from('nfl_players')
+        .select(PLAYER_SELECT)
+        .eq('position', 'DEF')
+        .not('team', 'is', null),
+      idpPromise,
+    ])
+    if (kickerRes.error) throw kickerRes.error
+    if (defRes.error) throw defRes.error
+    return [
+      ...offensiveRows,
+      ...(kickerRes.data || []),
+      ...(defRes.data || []),
+      ...idpRows,
+    ]
+  })
+  // Shallow-copy every row before touching it. applyNflPositionOverride
+  // mutates .position in place, and these objects are shared by every
+  // concurrent caller — writing through to the cache would strand an old
+  // override on the cached row after an admin deletes it.
+  const allPlayers = poolRows.map((p) => ({ ...p }))
   const error = null
 
   // Overlay admin position overrides before anything downstream reads
   // .position — including the IDP family split, per-position rank
   // counter, filter matching, and the returned player rows.
-  const overrideMap = await loadNflPositionOverrides()
+  const overrideMap = await cached('nflPositionOverrides', OVERRIDES_TTL_MS, () => loadNflPositionOverrides())
   for (const p of allPlayers) applyNflPositionOverride(p, overrideMap)
 
   // YTD aggregate stats for browse + sorting.
@@ -3547,12 +3627,21 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   // it multiplies against rules PLUS pass_att / rush_att / rec_tgt (used
   // for 2-pt-type inference and the DEF PA bracket guard).
   const leagueScoringRules = settings?.scoring_rules || buildScoringRulesFromPreset(scoringFormat)
-  const statRows = await fetchAll(
-    supabase
-      .from('nfl_player_stats')
-      .select(`player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_ff, idp_fum_rec, idp_qb_hit`)
-      .eq('season', statSeason)
-      .order('player_id')
+  // Cached, and by far the most important cache here. This is a full-season
+  // scan: 13,102 rows / 6.8 MB / 14 paginated round trips for 2025, with no
+  // player filter, re-run per user per poll. On 2026-09-04 fourteen drafters
+  // hitting it together exhausted Supabase's connection pool and took the
+  // whole app down (PGRST003 everywhere, users logged out). A completed
+  // season never changes, and the in-progress season only moves when the
+  // Sleeper sync lands, so a few minutes of staleness costs nothing.
+  const statRows = await cached(`nflSeasonStats:${statSeason}`, SEASON_STATS_TTL_MS, () =>
+    fetchAll(
+      supabase
+        .from('nfl_player_stats')
+        .select(`player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_ff, idp_fum_rec, idp_qb_hit`)
+        .eq('season', statSeason)
+        .order('player_id')
+    )
   )
   // statsByPlayer[id] = { pts, pass_yd, pass_td, ... }
   const statsByPlayer = {}
@@ -3608,8 +3697,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   let weeklyProjCol = 'pts_half_ppr'
   const weeklyRules = settings?.scoring_rules || buildScoringRulesFromPreset(scoringFormat)
   try {
-    const { getCurrentNflWeek } = await import('./tdPassService.js')
-    const { season: curSeason, week: curWeek } = await getCurrentNflWeek()
+    const { season: curSeason, week: curWeek } = await cachedCurrentNflWeek()
     if (curWeek && curSeason) {
       weeklyProjCol = scoringFormat === 'ppr' ? 'pts_ppr'
         : scoringFormat === 'standard' ? 'pts_std'
@@ -3618,13 +3706,19 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
       // Supabase's silent 1000-row cap — the tail of players was losing
       // its projection in the browser. Ordered by player_id so the
       // paginated scan is stable.
-      const projRows = await fetchAll(
-        supabase
-          .from('nfl_player_projections')
-          .select(`player_id, ${weeklyProjCol}, idp_sack, idp_int, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec`)
-          .eq('season', curSeason)
-          .eq('week', curWeek)
-          .order('player_id', { ascending: true })
+      // Cached per (season, week, column) — one week of projections is the
+      // same for everyone, and the column only varies by scoring format.
+      const projRows = await cached(
+        `nflWeeklyProj:${curSeason}:${curWeek}:${weeklyProjCol}`,
+        WEEKLY_PROJ_TTL_MS,
+        () => fetchAll(
+          supabase
+            .from('nfl_player_projections')
+            .select(`player_id, ${weeklyProjCol}, idp_sack, idp_int, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec`)
+            .eq('season', curSeason)
+            .eq('week', curWeek)
+            .order('player_id', { ascending: true })
+        )
       )
       for (const p of projRows || []) weeklyProjRowMap[p.player_id] = p
     }
@@ -3639,9 +3733,10 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   // out of season.
   let oppMap = new Map()
   try {
-    const { getCurrentNflWeek } = await import('./tdPassService.js')
-    const { season: curSeason, week: curWeek } = await getCurrentNflWeek()
-    oppMap = await getCurrentWeekMatchupMap(curSeason, curWeek)
+    const { season: curSeason, week: curWeek } = await cachedCurrentNflWeek()
+    // Cached: the week's matchup map is league-independent.
+    oppMap = await cached(`nflOppMap:${curSeason}:${curWeek}`, WEEKLY_PROJ_TTL_MS, () =>
+      getCurrentWeekMatchupMap(curSeason, curWeek))
   } catch (err) {
     logger.warn({ err }, 'Failed to load current-week opponent map for available players')
   }
