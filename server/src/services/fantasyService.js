@@ -1588,6 +1588,14 @@ export async function autoDraftPick(leagueId, userId) {
   // overflow + a small buffer for depth. Beyond this, autodraft won't
   // hoard a position it can't use.
   const flex = rosterSlots.flex || 0
+  // The +1 depth buffer must only apply when the league actually starts
+  // that position. Unconditionally, `(rosterSlots.dl || 0) + 1` evaluates
+  // to 1 in a league with ZERO defensive slots, which made every IDP look
+  // draftable to autopick. Travis Hunter is listed at DB and sits on all
+  // 14 John Madden Invitational boards, so an expired clock could have put
+  // a defensive back on a roster that has no defensive slot -- a player
+  // human drafters cannot even see in the pool.
+  const idpCap = (slots) => (slots > 0 ? slots + 1 : 0)
   const maxByPos = {
     QB: (rosterSlots.qb || 0) + 1 + (rosterSlots.superflex || 0),
     RB: (rosterSlots.rb || 0) + flex + 2,
@@ -1595,10 +1603,26 @@ export async function autoDraftPick(leagueId, userId) {
     TE: (rosterSlots.te || 0) + flex + 1,
     K: (rosterSlots.k || 0),
     DEF: (rosterSlots.def || 0),
-    DL: (rosterSlots.dl || 0) + 1,
-    LB: (rosterSlots.lb || 0) + 1,
-    DB: (rosterSlots.db || 0) + 1,
-    S: (rosterSlots.s || 0) + 1,
+    DL: idpCap(rosterSlots.dl || 0),
+    LB: idpCap(rosterSlots.lb || 0),
+    DB: idpCap(rosterSlots.db || 0),
+    S: idpCap(rosterSlots.s || 0),
+  }
+
+  // Belt-and-braces: mirror the pool searchAvailablePlayers builds, so
+  // autopick can never select someone the drafters can't see. The cap
+  // table above governs how MANY of a position a team may hold; this
+  // governs whether the position exists in this league at all.
+  const hasIdpSlots = (rosterSlots.lb || 0) + (rosterSlots.dl || 0)
+    + (rosterSlots.db || 0) + (rosterSlots.s || 0) > 0
+  const IDP_RAW = new Set(['DE', 'DT', 'NT', 'DL', 'LB', 'ILB', 'OLB', 'MLB', 'CB', 'S', 'FS', 'SS', 'DB'])
+  const OFFENSE_RAW = new Set(['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
+  // Split-aware, matching searchAvailablePlayers: an admin override like
+  // "LB/DL" counts as IDP on either part.
+  function inLeaguePool(pos) {
+    const parts = String(pos || '').split('/').map((p) => p.trim()).filter(Boolean)
+    if (!parts.length) return false
+    return parts.some((p) => (IDP_RAW.has(p) ? hasIdpSlots : OFFENSE_RAW.has(p)))
   }
 
   // K/DEF forcing: if remaining rounds equal or fewer than unfilled
@@ -1634,6 +1658,11 @@ export async function autoDraftPick(leagueId, userId) {
     // If K/DEF is forced, only return K or DEF candidates.
     for (const id of undrafted) {
       const pos = posById[id]
+      // A queued or highly-ranked player from outside this league's pool
+      // is skipped, not drafted. Boards are shared across leagues (and
+      // Draft Prep boards span every format), so they routinely contain
+      // players this particular league has no slot for.
+      if (!inLeaguePool(pos)) continue
       if (kdefForced) {
         if ((needK > 0 && pos === 'K') || (needD > 0 && pos === 'DEF')) return id
         continue
@@ -1686,7 +1715,12 @@ export async function autoDraftPick(leagueId, userId) {
   // 3. Fallback: best available by Sleeper search_rank (league-wide ADP).
   //    Filter positions server-side too when K/DEF is forced.
   if (!pickId) {
-    let positionFilter = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+    // IDP positions are included only when the league starts them —
+    // otherwise this fallback could never fill a DL/LB/DB/S slot in a
+    // league that has them.
+    let positionFilter = hasIdpSlots
+      ? ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', ...IDP_RAW]
+      : ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
     if (kdefForced) {
       positionFilter = []
       if (needK > 0) positionFilter.push('K')
