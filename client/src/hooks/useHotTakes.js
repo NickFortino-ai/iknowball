@@ -163,9 +163,13 @@ export function useBookmarkedHotTakes() {
   })
 }
 
-function resizeImage(file, maxWidth = 2400) {
+function resizeImage(file, maxWidth = 2400, quality = 0.92) {
   return new Promise((resolve, reject) => {
     const img = new Image()
+    const objectUrl = URL.createObjectURL(file)
+    const done = (fn) => (arg) => { URL.revokeObjectURL(objectUrl); fn(arg) }
+    const ok = done(resolve)
+    const fail = done(reject)
     img.onload = () => {
       let { width, height } = img
       // Only downscale if the source is actually wider than the cap. A
@@ -183,14 +187,43 @@ function resizeImage(file, maxWidth = 2400) {
       ctx.imageSmoothingQuality = 'high'
       ctx.drawImage(img, 0, 0, width, height)
       canvas.toBlob(
-        (blob) => (blob ? resolve(blob) : reject(new Error('Failed to compress image'))),
+        (blob) => (blob ? ok(blob) : fail(new Error('Failed to compress image'))),
         'image/webp',
-        0.92
+        quality
       )
     }
-    img.onerror = () => reject(new Error('Failed to load image'))
-    img.src = URL.createObjectURL(file)
+    img.onerror = () => fail(new Error('Failed to load image'))
+    img.src = objectUrl
   })
+}
+
+/**
+ * Shrink until it fits, rather than giving up after one attempt.
+ *
+ * The old path made a single pass at 2400px / 0.92 and, if that was still
+ * over the cap, told the user to "try a smaller file" — which for a photo
+ * straight off a phone is not advice they can act on. Reported after a
+ * league-thread upload failed mid-draft on 2026-09-05.
+ *
+ * Each step drops both dimensions and quality, so a stubborn image
+ * degrades gracefully instead of being refused. Returns the last attempt
+ * even if nothing fit, so the caller can decide.
+ */
+const COMPRESSION_STEPS = [
+  [2400, 0.92],
+  [2000, 0.85],
+  [1600, 0.80],
+  [1200, 0.75],
+  [900, 0.70],
+]
+
+async function compressToFit(file, maxBytes) {
+  let last = null
+  for (const [width, quality] of COMPRESSION_STEPS) {
+    last = await resizeImage(file, width, quality)
+    if (last.size <= maxBytes) return last
+  }
+  return last
 }
 
 export function useHotTakeImageUpload() {
@@ -219,17 +252,20 @@ export function useHotTakeImageUpload() {
     // disk becomes 15+ MB PNG via clipboard), so a hard reject is a bad
     // UX. resizeImage caps width at 2400 and re-encodes as WebP @ 0.92,
     // which keeps high-quality photos well under 5 MB.
+    const MAX_BYTES = 5 * 1024 * 1024
     let working = file
-    if (working.size > 5 * 1024 * 1024) {
+    if (working.size > MAX_BYTES) {
       try {
-        const blob = await resizeImage(working)
+        const blob = await compressToFit(working, MAX_BYTES)
         const baseName = (file.name || 'pasted').replace(/\.\w+$/, '')
         working = new File([blob], `${baseName}.webp`, { type: blob.type || 'image/webp' })
       } catch (err) {
         toast('Could not process this image. Try a different file.', 'error')
         return
       }
-      if (working.size > 5 * 1024 * 1024) {
+      // Only give up after every compression step has been tried. A photo
+      // from a phone will always fit well before the last one.
+      if (working.size > MAX_BYTES) {
         toast('Image is too large even after resizing. Try a smaller file.', 'error')
         return
       }
