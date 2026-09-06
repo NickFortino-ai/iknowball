@@ -47,7 +47,12 @@ function buildStarterSlots(rosterSlots) {
   for (let i = 1; i <= (slots.dl || 0); i++) result.push({ key: `dl${i}`, label: 'DL', positions: ['DE', 'DT', 'NT', 'DL'] })
   for (let i = 1; i <= (slots.lb || 0); i++) result.push({ key: `lb${i}`, label: 'LB', positions: ['LB', 'ILB', 'OLB', 'MLB'] })
   for (let i = 1; i <= (slots.db || 0); i++) result.push({ key: `db${i}`, label: 'DB', positions: ['CB', 'DB'] })
-  for (let i = 1; i <= (slots.s || 0); i++) result.push({ key: `s${i}`, label: 'S', positions: ['S', 'FS', 'SS'] })
+  // 'DB' included to match the server's starterPlan. Sleeper classifies
+  // virtually every defensive back as DB — the six S/FS/SS rows that exist
+  // are all retired — so without it an S slot accepts nobody and shows
+  // "Empty S" forever. The S slot is no longer offered on new leagues, but
+  // existing ones still have it and have to remain fillable.
+  for (let i = 1; i <= (slots.s || 0); i++) result.push({ key: `s${i}`, label: 'S', positions: ['S', 'FS', 'SS', 'DB'] })
   return result
 }
 
