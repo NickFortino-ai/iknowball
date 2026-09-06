@@ -113,11 +113,25 @@ router.get('/dashboard', requireFullAdmin, async (req, res) => {
   // tracking and adding it just for this metric isn't worth it; making
   // a pick is a stronger engagement signal than opening the app anyway).
   const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
+  // users.last_active_at is stamped by requireAuth, so this counts anyone
+  // who actually used the app — web and native, push permission or not.
+  //
+  // It used to count distinct user_ids in `picks`, which was written when
+  // game picks WERE the product. It missed fantasy drafts, DFS lineups,
+  // survivor picks, props and parlays entirely: on 2026-09-05, the day
+  // after a 14-person draft, it reported 3 while 19 people had been active.
+  const { count: dau } = await supabase
+    .from('users')
+    .select('id', { count: 'exact', head: true })
+    .gte('last_active_at', last24h)
+
+  // Kept alongside DAU: "made a pick" is a deeper engagement signal than
+  // "opened the app", and losing it would hide a real trend.
   const { data: dauPicks } = await supabase
     .from('picks')
     .select('user_id')
     .gte('created_at', last24h)
-  const dau = new Set((dauPicks || []).map((p) => p.user_id)).size
+  const dauPickers = new Set((dauPicks || []).map((p) => p.user_id)).size
 
   // 3. REVENUE — paid subscribers, MRR estimate
   const { data: paidUsers } = await supabase
@@ -181,6 +195,7 @@ router.get('/dashboard', requireFullAdmin, async (req, res) => {
     },
     engagement: {
       dau,
+      dauPickers,
     },
     revenue: {
       paidActive: paidActive.length,

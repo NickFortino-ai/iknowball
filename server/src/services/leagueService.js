@@ -1621,6 +1621,34 @@ export async function leaveLeague(leagueId, userId) {
     .eq('user_id', userId)
 
   if (error) throw error
+
+  // Tell the commissioner. Leaving was completely silent before, so a
+  // manager could walk the night before the draft and the commissioner
+  // would find out when the room came up a team short — with the draft
+  // order already built around the old count.
+  try {
+    const { data: leaver } = await supabase
+      .from('users')
+      .select('username, display_name')
+      .eq('id', userId)
+      .maybeSingle()
+    const { data: leagueRow } = await supabase
+      .from('leagues')
+      .select('name')
+      .eq('id', leagueId)
+      .maybeSingle()
+    const who = leaver?.display_name || leaver?.username || 'A manager'
+    const { createNotification } = await import('./notificationService.js')
+    await createNotification(
+      league.commissioner_id,
+      'league_member_left',
+      `${who} left ${leagueRow?.name || 'your league'}.`,
+      { leagueId },
+    )
+  } catch (err) {
+    // Never fail the departure over a notification.
+    logger.warn({ err, leagueId, userId }, 'Failed to notify commissioner of departure')
+  }
 }
 
 export async function removeMember(leagueId, commissionerId, targetUserId) {

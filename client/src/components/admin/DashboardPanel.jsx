@@ -165,8 +165,15 @@ export default function DashboardPanel() {
         />
         <MetricCard
           label="DAU"
-          value={engagement.dau.toLocaleString()}
-          sublabel="users active in last 24h"
+          value={(engagement.dau ?? 0).toLocaleString()}
+          // Now counts anyone who used the app (users.last_active_at, stamped
+          // on any authenticated request). It previously counted only users
+          // who made a game pick, which missed drafts, DFS, survivor, props
+          // and parlays — it read 3 the day after a 14-person draft.
+          // dauPickers keeps the old, deeper signal visible alongside it.
+          sublabel={engagement.dauPickers != null
+            ? `active in last 24h · ${engagement.dauPickers} made a pick`
+            : 'users active in last 24h'}
         />
         <MetricCard
           label="Paid subscribers"
