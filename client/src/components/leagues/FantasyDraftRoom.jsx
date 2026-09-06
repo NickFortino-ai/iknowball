@@ -1541,14 +1541,32 @@ function PreDraftBrowser({ leagueId }) {
           {(availablePlayers || []).slice(0, 60).map((player) => {
             const isQueued = queuedIds.has(player.id)
             return (
-              <button
+              // Row is a div, not a button: the star has to be its own
+              // button and nesting buttons is invalid. Matches the live
+              // draft room, which already had a row star — this list, the
+              // one you actually build a queue in before the draft, made
+              // you open each player's detail card just to queue them.
+              <div
                 key={player.id}
-                onClick={() => setDetailPlayerId(player.id)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-text-primary/10 last:border-0 hover:bg-accent/10 text-left transition-colors"
+                className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-text-primary/10 last:border-0 hover:bg-accent/10 transition-colors"
               >
                 <span className="w-7 text-center text-xs font-bold text-text-muted shrink-0">
                   {player.adp_rank || '—'}
                 </span>
+                <button
+                  onClick={() => toggleQueue(player.id)}
+                  className={`shrink-0 w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary transition-colors ${isQueued ? 'text-yellow-400' : 'text-text-muted hover:text-yellow-400'}`}
+                  title={isQueued ? 'Remove from queue' : 'Add to queue'}
+                  aria-label={isQueued ? `Remove ${player.full_name} from queue` : `Add ${player.full_name} to queue`}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill={isQueued ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setDetailPlayerId(player.id)}
+                  className="flex-1 flex items-center gap-3 text-left min-w-0"
+                >
                 {player.headshot_url && (
                   <img src={player.headshot_url} alt="" loading="lazy" className="w-9 h-9 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.visibility = 'hidden' }} />
                 )}
@@ -1561,10 +1579,11 @@ function PreDraftBrowser({ leagueId }) {
                     {player.team || 'FA'}{player.bye_week ? ` · Bye ${player.bye_week}` : ''}
                   </div>
                 </div>
+                </button>
                 {isQueued && (
-                  <span className="text-[10px] font-bold text-correct shrink-0">★ QUEUED</span>
+                  <span className="text-[10px] font-bold text-correct shrink-0">QUEUED</span>
                 )}
-              </button>
+              </div>
             )
           })}
           {!(availablePlayers || []).length && (
