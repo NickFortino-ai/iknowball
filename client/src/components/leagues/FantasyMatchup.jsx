@@ -226,7 +226,11 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               <span className="text-left">Proj</span>
               <span className="text-right">Player</span>
             </div>
-            {homeStarters.map((hp, i) => {
+            {/* Longer of the two, same reason as the bench below: these are
+                filtered rosters, so a team with an unfilled starter slot has
+                a shorter list and the opponent's extra starter would vanish. */}
+            {Array.from({ length: Math.max(homeStarters.length, awayStarters.length) }, (_, i) => {
+              const hp = homeStarters[i]
               const ap = awayStarters[i]
               const hStat = buildStatLine(hp?.stats, hp?.position)
               const aStat = buildStatLine(ap?.stats, ap?.position)
@@ -302,7 +306,13 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 </svg>
               </button>
             )}
-            {showBench && homeBench.map((hp, i) => {
+            {/* Row count is the LONGER of the two benches. This mapped over
+                homeBench and read awayBench[i], so whenever the away team
+                carried more bench players — which happens constantly, since
+                empty starter slots push extras onto the bench — those
+                players were silently dropped from the view. */}
+            {showBench && Array.from({ length: Math.max(homeBench.length, awayBench.length) }, (_, i) => {
+              const hp = homeBench[i]
               const ap = awayBench[i]
               const hStat = buildStatLine(hp?.stats, hp?.position)
               const aStat = buildStatLine(ap?.stats, ap?.position)
@@ -336,7 +346,11 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
 
           {/* Mobile: position-centered H2H card view */}
           <div className="lg:hidden">
-            {homeStarters.map((hp, i) => {
+            {/* Longer of the two, same reason as the bench below: these are
+                filtered rosters, so a team with an unfilled starter slot has
+                a shorter list and the opponent's extra starter would vanish. */}
+            {Array.from({ length: Math.max(homeStarters.length, awayStarters.length) }, (_, i) => {
+              const hp = homeStarters[i]
               const ap = awayStarters[i]
               const hStat = buildStatLine(hp?.stats, hp?.position)
               const aStat = buildStatLine(ap?.stats, ap?.position)
@@ -495,7 +509,9 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                     <polyline points="6 9 12 15 18 9" />
                   </svg>
                 </button>
-                {showBench && homeBench.map((hp, i) => {
+                {/* Same longer-of-the-two fix as the desktop bench above. */}
+                {showBench && Array.from({ length: Math.max(homeBench.length, awayBench.length) }, (_, i) => {
+                  const hp = homeBench[i]
                   const ap = awayBench[i]
                   const hStat = buildStatLine(hp?.stats, hp?.position)
                   const aStat = buildStatLine(ap?.stats, ap?.position)
