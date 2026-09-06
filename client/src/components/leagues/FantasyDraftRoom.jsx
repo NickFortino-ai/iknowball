@@ -1686,7 +1686,13 @@ function DraftBoard({ picks, settings, profileId, presentUserIds }) {
 function DraftBoardPreview({ settings, picks, draftDate, profileId, league, isCommissioner, onStartDraft, startDraftPending, presentUserIds }) {
   const draftOrder = settings?.draft_order || []
   const rosterSlots = settings?.roster_slots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6 }
-  const totalSlots = Object.values(rosterSlots).reduce((a, b) => a + b, 0)
+  // Exclude IR — you don't draft into an injured-reserve slot, you move
+  // someone there later. Summing every slot drew one phantom round that no
+  // pick could ever fill: The Friends League showed 17 rows against 96 real
+  // picks (6 teams x 16 rounds). Matches generateDraftOrder on the server
+  // and the live DraftBoard, both of which already skip 'ir'.
+  const totalSlots = Object.entries(rosterSlots)
+    .reduce((sum, [k, v]) => sum + (k === 'ir' ? 0 : (v || 0)), 0)
 
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
