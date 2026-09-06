@@ -1157,7 +1157,16 @@ export default function FantasyDraftRoom({ league }) {
 
       {/* Commissioner: autodraft prompt after an autopick */}
       {autoDraftPrompt && isCommissioner && (
-        <div className="fixed bottom-4 right-4 z-50 rounded-xl border border-accent/40 bg-bg-card shadow-xl p-4 max-w-sm">
+        // Sized as a desktop corner toast, which doesn't survive a phone:
+        // max-w-sm is nearly full width there, and bottom-4 put it on top of
+        // the content — the Queue tab in particular — where it stayed
+        // through scrolling until dismissed. Seen on a live draft
+        // 2026-09-05. Now it clears the bottom nav and the home indicator on
+        // small screens, and keeps the corner placement from md up.
+        <div
+          className="fixed bottom-24 left-4 right-4 md:bottom-4 md:left-auto md:right-4 z-50 rounded-xl border border-accent/40 bg-bg-card shadow-xl p-4 md:max-w-sm"
+          style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
           <div className="text-sm text-text-primary mb-3">
             <span className="font-semibold">{autoDraftPrompt.displayName}</span> was auto-picked (pick #{autoDraftPrompt.pickNumber}). Are they autodrafting?
           </div>
