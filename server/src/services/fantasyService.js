@@ -5184,6 +5184,31 @@ export async function generateMatchups(leagueId) {
 const STAT_CORRECTION_THRESHOLD = 0.1
 
 export async function detectAndNotifyStatCorrections(week, season, newRows, oldStatsByPlayer) {
+  // Never notify about a season that isn't the live one.
+  //
+  // The traditional-fantasy ownership lookup below matches on player_id with
+  // NO season filter — it finds whoever holds that player right now. So
+  // re-syncing a past season would compute deltas against last year's stats
+  // and then tell this year's owners their score changed. A 2025 correction
+  // cannot affect a 2026 score, so that notification is always wrong.
+  //
+  // This blocks a 2025 backfill (needed because the original 2025 import
+  // predates IDP support, leaving every defender with no stats) from firing
+  // thousands of bogus push notifications at current managers.
+  try {
+    const { getCurrentNflWeek } = await import('./tdPassService.js')
+    const { season: liveSeason } = await getCurrentNflWeek()
+    if (liveSeason && season && Number(season) !== Number(liveSeason)) {
+      logger.info({ season, liveSeason, week }, 'Skipping stat-correction notifications — not the live season')
+      return 0
+    }
+  } catch (err) {
+    // If we can't establish the live season, stay quiet rather than guess.
+    // A missed correction notice is recoverable; a false one is not.
+    logger.warn({ err, season, week }, 'Could not resolve live season — skipping correction notifications')
+    return 0
+  }
+
   const corrections = []
   for (const r of newRows) {
     const old = oldStatsByPlayer[r.player_id]
