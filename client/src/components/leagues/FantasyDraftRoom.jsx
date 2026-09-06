@@ -967,11 +967,28 @@ export default function FantasyDraftRoom({ league }) {
           </div>
           <div className="max-h-[55vh] md:max-h-96 overflow-y-auto">
             {(() => {
+              // Drafted players are excluded server-side, but only as of the
+              // last fetch of this list — and useAvailablePlayers refetches
+              // on a 120s interval, relying on the realtime invalidation in
+              // between. When that event is slow or the socket has
+              // reconnected (routine on a phone), the ADP tab kept showing
+              // players who were already gone: observed 15-20s on 2026-09-05,
+              // and one who never cleared at all.
+              //
+              // `picks` comes from useDraftBoard, which polls every 5s, so
+              // filtering against it here bounds staleness at 5 seconds no
+              // matter what realtime does. My Rankings already did this,
+              // which is exactly why that tab looked correct and this one
+              // didn't. Trust the data you're already polling, not an event
+              // that may not arrive.
+              const draftedSet = new Set(picks.filter((p) => p.player_id).map((p) => p.player_id))
+
               // Default = ADP view: use the overall_rank from the API.
-              let displayList = (availablePlayers || []).map((p) => ({ ...p, _displayRank: p.overall_rank || null }))
+              let displayList = (availablePlayers || [])
+                .filter((p) => !draftedSet.has(p.id))
+                .map((p) => ({ ...p, _displayRank: p.overall_rank || null }))
 
               if (playerView === 'My Rankings' && myRankings?.length) {
-                const draftedSet = new Set(picks.filter((p) => p.player_id).map((p) => p.player_id))
                 // Build user-rank lookup (filtering out drafted entries first)
                 const userRankIdx = {} // player_id → 1-based rank
                 let i = 0
