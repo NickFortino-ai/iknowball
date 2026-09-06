@@ -346,23 +346,44 @@ export default function FantasyDraftRoom({ league }) {
 
   const isCommissioner = league.commissioner_id === profile?.id
 
-  // Commissioner: detect autopicks and prompt to flag user as autodrafting
+  // Commissioner: detect autopicks and prompt to flag user as autodrafting.
+  //
+  // This used to look at ONLY the most recent pick. Picks arrive in batches
+  // — the board polls every 5s and an autopick sweep can land two in that
+  // window — so when several autopicks came in together, every one but the
+  // last was silently dropped and that manager was never flagged. Seen live
+  // 2026-09-05: BallKnower was autopicked from their queue and no prompt
+  // ever appeared, because the next autopick overwrote it.
+  //
+  // Now every new pick since the last check is scanned, and each manager is
+  // asked about at most once per draft — so dismissing a prompt with "No"
+  // doesn't mean being re-asked on their next miss.
   const prevPickCountRef = useRef(completedPicks.length)
+  const promptedUsersRef = useRef(new Set())
   useEffect(() => {
     if (!isCommissioner || draftStatus !== 'in_progress') return
-    if (completedPicks.length <= prevPickCountRef.current) {
+    const seen = prevPickCountRef.current
+    if (completedPicks.length <= seen) {
       prevPickCountRef.current = completedPicks.length
       return
     }
+    const fresh = completedPicks.slice(seen)
     prevPickCountRef.current = completedPicks.length
-    const lastPick = completedPicks[completedPicks.length - 1]
-    if (lastPick?.is_auto_pick && !(settings?.auto_drafting_users || []).includes(lastPick.user_id)) {
-      setAutoDraftPrompt({
-        userId: lastPick.user_id,
-        displayName: lastPick.users?.display_name || lastPick.users?.username || 'Unknown',
-        pickNumber: lastPick.pick_number,
-      })
-    }
+
+    const flagged = settings?.auto_drafting_users || []
+    const candidate = fresh.find((p) => (
+      p?.is_auto_pick
+      && !flagged.includes(p.user_id)
+      && !promptedUsersRef.current.has(p.user_id)
+    ))
+    if (!candidate) return
+
+    promptedUsersRef.current.add(candidate.user_id)
+    setAutoDraftPrompt({
+      userId: candidate.user_id,
+      displayName: candidate.users?.display_name || candidate.users?.username || 'Unknown',
+      pickNumber: candidate.pick_number,
+    })
   }, [completedPicks.length])
 
   const amAutoDrafting = (settings?.auto_drafting_users || []).includes(profile?.id)
