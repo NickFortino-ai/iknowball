@@ -17,7 +17,10 @@ function buildDraftPositionFilters(rosterSlots) {
     + (rosterSlots?.db || 0) + (rosterSlots?.s || 0)
   const isIdp = idpCount > 0
   const base = ['All', 'QB', 'RB', 'WR', 'TE', 'K']
-  return isIdp ? [...base, 'DL', 'LB', 'DB', 'S'] : [...base, 'DEF']
+  // No 'S' tab — see FantasyPlayerBrowser.IDP_POSITION_FILTERS. Sleeper has
+  // no live players classified S/FS/SS, so the tab was always empty; DB
+  // covers corners and safeties alike.
+  return isIdp ? [...base, 'DL', 'LB', 'DB'] : [...base, 'DEF']
 }
 
 const INJURY_COLORS = {

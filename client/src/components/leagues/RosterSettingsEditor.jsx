@@ -25,11 +25,19 @@ const OFFENSIVE_SLOTS = [
   { key: 'k', label: 'K' },
 ]
 
+// No S slot. Sleeper — our source for NFL positions — classifies virtually
+// every defensive back as 'DB': six S/FS/SS rows exist across the entire
+// player table and all six are retired. So an S slot had no pool behind it,
+// and the browse tab for it was empty. DB covers corners and safeties alike,
+// which is as precise as the source data allows.
+//
+// Existing leagues with s > 0 still work — the server's starter plan and the
+// browse filter both accept DB for an S slot — this only stops new leagues
+// from choosing a position the data can't support.
 const IDP_SLOTS = [
   { key: 'dl', label: 'DL', sub: 'DE / DT / NT' },
   { key: 'lb', label: 'LB', sub: 'ILB / OLB / MLB' },
-  { key: 'db', label: 'DB', sub: 'CB / DB' },
-  { key: 's', label: 'S', sub: 'FS / SS' },
+  { key: 'db', label: 'DB', sub: 'CB / S / safeties' },
 ]
 
 const TAIL_SLOTS = [
@@ -72,7 +80,9 @@ export default function RosterSettingsEditor({ value, onChange }) {
     if (mode === 'def') {
       onChange({ ...slots, def: 1, dl: 0, lb: 0, db: 0, s: 0 })
     } else {
-      onChange({ ...slots, def: 0, dl: 1, lb: 1, db: 1, s: 1 })
+      // db: 2 rather than db: 1 + s: 1 — the S slot is gone (see IDP_SLOTS),
+      // so this keeps IDP mode at the same four defensive starters.
+      onChange({ ...slots, def: 0, dl: 1, lb: 1, db: 2, s: 0 })
     }
   }
 

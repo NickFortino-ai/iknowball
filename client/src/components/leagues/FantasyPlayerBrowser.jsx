@@ -12,7 +12,13 @@ import PlayerHeadshot from '../ui/PlayerHeadshot'
 import InjuryBadge from '../ui/InjuryBadge'
 
 const OFFENSE_POSITION_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'K']
-const IDP_POSITION_FILTERS = ['DL', 'LB', 'DB', 'S']
+// No 'S' tab: Sleeper classifies essentially every defensive back as 'DB',
+// so an S filter showed the six S/FS/SS rows that exist — all retired — and
+// after those were filtered out as junk, nothing at all. DB carries corners
+// and safeties together, which is the finest distinction the data supports.
+// Leagues created before this still have an s slot; the server accepts DB
+// for it, so their rosters remain fillable.
+const IDP_POSITION_FILTERS = ['DL', 'LB', 'DB']
 
 function buildPositionFilters(rosterSlots) {
   const idpCount = (rosterSlots?.dl || 0) + (rosterSlots?.lb || 0) + (rosterSlots?.db || 0) + (rosterSlots?.s || 0)
