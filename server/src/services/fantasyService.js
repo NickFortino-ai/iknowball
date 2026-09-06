@@ -2504,6 +2504,12 @@ export async function getDraftPlayerDetail(playerId, { leagueId = null, scoringF
     throw err
   }
 
+  // Overlay admin position overrides, matching every other surface. The
+  // detail modal was the last place reading the raw Sleeper position, so
+  // Travis Hunter showed "WR/DB" on the roster and in the player list but
+  // plain "DB" the moment you tapped him.
+  applyNflPositionOverride(player, await cached('nflPositionOverrides', OVERRIDES_TTL_MS, () => loadNflPositionOverrides()))
+
   // Resolve scoring rules — league overrides take precedence
   let rules = null
   let resolvedScoring = scoringFormat
@@ -3383,6 +3389,22 @@ export async function getDraftBoard(leagueId) {
 
   const settings = settingsRes.data
   const picks = picksRes.data || []
+
+  // Overlay admin position overrides, same as getRoster and
+  // searchAvailablePlayers already do. Without this the draft log and the
+  // board grid showed the RAW Sleeper position while the player list showed
+  // the override — Travis Hunter read "WR/DB" when you drafted him and
+  // plain "DB" in the log a second later. Same player, same screen, two
+  // answers.
+  //
+  // These rows are fetched fresh per request (not cached), so mutating them
+  // is safe — unlike the shared player pool, which has to be copied first.
+  if (picks.length) {
+    const overrideMap = await cached('nflPositionOverrides', OVERRIDES_TTL_MS, () => loadNflPositionOverrides())
+    for (const p of picks) {
+      if (p.nfl_players) applyNflPositionOverride(p.nfl_players, overrideMap)
+    }
+  }
 
   // Report the last completed pick's picked_at AS the effective clock
   // baseline, so the on-screen timer matches what the server will actually
@@ -5353,6 +5375,9 @@ export async function getPlayerDetail(leagueId, playerId) {
     err.status = 404
     throw err
   }
+
+  // Same override overlay as getDraftPlayerDetail — see the note there.
+  applyNflPositionOverride(player, await cached('nflPositionOverrides', OVERRIDES_TTL_MS, () => loadNflPositionOverrides()))
 
   const { data: weeks } = await supabase
     .from('nfl_player_stats')

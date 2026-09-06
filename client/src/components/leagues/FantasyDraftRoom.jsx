@@ -1112,7 +1112,7 @@ export default function FantasyDraftRoom({ league }) {
                         <InjuryBadge status={player.injury_status} />
                       </div>
                       <div className="text-xs text-text-muted flex items-center gap-1.5">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${POS_COLORS[player.position] || 'text-text-muted'}`}>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${posColor(player.position) || 'text-text-muted'}`}>
                           {/* Position only. The appended pos_rank was a rank
                               among players still AVAILABLE, so it renumbered
                               after every pick — the same player was RB2, then
@@ -1672,7 +1672,7 @@ function PreDraftBrowser({ leagueId }) {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-text-primary truncate">{player.full_name}</div>
                   <div className="text-[10px] text-text-muted">
-                    <span className={`px-1 py-0.5 rounded text-[10px] font-bold mr-1 ${POS_COLORS[player.position] || 'text-text-muted'}`}>
+                    <span className={`px-1 py-0.5 rounded text-[10px] font-bold mr-1 ${posColor(player.position) || 'text-text-muted'}`}>
                       {player.position}
                     </span>
                     {player.team || 'FA'}{player.bye_week ? ` · Bye ${player.bye_week}` : ''}
@@ -1701,6 +1701,22 @@ const POS_COLORS = {
   TE: 'bg-blue-500/20 border-blue-500/40 text-blue-300',
   K: 'bg-gray-500/20 border-gray-500/40 text-gray-300',
   DEF: 'bg-purple-500/20 border-purple-500/40 text-purple-300',
+  // IDP had no colors at all, so DL/LB/DB rendered as plain grey text in
+  // every IDP league.
+  DL: 'bg-orange-500/20 border-orange-500/40 text-orange-300',
+  LB: 'bg-teal-500/20 border-teal-500/40 text-teal-300',
+  DB: 'bg-pink-500/20 border-pink-500/40 text-pink-300',
+  S: 'bg-pink-500/20 border-pink-500/40 text-pink-300',
+}
+
+// Two-way players carry a slashed position like "WR/DB", which is not a key
+// in POS_COLORS — so the badge lost its colour entirely once overrides
+// started reaching these views. Colour comes from the FIRST part (the
+// primary fantasy position); the label still shows the full string, so
+// Travis Hunter reads "WR/DB" in receiver colours.
+function posColor(pos) {
+  const first = String(pos || '').split('/')[0].trim()
+  return POS_COLORS[first] || ''
 }
 
 function DraftBoard({ picks, settings, profileId, presentUserIds }) {
@@ -1758,7 +1774,7 @@ function DraftBoard({ picks, settings, profileId, presentUserIds }) {
               </td>
               {row.map((pick, colIdx) => {
                 const pos = pick?.nfl_players?.position
-                const colorClass = pos ? POS_COLORS[pos] || '' : ''
+                const colorClass = pos ? posColor(pos) : ''
                 return (
                   <td key={colIdx} className={`px-2 py-2 border border-border min-w-[120px] md:min-w-0 ${pick ? colorClass : ''}`}>
                     {pick?.nfl_players ? (
