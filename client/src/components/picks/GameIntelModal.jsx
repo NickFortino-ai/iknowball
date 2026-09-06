@@ -335,7 +335,11 @@ export default function GameIntelModal({ gameId, onClose }) {
                 {awayRecord && <div className="text-sm font-bold text-text-primary">{awayRecord}</div>}
                 {data.awayLast10 && <div className="text-[10px] text-text-muted">L10: {data.awayLast10}</div>}
               </div>
-              <div className="text-xs text-text-muted font-semibold">vs</div>
+              {/* "@" not "vs" — the layout is away on the left, home on the
+                  right, so this reads "away @ home" exactly like the picks
+                  list and Game Center. It said "vs", which told a Brewers
+                  fan their road game was at home. */}
+              <div className="text-xs text-text-muted font-semibold">@</div>
               <div className="text-center flex-1">
                 <TeamLogo team={data.home_team} sportKey={data.sportKey} />
                 {homeRecord && <div className="text-sm font-bold text-text-primary">{homeRecord}</div>}
