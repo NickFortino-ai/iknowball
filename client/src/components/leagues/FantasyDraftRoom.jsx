@@ -1239,9 +1239,19 @@ export default function FantasyDraftRoom({ league }) {
 const STARTER_SLOT_LABELS = {
   qb: 'QB', rb: 'RB', wr: 'WR', te: 'TE', flex: 'FLEX', k: 'K', def: 'D/ST',
   superflex: 'SUPER FLEX',
+  dl: 'DL', lb: 'LB', db: 'DB', s: 'S',
 }
 const FLEX_ELIGIBLE = ['RB', 'WR', 'TE']
 const SUPERFLEX_ELIGIBLE = ['QB', 'RB', 'WR', 'TE']
+// IDP families, mirroring the server's starterPlan. 'S' includes DB because
+// Sleeper classifies virtually every defensive back that way — the six
+// S/FS/SS rows that exist are all retired.
+const IDP_ELIGIBLE = {
+  dl: ['DE', 'DT', 'NT', 'DL'],
+  lb: ['LB', 'ILB', 'OLB', 'MLB'],
+  db: ['CB', 'DB'],
+  s: ['S', 'FS', 'SS', 'DB'],
+}
 
 /**
  * Given the commissioner's roster_slots config and the user's drafted picks,
@@ -1270,13 +1280,23 @@ function buildSlotPlan(rosterSlots, myPicks) {
   }
 
   const slots = [] // { slot, label, player }
-  const order = ['qb', 'rb', 'wr', 'te', 'flex', 'superflex', 'k', 'def']
+  // IDP slots were missing entirely, so in an IDP league every defender fell
+  // through to the bench and the roster total undercounted by the number of
+  // IDP slots — Test 54 showed "My Roster (17/16)" against a real total of
+  // 20. buildSlotMeta in FantasyMatchup already had these; this copy never
+  // got them. Five places in this client build a slot list and they have
+  // drifted; that drift is the actual bug and is worth consolidating.
+  const order = ['qb', 'rb', 'wr', 'te', 'flex', 'superflex', 'k', 'def', 'dl', 'lb', 'db', 's']
   for (const slotKey of order) {
     const count = rosterSlots[slotKey] || 0
     for (let i = 0; i < count; i++) {
       let player = null
       if (slotKey === 'flex') player = takeAny(FLEX_ELIGIBLE)
       else if (slotKey === 'superflex') player = takeAny(SUPERFLEX_ELIGIBLE)
+      // IDP positions need family matching — a 'dl' slot has to accept
+      // DE/DT/NT, not just a literal 'DL'. take(slotKey.toUpperCase())
+      // would only ever match the exact string.
+      else if (IDP_ELIGIBLE[slotKey]) player = takeAny(IDP_ELIGIBLE[slotKey])
       else player = take(slotKey.toUpperCase())
       slots.push({ slot: slotKey, label: STARTER_SLOT_LABELS[slotKey] || slotKey.toUpperCase(), player })
     }

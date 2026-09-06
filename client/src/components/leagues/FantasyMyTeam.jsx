@@ -1113,7 +1113,14 @@ export default function FantasyMyTeam({ league }) {
         // ate the stickiness, so the button rendered at the natural bottom
         // of the content and the user had to scroll to reach it. Desktop
         // keeps sticky-bottom-4 inside the page layout.
-        <div className="fixed bottom-14 left-0 right-0 z-40 flex gap-2 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-bg-primary/90 backdrop-blur-xl border-t border-text-primary/15 md:sticky md:left-auto md:right-auto md:bottom-4 md:px-2 md:pt-0 md:pb-0 md:border-0 md:bg-transparent md:backdrop-blur-none">
+        // bottom offset must clear the tab bar's FULL height, which is
+        // h-14 PLUS pb-[env(safe-area-inset-bottom)]. bottom-14 only cleared
+        // the 56px, so on any device with a home indicator the tab bar
+        // overlapped these buttons by the inset (~34px on iPhone) and Save
+        // Lineup looked clipped. Own padding drops to a plain pb-3 — the
+        // safe area is handled by the offset now, and keeping both
+        // double-counted it.
+        <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 flex gap-2 px-4 pt-3 pb-3 bg-bg-primary/90 backdrop-blur-xl border-t border-text-primary/15 md:sticky md:left-auto md:right-auto md:bottom-4 md:px-2 md:pt-0 md:pb-0 md:border-0 md:bg-transparent md:backdrop-blur-none">
           <button
             type="button"
             onClick={() => { handleReset(); setSelected(null); setEditMode(false) }}
