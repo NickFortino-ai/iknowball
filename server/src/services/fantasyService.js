@@ -1405,7 +1405,12 @@ export async function autoFillLineupsForLeague(leagueId) {
   for (let i = 1; i <= (rosterSlots.dl || 0); i++) starterPlan.push({ key: `dl${i}`, accepts: ['DE', 'DT', 'NT', 'DL'] })
   for (let i = 1; i <= (rosterSlots.lb || 0); i++) starterPlan.push({ key: `lb${i}`, accepts: ['LB', 'ILB', 'OLB', 'MLB'] })
   for (let i = 1; i <= (rosterSlots.db || 0); i++) starterPlan.push({ key: `db${i}`, accepts: ['CB', 'DB'] })
-  for (let i = 1; i <= (rosterSlots.s || 0); i++) starterPlan.push({ key: `s${i}`, accepts: ['S', 'FS', 'SS'] })
+  // 'DB' is included because Sleeper classifies virtually every defensive
+  // back that way — only six S/FS/SS rows exist league-wide and all six are
+  // retired. Without it an S slot is literally unfillable: no live player
+  // satisfies it. A DB slot accepts DB too, which is correct — the source
+  // data doesn't distinguish a corner from a safety, so neither can we.
+  for (let i = 1; i <= (rosterSlots.s || 0); i++) starterPlan.push({ key: `s${i}`, accepts: ['S', 'FS', 'SS', 'DB'] })
 
   // Picks in draft order — earliest pick at each position wins the starter slot.
   const { data: picks } = await supabase
@@ -1499,7 +1504,12 @@ async function fillEmptyStarterSlots(leagueId, userId) {
   for (let i = 1; i <= (rosterSlots.dl || 0); i++) starterPlan.push({ key: `dl${i}`, accepts: ['DE', 'DT', 'NT', 'DL'] })
   for (let i = 1; i <= (rosterSlots.lb || 0); i++) starterPlan.push({ key: `lb${i}`, accepts: ['LB', 'ILB', 'OLB', 'MLB'] })
   for (let i = 1; i <= (rosterSlots.db || 0); i++) starterPlan.push({ key: `db${i}`, accepts: ['CB', 'DB'] })
-  for (let i = 1; i <= (rosterSlots.s || 0); i++) starterPlan.push({ key: `s${i}`, accepts: ['S', 'FS', 'SS'] })
+  // 'DB' is included because Sleeper classifies virtually every defensive
+  // back that way — only six S/FS/SS rows exist league-wide and all six are
+  // retired. Without it an S slot is literally unfillable: no live player
+  // satisfies it. A DB slot accepts DB too, which is correct — the source
+  // data doesn't distinguish a corner from a safety, so neither can we.
+  for (let i = 1; i <= (rosterSlots.s || 0); i++) starterPlan.push({ key: `s${i}`, accepts: ['S', 'FS', 'SS', 'DB'] })
   const starterKeys = new Set(starterPlan.map((s) => s.key))
 
   const { data: roster } = await supabase
@@ -2639,7 +2649,7 @@ export async function autoInitializeDraftOrder() {
   // Find drafts within 60 minutes that haven't been initialized yet
   const { data: candidates } = await supabase
     .from('fantasy_settings')
-    .select('league_id, draft_date')
+    .select('league_id, draft_date, num_teams, initial_num_teams')
     .eq('draft_status', 'pending')
     .not('draft_date', 'is', null)
     .lte('draft_date', sixtyMinFromNow)
@@ -2655,11 +2665,57 @@ export async function autoInitializeDraftOrder() {
       .select('id', { count: 'exact', head: true })
       .eq('league_id', row.league_id)
 
-    if (count > 0) continue // already initialized
+    const { count: memberCount } = await supabase
+      .from('league_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('league_id', row.league_id)
+
+    // The commissioner's intended size. initial_num_teams is the durable
+    // one — num_teams gets overwritten by initializeDraft below, so reading
+    // it here would compare the target against itself once an order exists.
+    const target = row.initial_num_teams || row.num_teams || 0
+
+    if (count > 0) {
+      // Already initialized. Rebuild if people joined since — the order is
+      // a SNAPSHOT of whoever was in the league when it was built, and
+      // nothing else ever refreshes it. Safe because draft_status is
+      // 'pending': no picks have been made, so there is nothing to lose.
+      // Count DISTINCT managers in the existing order, not slots. Slot
+      // arithmetic gives false negatives: an order built for 3 managers
+      // divides evenly by 6 members and would look fine.
+      const { data: pickUsers } = await supabase
+        .from('fantasy_draft_picks')
+        .select('user_id')
+        .eq('league_id', row.league_id)
+      const teamsInOrder = new Set((pickUsers || []).map((p) => p.user_id)).size
+      if (!memberCount || teamsInOrder === memberCount) continue
+
+      logger.warn({ leagueId: row.league_id, slots: count, teamsInOrder, memberCount },
+        'Draft order was built for a different manager count — rebuilding before the draft')
+      await supabase.from('fantasy_draft_picks').delete().eq('league_id', row.league_id)
+    }
+
+    // Don't build an order while the league is still filling. This job runs
+    // at T-60, so a league created LESS than an hour before its draft got
+    // its order built seconds after creation — with only the commissioner
+    // in it. initializeDraft writes num_teams = members.length, so the
+    // league was permanently recorded as a 1-team league, the board showed
+    // one column, and everyone who joined afterwards was locked out of
+    // their own draft. Hit live on 2026-09-05 setting up a test league with
+    // the draft five minutes out.
+    //
+    // Waiting is safe: processScheduledDraftStarts initializes at kickoff
+    // if this never fires, and it auto-resizes or cancels an underfilled
+    // league at that point using the real member count.
+    if (target > 0 && (memberCount || 0) < target) {
+      logger.info({ leagueId: row.league_id, memberCount, target },
+        'Skipping draft order auto-init — league still filling')
+      continue
+    }
 
     try {
       await initializeDraft(row.league_id)
-      logger.info({ leagueId: row.league_id }, 'Auto-initialized draft order at T-60min')
+      logger.info({ leagueId: row.league_id, memberCount }, 'Auto-initialized draft order at T-60min')
       initialized++
     } catch (err) {
       logger.error({ err, leagueId: row.league_id }, 'Failed to auto-initialize draft order')
@@ -3788,6 +3844,17 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
             .select(PLAYER_SELECT)
             .in('position', ['DE', 'DT', 'NT', 'DL', 'LB', 'ILB', 'OLB', 'MLB', 'CB', 'S', 'FS', 'SS', 'DB'])
             .not('team', 'is', null)
+            // Drop players with no usable rank. Sleeper leaves retired
+            // defenders carrying a stale team, so 846 of 1,275 IDP rows
+            // (66%) were long-retired names with search_rank 9999999 —
+            // Malcolm Jenkins, Eric Weddle, and Chad Cota, who last played
+            // in 2000, sitting in the draft pool as "Active".
+            //
+            // Offense never showed this because its slice caps at the top
+            // 400 by rank, so junk sinks below the cut. The IDP slice has no
+            // cap, so every ghost rendered. Leaves 429 real defenders:
+            // 121 DL, 141 LB, 167 DB — ample for any IDP league.
+            .lt('search_rank', 100000)
             .order('search_rank', { ascending: true, nullsFirst: false })
         )
       : Promise.resolve([])
@@ -4090,7 +4157,18 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   // wrong one.
   let filtered = query ? availableAll.sort(sortFn) : ranked
   if (position) {
-    if (IDP_FAMILIES.has(position)) {
+    if (position === 'S') {
+      // The S tab has to include DB. Sleeper classifies virtually every
+      // defensive back as 'DB', leaving six S/FS/SS rows league-wide — all
+      // retired, and now filtered out as junk, so a strict S filter returns
+      // an empty tab while the roster has an S slot to fill.
+      //
+      // The S starter slot accepts DB for the same reason; this keeps browse
+      // and eligibility agreeing. The consequence is that S and DB show the
+      // same players, which is honest: the source data cannot tell a corner
+      // from a safety, so neither can we.
+      filtered = filtered.filter((p) => inFamily(p.position, 'S') || inFamily(p.position, 'DB'))
+    } else if (IDP_FAMILIES.has(position)) {
       filtered = filtered.filter((p) => inFamily(p.position, position))
     } else {
       filtered = filtered.filter((p) => positionParts(p.position).includes(position))
