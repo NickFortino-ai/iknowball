@@ -807,6 +807,28 @@ export async function updateFantasySettings(leagueId, updates) {
   // "rescheduled" wording. Skip if the field wasn't in updates at all,
   // or if the value is unchanged, or if being cleared to null.
   if (Object.prototype.hasOwnProperty.call(updates, 'draft_date') && updates.draft_date && updates.draft_date !== current?.draft_date) {
+    // Re-arm the one-shot reminders against the new date. Both
+    // processDraftPreStartNotifications and the underfill jobs select only
+    // rows where their flag IS NULL, so once stamped they never fire again.
+    // Rescheduling therefore silently killed the "draft starting soon"
+    // reminder: members were told the draft had MOVED, but never nudged
+    // when the new time came around. POST /fantasy/postpone-draft already
+    // nulls these; this path — the Draft Date & Time field in league
+    // settings, which is the one commissioners actually use — did not.
+    try {
+      await supabase
+        .from('fantasy_settings')
+        .update({
+          draft_pre_start_notified_at: null,
+          underfill_notified_3d_at: null,
+          underfill_notified_1d_at: null,
+          underfill_notified_10m_at: null,
+        })
+        .eq('league_id', leagueId)
+    } catch (err) {
+      logger.warn({ err, leagueId }, 'Failed to re-arm draft reminders after reschedule')
+    }
+
     try {
       const isFirstTime = !current?.draft_date
       const { data: league } = await supabase
