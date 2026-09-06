@@ -80,9 +80,10 @@ export default function RosterSettingsEditor({ value, onChange }) {
     if (mode === 'def') {
       onChange({ ...slots, def: 1, dl: 0, lb: 0, db: 0, s: 0 })
     } else {
-      // db: 2 rather than db: 1 + s: 1 — the S slot is gone (see IDP_SLOTS),
-      // so this keeps IDP mode at the same four defensive starters.
-      onChange({ ...slots, def: 0, dl: 1, lb: 1, db: 2, s: 0 })
+      // One of each. The S slot is gone (see IDP_SLOTS), so IDP mode starts
+      // at three defensive starters rather than four — commissioners can
+      // raise any count from there.
+      onChange({ ...slots, def: 0, dl: 1, lb: 1, db: 1, s: 0 })
     }
   }
 
