@@ -404,6 +404,14 @@ export default function FantasyDraftRoom({ league }) {
     try {
       await makePick.mutateAsync({ leagueId: league.id, playerId })
       setSearchQuery('')
+      // Confirmation for your own pick. Deliberately unlike the countdown
+      // ticks — those escalate in pitch to signal pressure, so reusing that
+      // sound to say "done" would read as more urgency at the moment the
+      // pressure ends. This is a short rising two-note figure instead:
+      // clearly a completion, not a warning.
+      playTone({ freq: 660, dur: 0.09, gain: 0.11 })
+      setTimeout(() => playTone({ freq: 990, dur: 0.16, gain: 0.11 }), 95)
+      buzz([40])
     } catch (err) {
       toast(err.message || 'Failed to make pick', 'error')
     }
