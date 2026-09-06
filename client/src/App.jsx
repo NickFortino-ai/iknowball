@@ -41,6 +41,7 @@ import OnboardingTutorial from './components/onboarding/OnboardingTutorial'
 import HeroLayout from './components/layouts/HeroLayout'
 import InstallPrompt from './components/pwa/InstallPrompt'
 import { initPushNotifications } from './lib/pushNotifications'
+import { initDraftAudio } from './lib/draftAudio'
 import { initStatusBar } from './lib/statusBar'
 import { initIAPListener } from './lib/iapListener'
 import { useRealtimeGames } from './hooks/useRealtimeGames'
@@ -59,6 +60,10 @@ function AppRoutes() {
     initStatusBar()
     initIAPListener()
     initPushNotifications()
+    // Binds the one-time gesture listener that unlocks Web Audio. Must be
+    // armed before a draft starts — an AudioContext created later, inside a
+    // timer, is born suspended on iOS and stays silent.
+    initDraftAudio()
   }, [initialize])
 
   return (

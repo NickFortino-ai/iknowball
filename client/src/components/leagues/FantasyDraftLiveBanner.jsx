@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useDraftBoard, useRealtimeDraft } from '../../hooks/useLeagues'
+import { playTone, buzz } from '../../lib/draftAudio'
 
 /**
  * Global "draft is live" banner — mounts at the league page level so it
@@ -58,19 +59,8 @@ export default function FantasyDraftLiveBanner({ league, fantasySettings, onGoTo
   const wasMyTurnRef = useRef(false)
   useEffect(() => {
     if (isMyTurn && !wasMyTurnRef.current) {
-      try {
-        const Ctx = window.AudioContext || window.webkitAudioContext
-        if (Ctx) {
-          const ctx = new Ctx()
-          const o = ctx.createOscillator()
-          const g = ctx.createGain()
-          o.connect(g); g.connect(ctx.destination)
-          o.frequency.value = 880
-          g.gain.setValueAtTime(0.15, ctx.currentTime)
-          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
-          o.start(); o.stop(ctx.currentTime + 0.4)
-        }
-      } catch {}
+      playTone({ freq: 880, dur: 0.4, gain: 0.15 })
+      buzz([160, 80, 160])
       const original = document.title
       let flashCount = 0
       const flashTimer = setInterval(() => {

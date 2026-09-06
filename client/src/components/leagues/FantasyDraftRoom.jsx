@@ -6,6 +6,7 @@ import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
+import { initDraftAudio, playTone, buzz } from '../../lib/draftAudio'
 
 // Settings-aware position chip list. If the commissioner configured any
 // IDP slots (DL/LB/DB/S), drop DEF and add IDP filters; otherwise show DEF.
@@ -304,19 +305,9 @@ export default function FantasyDraftRoom({ league }) {
     if (!trig) return
     if (lastBeepedSecondRef.current === timerSeconds) return
     lastBeepedSecondRef.current = timerSeconds
-    try {
-      const Ctx = window.AudioContext || window.webkitAudioContext
-      if (!Ctx) return
-      const ctx = new Ctx()
-      const o = ctx.createOscillator()
-      const g = ctx.createGain()
-      o.connect(g); g.connect(ctx.destination)
-      o.frequency.value = trig.freq
-      g.gain.setValueAtTime(trig.gain, ctx.currentTime)
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + trig.dur)
-      o.start()
-      o.stop(ctx.currentTime + trig.dur)
-    } catch {}
+    playTone(trig)
+    // Final three seconds also buzz, for a phone on silent.
+    if (timerSeconds <= 3) buzz([90])
   }, [isMyTurn, timerSeconds, draftStatus])
 
   // "You're on the clock" in-room alert — fires only when isMyTurn flips
@@ -326,19 +317,12 @@ export default function FantasyDraftRoom({ league }) {
   useEffect(() => {
     if (isMyTurn && !wasMyTurnRef.current && draftStatus === 'in_progress') {
       toast("You're on the clock!", 'success')
-      try {
-        const Ctx = window.AudioContext || window.webkitAudioContext
-        if (Ctx) {
-          const ctx = new Ctx()
-          const o = ctx.createOscillator()
-          const g = ctx.createGain()
-          o.connect(g); g.connect(ctx.destination)
-          o.frequency.value = 880
-          g.gain.setValueAtTime(0.15, ctx.currentTime)
-          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
-          o.start(); o.stop(ctx.currentTime + 0.4)
-        }
-      } catch {}
+      playTone({ freq: 880, dur: 0.4, gain: 0.15 })
+      // Buzz too: iOS Web Audio obeys the physical silent switch inside a
+      // Capacitor WebView, so a muted phone hears nothing. Vibration is the
+      // only alert that reaches someone with their ringer off — which, at a
+      // draft, is most people.
+      buzz([160, 80, 160])
       const original = document.title
       let flashCount = 0
       const flashTimer = setInterval(() => {
