@@ -1079,7 +1079,13 @@ export default function FantasyDraftRoom({ league }) {
                       </div>
                       <div className="text-xs text-text-muted flex items-center gap-1.5">
                         <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${POS_COLORS[player.position] || 'text-text-muted'}`}>
-                          {player.position}{player.pos_rank ? player.pos_rank : ''}
+                          {/* Position only. The appended pos_rank was a rank
+                              among players still AVAILABLE, so it renumbered
+                              after every pick — the same player was RB2, then
+                              RB1, then RB2 again as others came off the board.
+                              A badge that changes meaning mid-draft is worse
+                              than no number at all. */}
+                          {player.position}
                         </span>
                         <span>{player.team || 'FA'}</span>
                         {player.bye_week && <span className="text-text-muted">· Bye {player.bye_week}</span>}

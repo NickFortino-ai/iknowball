@@ -37,6 +37,10 @@ function shortLabel(status) {
 
 export default function InjuryBadge({ status, className = '' }) {
   if (!status) return null
+  // "NA" is Sleeper's placeholder for "no designation", not an injury. It
+  // had no case in shortLabel, so it fell through to charAt(0) and rendered
+  // a bare "N" next to healthy players — Josh Jacobs showed one all draft.
+  if (String(status).toLowerCase() === 'na') return null
   const color = INJURY_COLORS[String(status).toLowerCase()] || 'text-text-muted'
   return (
     <span
