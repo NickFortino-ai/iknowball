@@ -90,7 +90,18 @@ export default function DraftPlayerPreview({ leagueId, mockScoring, playerId, on
   const { player, prior, weekly_stats, scoring } = data
   const projKey = scoring?.format === 'ppr' ? 'projected_pts_ppr' : scoring?.format === 'standard' ? 'projected_pts_std' : 'projected_pts_half_ppr'
   const proj = player[projKey]
-  const isRookie = !prior
+  // years_exp is authoritative; the ABSENCE of prior-season stats is not.
+  // Inferring "rookie" from missing data labelled every veteran defender a
+  // rookie, because the 2025 stats import predates IDP support and no
+  // individual defender has a single row — Roquan Smith (8 years) and Myles
+  // Garrett (9) both read "Rookie — no prior NFL season data".
+  // Falls back to the old inference only when years_exp is absent (32 of
+  // 2,147 rostered players).
+  const yearsExp = player?.years_exp
+  const isRookie = yearsExp != null ? Number(yearsExp) === 0 : !prior
+  // A veteran with no stats needs a different sentence — the data is
+  // missing, they are not new.
+  const missingPriorData = !prior && !isRookie
   // nfl_players.team is an abbreviation (ATL, JAX); the NFL color map keys
   // both abbreviations and full names, so either resolves.
   const teamColor = getTeamColor('americanfootball_nfl', player.team)
@@ -193,8 +204,10 @@ export default function DraftPlayerPreview({ leagueId, mockScoring, playerId, on
       {/* Expanded section */}
       {expanded && (
         <div className="border-t border-text-primary/10 px-3 md:px-5 py-4 space-y-4">
-          {isRookie ? (
-            <div className="text-center text-sm text-text-muted py-4">Rookie — no prior NFL season data</div>
+          {isRookie || missingPriorData ? (
+            <div className="text-center text-sm text-text-muted py-4">
+              {isRookie ? 'Rookie — no prior NFL season data' : 'No prior-season stats available'}
+            </div>
           ) : (
             <>
               <div className="flex items-baseline justify-between">

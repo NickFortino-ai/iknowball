@@ -116,7 +116,18 @@ function Body({ data, onDraft }) {
   const { player, prior, weekly_stats, news, scoring } = data
   const projKey = scoring?.format === 'ppr' ? 'projected_pts_ppr' : scoring?.format === 'standard' ? 'projected_pts_std' : 'projected_pts_half_ppr'
   const proj = player[projKey]
-  const isRookie = !prior
+  // years_exp is authoritative; the ABSENCE of prior-season stats is not.
+  // Inferring "rookie" from missing data labelled every veteran defender a
+  // rookie, because the 2025 stats import predates IDP support and no
+  // individual defender has a single row — Roquan Smith (8 years) and Myles
+  // Garrett (9) both read "Rookie — no prior NFL season data".
+  // Falls back to the old inference only when years_exp is absent (32 of
+  // 2,147 rostered players).
+  const yearsExp = player?.years_exp
+  const isRookie = yearsExp != null ? Number(yearsExp) === 0 : !prior
+  // A veteran with no stats needs a different sentence — the data is
+  // missing, they are not new.
+  const missingPriorData = !prior && !isRookie
   const teamColor = getTeamColor('americanfootball_nfl', player.team)
 
   return (
@@ -170,9 +181,11 @@ function Body({ data, onDraft }) {
       <PlayerNotesSection blurbs={data.blurbs} blurb={data.blurb} injuryDetail={{ body_part: player.injury_body_part }} />
 
       {/* Last season summary */}
-      {isRookie ? (
+      {isRookie || missingPriorData ? (
         <div className="rounded-xl border border-text-primary/15 bg-bg-card p-4 text-center">
-          <div className="text-xs text-text-muted">Rookie — no prior NFL season data</div>
+          <div className="text-xs text-text-muted">
+            {isRookie ? 'Rookie — no prior NFL season data' : 'No prior-season stats available'}
+          </div>
         </div>
       ) : (
         <div>
