@@ -1763,7 +1763,18 @@ export function useFantasyUnderfillState(leagueId) {
     queryKey: ['leagues', leagueId, 'fantasy', 'underfill'],
     queryFn: () => api.get(`/leagues/${leagueId}/fantasy/underfill-state`),
     enabled: !!leagueId,
-    staleTime: 30_000,
+    // Members join from THEIR device, so nothing on this one invalidates
+    // this query — with staleTime alone the "League is underfilled" banner
+    // sat there claiming 5 of 6 had joined after the sixth was already in,
+    // until the commissioner manually refreshed. Seen 2026-09-05 setting up
+    // a test league.
+    //
+    // The endpoint is cheap (one settings row + a count) and this only
+    // mounts on a traditional-fantasy league page, so a short poll is the
+    // right trade for a banner that is otherwise confidently wrong at
+    // exactly the moment it matters — while people are still joining.
+    staleTime: 10_000,
+    refetchInterval: 15_000,
   })
 }
 
