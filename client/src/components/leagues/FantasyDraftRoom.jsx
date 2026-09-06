@@ -1606,7 +1606,15 @@ function PreDraftBrowser({ leagueId }) {
           </div>
         </div>
         <div className="max-h-[55vh] overflow-y-auto">
-          {(availablePlayers || []).slice(0, 60).map((player) => {
+          {/* No cap. This was slice(0, 60), which meant the ONE screen whose
+              purpose is building a queue before the draft showed the top 60
+              players and nothing else — you couldn't queue a sleeper, a
+              handcuff, or anyone past the fourth round. The live draft room
+              renders the full list already, so this was also the more
+              restrictive of the two despite being the one you use to
+              prepare. The container scrolls (max-h-[55vh] overflow-y-auto)
+              and the list is a few hundred rows, same as the live room. */}
+          {(availablePlayers || []).map((player) => {
             const isQueued = queuedIds.has(player.id)
             return (
               // Row is a div, not a button: the star has to be its own
