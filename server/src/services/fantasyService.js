@@ -2200,7 +2200,13 @@ export async function setUserAutoDraft(leagueId, userId, enabled) {
   }
   await supabase
     .from('fantasy_settings')
-    .update({ auto_drafting_users: updated })
+    .update({
+      auto_drafting_users: updated,
+      // Records WHEN the flag changed, so processDraftAutopicks can tell a
+      // flag set before this turn (absent manager — pick instantly) from one
+      // set during it (present manager mid-decision — let their clock run).
+      auto_draft_updated_at: new Date().toISOString(),
+    })
     .eq('league_id', leagueId)
   logger.info({ leagueId, userId, enabled }, 'Autodraft status updated')
   return { auto_drafting_users: updated }
@@ -2763,7 +2769,7 @@ export async function processScheduledDraftStarts() {
 export async function processDraftAutopicks() {
   const { data: liveDrafts } = await supabase
     .from('fantasy_settings')
-    .select('league_id, draft_pick_timer, draft_started_at, draft_resumed_at, draft_date, draft_mode, auto_drafting_users')
+    .select('league_id, draft_pick_timer, draft_started_at, draft_resumed_at, draft_date, draft_mode, auto_drafting_users, auto_draft_updated_at')
     .eq('draft_status', 'in_progress')
 
   if (!liveDrafts?.length) return 0
@@ -2785,14 +2791,6 @@ export async function processDraftAutopicks() {
         .maybeSingle()
 
       if (!nextPick) continue
-
-      // If on-the-clock user is flagged as auto-drafting, pick immediately (no timer wait)
-      if ((d.auto_drafting_users || []).includes(nextPick.user_id)) {
-        logger.info({ leagueId: d.league_id, userId: nextPick.user_id, pickNumber: nextPick.pick_number }, 'Auto-drafting user on clock — instant pick')
-        await autoDraftPick(d.league_id, nextPick.user_id)
-        autopicks++
-        continue
-      }
 
       // Most recent completed pick (for the deadline baseline)
       const { data: lastPick } = await supabase
@@ -2823,6 +2821,33 @@ export async function processDraftAutopicks() {
       if (d.draft_date) candidates.push(new Date(d.draft_date).getTime())
       const baselineMs = candidates.length ? Math.max(...candidates) : null
       if (baselineMs == null) continue
+
+      // Flagged auto-drafters normally pick instantly, with no timer wait —
+      // that's the point of the flag, so an absent manager doesn't cost
+      // everyone 60 seconds a round.
+      //
+      // But ONLY if they were flagged before this pick came on the clock.
+      // The commissioner is prompted after someone misses a pick, and that
+      // prompt refers to a pick that has already happened — so answering it
+      // used to instantly end whoever's turn was in progress at that moment.
+      // Reported live on 2026-09-05: "I thought I had 30 seconds and now I
+      // only have 10", followed by a pick they didn't make. They were
+      // present and deciding; the flag landed mid-turn and the next sweep
+      // took the pick away from them.
+      //
+      // Comparing against baselineMs — the same instant this pick's clock
+      // started — means a flag set mid-turn applies from their NEXT turn.
+      // Absent managers are unaffected: their flag predates the turn, so
+      // they still pick instantly.
+      const flagChangedMs = d.auto_draft_updated_at ? new Date(d.auto_draft_updated_at).getTime() : null
+      const flaggedBeforeThisTurn = flagChangedMs == null || flagChangedMs <= baselineMs
+      if ((d.auto_drafting_users || []).includes(nextPick.user_id) && flaggedBeforeThisTurn) {
+        logger.info({ leagueId: d.league_id, userId: nextPick.user_id, pickNumber: nextPick.pick_number }, 'Auto-drafting user on clock — instant pick')
+        await autoDraftPick(d.league_id, nextPick.user_id)
+        autopicks++
+        continue
+      }
+
       const elapsedSec = (Date.now() - baselineMs) / 1000
       if (elapsedSec < timerSec) continue
 
@@ -3208,13 +3233,39 @@ export async function cancelFantasyLeague(leagueId, options = {}) {
 }
 
 /**
- * Self-rescheduling tick loop. Runs every 10 seconds — well below the
- * minimum 30-second pick timer we'd realistically allow, so users always
- * get auto-picked within a few seconds of their clock hitting zero.
+ * Two self-rescheduling loops on different cadences.
+ *
+ * These used to share one 10-second timer, which meant an expired clock sat
+ * at 0:00 for up to a full 10 seconds before the auto-pick landed. Measured
+ * live on 2026-09-05: exactly 10 seconds of staring at zeros. On a 60-second
+ * pick timer that's a sixth of someone's turn, and it reads as the app being
+ * frozen — which, a day after an outage, is the last impression you want.
+ *
+ * Lowering the shared interval wasn't the answer: five housekeeping jobs
+ * rode the same timer and would have run 5x more often for no benefit. So
+ * the clock-critical check gets its own fast loop and everything else stays
+ * slow.
+ *
+ * AUTOPICK is deliberately cheap when idle — processDraftAutopicks opens
+ * with a single indexed query for drafts in_progress and returns
+ * immediately when there are none, which is almost always.
  */
 let _draftTickTimer = null
-const DRAFT_TICK_MS = 10 * 1000
+let _autopickTimer = null
+const DRAFT_TICK_MS = 10 * 1000        // housekeeping: notifications, scheduled starts, auto-init
+const AUTOPICK_TICK_MS = 2 * 1000      // clock precision: worst-case delay at zero
 export function startDraftAutopickLoop() {
+  // Fast loop — the only thing a drafter can feel.
+  async function autopickTick() {
+    try {
+      await processDraftAutopicks()
+    } catch (err) {
+      logger.error({ err }, 'Draft autopick loop tick error')
+    }
+    _autopickTimer = setTimeout(autopickTick, AUTOPICK_TICK_MS)
+  }
+  _autopickTimer = setTimeout(autopickTick, 5000)
+
   async function tick() {
     try {
       await processDraftPreStartNotifications()
@@ -3241,11 +3292,9 @@ export function startDraftAutopickLoop() {
     } catch (err) {
       logger.error({ err }, 'Scheduled draft start tick error')
     }
-    try {
-      await processDraftAutopicks()
-    } catch (err) {
-      logger.error({ err }, 'Draft autopick loop tick error')
-    }
+    // processDraftAutopicks deliberately NOT here — it runs on its own
+    // 2-second loop above. Leaving it on both would double every autopick
+    // attempt and race two callers for the same pick.
     _draftTickTimer = setTimeout(tick, DRAFT_TICK_MS)
   }
   _draftTickTimer = setTimeout(tick, 5000)
@@ -3255,6 +3304,10 @@ export function stopDraftAutopickLoop() {
   if (_draftTickTimer) {
     clearTimeout(_draftTickTimer)
     _draftTickTimer = null
+  }
+  if (_autopickTimer) {
+    clearTimeout(_autopickTimer)
+    _autopickTimer = null
   }
 }
 
