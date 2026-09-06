@@ -316,6 +316,29 @@ export default function FantasyDraftRoom({ league }) {
   // "You're on the clock" in-room alert — fires only when isMyTurn flips
   // false → true. Plays a beep, toasts, and flashes the document title so
   // users with the tab in the background notice.
+  // "The draft is live" alert. Fires on any transition INTO in_progress, so
+  // it covers both the scheduled start and a resume after a pause — in both
+  // cases people have been staring at a static screen and need to know the
+  // clock is running again.
+  //
+  // Initialised from the CURRENT status so opening a room mid-draft doesn't
+  // announce a start that already happened.
+  const wasLiveRef = useRef(draftStatus === 'in_progress')
+  useEffect(() => {
+    const isLive = draftStatus === 'in_progress'
+    if (isLive && !wasLiveRef.current) {
+      // Three ascending notes — longer and more announcement-like than the
+      // two-note pick confirmation, and unlike the countdown ticks, which
+      // mean the opposite thing.
+      playTone({ freq: 523, dur: 0.14, gain: 0.12 })
+      setTimeout(() => playTone({ freq: 659, dur: 0.14, gain: 0.12 }), 150)
+      setTimeout(() => playTone({ freq: 880, dur: 0.3, gain: 0.14 }), 300)
+      buzz([200, 90, 200])
+      toast('The draft is live!', 'success')
+    }
+    wasLiveRef.current = isLive
+  }, [draftStatus])
+
   const wasMyTurnRef = useRef(false)
   useEffect(() => {
     if (isMyTurn && !wasMyTurnRef.current && draftStatus === 'in_progress') {
