@@ -323,6 +323,55 @@ export async function addComment(userId, targetType, targetId, content, parentId
     } catch (_) { /* notification is best-effort */ }
   }
 
+  // @mentions. Parsed from the text server-side rather than taking a list of
+  // ids from the client, so it works on every client including native app
+  // builds that predate the compose-time autocomplete.
+  //
+  // Before this, typing "@someone" in a comment was plain text: no highlight,
+  // no autocomplete, and — the part that actually mattered — the person named
+  // was never told. League threads have had mentions for a while, so the app
+  // taught people the gesture works and then silently dropped it here.
+  try {
+    // The @ must start a word. Without the (^|\s) guard, "nick@example.com"
+    // parses as a mention of "example" and notifies whoever holds that name.
+    const names = [...new Set(
+      [...content.matchAll(/(?:^|\s)@([A-Za-z0-9_]{2,30})/g)].map((m) => m[1].toLowerCase()),
+    )].slice(0, 5) // cap: a comment naming 20 people is spam, not conversation
+
+    if (names.length) {
+      // Case-insensitive, one lookup per name. Usernames are stored with
+      // their original casing and .in() would be case-sensitive.
+      const found = []
+      for (const name of names) {
+        const { data: u } = await supabase
+          .from('users')
+          .select('id, username')
+          .ilike('username', name)
+          .maybeSingle()
+        if (u) found.push(u)
+      }
+
+      const username = data.users?.username || 'Someone'
+      const metadata = {
+        actorId: userId,
+        targetType,
+        targetId,
+        ...(await targetNotificationIds(targetType, targetId)),
+      }
+      for (const u of found) {
+        // Don't notify yourself, and don't double-notify the person who
+        // already got the comment/reply notification above.
+        if (u.id === userId || u.id === notifyUserId) continue
+        await createNotification(
+          u.id,
+          'comment_mention',
+          `${username} mentioned you in a comment`,
+          metadata,
+        )
+      }
+    }
+  } catch (_) { /* best-effort, same as above */ }
+
   return data
 }
 

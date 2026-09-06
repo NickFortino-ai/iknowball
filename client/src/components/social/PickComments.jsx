@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useComments, useAddComment, useDeleteComment, useToggleCommentLike } from '../../hooks/useSocial'
 import { useAuth } from '../../hooks/useAuth'
+import { useSearchUsers } from '../../hooks/useInvitations'
 import { toast } from '../ui/Toast'
 import { timeAgo } from '../../lib/time'
 import Avatar from '../ui/Avatar'
@@ -17,6 +18,13 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
   const [replyingTo, setReplyingTo] = useState(null) // { id, username }
   const [flagMode, setFlagMode] = useState(false)
   const [reportTarget, setReportTarget] = useState(null) // { commentId, userId }
+  // @mention autocomplete, mirroring LeagueThread. The server parses
+  // mentions out of the text itself, so this is purely an assist for
+  // spelling the username right — a comment typed without it still notifies.
+  const [mentionQuery, setMentionQuery] = useState('')
+  const [mentionActive, setMentionActive] = useState(false)
+  const textareaRef = useRef(null)
+  const { data: mentionResults } = useSearchUsers(mentionActive ? mentionQuery : '')
   const { session } = useAuth()
   const currentUserId = session?.user?.id
   // Always fetch comments so we can show the most recent one in collapsed view
@@ -43,6 +51,15 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
 
   // Most recent comment for collapsed view
   const mostRecent = allComments.length > 0 ? allComments[allComments.length - 1] : null
+
+  function insertMention(user) {
+    const el = textareaRef.current
+    const cursor = el?.selectionStart ?? text.length
+    const before = text.slice(0, cursor).replace(/@\w{2,}$/, `@${user.username} `)
+    setText(before + text.slice(cursor))
+    setMentionActive(false)
+    el?.focus()
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -162,9 +179,34 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
             </button>
           </div>
         )}
+        {mentionActive && mentionResults?.length > 0 && (
+          <div className="absolute bottom-full left-0 right-0 mb-1 bg-bg-primary border border-border rounded-lg shadow-lg max-h-44 overflow-y-auto z-20">
+            {mentionResults.slice(0, 6).map((u) => (
+              <button
+                key={u.id}
+                type="button"
+                onClick={() => insertMention(u)}
+                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-text-primary/5 text-left"
+              >
+                <Avatar user={u} size="xs" />
+                <span className="text-sm text-text-primary">@{u.username}</span>
+              </button>
+            ))}
+          </div>
+        )}
         <textarea
+          ref={textareaRef}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value
+            setText(v)
+            // Only trigger on a partial @word at the cursor, so an already
+            // completed "@nick " doesn't keep the dropdown open.
+            const upToCursor = v.slice(0, e.target.selectionStart)
+            const m = upToCursor.match(/(^|\s)@(\w{2,})$/)
+            if (m) { setMentionQuery(m[2]); setMentionActive(true) }
+            else setMentionActive(false)
+          }}
           placeholder={replyingTo ? `Reply to @${replyingTo.username}...` : 'Add a comment...'}
           maxLength={280}
           rows={1}
