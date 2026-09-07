@@ -215,7 +215,11 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
                     <span className={pick.picked_team === 'away' ? 'text-accent font-semibold' : 'text-text-primary'}>
                       {teamName(game.away_team)}
                     </span>
-                    <span className="text-text-muted"> vs </span>
+                    {/* "@" not "vs" — away is rendered on the left and home on
+                        the right, so this reads "away @ home", matching the
+                        picks list, Game Center and Game Intel. Hardcoded "vs"
+                        told a road team's backer their game was at home. */}
+                    <span className="text-text-muted"> @ </span>
                     <span className={pick.picked_team === 'home' ? 'text-accent font-semibold' : 'text-text-primary'}>
                       {teamName(game.home_team)}
                     </span>
