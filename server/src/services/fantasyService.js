@@ -106,6 +106,15 @@ export function buildScoringRulesFromPreset(preset = 'half_ppr') {
   return base
 }
 
+// The individual-defense stat categories, in one place. Used both to ask
+// "does this league score IDP?" (any non-zero rule) and "did this player
+// produce on defense?" (any non-zero stat) — questions that were previously
+// answered by proxy from roster slots, which is not the same thing.
+export const IDP_STAT_KEYS = [
+  'idp_tkl_solo', 'idp_tkl_ast', 'idp_tkl_loss', 'idp_sack',
+  'idp_int', 'idp_pass_def', 'idp_ff', 'idp_fum_rec',
+]
+
 /**
  * Apply a league's scoring_rules to a single nfl_player_stats row and
  * return the total fantasy points.
@@ -4149,6 +4158,15 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
     : []
   const ranked = [...offenseSlice, ...kickerSlice, ...defSlice, ...idpSlice]
 
+  // Does this league SCORE individual defense, regardless of whether it has
+  // IDP roster slots? These are independent settings, and "Salary and Peanut
+  // Butter" is the case that proves it: no LB/DL slots, a team DEF slot, and
+  // a full set of non-zero idp_* scoring rules. A dual-position player like
+  // Travis Hunter (WR/DB) is drafted into a WR or FLEX spot there, and his
+  // tackles score — 13 of his 62.8 points in 2025 — so hiding the idp_*
+  // fields left a stat line that could not explain his own point total.
+  const scoresIdp = IDP_STAT_KEYS.some((k) => Number(leagueScoringRules?.[k]) > 0)
+
   // Per-position rank from the same sort. Dual-eligible players count
   // once per family they belong to (so a LB/DL player appears in both
   // LB and DL rank counts).
@@ -4246,10 +4264,20 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
         fum_lost: s.fum_lost || 0,
         fgm: s.fgm || 0,
         xpm: s.xpm || 0,
-        // Only one of these families can apply: an IDP league drops team
-        // DEF entirely, a team-DEF league has no IDPs. Sending both meant
-        // 8 guaranteed-zero fields on all 470 players in every response.
-        ...(hasIdp ? {
+        // Families are chosen independently. The old rule — one or the
+        // other, keyed off IDP roster slots — assumed a league is either
+        // IDP or team-DEF. A league can be both (IDP scoring rules with a
+        // team DEF slot and no IDP slots), and then a dual-position player
+        // scored points the visible stat line could not account for.
+        //
+        // The payload-size concern behind the old rule still holds, so IDP
+        // fields ride along only for players with at least one non-zero IDP
+        // stat — never the all-zero padding the old comment was avoiding.
+        // In an IDP-scoring league that includes 133 of 470 nominally
+        // offensive players, because a WR who makes a tackle after an
+        // interception scores for it here and the stat line has to say so.
+        // Measured cost on this league's full pool: 15.6 KB, about 5%.
+        ...(hasIdp || (scoresIdp && IDP_STAT_KEYS.some((k) => Number(s[k]) > 0)) ? {
           idp_tkl_solo: Math.round((s.idp_tkl_solo || 0) * 10) / 10,
           idp_tkl_ast: Math.round((s.idp_tkl_ast || 0) * 10) / 10,
           idp_tkl_loss: Math.round((s.idp_tkl_loss || 0) * 10) / 10,
