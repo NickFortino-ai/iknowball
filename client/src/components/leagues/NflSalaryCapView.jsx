@@ -22,6 +22,16 @@ const SLOTS = [
 
 const POS_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'DEF', 'OUT']
 
+// Statuses meaning the player cannot take the field this week, so he belongs
+// under the OUT tab rather than the main list. Previously only Out and IR
+// counted — but "Out" never appears in the data at all, and PUP, Sus and DNR
+// were left sitting in the main pool looking pickable. Questionable is
+// deliberately absent: that is a real gamble, and it stays in the list with a
+// badge. NA is absent too — it looks like an unavailable marker and is not
+// (Josh Jacobs carries it).
+const UNAVAILABLE_STATUSES = new Set(['out', 'ir', 'pup', 'sus', 'suspended', 'dnr'])
+const isUnavailable = (status) => UNAVAILABLE_STATUSES.has(String(status || '').toLowerCase())
+
 // Copy for an empty player pool.
 //
 // Salaries are generated overnight but held in draft until Tuesday 10:00 AM
@@ -119,8 +129,8 @@ export default function NflSalaryCapView({ league }) {
     return players
       .filter((p) => !usedPlayerIds.has(p.id))
       .filter((p) => {
-        if (posFilter === 'OUT') return p.injury_status === 'Out' || p.injury_status === 'IR'
-        if (p.injury_status === 'Out' || p.injury_status === 'IR') return false
+        if (posFilter === 'OUT') return isUnavailable(p.injury_status)
+        if (isUnavailable(p.injury_status)) return false
         return posFilter === 'All' || p.position === posFilter
       })
       .filter((p) => !searchQuery || p.full_name?.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -381,7 +391,14 @@ export default function NflSalaryCapView({ league }) {
                 >
                   <PlayerHeadshot name={player.full_name} url={player.headshot_url} size="md" />
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-bold text-text-primary truncate block">{player.full_name}</span>
+                    {/* Questionable players are a legitimate pick and stay in
+                        the pool, so the flag is the only thing distinguishing
+                        them from healthy ones. Without it 132 of them looked
+                        identical on the 2026 week 1 slate. */}
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-sm font-bold text-text-primary truncate">{player.full_name}</span>
+                      <InjuryBadge status={player.injury_status} />
+                    </span>
                     <div className="text-xs text-text-muted">
                       {player.position} · {player.team || 'FA'}
                       {(() => {
