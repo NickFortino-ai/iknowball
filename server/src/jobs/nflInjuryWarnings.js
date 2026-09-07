@@ -23,15 +23,37 @@ export async function sendNflInjuryWarnings() {
   const week = state.week ? parseInt(state.week, 10) : null
   if (!week) return
 
-  // 1. Find every Out / IR player on an NFL roster
-  const { data: outPlayers } = await supabase
-    .from('nfl_players')
-    .select('id, full_name, position, team, injury_status')
-    .in('injury_status', ['Out', 'IR'])
-    .not('team', 'is', null)
+  // 1. Find every unavailable player on an NFL roster.
+  //
+  // This used to be `.in('injury_status', ['Out', 'IR'])`, which sounds
+  // complete and is not: "Out" never appears in nfl_players at all, so it was
+  // effectively an IR-only check. PUP, Sus and DNR players — 39 of them with
+  // a team as of 2026-09-07 — could sit in a starting lineup all week without
+  // their owner ever being warned.
+  //
+  // Fetched by "has any status" and filtered here rather than widening the
+  // .in() list, so a casing change from Sleeper ("SUS" vs "Sus") can't
+  // silently reopen the same hole. Mirrors UNAVAILABLE_STATUSES in
+  // NflSalaryCapView.jsx — the two should agree about who cannot play.
+  //
+  // Questionable is deliberately absent: a warning for a player who may well
+  // suit up trains people to ignore the notification.
+  const UNAVAILABLE = new Set(['out', 'ir', 'pup', 'sus', 'suspended', 'dnr'])
+
+  const statused = await fetchAll(
+    supabase
+      .from('nfl_players')
+      .select('id, full_name, position, team, injury_status')
+      .not('injury_status', 'is', null)
+      .not('team', 'is', null)
+      .order('id')
+  )
+  const outPlayers = (statused || []).filter(
+    (p) => UNAVAILABLE.has(String(p.injury_status || '').toLowerCase())
+  )
 
   if (!outPlayers?.length) {
-    logger.debug('No Out/IR NFL players to warn about')
+    logger.debug('No unavailable NFL players to warn about')
     return
   }
 
