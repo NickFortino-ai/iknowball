@@ -346,12 +346,19 @@ export async function scoreNflDfsWeek(week, season) {
 
   let statsMap = {}
   if (allPlayerIds.length) {
-    const { data: stats } = await supabase
-      .from('nfl_player_stats')
-      .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
-      .eq('week', week)
-      .eq('season', season)
-      .in('player_id', allPlayerIds)
+    // fetchAll: bounded by rostered players rather than the ~1,800 stat rows
+    // a week holds, so at 33 distinct rostered players there is plenty of
+    // headroom today. Paginated anyway because this is the SCORING read —
+    // a truncated page here does not error, it just scores someone zero.
+    const stats = await fetchAll(
+      supabase
+        .from('nfl_player_stats')
+        .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
+        .eq('week', week)
+        .eq('season', season)
+        .in('player_id', allPlayerIds)
+        .order('player_id')
+    )
 
     for (const st of stats || []) statsMap[st.player_id] = st
   }
@@ -467,11 +474,19 @@ export async function generateSalaries(week, season) {
   // FIRST insert for a (player, week, season) — otherwise regenerating
   // a week (Wed 3 AM cron running for a week the admin pre-generated
   // Tuesday and un-hid players in) would re-hide the admin's un-hides.
-  const { data: existingRows } = await supabase
-    .from('dfs_weekly_salaries')
-    .select('player_id')
-    .eq('season', season)
-    .eq('nfl_week', week)
+  // fetchAll: this is every priced row for the week — 1,112 for 2026 week 1,
+  // so the silent 1000-row cap was dropping 112 of them. Those players then
+  // looked like first inserts on the next regeneration and the auto-hide
+  // rules re-applied, which is precisely the admin intent the comment above
+  // says this query exists to preserve. player_id ordered for stable paging.
+  const existingRows = await fetchAll(
+    supabase
+      .from('dfs_weekly_salaries')
+      .select('player_id')
+      .eq('season', season)
+      .eq('nfl_week', week)
+      .order('player_id')
+  )
   const existingPlayerIds = new Set((existingRows || []).map((r) => r.player_id))
 
   // Pull every player we might price. Filter on team IS NOT NULL so retired
@@ -579,12 +594,18 @@ export async function generateSalaries(week, season) {
 
   // Honor manual overrides — fetch existing rows that admins have edited
   // and preserve their salary value while still refreshing algorithm_salary.
-  const { data: manualRows } = await supabase
-    .from('dfs_weekly_salaries')
-    .select('player_id, salary')
-    .eq('season', season)
-    .eq('nfl_week', week)
-    .eq('manually_set', true)
+  // fetchAll: 107 manually-set rows today so this is not truncating yet, but
+  // it reads the same 1,100-row-per-week table and every one it loses is an
+  // admin's hand-set price silently reverting to the algorithm's.
+  const manualRows = await fetchAll(
+    supabase
+      .from('dfs_weekly_salaries')
+      .select('player_id, salary')
+      .eq('season', season)
+      .eq('nfl_week', week)
+      .eq('manually_set', true)
+      .order('player_id')
+  )
 
   if (manualRows?.length) {
     const manualMap = new Map(manualRows.map((r) => [r.player_id, r.salary]))
