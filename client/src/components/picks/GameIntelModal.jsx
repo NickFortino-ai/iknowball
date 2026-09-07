@@ -148,7 +148,7 @@ function InjuryRow({ inj }) {
   )
 }
 
-function TeamSection({ teamName, starters, injuries }) {
+function TeamSection({ teamName, starters, injuries, sportKey }) {
   const hasInjuries = injuries?.length > 0
 
   // Build injury status map by player name for cross-referencing with starters
@@ -201,7 +201,16 @@ function TeamSection({ teamName, starters, injuries }) {
 
       {hasStarters && (
         <div className="mb-4">
-          <div className="text-xs text-text-muted uppercase tracking-wider mb-2">Today's Starters</div>
+          {/* Football is picked days ahead and what ESPN returns is a depth
+              chart, not a lineup card — "Today's Starters" read wrong on a
+              Thursday for a Sunday game. Matched on the prefix rather than
+              an explicit list, which would already have missed
+              americanfootball_nfl_preseason alongside ncaaf and ufl. Other
+              sports here (NBA / WNBA starting five) really are day-of, so
+              they keep the original wording. */}
+          <div className="text-xs text-text-muted uppercase tracking-wider mb-2">
+            {String(sportKey || '').startsWith('americanfootball') ? 'Starting Roster' : "Today's Starters"}
+          </div>
           {groupedBySide ? (
             <div className="space-y-3">
               {sides.map((g) => (
@@ -394,11 +403,13 @@ export default function GameIntelModal({ gameId, onClose }) {
                 teamName={data.away_team}
                 starters={data.away?.starters}
                 injuries={data.away?.injuries}
+                sportKey={data.sportKey}
               />
               <TeamSection
                 teamName={data.home_team}
                 starters={data.home?.starters}
                 injuries={data.home?.injuries}
+                sportKey={data.sportKey}
               />
             </div>
             )}
