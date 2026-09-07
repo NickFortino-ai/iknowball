@@ -92,7 +92,13 @@ export const FUTURES_SPORT_KEYS = {
     'basketball_nba_championship_winner',
   ],
   basketball_wnba: [
-    'basketball_wnba_championship_winner',
+    // The Odds API does not offer a WNBA outrights key. /v4/sports?all=true
+    // lists exactly one WNBA entry — 'basketball_wnba' (game odds) — and no
+    // championship-winner variant, so the key we used to request here always
+    // came back UNKNOWN_SPORT. Not a seasonal gap: it has never existed.
+    // The live "WNBA Finals Winner" market is a custom, manually-resolved
+    // market (futures_sport_key 'custom_basketball_wnba'), so it is unaffected.
+    // Re-add a key here only after confirming it appears in /v4/sports.
   ],
   americanfootball_nfl: [
     'americanfootball_nfl_super_bowl_winner',
