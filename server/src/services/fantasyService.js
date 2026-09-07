@@ -8106,15 +8106,37 @@ export async function scoreFantasyMatchupsWeek(week, season) {
   const settingsRows = await fetchAll(
     supabase
       .from('fantasy_settings')
-      .select('league_id, scoring_format, scoring_rules, format')
+      .select('league_id, scoring_format, scoring_rules, format, season')
       .in('league_id', leagueIds)
       .order('league_id')
   )
   const rulesByLeague = {}
   const isTraditional = {}
+  // Only score leagues actually playing THIS season.
+  //
+  // fantasy_matchups has no season column — matchups are keyed on week
+  // alone — so the query above matches "week 1" for every league regardless
+  // of year. Re-syncing a past season therefore scored live leagues off
+  // last season's stats: on 2026-09-05 a 2025 week-1 backfill put
+  // 125.46-140.58 on The Friends League's week 1, hours after they drafted,
+  // for a season that had not started, and flipped 11 matchups from pending
+  // to active.
+  //
+  // fantasy_settings.season is the league's actual season, so gate on it.
+  // Leagues with no season recorded are still scored, preserving today's
+  // behaviour for anything predating the column.
+  const seasonMismatch = []
   for (const s of settingsRows) {
+    if (season != null && s.season != null && Number(s.season) !== Number(season)) {
+      seasonMismatch.push(s.league_id)
+      continue
+    }
     rulesByLeague[s.league_id] = s.scoring_rules || buildScoringRulesFromPreset(s.scoring_format)
     isTraditional[s.league_id] = s.format !== 'salary_cap'
+  }
+  if (seasonMismatch.length) {
+    logger.info({ week, season, skipped: seasonMismatch.length },
+      'Skipped leagues not playing this season')
   }
 
   // 3. Get every active starting roster (slot in starter set, not bench/IR)
