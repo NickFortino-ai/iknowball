@@ -9,8 +9,11 @@ import { fetchAll } from '../utils/fetchAll.js'
  *
  * For both traditional fantasy (starting lineup) and salary cap rosters,
  * if a rostered player has injury_status='Out' or 'IR' AND their team's
- * game starts within the next 24 hours, send the owner a one-time
- * notification per (player, week) so they can swap them out.
+ * game has not kicked off yet, send the owner a one-time notification per
+ * (player, week) so they can swap them out. (This said "within the next 24
+ * hours" for a long time and the code never did that — there is no lower
+ * bound, only a check that kickoff has not already passed. Warnings go out as
+ * soon as the status flips, which is what you want.)
  *
  * Dedup: each notification's metadata stores player_id + week + season
  * so we never send the same warning twice for the same lineup.
@@ -91,13 +94,20 @@ export async function sendNflInjuryWarnings() {
     return true
   })
 
-  // 3. Find salary cap rostered players for the current week
-  const { data: dfsSlots } = await supabase
-    .from('dfs_roster_slots')
-    .select('roster_id, player_id, dfs_rosters!inner(league_id, user_id, nfl_week, season, leagues(name))')
-    .in('player_id', outIds)
-    .eq('dfs_rosters.nfl_week', week)
-    .eq('dfs_rosters.season', season)
+  // 3. Find salary cap rostered players for the current week.
+  // fetchAll for the same reason the traditional branch above uses it: this
+  // was the one roster query without it, so at enough salary cap leagues the
+  // silent 1000-row cap would drop rosters off the end and those owners would
+  // never be warned. Cheap insurance — it pages only when there is a page.
+  const dfsSlots = await fetchAll(
+    supabase
+      .from('dfs_roster_slots')
+      .select('roster_id, player_id, dfs_rosters!inner(league_id, user_id, nfl_week, season, leagues(name))')
+      .in('player_id', outIds)
+      .eq('dfs_rosters.nfl_week', week)
+      .eq('dfs_rosters.season', season)
+      .order('roster_id')
+  )
 
   // 4. Build a list of (user_id, player_id, league_id, league_name, source)
   const warnings = []
