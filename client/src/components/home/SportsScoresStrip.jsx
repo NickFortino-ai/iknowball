@@ -218,28 +218,38 @@ function SportColumn({ sport, data, pickOutcomeByGame, onOpenGameCenter, onOpenI
   if (sport.key === 'ncaaf') {
     const cmp = (a, b) => getNcaafMatchupScore(a) - getNcaafMatchupScore(b)
 
-    // Upcoming sorts by slate day FIRST, then importance within the day.
+    // Slate day FIRST, then importance within the day.
+    //
     // Importance alone ignored the calendar entirely, so #10 Oklahoma vs #3
     // Georgia on Sep 26 sat above four Sep 12 games — a scoreboard showing a
     // game three weekends out before this Saturday's. College schedules
-    // release weeks ahead, so the effect compounds the further out the
-    // slate goes.
+    // release weeks ahead, so the effect compounds the further out the slate
+    // goes, and finals had the mirror problem: an older marquee game
+    // outranking last night's.
     //
     // Day buckets rather than a continuous recency penalty: a Saturday slate
     // is the unit fans think in, everything within one weekend still ranks by
-    // quality, and there is no weighting constant to tune. Live and recent
-    // keep pure importance ordering — live games are all happening now, so
-    // the calendar says nothing about them.
-    const byDayThenImportance = (a, b) => {
+    // quality, and there is no weighting constant to tune.
+    //
+    // Unknown days sink to the bottom in both directions rather than riding
+    // the '' sort order, which would float an undated game to the very top of
+    // upcoming.
+    const byDay = (newestFirst) => (a, b) => {
       const da = sportsDayOf(a.starts_at)
       const db = sportsDayOf(b.starts_at)
-      if (da !== db) return da < db ? -1 : 1
+      if (da !== db) {
+        if (!da) return 1
+        if (!db) return -1
+        return (newestFirst ? da > db : da < db) ? -1 : 1
+      }
       return cmp(a, b)
     }
 
+    // Live keeps pure importance: they are all happening now, so the calendar
+    // says nothing useful about them.
     live = [...live].sort(cmp)
-    upcoming = [...upcoming].sort(byDayThenImportance)
-    recent = [...recent].sort(cmp)
+    upcoming = [...upcoming].sort(byDay(false))
+    recent = [...recent].sort(byDay(true))
   }
 
   return (
