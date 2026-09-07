@@ -23,6 +23,55 @@ function InjuryBadge({ status }) {
   )
 }
 
+// Raw ESPN/Sleeper codes that mean "individual defender". Sleeper files
+// nearly every defensive back as DB, so this list is wider than the four
+// slot names.
+const IDP_POSITION_CODES = ['DL', 'LB', 'DB', 'S', 'DE', 'DT', 'NT', 'ILB', 'OLB', 'MLB', 'CB', 'FS', 'SS']
+
+const IDP_COLUMN_DEFS = [
+  { key: 'idp_tkl_solo', label: 'SOLO' },
+  { key: 'idp_tkl_ast', label: 'AST' },
+  { key: 'idp_sack', label: 'SK' },
+  { key: 'idp_tkl_loss', label: 'TFL' },
+  { key: 'idp_int', label: 'INT' },
+  { key: 'idp_pass_def', label: 'PD' },
+  { key: 'idp_ff', label: 'FF' },
+  { key: 'idp_fum_rec', label: 'FR' },
+]
+
+/**
+ * Columns for a player's weekly table.
+ *
+ * Two things the raw position string could not express:
+ *
+ * 1. Dual-position players. The server sends Travis Hunter as "WR/DB", which
+ *    matched neither the offensive branches nor the IDP list, so he fell
+ *    through to receiving-only — hiding tackles his league actually pays for
+ *    (13 of his 62.8 points in 2025).
+ * 2. Offensive players who record a stray defensive stat. Every scoring
+ *    preset carries non-zero idp_* values, so a receiver who makes the tackle
+ *    after an interception genuinely earns a point, and nothing on screen
+ *    explained where it came from.
+ *
+ * Defensive columns are therefore appended by production rather than by
+ * position — the same approach the kicker branch already uses for rushing and
+ * receiving. A pure defender is unaffected (his branch already lists all
+ * eight). Hunter picks up three. A receiver with one tackle picks up one,
+ * on the single player where it explains a point.
+ */
+function columnsFor(position, weeks) {
+  const parts = String(position || '').split('/').map((p) => p.trim()).filter(Boolean)
+  const offensePart = parts.find((p) => !IDP_POSITION_CODES.includes(p) && p !== 'DEF')
+  const basePosition = offensePart || parts[0] || position
+
+  const base = baseColumnsFor(basePosition, weeks)
+  const seen = new Set(base.map((c) => c.key))
+  const produced = (key) => (weeks || []).some((w) => (Number(w[key]) || 0) !== 0)
+  const extras = IDP_COLUMN_DEFS.filter((c) => !seen.has(c.key) && produced(c.key))
+
+  return extras.length ? [...base, ...extras] : base
+}
+
 /**
  * Returns the column set used in the per-week stats table for a given position.
  * Skill positions share the same set; QB / K / DEF have their own. For K,
@@ -30,7 +79,7 @@ function InjuryBadge({ status }) {
  * tracked week has a non-zero value — keeps the normal kicker table tight
  * while exposing the source of unexpected points when they appear.
  */
-function columnsFor(position, weeks) {
+function baseColumnsFor(position, weeks) {
   if (position === 'QB') {
     return [
       { key: 'pts', label: 'Pts' },
@@ -80,7 +129,7 @@ function columnsFor(position, weeks) {
   }
   // Individual defensive players — DL/LB/DB/S. Raw ESPN codes (DE/DT/NT,
   // ILB/OLB/MLB, CB, FS/SS) all fall into this branch too.
-  if (['DL', 'LB', 'DB', 'S', 'DE', 'DT', 'NT', 'ILB', 'OLB', 'MLB', 'CB', 'FS', 'SS'].includes(position)) {
+  if (IDP_POSITION_CODES.includes(position)) {
     return [
       { key: 'pts', label: 'Pts' },
       { key: 'idp_tkl_solo', label: 'SOLO' },
@@ -120,6 +169,21 @@ function columnsFor(position, weeks) {
   ]
 }
 
+// Defensive sentences for one week. Returns [] when there was no defensive
+// production, so callers can append unconditionally.
+function idpNarrativeParts(week) {
+  const parts = []
+  const tkl = (week.idp_tkl_solo || 0) + (week.idp_tkl_ast || 0)
+  if (tkl) parts.push(`${tkl} tackle${tkl !== 1 ? 's' : ''} (${week.idp_tkl_solo || 0} solo${week.idp_tkl_ast ? `, ${week.idp_tkl_ast} ast` : ''})`)
+  if (week.idp_sack) parts.push(`${week.idp_sack} sack${week.idp_sack !== 1 ? 's' : ''}`)
+  if (week.idp_tkl_loss) parts.push(`${week.idp_tkl_loss} TFL`)
+  if (week.idp_int) parts.push(`${week.idp_int} interception${week.idp_int !== 1 ? 's' : ''}`)
+  if (week.idp_pass_def) parts.push(`${week.idp_pass_def} pass${week.idp_pass_def !== 1 ? 'es' : ''} defended`)
+  if (week.idp_ff) parts.push(`${week.idp_ff} forced fumble${week.idp_ff !== 1 ? 's' : ''}`)
+  if (week.idp_fum_rec) parts.push(`${week.idp_fum_rec} fumble recovery${week.idp_fum_rec !== 1 ? 'ies' : ''}`)
+  return parts
+}
+
 function CurrentWeekNarrative({ position, week }) {
   if (!week) {
     return <p className="text-sm text-text-muted text-center">No stats yet this week.</p>
@@ -149,15 +213,8 @@ function CurrentWeekNarrative({ position, week }) {
     if (week.def_safety) items.push(`${week.def_safety} safety${week.def_safety !== 1 ? 's' : ''}`)
     if (items.length) parts.push(items.join(', '))
     if (week.def_pts_allowed != null) parts.push(`Allowed ${week.def_pts_allowed} points`)
-  } else if (['DL', 'LB', 'DB', 'S', 'DE', 'DT', 'NT', 'ILB', 'OLB', 'MLB', 'CB', 'FS', 'SS'].includes(position)) {
-    const tkl = (week.idp_tkl_solo || 0) + (week.idp_tkl_ast || 0)
-    if (tkl) parts.push(`${tkl} tackle${tkl !== 1 ? 's' : ''} (${week.idp_tkl_solo || 0} solo${week.idp_tkl_ast ? `, ${week.idp_tkl_ast} ast` : ''})`)
-    if (week.idp_sack) parts.push(`${week.idp_sack} sack${week.idp_sack !== 1 ? 's' : ''}`)
-    if (week.idp_tkl_loss) parts.push(`${week.idp_tkl_loss} TFL`)
-    if (week.idp_int) parts.push(`${week.idp_int} interception${week.idp_int !== 1 ? 's' : ''}`)
-    if (week.idp_pass_def) parts.push(`${week.idp_pass_def} pass${week.idp_pass_def !== 1 ? 'es' : ''} defended`)
-    if (week.idp_ff) parts.push(`${week.idp_ff} forced fumble${week.idp_ff !== 1 ? 's' : ''}`)
-    if (week.idp_fum_rec) parts.push(`${week.idp_fum_rec} fumble recovery${week.idp_fum_rec !== 1 ? 'ies' : ''}`)
+  } else if (IDP_POSITION_CODES.includes(position)) {
+    parts.push(...idpNarrativeParts(week))
   } else if (position === 'RB') {
     if (week.rush_att) parts.push(`${week.rush_yd || 0} rushing yards on ${week.rush_att} carries${week.rush_td ? `, ${week.rush_td} TD` : ''}`)
     if (week.rec) parts.push(`${week.rec} reception${week.rec !== 1 ? 's' : ''} for ${week.rec_yd || 0} yards${week.rec_td ? `, ${week.rec_td} TD` : ''}`)
@@ -174,6 +231,15 @@ function CurrentWeekNarrative({ position, week }) {
     }
     if (week.rush_yd || week.rush_att) parts.push(`${week.rush_yd || 0} rushing yards${week.rush_att ? ` on ${week.rush_att} carries` : ''}${week.rush_td ? `, ${week.rush_td} rushing TD` : ''}`)
     if (week.fum_lost) parts.push(`${week.fum_lost} fumble${week.fum_lost !== 1 ? 's' : ''} lost`)
+  }
+
+  // The chain above picks exactly one branch by position, which leaves out
+  // defense for anyone not filed as a defender — a two-way player like
+  // Travis Hunter ("WR/DB"), or a receiver who made the tackle after an
+  // interception. Both score for it, so both should read as having done it.
+  // Guarded on production, so nothing changes for the vast majority.
+  if (position !== 'DEF' && !IDP_POSITION_CODES.includes(position)) {
+    parts.push(...idpNarrativeParts(week))
   }
 
   return (
@@ -214,7 +280,10 @@ function PreviousGamesTable({ position, weeks, currentWeek }) {
       <table className="min-w-full text-xs">
         <thead>
           <tr className="text-[10px] uppercase text-text-muted">
-            <th className="text-left font-semibold pl-2 pr-1 py-2 w-6">Wk</th>
+            {/* Wk pins so the row stays identifiable once the table scrolls
+                sideways — already needed at a QB's 14 columns, more so now
+                that a two-way player can add defensive ones. */}
+            <th className="text-left font-semibold pl-2 pr-1 py-2 w-6 sticky left-0 z-20 bg-bg-primary">Wk</th>
             <th className="text-left font-semibold pl-1 pr-2 py-2 whitespace-nowrap">Opp</th>
             {columns.map((c) => (
               <th key={c.key} className="text-right font-semibold px-2 py-2 whitespace-nowrap">{c.label}</th>
@@ -232,7 +301,7 @@ function PreviousGamesTable({ position, weeks, currentWeek }) {
               : isPlayed ? 'text-text-primary' : 'text-text-muted'
             return (
               <tr key={w.week} className="border-t border-text-primary/10">
-                <td className={`pl-2 pr-1 py-2 font-semibold w-6 ${isPlayed ? '' : 'text-text-muted'}`}>{w.week}</td>
+                <td className={`pl-2 pr-1 py-2 font-semibold w-6 sticky left-0 z-10 bg-bg-primary ${isPlayed ? '' : 'text-text-muted'}`}>{w.week}</td>
                 <td className={`pl-1 pr-2 py-2 whitespace-nowrap ${oppColor}`}>{oppLabel}</td>
                 {columns.map((c) => {
                   const val = w[c.key]
@@ -269,7 +338,15 @@ function PreviousGamesTable({ position, weeks, currentWeek }) {
         </tbody>
         <tfoot>
           <tr className="border-t-2 border-text-primary/20 bg-bg-card/40">
-            <td className="pl-2 pr-1 py-2 font-semibold uppercase tracking-wider text-text-muted w-6">Total</td>
+            {/* The row tint is translucent and a sticky cell needs an opaque
+                base, or scrolled columns show through it. Paint the base,
+                then re-apply the tint on top so the cell matches its row.
+                position:sticky is itself positioned, so the overlay anchors
+                here without needing `relative` (which would fight it). */}
+            <td className="pl-2 pr-1 py-2 font-semibold uppercase tracking-wider text-text-muted w-6 sticky left-0 z-10 bg-bg-primary">
+              <span className="absolute inset-0 bg-bg-card/40 pointer-events-none" aria-hidden="true" />
+              <span className="relative">Total</span>
+            </td>
             <td className="pl-1 pr-2 py-2" />{/* Opp column has no total */}
             {columns.map((c) => (
               <td
