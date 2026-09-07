@@ -322,12 +322,24 @@ export function startScheduler() {
       logger.info('Fantasy draft autopick loop started: every 10s')
     })
 
-    // NFL injury warnings — once an hour, sends notifications when an Out/IR
-    // player is on someone's traditional starting lineup or salary cap roster.
-    cron.schedule('30 * * * *', async () => {
+    // NFL injury warnings — notifies when an unavailable player is on
+    // someone's traditional starting lineup or salary cap roster.
+    //
+    // Every 15 minutes rather than hourly. The case this exists for is a
+    // player who was Questionable when rostered and gets downgraded to Out
+    // while sitting in the lineup, and NFL inactives drop 90 minutes before
+    // kickoff. syncInjuries picks the change up within 5 minutes, so hourly
+    // was the whole latency budget: a downgrade just after the job ran left
+    // the owner unwarned for 59 more minutes, which against a 90-minute
+    // window is most of the time they had to react.
+    //
+    // Safe to run this often — notifications dedup on
+    // (player_id, week, season), so a player who stays Out across many runs
+    // still generates exactly one warning.
+    cron.schedule('*/15 * * * *', async () => {
       try { await sendNflInjuryWarnings() } catch (err) { logger.error({ err }, 'NFL injury warnings job failed') }
     })
-    logger.info('NFL injury warnings scheduled: every hour')
+    logger.info('NFL injury warnings scheduled: every 15 minutes')
 
     // Pick injury warnings — same idea but for the pick-based contest formats
     // (3-Point, HR Derby, Strikeouts, Sacks, Ints, TD Pass). Runs every 20
