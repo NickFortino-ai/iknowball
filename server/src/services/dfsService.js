@@ -59,8 +59,31 @@ export async function getPlayerPool(week, season, position = null) {
   // instead of dropping it.
   const ROSTERABLE = new Set(['QB', 'RB', 'WR', 'TE', 'DEF'])
 
+  // Players who cannot take the field this week at all. These are season- or
+  // multi-week designations, so pricing them into a weekly slate only offers
+  // a pick guaranteed to score zero. Questionable is deliberately NOT here —
+  // that is a real gamble a manager should get to make.
+  //
+  // generateSalaries keeps these rows on purpose; its comment says the slate
+  // "surfaces them with their injury_status flagged". It doesn't — the pool
+  // list renders name, position and team and nothing else, so as of
+  // 2026-09-07 ten unavailable players sat in the week 1 slate looking
+  // identical to healthy ones. Filtered on read rather than at generation so
+  // it also covers slates already priced.
+  const UNAVAILABLE = new Set(['IR', 'PUP', 'SUS', 'DNR', 'OUT'])
+
+  // No NFL team means no game to play in. generateSalaries already skips
+  // these at pricing time (`.not('team','is',null)`), but a player signed in
+  // August and released in September keeps the row that was priced while he
+  // still had a team — Sleeper nulls the team on the next sync and nothing
+  // revisits the salary. As of 2026-09-07 that was 234 of 988 players in the
+  // week 1 slate, 24% of it, priced as high as $5,500 and including Ben
+  // Roethlisberger. Team defenses always carry a team, so this cannot drop
+  // the DEF slot's only options.
   return (data || [])
     .filter((d) => ROSTERABLE.has(d.nfl_players?.position))
+    .filter((d) => d.nfl_players?.team)
+    .filter((d) => !UNAVAILABLE.has(String(d.nfl_players?.injury_status || '').toUpperCase()))
     .map((d) => ({
       ...d.nfl_players,
       salary: d.salary,
