@@ -1062,6 +1062,40 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     }
   }
 
+  // Cap head-to-head cards per pair of users.
+  //
+  // The dedupe above is per pair PER GAME, which is correct but insufficient:
+  // two people who pick nearly every game against each other generate one card
+  // apiece. Observed 2026-09-06 — one squad pair had 66 opposite-side games,
+  // a dozen of them on a single day — so the My Squad feed showed six
+  // consecutive "X beat Y" cards and buried everything else.
+  //
+  // Keep the most recent few per pair. Applied per page: the queries feeding
+  // this are already bounded by the pagination cursor, so an older page still
+  // surfaces that pair's older matchups rather than hiding them for good.
+  // Trimming here rather than after also means the cumulative-record lookup
+  // below only runs for the cards that survive.
+  const H2H_PER_PAIR = 2
+  const h2hByPair = new Map()
+  const keptFeed = []
+  for (const item of feed) {
+    if (item.type !== 'head_to_head') {
+      keptFeed.push(item)
+      continue
+    }
+    const pair = [item.matchup.userA.userId, item.matchup.userB.userId].sort().join('-')
+    const bucket = h2hByPair.get(pair)
+    if (bucket) bucket.push(item)
+    else h2hByPair.set(pair, [item])
+  }
+  for (const bucket of h2hByPair.values()) {
+    bucket.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    keptFeed.push(...bucket.slice(0, H2H_PER_PAIR))
+  }
+  // feed is sorted by score then timestamp further down, so order here is free.
+  feed.length = 0
+  feed.push(...keptFeed)
+
   // Compute cumulative h2h records (squad only — too expensive across all users)
   const h2hItems = feed.filter(f => f.type === 'head_to_head')
   if (h2hItems.length > 0 && !isAll && !isHighlights && !isHotTakes && !isUserHighlights && !isUserHotTakes) {
