@@ -73,7 +73,10 @@ export async function getPlayerPool(week, season, position = null) {
 export async function getDFSRoster(leagueId, userId, week, season) {
   const { data: roster } = await supabase
     .from('dfs_rosters')
-    .select('*, dfs_roster_slots(*, nfl_players(id, full_name, position, team, headshot_url))')
+    // injury_status: the pool carries it while you're picking, but the saved
+    // roster did not, so a player downgraded to Questionable after you set
+    // your lineup showed nothing on the surface you actually check.
+    .select('*, dfs_roster_slots(*, nfl_players(id, full_name, position, team, headshot_url, injury_status))')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
     .eq('nfl_week', week)

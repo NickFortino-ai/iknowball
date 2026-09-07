@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import PlayerHeadshot from '../ui/PlayerHeadshot'
+import InjuryBadge from '../ui/InjuryBadge'
 import PlayerDetailModal from './PlayerDetailModal'
 import { timeAgo } from '../../lib/time'
 
@@ -228,10 +229,19 @@ export default function NflSalaryCapView({ league }) {
                 <span className="text-xs font-bold text-accent w-7 shrink-0">{slot.label}</span>
                 {player ? (
                   <>
+                    {/* Name and headshot open the player modal, matching the
+                        pool list below. Scoped to this button rather than the
+                        whole row so the remove "×" still just removes. */}
+                    <button
+                      type="button"
+                      onClick={() => setDetailPlayerId(player.id)}
+                      className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                    >
                     <PlayerHeadshot name={player.full_name} url={player.headshot_url} size="sm" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-bold text-text-primary truncate">{player.full_name}</span>
+                        <InjuryBadge status={player.injury_status} />
                         {isLocked && (
                           <svg className="w-3 h-3 text-text-muted shrink-0" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
@@ -247,6 +257,7 @@ export default function NflSalaryCapView({ league }) {
                         })()}
                       </div>
                     </div>
+                    </button>
                     {isLocked ? (
                       <span className="text-sm font-display text-text-primary">{Math.round(pointsEarned * 10) / 10}</span>
                     ) : (
