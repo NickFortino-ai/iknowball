@@ -25,6 +25,23 @@ export function todaySportsDay() {
   return new Date().toLocaleDateString('en-CA', { timeZone: SPORTS_TZ })
 }
 
+/**
+ * The PT slate day a timestamp belongs to, as a YYYY-MM-DD key.
+ *
+ * en-CA gives zero-padded YYYY-MM-DD, so the result sorts and compares
+ * lexicographically — which is the point: it lets callers group or order by
+ * slate day without ever touching a Date object again.
+ *
+ * Returns '' for a missing or unparseable value so callers can sort without
+ * an Invalid Date silently poisoning comparisons.
+ */
+export function sportsDayOf(dateish) {
+  if (!dateish) return ''
+  const d = new Date(dateish)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('en-CA', { timeZone: SPORTS_TZ })
+}
+
 export function tomorrowSportsDay() {
   // Anchor on the PT calendar date, then add a day via noon-anchored Date math.
   // The earlier implementation used `toISOString().split('T')[0]` which returns

@@ -11,6 +11,7 @@ import GameIntelModal from '../picks/GameIntelModal'
 import { hasPregameIntel } from '../../lib/gameIntelSports'
 import { formatLiveLabel } from '../../lib/liveLabel'
 import { getNcaafMatchupScore } from '../../lib/ncaafPrestige'
+import { sportsDayOf } from '../../lib/sportsDay'
 
 // PT calendar date as YYYY-MM-DD — anchored to America/Los_Angeles so
 // it matches the server's sports-day convention. Every US pro sport
@@ -216,8 +217,28 @@ function SportColumn({ sport, data, pickOutcomeByGame, onOpenGameCenter, onOpenI
   // Ranked-vs-ranked → ranked-vs-unranked → unranked-vs-unranked.
   if (sport.key === 'ncaaf') {
     const cmp = (a, b) => getNcaafMatchupScore(a) - getNcaafMatchupScore(b)
+
+    // Upcoming sorts by slate day FIRST, then importance within the day.
+    // Importance alone ignored the calendar entirely, so #10 Oklahoma vs #3
+    // Georgia on Sep 26 sat above four Sep 12 games — a scoreboard showing a
+    // game three weekends out before this Saturday's. College schedules
+    // release weeks ahead, so the effect compounds the further out the
+    // slate goes.
+    //
+    // Day buckets rather than a continuous recency penalty: a Saturday slate
+    // is the unit fans think in, everything within one weekend still ranks by
+    // quality, and there is no weighting constant to tune. Live and recent
+    // keep pure importance ordering — live games are all happening now, so
+    // the calendar says nothing about them.
+    const byDayThenImportance = (a, b) => {
+      const da = sportsDayOf(a.starts_at)
+      const db = sportsDayOf(b.starts_at)
+      if (da !== db) return da < db ? -1 : 1
+      return cmp(a, b)
+    }
+
     live = [...live].sort(cmp)
-    upcoming = [...upcoming].sort(cmp)
+    upcoming = [...upcoming].sort(byDayThenImportance)
     recent = [...recent].sort(cmp)
   }
 
@@ -244,7 +265,7 @@ function SportColumn({ sport, data, pickOutcomeByGame, onOpenGameCenter, onOpenI
           today when nothing has completed yet. */}
       {(() => {
         const todayStr = todayPT()
-        const todayRecent = recent.filter((g) => new Date(g.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) === todayStr)
+        const todayRecent = recent.filter((g) => sportsDayOf(g.starts_at) === todayStr)
         return (
           <div className="space-y-4">
             {live.length > 0 && (
