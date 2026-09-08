@@ -28,6 +28,7 @@ import { settleWNBAProps } from './settleWNBAProps.js'
 import { scoreAllWnbaThreePointPicks, tightenWnbaThreePointJoinLocks } from '../services/wnbaThreePointService.js'
 import { settleMLBProps } from './settleMLBProps.js'
 import { settleNFLProps } from './settleNFLProps.js'
+import { settleNCAAFProps } from './settleNCAAFProps.js'
 import { scoreSquares } from './scoreSquares.js'
 import { syncMLBLineups } from './syncMLBLineups.js'
 import { sendScheduledEmails } from './sendScheduledEmails.js'
@@ -413,6 +414,17 @@ export function startScheduler() {
       try { await settleNFLProps() } catch (err) { logger.error({ err }, 'NFL prop auto-settlement failed') }
     })
     logger.info('NFL prop auto-settlement scheduled: every 2 minutes')
+
+    // Every 5 minutes rather than the 2 the others use. NFL/NBA/MLB/WNBA read
+    // a stats table and settle in one query; college has no such table, so
+    // this costs a scoreboard lookup plus a summary fetch PER GAME and
+    // processes 12 games a slice. ESPN per-host blocked the server on
+    // 2026-08-26 over call volume — a Saturday backlog still drains in about
+    // 20 minutes at this cadence, which is far inside the window that matters.
+    cron.schedule('*/5 * * * *', async () => {
+      try { await settleNCAAFProps() } catch (err) { logger.error({ err }, 'NCAAF prop auto-settlement failed') }
+    })
+    logger.info('NCAAF prop auto-settlement scheduled: every 5 minutes')
   }
 
   // League completion runs alongside game scoring — checks for ended pickem/bracket leagues
