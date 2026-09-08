@@ -1196,8 +1196,26 @@ export default function FantasyDraftRoom({ league }) {
                     <div className="text-xs font-semibold text-text-primary truncate">{q.nfl_players?.full_name}</div>
                     <div className="text-[10px] text-text-muted">{q.nfl_players?.position} · {q.nfl_players?.team || 'FA'}</div>
                   </div>
-                  <button onClick={() => moveQueue(q.player_id, 'up')} disabled={i === 0} className="text-text-muted hover:text-text-primary w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary disabled:opacity-30" title="Move up">▲</button>
-                  <button onClick={() => moveQueue(q.player_id, 'down')} disabled={i === queue.length - 1} className="text-text-muted hover:text-text-primary w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary disabled:opacity-30" title="Move down">▼</button>
+                  {/* On the clock, the queue's job is to be drafted FROM —
+                      people went to it expecting to pick there and found only
+                      reorder arrows. Draft replaces those arrows rather than
+                      joining them: four controls plus a name does not fit a
+                      phone row, and reordering is what you do while waiting,
+                      not while picking. Remove (×) stays either way. */}
+                  {(isMyTurn || offlineMode) ? (
+                    <button
+                      onClick={() => handlePick(q.player_id)}
+                      disabled={makePick.isPending || makeOfflinePick.isPending}
+                      className="shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-accent text-white hover:bg-accent-hover active:scale-95 transition disabled:opacity-50"
+                    >
+                      Draft
+                    </button>
+                  ) : (
+                    <>
+                      <button onClick={() => moveQueue(q.player_id, 'up')} disabled={i === 0} className="text-text-muted hover:text-text-primary w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary disabled:opacity-30" title="Move up">▲</button>
+                      <button onClick={() => moveQueue(q.player_id, 'down')} disabled={i === queue.length - 1} className="text-text-muted hover:text-text-primary w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary disabled:opacity-30" title="Move down">▼</button>
+                    </>
+                  )}
                   <button onClick={() => toggleQueue(q.player_id)} className="text-text-muted hover:text-incorrect w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary text-lg" title="Remove">×</button>
                 </div>
               ))}
