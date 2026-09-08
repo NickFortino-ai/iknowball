@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import InfoTooltip from '../components/ui/InfoTooltip'
@@ -255,6 +255,35 @@ function MyActiveLeagues() {
 
   const active = (leagues || []).filter((l) => l.status !== 'completed')
 
+  // Arrow affordance for the horizontal league row. Hooks must run before the
+  // early return below, so they sit here rather than next to the markup.
+  const leagueScrollRef = useRef(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  function updateLeagueArrows() {
+    const el = leagueScrollRef.current
+    if (!el) return
+    // 1px slack: sub-pixel layout can leave scrollLeft a hair short of the
+    // true maximum, which would keep the right arrow visible at the end.
+    setCanScrollLeft(el.scrollLeft > 1)
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1)
+  }
+
+  function scrollLeagues(dir) {
+    const el = leagueScrollRef.current
+    if (!el) return
+    // One card plus its gap (w-64 + gap-3), so a click advances by exactly
+    // one league rather than an arbitrary distance.
+    el.scrollBy({ left: dir * 268, behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    updateLeagueArrows()
+    window.addEventListener('resize', updateLeagueArrows)
+    return () => window.removeEventListener('resize', updateLeagueArrows)
+  }, [active.length])
+
   if (isLoading || !active.length) return null
 
   return (
@@ -266,7 +295,29 @@ function MyActiveLeagues() {
           clipped at the container's inner right border. Left edge
           keeps its container alignment. mr-[calc(50%-50vw)] resolves
           to a negative value equal to (viewport - container) / 2. */}
-      <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 lg:mr-[calc(50%-50vw)] scrollbar-hide">
+      {/* The row scrolls horizontally and hides its scrollbar, which leaves a
+          mouse user with no affordance at all — no bar to drag, and a wheel
+          only scrolls vertically. Trackpads swipe sideways so this went
+          unnoticed. Arrows appear on pointer devices only; touch users keep
+          the clean swipe. Shift+wheel still works natively either way. */}
+      <div className="relative group">
+      <button
+        type="button"
+        aria-label="Scroll leagues left"
+        onClick={() => scrollLeagues(-1)}
+        className={`hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-30 w-9 h-9 items-center justify-center rounded-full bg-bg-primary/90 border border-text-primary/20 text-text-primary shadow-lg transition-opacity hover:bg-bg-card ${canScrollLeft ? 'opacity-0 group-hover:opacity-100' : 'opacity-0 pointer-events-none'}`}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+      </button>
+      <button
+        type="button"
+        aria-label="Scroll leagues right"
+        onClick={() => scrollLeagues(1)}
+        className={`hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-30 w-9 h-9 items-center justify-center rounded-full bg-bg-primary/90 border border-text-primary/20 text-text-primary shadow-lg transition-opacity hover:bg-bg-card ${canScrollRight ? 'opacity-0 group-hover:opacity-100' : 'opacity-0 pointer-events-none'}`}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+      </button>
+      <div ref={leagueScrollRef} onScroll={updateLeagueArrows} className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 lg:mr-[calc(50%-50vw)] scrollbar-hide">
         {active.map((league) => (
           <Link
             key={league.id}
@@ -327,6 +378,7 @@ function MyActiveLeagues() {
             </div>
           </Link>
         ))}
+      </div>
       </div>
     </div>
   )
