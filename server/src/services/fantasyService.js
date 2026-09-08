@@ -5757,7 +5757,7 @@ function calculateDropClearsAt(dropTime = new Date()) {
 // abbreviations — this map bridges them so kickoff-time lockdown can lift
 // precise starts_at from games and report the team in the format the rest
 // of fantasy already speaks.
-const NFL_FULL_TO_ABBR = {
+export const NFL_FULL_TO_ABBR = {
   'Arizona Cardinals': 'ARI', 'Atlanta Falcons': 'ATL', 'Baltimore Ravens': 'BAL',
   'Buffalo Bills': 'BUF', 'Carolina Panthers': 'CAR', 'Chicago Bears': 'CHI',
   'Cincinnati Bengals': 'CIN', 'Cleveland Browns': 'CLE', 'Dallas Cowboys': 'DAL',

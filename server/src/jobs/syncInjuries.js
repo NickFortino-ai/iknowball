@@ -365,7 +365,14 @@ function extractFootballStarters(data) {
   return { starters, activeNames }
 }
 
-async function getUpcomingTeams(sportKey) {
+// How long an NFL team's cached depth chart / injury list may sit before it
+// is refetched during the non-gameday stretch of the week. Four hours keeps
+// a team roughly six refreshes a day — enough that a Wednesday depth-chart
+// change is visible the same afternoon — while cutting what an 8-day window
+// would otherwise cost from ~768 ESPN calls an hour to a few dozen a day.
+const NFL_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000
+
+async function getUpcomingTeams(sportKey, windowOverrideMs = null) {
   // NFL preseason games have their own sport_id ('americanfootball_nfl_preseason')
   // so a filter on the regular NFL sport row would miss them entirely and
   // team_intel would never refresh for teams playing preseason games.
@@ -384,7 +391,19 @@ async function getUpcomingTeams(sportKey) {
   // WNBA games are typically 2-3 days apart, so a 24h window means we
   // never refresh injuries when the picks-page tab is showing. Widen the
   // sync window to match the 3-day calendar window the picks page uses.
-  const windowMs = sportKey === 'basketball_wnba' ? 4 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
+  // NFL plays weekly, so a 24h window meant a team's depth chart and injury
+  // list were only refreshed on gameday — and then sat untouched for six
+  // days, which is exactly the stretch when people research the next slate.
+  // Observed 2026-09-07: Game Center listed Zach Charbonnet as Seattle's
+  // starting RB from a chart cached 2026-08-28; ESPN had him fourth by then.
+  // 8 days covers the full week plus slack for Thursday/Monday games.
+  //
+  // Volume is held down by the staleness gate in syncInjuries, not by this
+  // window — see NFL_REFRESH_INTERVAL_MS.
+  const windowMs = windowOverrideMs != null ? windowOverrideMs
+    : sportKey === 'basketball_wnba' ? 4 * 24 * 60 * 60 * 1000
+    : sportKey === 'americanfootball_nfl' ? 8 * 24 * 60 * 60 * 1000
+    : 24 * 60 * 60 * 1000
   const cutoff = new Date(now.getTime() + windowMs)
 
   const { data: games } = await supabase
@@ -415,10 +434,36 @@ export async function syncInjuries() {
   const nflActiveNames = new Set()
 
   for (const [sportKey, sportPath] of Object.entries(INJURY_SPORTS)) {
-    const teamNames = await getUpcomingTeams(sportKey)
+    let teamNames = await getUpcomingTeams(sportKey)
     if (!teamNames.length) {
-      logger.debug({ sportKey }, 'No upcoming games in 24h, skipping injury sync')
+      logger.debug({ sportKey }, 'No upcoming games in window, skipping injury sync')
       continue
+    }
+
+    // The NFL window is 8 days, which is every team all week. Re-fetching 32
+    // depth charts and 32 injury lists every 5 minutes is both pointless —
+    // ESPN does not update a depth chart that often — and the exact call
+    // volume that got the server per-host blocked on 2026-08-26.
+    //
+    // So within that window a team is refreshed only if its cached row is
+    // older than the interval below, except on gameday: a team playing in
+    // the next 24h keeps the old every-tick cadence, because that is when
+    // inactives drop and the chart actually moves.
+    if (sportKey === 'americanfootball_nfl') {
+      const imminent = new Set(await getUpcomingTeams(sportKey, 24 * 60 * 60 * 1000))
+      const cutoff = new Date(Date.now() - NFL_REFRESH_INTERVAL_MS).toISOString()
+      const { data: fresh } = await supabase
+        .from('team_intel')
+        .select('team_name')
+        .eq('sport_key', sportKey)
+        .gte('updated_at', cutoff)
+      const freshSet = new Set((fresh || []).map((r) => r.team_name))
+      const before = teamNames.length
+      teamNames = teamNames.filter((t) => imminent.has(t) || !freshSet.has(t))
+      if (before !== teamNames.length) {
+        logger.debug({ sportKey, syncing: teamNames.length, skippedFresh: before - teamNames.length }, 'NFL injury sync: skipping teams refreshed recently')
+      }
+      if (!teamNames.length) continue
     }
 
     const isBasketball = BASKETBALL_SPORTS.has(sportKey)

@@ -3,6 +3,7 @@ import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../config/supabase.js'
 import { INJURY_SPORTS } from '../config/espnTeamMap.js'
 import { rollupSportKey } from '../utils/nflFamily.js'
+import { NFL_FULL_TO_ABBR } from '../services/fantasyService.js'
 import { logger } from '../utils/logger.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
@@ -138,8 +139,44 @@ router.get('/:game_id', requireAuth, async (req, res) => {
     .eq('sport_key', canonicalSportKey)
     .in('team_name', [game.home_team, game.away_team])
 
-  const homeData = intel?.find((r) => r.team_name === game.home_team)
-  const awayData = intel?.find((r) => r.team_name === game.away_team)
+  let homeData = intel?.find((r) => r.team_name === game.home_team)
+  let awayData = intel?.find((r) => r.team_name === game.away_team)
+
+  // ESPN's per-team NFL injuries endpoint returns nothing — measured
+  // 2026-09-08: 0 injuries across all 32 teams, while nfl_players (Sleeper)
+  // carried 371 designations. So the Game Center injury list was empty
+  // league-wide, and a PUP starter like Zach Charbonnet appeared nowhere.
+  //
+  // Merged at READ time rather than into team_intel because nfl_players is
+  // refreshed every 5 minutes by the Sleeper sync while a team_intel row is
+  // rewritten every 4 hours — a Friday designation should not wait on the
+  // slower of the two. ESPN entries win on a name collision, since when ESPN
+  // does report something it carries the fuller description.
+  if (canonicalSportKey === 'americanfootball_nfl') {
+    const abbrs = [NFL_FULL_TO_ABBR[game.home_team], NFL_FULL_TO_ABBR[game.away_team]].filter(Boolean)
+    if (abbrs.length) {
+      const { data: hurt } = await supabase
+        .from('nfl_players')
+        .select('full_name, position, team, injury_status')
+        .in('team', abbrs)
+        .not('injury_status', 'is', null)
+
+      const merge = (row, fullName) => {
+        const abbr = NFL_FULL_TO_ABBR[fullName]
+        const mine = (hurt || []).filter((p) => p.team === abbr)
+        if (!mine.length) return row
+        const existing = row?.injuries || []
+        const seen = new Set(existing.map((i) => i.name))
+        const extra = mine
+          .filter((p) => !seen.has(p.full_name))
+          .map((p) => ({ name: p.full_name, shortName: p.full_name, status: p.injury_status, position: p.position }))
+        return { ...(row || { team_name: fullName, starters: [] }), injuries: [...existing, ...extra] }
+      }
+
+      homeData = merge(homeData, game.home_team)
+      awayData = merge(awayData, game.away_team)
+    }
+  }
 
   // Fetch team records and L10 from ESPN scoreboard
   let homeRecord = null, awayRecord = null, homeLast10 = null, awayLast10 = null
