@@ -97,8 +97,15 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
 
   const homeStarters = (matchup.home_roster || []).filter((r) => starterSet.has(r.slot))
   const awayStarters = (matchup.away_roster || []).filter((r) => starterSet.has(r.slot))
-  const homeBench = (matchup.home_roster || []).filter((r) => !starterSet.has(r.slot))
-  const awayBench = (matchup.away_roster || []).filter((r) => !starterSet.has(r.slot))
+  // IR is neither a starter nor a bench player. The !starterSet catch-all is
+  // there to sweep up ORPHAN slots (a stale 'wr3' after a league shrinks to
+  // wr=2) so nobody vanishes — but it was also swallowing IR, so a stashed
+  // player padded the bench. JD's bench read 8 in the matchup and 7 in My
+  // Team, which renders IR as its own section. IR players cannot score, so
+  // they are excluded here rather than given a row.
+  const isIr = (slot) => String(slot || '').toLowerCase().startsWith('ir')
+  const homeBench = (matchup.home_roster || []).filter((r) => !starterSet.has(r.slot) && !isIr(r.slot))
+  const awayBench = (matchup.away_roster || []).filter((r) => !starterSet.has(r.slot) && !isIr(r.slot))
 
   // Win probability from projections
   const hProj = matchup.home_projected || 0
