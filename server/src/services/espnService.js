@@ -126,6 +126,11 @@ export async function fetchESPNScoreboard(sportKey, date = null) {
       // ISO start time so we can disambiguate doubleheaders. Falls back to
       // date if the API doesn't include time (rare).
       startsAt: event.date || competition.date || null,
+      // ESPN's own event id. Lets a caller resolve many games from ONE
+      // scoreboard fetch instead of calling findESPNEventId per game, which
+      // re-downloads the whole scoreboard each time — for NCAAF that is
+      // groups=80&limit=500, hundreds of games, twice per lookup.
+      espnId: event.id ? String(event.id) : null,
     }
   }).filter(Boolean)
 }

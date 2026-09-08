@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { settleProps } from '../services/propService.js'
-import { findESPNEventId, fetchFootballPlayerBoxStats } from '../services/espnService.js'
+import { fetchESPNScoreboard, matchESPNToGame, fetchFootballPlayerBoxStats } from '../services/espnService.js'
 import { stripAccents } from '../utils/name.js'
 
 // Map prop market_key → actual value from a parsed ESPN football box line.
@@ -77,6 +77,36 @@ export async function settleNCAAFProps() {
   const slice = [...byGame.values()].slice(0, MAX_GAMES_PER_RUN)
   const skippedGames = byGame.size - slice.length
 
+  // Resolve ESPN event ids from ONE scoreboard per date rather than calling
+  // findESPNEventId per game. That helper re-downloads the full scoreboard on
+  // every call — for NCAAF that is groups=80&limit=500, hundreds of games, and
+  // it tries two dates — so a 12-game slice was ~24 heavy fetches and took
+  // over two minutes. A Saturday slate shares two or three dates between all
+  // its games, so this collapses to two or three fetches.
+  const eventIdByGame = new Map()
+  const dates = new Set()
+  for (const { game } of slice) {
+    const d = new Date(game.starts_at)
+    // Same two candidates findESPNEventId uses: a late kickoff lands on the
+    // next UTC day while ESPN files it under the US calendar date.
+    dates.add(d.toISOString().slice(0, 10).replace(/-/g, ''))
+    dates.add(new Date(d.getTime() - 86400000).toISOString().slice(0, 10).replace(/-/g, ''))
+  }
+
+  const espnEvents = []
+  for (const dateStr of dates) {
+    try {
+      const evs = await fetchESPNScoreboard('americanfootball_ncaaf', dateStr)
+      espnEvents.push(...(evs || []))
+    } catch (err) {
+      logger.warn({ err: err.message, dateStr }, 'NCAAF scoreboard fetch failed')
+    }
+  }
+  for (const { game } of slice) {
+    const hit = espnEvents.find((e) => e.espnId && matchESPNToGame(e, game))
+    if (hit) eventIdByGame.set(game.id, hit.espnId)
+  }
+
   const settlements = []
   let gamesDone = 0
   let noBoxScore = 0
@@ -85,9 +115,7 @@ export async function settleNCAAFProps() {
   for (const { game, props: gameProps } of slice) {
     let statsByName = {}
     try {
-      const espnEventId = await findESPNEventId(
-        'americanfootball_ncaaf', game.home_team, game.away_team, game.starts_at
-      )
+      const espnEventId = eventIdByGame.get(game.id)
       if (!espnEventId) {
         noBoxScore++
         continue
