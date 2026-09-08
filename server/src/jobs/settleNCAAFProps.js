@@ -74,7 +74,18 @@ export async function settleNCAAFProps() {
     byGame.get(p.game_id).props.push(p)
   }
 
-  const slice = [...byGame.values()].slice(0, MAX_GAMES_PER_RUN)
+  // Newest games first. The query has no ordering of its own, so slicing the
+  // first N games meant reprocessing the SAME N every run — games whose props
+  // cannot settle (see the unmatched note below) blocked everything behind
+  // them permanently. Observed 2026-09-08: settlement parked at 600/150 with
+  // 35 games still queued, including one finished hours earlier whose stats
+  // were sitting right there in the box score.
+  //
+  // Recency ordering also matches what people care about: the game someone
+  // just watched settles before a slate from last week.
+  const slice = [...byGame.values()]
+    .sort((a, b) => new Date(b.game.starts_at) - new Date(a.game.starts_at))
+    .slice(0, MAX_GAMES_PER_RUN)
   const skippedGames = byGame.size - slice.length
 
   // Resolve ESPN event ids from ONE scoreboard per date rather than calling
