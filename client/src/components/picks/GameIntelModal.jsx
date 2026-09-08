@@ -3,6 +3,7 @@ import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useInjuryDetail } from '../../hooks/useInjuries'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import InjuryBadge from '../ui/InjuryBadge'
 import GamePreview from './GamePreview'
 import ProbablePitchers from './ProbablePitchers'
 import { useGameIntel } from '../../hooks/useGames'
@@ -166,7 +167,12 @@ function TeamSection({ teamName, starters, injuries, sportKey }) {
     for (const player of depth) {
       if (usedPlayers.has(player.name)) continue
       const status = injuryMap[player.name] || injuryMap[player.shortName]
-      if (status === 'Out' || status === 'Doubtful') continue
+      // Anyone who cannot take the field gets promoted past, not just Out and
+      // Doubtful. IR, PUP, suspended and DNR were all falling through and
+      // being rendered as starters — which is how a PUP running back kept his
+      // RB1 slot. Questionable deliberately stays: he is expected to play, so
+      // he holds the slot and carries a badge.
+      if (['out', 'doubtful', 'ir', 'pup', 'sus', 'suspended', 'dnr'].includes(String(status || '').toLowerCase())) continue
       usedPlayers.add(player.name)
       // Prefer the promoted player's OWN position. Falling back to the
       // slot's position labelled a promoted guard with the outgoing
@@ -224,9 +230,7 @@ function TeamSection({ teamName, starters, injuries, sportKey }) {
                       <div key={`${g.key}-${s.position}-${i}`} className="flex items-center gap-2 text-sm">
                         <span className="font-semibold text-accent w-9 shrink-0">{s.position}</span>
                         <span className="text-text-primary truncate">{s.shortName}</span>
-                        {s.status === 'Questionable' && (
-                          <span className="text-[10px] font-bold text-yellow-400 shrink-0">Q</span>
-                        )}
+                        <InjuryBadge status={s.status} className="text-[10px]" />
                       </div>
                     ))}
                   </div>
@@ -239,9 +243,7 @@ function TeamSection({ teamName, starters, injuries, sportKey }) {
                 <div key={`${s.position}-${i}`} className="flex items-center gap-2 text-sm">
                   <span className="font-semibold text-accent w-7 shrink-0">{s.position}</span>
                   <span className="text-text-primary truncate">{s.shortName}</span>
-                  {s.status === 'Questionable' && (
-                    <span className="text-[10px] font-bold text-yellow-400 shrink-0">Q</span>
-                  )}
+                  <InjuryBadge status={s.status} className="text-[10px]" />
                 </div>
               ))}
             </div>
