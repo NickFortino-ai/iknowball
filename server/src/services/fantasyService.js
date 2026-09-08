@@ -4360,8 +4360,17 @@ function buildLineupValidationMaps(rosterSlots) {
   for (let i = 1; i <= (slots.rb || 0); i++) { starterKeys.push(`rb${i}`); slotPositions[`rb${i}`] = ['RB'] }
   for (let i = 1; i <= (slots.wr || 0); i++) { starterKeys.push(`wr${i}`); slotPositions[`wr${i}`] = ['WR'] }
   if ((slots.te || 0) >= 1) { starterKeys.push('te'); slotPositions.te = ['TE'] }
-  if ((slots.flex || 0) >= 1) { starterKeys.push('flex'); slotPositions.flex = ['RB', 'WR', 'TE'] }
-  if ((slots.superflex || 0) >= 1) { starterKeys.push('superflex'); slotPositions.superflex = ['QB', 'RB', 'WR', 'TE'] }
+  // Counts, not booleans — third server copy of this same mistake. Saving a
+  // lineup that used flex2 was rejected with "Invalid slot: flex2" because
+  // the validator only ever knew about one flex.
+  for (let i = 1; i <= (slots.flex || 0); i++) {
+    const k = i === 1 ? 'flex' : `flex${i}`
+    starterKeys.push(k); slotPositions[k] = ['RB', 'WR', 'TE']
+  }
+  for (let i = 1; i <= (slots.superflex || 0); i++) {
+    const k = i === 1 ? 'superflex' : `superflex${i}`
+    starterKeys.push(k); slotPositions[k] = ['QB', 'RB', 'WR', 'TE']
+  }
   if ((slots.k || 0) >= 1) { starterKeys.push('k'); slotPositions.k = ['K'] }
   if ((slots.def || 0) >= 1) { starterKeys.push('def'); slotPositions.def = ['DEF'] }
   // IDP starter slots — position codes mirror Sleeper's nfl_players.position

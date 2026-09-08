@@ -185,8 +185,9 @@ export default function FantasyPlayerBrowser({ league }) {
     for (let i = 1; i <= (slots.rb || 0); i++) starterKeys.push(`rb${i}`)
     for (let i = 1; i <= (slots.wr || 0); i++) starterKeys.push(`wr${i}`)
     if ((slots.te || 0) >= 1) starterKeys.push('te')
-    if ((slots.flex || 0) >= 1) starterKeys.push('flex')
-    if ((slots.superflex || 0) >= 1) starterKeys.push('superflex')
+    // Counts, not booleans — see fantasyService's starterPlan.
+    for (let i = 1; i <= (slots.flex || 0); i++) starterKeys.push(i === 1 ? 'flex' : `flex${i}`)
+    for (let i = 1; i <= (slots.superflex || 0); i++) starterKeys.push(i === 1 ? 'superflex' : `superflex${i}`)
     if ((slots.k || 0) >= 1) starterKeys.push('k')
     if ((slots.def || 0) >= 1) starterKeys.push('def')
     for (let i = 1; i <= (slots.dl || 0); i++) starterKeys.push(`dl${i}`)

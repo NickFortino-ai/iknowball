@@ -28,8 +28,17 @@ function buildStarterKeyMeta(rosterSlots) {
   for (let i = 1; i <= (slots.rb || 0); i++) { keys.push(`rb${i}`); labels[`rb${i}`] = 'RB' }
   for (let i = 1; i <= (slots.wr || 0); i++) { keys.push(`wr${i}`); labels[`wr${i}`] = 'WR' }
   if ((slots.te || 0) >= 1) { keys.push('te'); labels.te = 'TE' }
-  if ((slots.flex || 0) >= 1) { keys.push('flex'); labels.flex = 'FLEX' }
-  if ((slots.superflex || 0) >= 1) { keys.push('superflex'); labels.superflex = 'SFLX' }
+  // FLEX / SUPERFLEX are counts, not booleans. See fantasyService's
+  // starterPlan and buildLineupValidationMaps — same fix, same key naming
+  // (first keeps the bare key, extras number from 2).
+  for (let i = 1; i <= (slots.flex || 0); i++) {
+    const k = i === 1 ? 'flex' : `flex${i}`
+    keys.push(k); labels[k] = 'FLEX'
+  }
+  for (let i = 1; i <= (slots.superflex || 0); i++) {
+    const k = i === 1 ? 'superflex' : `superflex${i}`
+    keys.push(k); labels[k] = 'SFLX'
+  }
   if ((slots.k || 0) >= 1) { keys.push('k'); labels.k = 'K' }
   if ((slots.def || 0) >= 1) { keys.push('def'); labels.def = 'DEF' }
   for (let i = 1; i <= (slots.dl || 0); i++) { keys.push(`dl${i}`); labels[`dl${i}`] = 'DL' }
