@@ -933,8 +933,15 @@ export default function FantasyDraftRoom({ league }) {
             )}
           </div>
         )}
-        {/* Show the commissioner exactly what Undo would reverse. */}
-        {isCommissioner && lastCompletedPick && (
+        {/* Everyone sees the last pick, not just the commissioner.
+            Reported after the 2026-09-07 JMI draft as "can't see it on the
+            phone" — but it was never a screen-size gate. This was
+            isCommissioner-only, so the only people who ever saw it were
+            commissioners, who happened to be on a laptop. On a phone the Log
+            tab is a deliberate navigation away from the board, which is the
+            last thing you want while your own clock is running.
+            For a commissioner it doubles as "here is what Undo reverses". */}
+        {lastCompletedPick && (
           <div className="mt-1.5 text-[11px] text-text-muted w-full text-center">
             Last pick: <span className="text-text-primary font-semibold">{lastCompletedPick.nfl_players?.full_name}</span>
             {' '}to {lastCompletedPick.users?.display_name || lastCompletedPick.users?.username}
