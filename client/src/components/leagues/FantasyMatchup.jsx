@@ -21,8 +21,17 @@ function buildSlotMeta(rosterSlots) {
   for (let i = 1; i <= (slots.rb || 0); i++) { keys.push(`rb${i}`); labels[`rb${i}`] = 'RB' }
   for (let i = 1; i <= (slots.wr || 0); i++) { keys.push(`wr${i}`); labels[`wr${i}`] = 'WR' }
   if ((slots.te || 0) >= 1) { keys.push('te'); labels.te = 'TE' }
-  if ((slots.flex || 0) >= 1) { keys.push('flex'); labels.flex = 'FLX' }
-  if ((slots.superflex || 0) >= 1) { keys.push('superflex'); labels.superflex = 'SFLX' }
+  // Counts, not booleans — see the same fix in FantasyMyTeam and the server's
+  // starterPlan. A flex:2 league rendered one flex row here, so the second
+  // flex starter appeared to be benched.
+  for (let i = 1; i <= (slots.flex || 0); i++) {
+    const k = i === 1 ? 'flex' : `flex${i}`
+    keys.push(k); labels[k] = 'FLX'
+  }
+  for (let i = 1; i <= (slots.superflex || 0); i++) {
+    const k = i === 1 ? 'superflex' : `superflex${i}`
+    keys.push(k); labels[k] = 'SFLX'
+  }
   if ((slots.k || 0) >= 1) { keys.push('k'); labels.k = 'K' }
   if ((slots.def || 0) >= 1) { keys.push('def'); labels.def = 'DEF' }
   for (let i = 1; i <= (slots.dl || 0); i++) { keys.push(`dl${i}`); labels[`dl${i}`] = 'DL' }

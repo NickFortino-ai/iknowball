@@ -1404,8 +1404,19 @@ export async function autoFillLineupsForLeague(leagueId) {
   for (let i = 1; i <= (rosterSlots.rb || 0); i++) starterPlan.push({ key: `rb${i}`, accepts: ['RB'] })
   for (let i = 1; i <= (rosterSlots.wr || 0); i++) starterPlan.push({ key: `wr${i}`, accepts: ['WR'] })
   if ((rosterSlots.te || 0) >= 1) starterPlan.push({ key: 'te', accepts: ['TE'] })
-  if ((rosterSlots.flex || 0) >= 1) starterPlan.push({ key: 'flex', accepts: ['RB', 'WR', 'TE'] })
-  if ((rosterSlots.superflex || 0) >= 1) starterPlan.push({ key: 'superflex', accepts: ['QB', 'RB', 'WR', 'TE'] })
+  // FLEX / SUPERFLEX are COUNTS, not booleans. These pushed exactly one slot
+  // however many the league configured, so a flex:2 league silently ran with
+  // one flex and the extra starter landed on the bench — JMI drafted 18 and
+  // read "Bench 7/6" because of it. rb/wr/dl/lb already loop; these did not.
+  //
+  // First slot keeps the bare key ('flex' / 'superflex') so every existing
+  // single-flex roster row still matches. Extras are numbered from 2.
+  for (let i = 1; i <= (rosterSlots.flex || 0); i++) {
+    starterPlan.push({ key: i === 1 ? 'flex' : `flex${i}`, accepts: ['RB', 'WR', 'TE'] })
+  }
+  for (let i = 1; i <= (rosterSlots.superflex || 0); i++) {
+    starterPlan.push({ key: i === 1 ? 'superflex' : `superflex${i}`, accepts: ['QB', 'RB', 'WR', 'TE'] })
+  }
   if ((rosterSlots.k || 0) >= 1) starterPlan.push({ key: 'k', accepts: ['K'] })
   if ((rosterSlots.def || 0) >= 1) starterPlan.push({ key: 'def', accepts: ['DEF'] })
   // IDP slots — DL accepts the D-line family, LB the linebacker family,
@@ -1503,8 +1514,19 @@ async function fillEmptyStarterSlots(leagueId, userId) {
   for (let i = 1; i <= (rosterSlots.rb || 0); i++) starterPlan.push({ key: `rb${i}`, accepts: ['RB'] })
   for (let i = 1; i <= (rosterSlots.wr || 0); i++) starterPlan.push({ key: `wr${i}`, accepts: ['WR'] })
   if ((rosterSlots.te || 0) >= 1) starterPlan.push({ key: 'te', accepts: ['TE'] })
-  if ((rosterSlots.flex || 0) >= 1) starterPlan.push({ key: 'flex', accepts: ['RB', 'WR', 'TE'] })
-  if ((rosterSlots.superflex || 0) >= 1) starterPlan.push({ key: 'superflex', accepts: ['QB', 'RB', 'WR', 'TE'] })
+  // FLEX / SUPERFLEX are COUNTS, not booleans. These pushed exactly one slot
+  // however many the league configured, so a flex:2 league silently ran with
+  // one flex and the extra starter landed on the bench — JMI drafted 18 and
+  // read "Bench 7/6" because of it. rb/wr/dl/lb already loop; these did not.
+  //
+  // First slot keeps the bare key ('flex' / 'superflex') so every existing
+  // single-flex roster row still matches. Extras are numbered from 2.
+  for (let i = 1; i <= (rosterSlots.flex || 0); i++) {
+    starterPlan.push({ key: i === 1 ? 'flex' : `flex${i}`, accepts: ['RB', 'WR', 'TE'] })
+  }
+  for (let i = 1; i <= (rosterSlots.superflex || 0); i++) {
+    starterPlan.push({ key: i === 1 ? 'superflex' : `superflex${i}`, accepts: ['QB', 'RB', 'WR', 'TE'] })
+  }
   if ((rosterSlots.k || 0) >= 1) starterPlan.push({ key: 'k', accepts: ['K'] })
   if ((rosterSlots.def || 0) >= 1) starterPlan.push({ key: 'def', accepts: ['DEF'] })
   // IDP slots — DL accepts the D-line family, LB the linebacker family,

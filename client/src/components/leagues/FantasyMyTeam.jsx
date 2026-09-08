@@ -37,8 +37,17 @@ function buildStarterSlots(rosterSlots) {
   for (let i = 1; i <= (slots.rb || 0); i++) result.push({ key: `rb${i}`, label: 'RB', positions: ['RB'] })
   for (let i = 1; i <= (slots.wr || 0); i++) result.push({ key: `wr${i}`, label: 'WR', positions: ['WR'] })
   if ((slots.te || 0) >= 1) result.push({ key: 'te', label: 'TE', positions: ['TE'] })
-  if ((slots.flex || 0) >= 1) result.push({ key: 'flex', label: 'FLEX', positions: ['RB', 'WR', 'TE'] })
-  if ((slots.superflex || 0) >= 1) result.push({ key: 'superflex', label: 'SFLEX', positions: ['QB', 'RB', 'WR', 'TE'] })
+  // FLEX / SUPERFLEX are counts, not booleans. These rendered one slot no
+  // matter how many the league configured, so a flex:2 league showed its
+  // second flex starter sitting on the bench — JMI read "Bench 7/6".
+  // First keeps the bare key so existing single-flex rosters still match;
+  // extras are numbered from 2, matching the server's starterPlan.
+  for (let i = 1; i <= (slots.flex || 0); i++) {
+    result.push({ key: i === 1 ? 'flex' : `flex${i}`, label: 'FLEX', positions: ['RB', 'WR', 'TE'] })
+  }
+  for (let i = 1; i <= (slots.superflex || 0); i++) {
+    result.push({ key: i === 1 ? 'superflex' : `superflex${i}`, label: 'SFLEX', positions: ['QB', 'RB', 'WR', 'TE'] })
+  }
   if ((slots.k || 0) >= 1) result.push({ key: 'k', label: 'K', positions: ['K'] })
   if ((slots.def || 0) >= 1) result.push({ key: 'def', label: 'DEF', positions: ['DEF'] })
   // IDP slots — DL accepts the D-line family (edge rushers, DTs), LB the
