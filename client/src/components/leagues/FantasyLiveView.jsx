@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { buildStarterSlots as buildSlots } from '../../lib/rosterSlots'
 import { useNflDfsLive, useFantasyMatchupLive } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { useReadState, useMarkRead, READ_KINDS } from '../../hooks/useReadState'
@@ -13,31 +14,13 @@ const SLOT_ORDER = ['QB', 'RB1', 'RB2', 'WR1', 'WR2', 'WR3', 'TE', 'FLEX', 'DEF'
 
 // Traditional H2H starter slots are dynamic — build them from the league's
 // roster_slots config so a wr=2 league doesn't show a phantom wr3.
+// Shared definition — lib/rosterSlots. Compact labels, matching the
+// matchup grid this view sits beside.
 function buildH2HSlotMeta(rosterSlots) {
-  const slots = rosterSlots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1 }
-  const order = []
+  const slots = buildSlots(rosterSlots)
   const labels = {}
-  if ((slots.qb || 0) >= 1) { order.push('qb'); labels.qb = 'QB' }
-  for (let i = 1; i <= (slots.rb || 0); i++) { order.push(`rb${i}`); labels[`rb${i}`] = 'RB' }
-  for (let i = 1; i <= (slots.wr || 0); i++) { order.push(`wr${i}`); labels[`wr${i}`] = 'WR' }
-  if ((slots.te || 0) >= 1) { order.push('te'); labels.te = 'TE' }
-  // FLEX / SUPERFLEX are counts, not booleans. See fantasyService's
-  // starterPlan and buildLineupValidationMaps — same fix, same key naming
-  // (first keeps the bare key, extras number from 2).
-  for (let i = 1; i <= (slots.flex || 0); i++) {
-    const k = i === 1 ? 'flex' : `flex${i}`
-    order.push(k); labels[k] = 'FLX'
-  }
-  for (let i = 1; i <= (slots.superflex || 0); i++) {
-    const k = i === 1 ? 'superflex' : `superflex${i}`
-    order.push(k); labels[k] = 'SFLX'
-  }
-  if ((slots.k || 0) >= 1) { order.push('k'); labels.k = 'K' }
-  if ((slots.def || 0) >= 1) { order.push('def'); labels.def = 'DEF' }
-  for (let i = 1; i <= (slots.dl || 0); i++) { order.push(`dl${i}`); labels[`dl${i}`] = 'DL' }
-  for (let i = 1; i <= (slots.lb || 0); i++) { order.push(`lb${i}`); labels[`lb${i}`] = 'LB' }
-  for (let i = 1; i <= (slots.db || 0); i++) { order.push(`db${i}`); labels[`db${i}`] = 'DB' }
-  for (let i = 1; i <= (slots.s || 0); i++) { order.push(`s${i}`); labels[`s${i}`] = 'S' }
+  for (const sl of slots) labels[sl.key] = sl.shortLabel
+  const order = slots.map((sl) => sl.key)
   return { starterSet: new Set(order), slotLabels: labels, slotOrder: order }
 }
 

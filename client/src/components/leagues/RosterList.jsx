@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { buildStarterSlots as buildSlots, SLOT_LABELS, SLOT_LABELS_SHORT } from '../../lib/rosterSlots'
 import { useFantasyUserRoster, useBlurbPlayerIds, useFantasySettings } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -20,32 +21,13 @@ const INJURY_COLORS = {
 // server. Any roster row whose slot isn't in this list is treated as bench
 // (covers orphan slots like 'wr3' left over after a commissioner shrunk the
 // position count).
+// Shared definition — lib/rosterSlots. This view used SFLX for superflex
+// while others used SFLEX; short labels now come from one place.
 function buildStarterKeyMeta(rosterSlots) {
-  const slots = rosterSlots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1 }
-  const keys = []
+  const slots = buildSlots(rosterSlots)
   const labels = {}
-  if ((slots.qb || 0) >= 1) { keys.push('qb'); labels.qb = 'QB' }
-  for (let i = 1; i <= (slots.rb || 0); i++) { keys.push(`rb${i}`); labels[`rb${i}`] = 'RB' }
-  for (let i = 1; i <= (slots.wr || 0); i++) { keys.push(`wr${i}`); labels[`wr${i}`] = 'WR' }
-  if ((slots.te || 0) >= 1) { keys.push('te'); labels.te = 'TE' }
-  // FLEX / SUPERFLEX are counts, not booleans. See fantasyService's
-  // starterPlan and buildLineupValidationMaps — same fix, same key naming
-  // (first keeps the bare key, extras number from 2).
-  for (let i = 1; i <= (slots.flex || 0); i++) {
-    const k = i === 1 ? 'flex' : `flex${i}`
-    keys.push(k); labels[k] = 'FLEX'
-  }
-  for (let i = 1; i <= (slots.superflex || 0); i++) {
-    const k = i === 1 ? 'superflex' : `superflex${i}`
-    keys.push(k); labels[k] = 'SFLX'
-  }
-  if ((slots.k || 0) >= 1) { keys.push('k'); labels.k = 'K' }
-  if ((slots.def || 0) >= 1) { keys.push('def'); labels.def = 'DEF' }
-  for (let i = 1; i <= (slots.dl || 0); i++) { keys.push(`dl${i}`); labels[`dl${i}`] = 'DL' }
-  for (let i = 1; i <= (slots.lb || 0); i++) { keys.push(`lb${i}`); labels[`lb${i}`] = 'LB' }
-  for (let i = 1; i <= (slots.db || 0); i++) { keys.push(`db${i}`); labels[`db${i}`] = 'DB' }
-  for (let i = 1; i <= (slots.s || 0); i++) { keys.push(`s${i}`); labels[`s${i}`] = 'S' }
-  return { keys, labels }
+  for (const s of slots) labels[s.key] = s.base === 'superflex' ? SLOT_LABELS_SHORT[s.base] : s.label
+  return { keys: slots.map((s) => s.key), labels }
 }
 
 function InjuryBadge({ status }) {

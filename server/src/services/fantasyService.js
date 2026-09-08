@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js'
 import { effectiveAdp as computeEffectiveAdp } from '../utils/effectiveAdp.js'
 import { getLeagueSyncInfo } from './draftPrepService.js'
 import { fetchAll } from '../utils/fetchAll.js'
+import { buildStarterSlots, buildLineupValidationMaps, isStarterSlot } from '../utils/rosterSlots.js'
 import { cached } from '../utils/memoCache.js'
 import { throwIfInfra } from '../utils/dbError.js'
 
@@ -1399,38 +1400,11 @@ export async function autoFillLineupsForLeague(leagueId) {
   // Build the ordered starter slot plan. Keys must match STARTER_SLOTS_TRAD
   // convention (qb / rb1..rbN / wr1..wrN / te / flex / k / def). FLEX accepts
   // RB/WR/TE; SUPERFLEX (if config has it) additionally accepts QB.
-  const starterPlan = []
-  if ((rosterSlots.qb || 0) >= 1) starterPlan.push({ key: 'qb', accepts: ['QB'] })
-  for (let i = 1; i <= (rosterSlots.rb || 0); i++) starterPlan.push({ key: `rb${i}`, accepts: ['RB'] })
-  for (let i = 1; i <= (rosterSlots.wr || 0); i++) starterPlan.push({ key: `wr${i}`, accepts: ['WR'] })
-  if ((rosterSlots.te || 0) >= 1) starterPlan.push({ key: 'te', accepts: ['TE'] })
-  // FLEX / SUPERFLEX are COUNTS, not booleans. These pushed exactly one slot
-  // however many the league configured, so a flex:2 league silently ran with
-  // one flex and the extra starter landed on the bench — JMI drafted 18 and
-  // read "Bench 7/6" because of it. rb/wr/dl/lb already loop; these did not.
-  //
-  // First slot keeps the bare key ('flex' / 'superflex') so every existing
-  // single-flex roster row still matches. Extras are numbered from 2.
-  for (let i = 1; i <= (rosterSlots.flex || 0); i++) {
-    starterPlan.push({ key: i === 1 ? 'flex' : `flex${i}`, accepts: ['RB', 'WR', 'TE'] })
-  }
-  for (let i = 1; i <= (rosterSlots.superflex || 0); i++) {
-    starterPlan.push({ key: i === 1 ? 'superflex' : `superflex${i}`, accepts: ['QB', 'RB', 'WR', 'TE'] })
-  }
-  if ((rosterSlots.k || 0) >= 1) starterPlan.push({ key: 'k', accepts: ['K'] })
-  if ((rosterSlots.def || 0) >= 1) starterPlan.push({ key: 'def', accepts: ['DEF'] })
-  // IDP slots — DL accepts the D-line family, LB the linebacker family,
-  // DB the corners, S the safeties. Position values mirror what Sleeper
-  // stamps on nfl_players.position.
-  for (let i = 1; i <= (rosterSlots.dl || 0); i++) starterPlan.push({ key: `dl${i}`, accepts: ['DE', 'DT', 'NT', 'DL'] })
-  for (let i = 1; i <= (rosterSlots.lb || 0); i++) starterPlan.push({ key: `lb${i}`, accepts: ['LB', 'ILB', 'OLB', 'MLB'] })
-  for (let i = 1; i <= (rosterSlots.db || 0); i++) starterPlan.push({ key: `db${i}`, accepts: ['CB', 'DB'] })
-  // 'DB' is included because Sleeper classifies virtually every defensive
-  // back that way — only six S/FS/SS rows exist league-wide and all six are
-  // retired. Without it an S slot is literally unfillable: no live player
-  // satisfies it. A DB slot accepts DB too, which is correct — the source
-  // data doesn't distinguish a corner from a safety, so neither can we.
-  for (let i = 1; i <= (rosterSlots.s || 0); i++) starterPlan.push({ key: `s${i}`, accepts: ['S', 'FS', 'SS', 'DB'] })
+  // Ordered starter slots come from utils/rosterSlots — the single
+  // definition shared with the lineup validator, routes/dfs and the
+  // client mirror. This used to be an inline list here and in one other
+  // function, and the two drifted.
+  const starterPlan = buildStarterSlots(rosterSlots).map((sl) => ({ key: sl.key, accepts: sl.positions }))
 
   // Picks in draft order — earliest pick at each position wins the starter slot.
   const { data: picks } = await supabase
@@ -1509,38 +1483,11 @@ async function fillEmptyStarterSlots(leagueId, userId) {
   const settings = await getFantasySettings(leagueId)
   const rosterSlots = settings?.roster_slots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6 }
 
-  const starterPlan = []
-  if ((rosterSlots.qb || 0) >= 1) starterPlan.push({ key: 'qb', accepts: ['QB'] })
-  for (let i = 1; i <= (rosterSlots.rb || 0); i++) starterPlan.push({ key: `rb${i}`, accepts: ['RB'] })
-  for (let i = 1; i <= (rosterSlots.wr || 0); i++) starterPlan.push({ key: `wr${i}`, accepts: ['WR'] })
-  if ((rosterSlots.te || 0) >= 1) starterPlan.push({ key: 'te', accepts: ['TE'] })
-  // FLEX / SUPERFLEX are COUNTS, not booleans. These pushed exactly one slot
-  // however many the league configured, so a flex:2 league silently ran with
-  // one flex and the extra starter landed on the bench — JMI drafted 18 and
-  // read "Bench 7/6" because of it. rb/wr/dl/lb already loop; these did not.
-  //
-  // First slot keeps the bare key ('flex' / 'superflex') so every existing
-  // single-flex roster row still matches. Extras are numbered from 2.
-  for (let i = 1; i <= (rosterSlots.flex || 0); i++) {
-    starterPlan.push({ key: i === 1 ? 'flex' : `flex${i}`, accepts: ['RB', 'WR', 'TE'] })
-  }
-  for (let i = 1; i <= (rosterSlots.superflex || 0); i++) {
-    starterPlan.push({ key: i === 1 ? 'superflex' : `superflex${i}`, accepts: ['QB', 'RB', 'WR', 'TE'] })
-  }
-  if ((rosterSlots.k || 0) >= 1) starterPlan.push({ key: 'k', accepts: ['K'] })
-  if ((rosterSlots.def || 0) >= 1) starterPlan.push({ key: 'def', accepts: ['DEF'] })
-  // IDP slots — DL accepts the D-line family, LB the linebacker family,
-  // DB the corners, S the safeties. Position values mirror what Sleeper
-  // stamps on nfl_players.position.
-  for (let i = 1; i <= (rosterSlots.dl || 0); i++) starterPlan.push({ key: `dl${i}`, accepts: ['DE', 'DT', 'NT', 'DL'] })
-  for (let i = 1; i <= (rosterSlots.lb || 0); i++) starterPlan.push({ key: `lb${i}`, accepts: ['LB', 'ILB', 'OLB', 'MLB'] })
-  for (let i = 1; i <= (rosterSlots.db || 0); i++) starterPlan.push({ key: `db${i}`, accepts: ['CB', 'DB'] })
-  // 'DB' is included because Sleeper classifies virtually every defensive
-  // back that way — only six S/FS/SS rows exist league-wide and all six are
-  // retired. Without it an S slot is literally unfillable: no live player
-  // satisfies it. A DB slot accepts DB too, which is correct — the source
-  // data doesn't distinguish a corner from a safety, so neither can we.
-  for (let i = 1; i <= (rosterSlots.s || 0); i++) starterPlan.push({ key: `s${i}`, accepts: ['S', 'FS', 'SS', 'DB'] })
+  // Ordered starter slots come from utils/rosterSlots — the single
+  // definition shared with the lineup validator, routes/dfs and the
+  // client mirror. This used to be an inline list here and in one other
+  // function, and the two drifted.
+  const starterPlan = buildStarterSlots(rosterSlots).map((sl) => ({ key: sl.key, accepts: sl.positions }))
   const starterKeys = new Set(starterPlan.map((s) => s.key))
 
   const { data: roster } = await supabase
@@ -4346,41 +4293,6 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
 // config. Replaces the old hardcoded STARTER_SLOTS_TRAD / SLOT_POSITIONS
 // constants so a wr=2 league can never accidentally accept a wr3
 // assignment, and the slot list always matches what the FE renders.
-function buildLineupValidationMaps(rosterSlots) {
-  const slots = rosterSlots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1 }
-  const starterKeys = []
-  // Bench and IR accept anything a starter slot can hold, so include
-  // every IDP family too — without this an IDP league can't bench or
-  // IR an IDP because the allowlist rejects DE/LB/CB/S codes.
-  const slotPositions = {
-    bench: ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DL', 'DE', 'DT', 'NT', 'LB', 'ILB', 'OLB', 'MLB', 'DB', 'CB', 'S', 'FS', 'SS'],
-    ir: ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DL', 'DE', 'DT', 'NT', 'LB', 'ILB', 'OLB', 'MLB', 'DB', 'CB', 'S', 'FS', 'SS'],
-  }
-  if ((slots.qb || 0) >= 1) { starterKeys.push('qb'); slotPositions.qb = ['QB'] }
-  for (let i = 1; i <= (slots.rb || 0); i++) { starterKeys.push(`rb${i}`); slotPositions[`rb${i}`] = ['RB'] }
-  for (let i = 1; i <= (slots.wr || 0); i++) { starterKeys.push(`wr${i}`); slotPositions[`wr${i}`] = ['WR'] }
-  if ((slots.te || 0) >= 1) { starterKeys.push('te'); slotPositions.te = ['TE'] }
-  // Counts, not booleans — third server copy of this same mistake. Saving a
-  // lineup that used flex2 was rejected with "Invalid slot: flex2" because
-  // the validator only ever knew about one flex.
-  for (let i = 1; i <= (slots.flex || 0); i++) {
-    const k = i === 1 ? 'flex' : `flex${i}`
-    starterKeys.push(k); slotPositions[k] = ['RB', 'WR', 'TE']
-  }
-  for (let i = 1; i <= (slots.superflex || 0); i++) {
-    const k = i === 1 ? 'superflex' : `superflex${i}`
-    starterKeys.push(k); slotPositions[k] = ['QB', 'RB', 'WR', 'TE']
-  }
-  if ((slots.k || 0) >= 1) { starterKeys.push('k'); slotPositions.k = ['K'] }
-  if ((slots.def || 0) >= 1) { starterKeys.push('def'); slotPositions.def = ['DEF'] }
-  // IDP starter slots — position codes mirror Sleeper's nfl_players.position
-  // values. Client-side buildStarterSlots uses the same allowlists.
-  for (let i = 1; i <= (slots.dl || 0); i++) { starterKeys.push(`dl${i}`); slotPositions[`dl${i}`] = ['DE', 'DT', 'NT', 'DL'] }
-  for (let i = 1; i <= (slots.lb || 0); i++) { starterKeys.push(`lb${i}`); slotPositions[`lb${i}`] = ['LB', 'ILB', 'OLB', 'MLB'] }
-  for (let i = 1; i <= (slots.db || 0); i++) { starterKeys.push(`db${i}`); slotPositions[`db${i}`] = ['CB', 'DB'] }
-  for (let i = 1; i <= (slots.s || 0); i++) { starterKeys.push(`s${i}`); slotPositions[`s${i}`] = ['S', 'FS', 'SS'] }
-  return { starterKeys, slotPositions }
-}
 
 export async function setFantasyLineup(leagueId, userId, slotAssignments) {
   // slotAssignments: array of { player_id, slot }
@@ -8120,13 +8032,6 @@ async function finalizeFantasyChampion(leagueId, championUserId, settings) {
 // "Is this slot a starter?" — config-agnostic. Anything not bench/IR is a
 // starter. Orphan slots get demoted to bench upstream by
 // fillEmptyStarterSlots so they're naturally excluded here.
-function isStarterSlot(slot) {
-  const s = (slot || '').toLowerCase()
-  if (!s) return false
-  if (s === 'bench' || s.startsWith('bench')) return false
-  if (s === 'ir' || s.startsWith('ir')) return false
-  return true
-}
 
 export async function scoreFantasyMatchupsWeek(week, season) {
   // 1. Find every traditional fantasy league that has a matchup for this week.

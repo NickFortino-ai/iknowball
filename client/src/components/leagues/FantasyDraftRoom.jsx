@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { SLOT_ELIGIBILITY } from '../../lib/rosterSlots'
 import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useReorderDraft, useStartDraft, useStartOfflineDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick, useUndoDraftPick, useMyRankings, useSetAutoDraft, useCancelAutoDraft, useUpdateFantasySettings, useFantasySettings } from '../../hooks/useLeagues'
 import DraftPlayerPreview from './DraftPlayerPreview'
 import DraftTimezonePreview from './DraftTimezonePreview'
@@ -1292,16 +1293,16 @@ const STARTER_SLOT_LABELS = {
   superflex: 'SUPER FLEX',
   dl: 'DL', lb: 'LB', db: 'DB', s: 'S',
 }
-const FLEX_ELIGIBLE = ['RB', 'WR', 'TE']
-const SUPERFLEX_ELIGIBLE = ['QB', 'RB', 'WR', 'TE']
-// IDP families, mirroring the server's starterPlan. 'S' includes DB because
-// Sleeper classifies virtually every defensive back that way — the six
-// S/FS/SS rows that exist are all retired.
+// Eligibility comes from lib/rosterSlots — the same map the server validates
+// against. These were four separate local constants that had to be kept in
+// sync by hand with the server's starterPlan.
+const FLEX_ELIGIBLE = SLOT_ELIGIBILITY.flex
+const SUPERFLEX_ELIGIBLE = SLOT_ELIGIBILITY.superflex
 const IDP_ELIGIBLE = {
-  dl: ['DE', 'DT', 'NT', 'DL'],
-  lb: ['LB', 'ILB', 'OLB', 'MLB'],
-  db: ['CB', 'DB'],
-  s: ['S', 'FS', 'SS', 'DB'],
+  dl: SLOT_ELIGIBILITY.dl,
+  lb: SLOT_ELIGIBILITY.lb,
+  db: SLOT_ELIGIBILITY.db,
+  s: SLOT_ELIGIBILITY.s,
 }
 
 /**

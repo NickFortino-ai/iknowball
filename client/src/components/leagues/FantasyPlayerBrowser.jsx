@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { buildStarterSlots as buildSlots } from '../../lib/rosterSlots'
 import {
   useAvailablePlayers, useFantasyRoster, useAddDropPlayer,
   useFantasySettings, useWaiverState, useMyWaiverClaims, useSubmitWaiverClaim, useCancelWaiverClaim,
@@ -180,20 +181,8 @@ export default function FantasyPlayerBrowser({ league }) {
   const sortedRoster = useMemo(() => {
     if (!roster?.length) return []
     const slots = settings?.roster_slots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1 }
-    const starterKeys = []
-    if ((slots.qb || 0) >= 1) starterKeys.push('qb')
-    for (let i = 1; i <= (slots.rb || 0); i++) starterKeys.push(`rb${i}`)
-    for (let i = 1; i <= (slots.wr || 0); i++) starterKeys.push(`wr${i}`)
-    if ((slots.te || 0) >= 1) starterKeys.push('te')
-    // Counts, not booleans — see fantasyService's starterPlan.
-    for (let i = 1; i <= (slots.flex || 0); i++) starterKeys.push(i === 1 ? 'flex' : `flex${i}`)
-    for (let i = 1; i <= (slots.superflex || 0); i++) starterKeys.push(i === 1 ? 'superflex' : `superflex${i}`)
-    if ((slots.k || 0) >= 1) starterKeys.push('k')
-    if ((slots.def || 0) >= 1) starterKeys.push('def')
-    for (let i = 1; i <= (slots.dl || 0); i++) starterKeys.push(`dl${i}`)
-    for (let i = 1; i <= (slots.lb || 0); i++) starterKeys.push(`lb${i}`)
-    for (let i = 1; i <= (slots.db || 0); i++) starterKeys.push(`db${i}`)
-    for (let i = 1; i <= (slots.s || 0); i++) starterKeys.push(`s${i}`)
+    // Shared definition — lib/rosterSlots.
+    const starterKeys = buildSlots(slots).map((sl) => sl.key)
     const orderIndex = (slot) => {
       const s = (slot || '').toLowerCase()
       const idx = starterKeys.indexOf(s)

@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { buildStarterSlots, SLOT_LABELS } from '../utils/rosterSlots.js'
 import { supabase } from '../config/supabase.js'
 import { requireAuth } from '../middleware/auth.js'
 import {
@@ -16,26 +17,13 @@ import { getFantasySettings } from '../services/fantasyService.js'
 // slots (e.g. 'wr3' after a commissioner shrunk the league to wr=2) get
 // excluded from starters cleanly. Mirrors buildH2HSlotMeta on the client.
 function buildH2HSlotMeta(rosterSlots) {
-  const slots = rosterSlots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1 }
-  const order = []
+  // Shared definition — utils/rosterSlots. The inline version here also had
+  // no IDP slots at all, so an IDP league's defenders were counted as bench
+  // in this view; going through the module fixes that as a side effect.
+  const starters = buildStarterSlots(rosterSlots)
+  const order = starters.map((s) => s.key)
   const labels = {}
-  if ((slots.qb || 0) >= 1) { order.push('qb'); labels.qb = 'QB' }
-  for (let i = 1; i <= (slots.rb || 0); i++) { order.push(`rb${i}`); labels[`rb${i}`] = 'RB' }
-  for (let i = 1; i <= (slots.wr || 0); i++) { order.push(`wr${i}`); labels[`wr${i}`] = 'WR' }
-  if ((slots.te || 0) >= 1) { order.push('te'); labels.te = 'TE' }
-  // FLEX / SUPERFLEX are counts, not booleans. See fantasyService's
-  // starterPlan and buildLineupValidationMaps — same fix, same key naming
-  // (first keeps the bare key, extras number from 2).
-  for (let i = 1; i <= (slots.flex || 0); i++) {
-    const k = i === 1 ? 'flex' : `flex${i}`
-    order.push(k); labels[k] = 'FLEX'
-  }
-  for (let i = 1; i <= (slots.superflex || 0); i++) {
-    const k = i === 1 ? 'superflex' : `superflex${i}`
-    order.push(k); labels[k] = 'SFLEX'
-  }
-  if ((slots.k || 0) >= 1) { order.push('k'); labels.k = 'K' }
-  if ((slots.def || 0) >= 1) { order.push('def'); labels.def = 'DEF' }
+  for (const s of starters) labels[s.key] = SLOT_LABELS[s.base]
   return { starterSet: new Set(order), slotOrder: order, slotLabels: labels }
 }
 

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { buildStarterSlots as buildSlots, SLOT_LABELS, SLOT_LABELS_SHORT } from '../../lib/rosterSlots'
 import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds, useFantasySettings, useGlobalRank, useFantasyLineupHistory, useFantasyWeeklyLineup, useSetFantasyWeeklyLineup, useFantasyWeekProjections } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { SkeletonRows, SkeletonBlock } from '../ui/Skeleton'
@@ -30,39 +31,10 @@ function pastTense(action) {
 // with non-default lineups (e.g., 2 WR instead of 3) don't render extra empty
 // slots that nobody can fill. Slot keys must match what the BE writes
 // (qb, rb1..rbN, wr1..wrN, te, flex, superflex, k, def).
+// Shared definition — lib/rosterSlots. Was an inline copy that drifted from
+// the server's starterPlan; see that module's header for the bugs it caused.
 function buildStarterSlots(rosterSlots) {
-  const slots = rosterSlots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1 }
-  const result = []
-  if ((slots.qb || 0) >= 1) result.push({ key: 'qb', label: 'QB', positions: ['QB'] })
-  for (let i = 1; i <= (slots.rb || 0); i++) result.push({ key: `rb${i}`, label: 'RB', positions: ['RB'] })
-  for (let i = 1; i <= (slots.wr || 0); i++) result.push({ key: `wr${i}`, label: 'WR', positions: ['WR'] })
-  if ((slots.te || 0) >= 1) result.push({ key: 'te', label: 'TE', positions: ['TE'] })
-  // FLEX / SUPERFLEX are counts, not booleans. These rendered one slot no
-  // matter how many the league configured, so a flex:2 league showed its
-  // second flex starter sitting on the bench — JMI read "Bench 7/6".
-  // First keeps the bare key so existing single-flex rosters still match;
-  // extras are numbered from 2, matching the server's starterPlan.
-  for (let i = 1; i <= (slots.flex || 0); i++) {
-    result.push({ key: i === 1 ? 'flex' : `flex${i}`, label: 'FLEX', positions: ['RB', 'WR', 'TE'] })
-  }
-  for (let i = 1; i <= (slots.superflex || 0); i++) {
-    result.push({ key: i === 1 ? 'superflex' : `superflex${i}`, label: 'SFLEX', positions: ['QB', 'RB', 'WR', 'TE'] })
-  }
-  if ((slots.k || 0) >= 1) result.push({ key: 'k', label: 'K', positions: ['K'] })
-  if ((slots.def || 0) >= 1) result.push({ key: 'def', label: 'DEF', positions: ['DEF'] })
-  // IDP slots — DL accepts the D-line family (edge rushers, DTs), LB the
-  // linebacker family, DB the corners, S the safeties. Position codes
-  // mirror Sleeper's nfl_players.position values.
-  for (let i = 1; i <= (slots.dl || 0); i++) result.push({ key: `dl${i}`, label: 'DL', positions: ['DE', 'DT', 'NT', 'DL'] })
-  for (let i = 1; i <= (slots.lb || 0); i++) result.push({ key: `lb${i}`, label: 'LB', positions: ['LB', 'ILB', 'OLB', 'MLB'] })
-  for (let i = 1; i <= (slots.db || 0); i++) result.push({ key: `db${i}`, label: 'DB', positions: ['CB', 'DB'] })
-  // 'DB' included to match the server's starterPlan. Sleeper classifies
-  // virtually every defensive back as DB — the six S/FS/SS rows that exist
-  // are all retired — so without it an S slot accepts nobody and shows
-  // "Empty S" forever. The S slot is no longer offered on new leagues, but
-  // existing ones still have it and have to remain fillable.
-  for (let i = 1; i <= (slots.s || 0); i++) result.push({ key: `s${i}`, label: 'S', positions: ['S', 'FS', 'SS', 'DB'] })
-  return result
+  return buildSlots(rosterSlots).map((s) => ({ key: s.key, label: s.label, positions: s.positions }))
 }
 
 // Split-aware slot eligibility so admin overrides like "LB/DL" let a

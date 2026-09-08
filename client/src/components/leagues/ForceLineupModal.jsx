@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { buildStarterSlots as buildSlots, SLOT_LABELS, SLOT_LABELS_SHORT } from '../../lib/rosterSlots'
 import { useFantasyRosterForUser, useForceLineup, useFantasySettings } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -8,29 +9,9 @@ import LoadingSpinner from '../ui/LoadingSpinner'
  * Duplicated from FantasyMyTeam to avoid an export-just-for-this refactor.
  * Keep in sync when either side changes.
  */
+// Shared definition — lib/rosterSlots.
 function buildStarterSlots(rosterSlots) {
-  const slots = rosterSlots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1 }
-  const result = []
-  if ((slots.qb || 0) >= 1) result.push({ key: 'qb', label: 'QB', positions: ['QB'] })
-  for (let i = 1; i <= (slots.rb || 0); i++) result.push({ key: `rb${i}`, label: 'RB', positions: ['RB'] })
-  for (let i = 1; i <= (slots.wr || 0); i++) result.push({ key: `wr${i}`, label: 'WR', positions: ['WR'] })
-  if ((slots.te || 0) >= 1) result.push({ key: 'te', label: 'TE', positions: ['TE'] })
-  // FLEX / SUPERFLEX are counts, not booleans. See fantasyService's
-  // starterPlan and buildLineupValidationMaps — same fix, same key naming
-  // (first keeps the bare key, extras number from 2).
-  for (let i = 1; i <= (slots.flex || 0); i++) {
-    result.push({ key: i === 1 ? 'flex' : `flex${i}`, label: 'FLEX', positions: ['RB', 'WR', 'TE'] })
-  }
-  for (let i = 1; i <= (slots.superflex || 0); i++) {
-    result.push({ key: i === 1 ? 'superflex' : `superflex${i}`, label: 'SFLEX', positions: ['QB', 'RB', 'WR', 'TE'] })
-  }
-  if ((slots.k || 0) >= 1) result.push({ key: 'k', label: 'K', positions: ['K'] })
-  if ((slots.def || 0) >= 1) result.push({ key: 'def', label: 'DEF', positions: ['DEF'] })
-  for (let i = 1; i <= (slots.dl || 0); i++) result.push({ key: `dl${i}`, label: 'DL', positions: ['DE', 'DT', 'NT', 'DL'] })
-  for (let i = 1; i <= (slots.lb || 0); i++) result.push({ key: `lb${i}`, label: 'LB', positions: ['LB', 'ILB', 'OLB', 'MLB'] })
-  for (let i = 1; i <= (slots.db || 0); i++) result.push({ key: `db${i}`, label: 'DB', positions: ['CB', 'DB'] })
-  for (let i = 1; i <= (slots.s || 0); i++) result.push({ key: `s${i}`, label: 'S', positions: ['S', 'FS', 'SS'] })
-  return result
+  return buildSlots(rosterSlots).map((s) => ({ key: s.key, label: s.label, positions: s.positions }))
 }
 
 function isPositionEligibleForSlot(playerPosition, slotPositions) {

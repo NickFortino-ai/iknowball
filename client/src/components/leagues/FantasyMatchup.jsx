@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { buildStarterSlots as buildSlots } from '../../lib/rosterSlots'
 import { useAuth } from '../../hooks/useAuth'
 import { useReadState, useMarkRead, READ_KINDS } from '../../hooks/useReadState'
 import { useFantasyMatchupLive, useFantasyMatchupWeek, useBlurbPlayerIds, usePlayoffBracket } from '../../hooks/useLeagues'
@@ -13,32 +14,14 @@ import InjuryBadge from '../ui/InjuryBadge'
 // config. Anything outside the configured set is treated as bench (e.g.
 // orphan 'wr3' rows from a league shrunk to wr=2). Mirrors the helper in
 // RosterList.jsx and FantasyMyTeam.jsx.
+// Shared definition — lib/rosterSlots. Uses the compact labels because this
+// grid's columns are too narrow for the full words.
 function buildSlotMeta(rosterSlots) {
-  const slots = rosterSlots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1 }
-  const keys = []
+  const slots = buildSlots(rosterSlots)
   const labels = {}
-  if ((slots.qb || 0) >= 1) { keys.push('qb'); labels.qb = 'QB' }
-  for (let i = 1; i <= (slots.rb || 0); i++) { keys.push(`rb${i}`); labels[`rb${i}`] = 'RB' }
-  for (let i = 1; i <= (slots.wr || 0); i++) { keys.push(`wr${i}`); labels[`wr${i}`] = 'WR' }
-  if ((slots.te || 0) >= 1) { keys.push('te'); labels.te = 'TE' }
-  // Counts, not booleans — see the same fix in FantasyMyTeam and the server's
-  // starterPlan. A flex:2 league rendered one flex row here, so the second
-  // flex starter appeared to be benched.
-  for (let i = 1; i <= (slots.flex || 0); i++) {
-    const k = i === 1 ? 'flex' : `flex${i}`
-    keys.push(k); labels[k] = 'FLX'
-  }
-  for (let i = 1; i <= (slots.superflex || 0); i++) {
-    const k = i === 1 ? 'superflex' : `superflex${i}`
-    keys.push(k); labels[k] = 'SFLX'
-  }
-  if ((slots.k || 0) >= 1) { keys.push('k'); labels.k = 'K' }
-  if ((slots.def || 0) >= 1) { keys.push('def'); labels.def = 'DEF' }
-  for (let i = 1; i <= (slots.dl || 0); i++) { keys.push(`dl${i}`); labels[`dl${i}`] = 'DL' }
-  for (let i = 1; i <= (slots.lb || 0); i++) { keys.push(`lb${i}`); labels[`lb${i}`] = 'LB' }
-  for (let i = 1; i <= (slots.db || 0); i++) { keys.push(`db${i}`); labels[`db${i}`] = 'DB' }
-  for (let i = 1; i <= (slots.s || 0); i++) { keys.push(`s${i}`); labels[`s${i}`] = 'S' }
-  return { starterSet: new Set(keys), slotLabels: labels, slotOrder: keys }
+  for (const s of slots) labels[s.key] = s.shortLabel
+  const keys = slots.map((s) => s.key)
+  return { starterSet: new Set(keys), slotOrder: keys, slotLabels: labels }
 }
 
 // Strip " D/ST" suffix — slot label already shows position
