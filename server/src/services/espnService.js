@@ -519,3 +519,80 @@ export async function fetchPlayerBoxStats(sportKey, espnEventId) {
     return {}
   }
 }
+
+// Fetch full per-player box stats for a FOOTBALL game. Returns a map of
+// normalized-lowercase-player-name → { pass_yd, pass_td, rush_yd, rush_td,
+// rec, rec_yd, rec_td }.
+//
+// Separate from fetchPlayerBoxStats above because the shapes genuinely
+// differ: basketball puts every player in a single statistics[0] group,
+// while football splits them into passing / rushing / receiving groups
+// with different labels, and one player legitimately appears in several
+// (a QB who scrambles shows up under both passing and rushing). So we
+// accumulate per player across groups rather than reading one group.
+//
+// Indices come from each group's own `labels` array rather than fixed
+// positions — ESPN has reordered these before, and a silent off-by-one
+// here would settle props against the wrong stat.
+//
+// Used by NCAAF prop settlement, which has no player-stats table of its
+// own the way the NFL has nfl_player_stats from Sleeper.
+export async function fetchFootballPlayerBoxStats(sportKey, espnEventId) {
+  const sport = SPORT_TO_ESPN[sportKey]
+  if (!sport || !espnEventId) return {}
+
+  const url = `${ESPN_BASE}/${sport.path}/summary?event=${espnEventId}`
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return {}
+    const data = await res.json()
+    if (!data.boxscore?.players) return {}
+
+    const num = (v) => {
+      const n = parseInt(String(v ?? '0').replace(/,/g, ''), 10)
+      return Number.isNaN(n) ? 0 : n
+    }
+
+    const result = {}
+    const ensure = (name) => {
+      const key = normalizePlayerName(name)
+      if (!key) return null
+      if (!result[key]) {
+        result[key] = { pass_yd: 0, pass_td: 0, rush_yd: 0, rush_td: 0, rec: 0, rec_yd: 0, rec_td: 0 }
+      }
+      return result[key]
+    }
+
+    for (const teamBox of data.boxscore.players) {
+      for (const group of teamBox.statistics || []) {
+        const name = (group?.name || '').toLowerCase()
+        if (!['passing', 'rushing', 'receiving'].includes(name)) continue
+        const labels = group.labels || []
+        const yds = labels.indexOf('YDS')
+        const td = labels.indexOf('TD')
+        const rec = labels.indexOf('REC')
+
+        for (const athlete of group.athletes || []) {
+          const row = ensure(athlete.athlete?.displayName)
+          if (!row) continue
+          const arr = athlete.stats || []
+          if (name === 'passing') {
+            if (yds >= 0) row.pass_yd = num(arr[yds])
+            if (td >= 0) row.pass_td = num(arr[td])
+          } else if (name === 'rushing') {
+            if (yds >= 0) row.rush_yd = num(arr[yds])
+            if (td >= 0) row.rush_td = num(arr[td])
+          } else {
+            if (rec >= 0) row.rec = num(arr[rec])
+            if (yds >= 0) row.rec_yd = num(arr[yds])
+            if (td >= 0) row.rec_td = num(arr[td])
+          }
+        }
+      }
+    }
+    return result
+  } catch (err) {
+    logger.warn({ err: err.message, espnEventId, sportKey }, 'Failed to fetch ESPN football box stats')
+    return {}
+  }
+}
