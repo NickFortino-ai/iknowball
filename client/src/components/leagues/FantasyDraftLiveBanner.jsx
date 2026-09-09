@@ -57,22 +57,34 @@ export default function FantasyDraftLiveBanner({ league, fantasySettings, onGoTo
   // On-the-clock alert — fires when isMyTurn flips false → true.
   // Lives at the league-page level so it works on every tab.
   const wasMyTurnRef = useRef(false)
+  // The tab title before any flashing. Captured once at mount, because the
+  // old code read document.title at flash time — so if a second flash began
+  // while a previous one was mid-cycle, `original` captured "⏰ YOU'RE UP"
+  // itself and every later "restore" put the alarm clock back. That is how it
+  // survived the end of the draft.
+  const baseTitleRef = useRef(typeof document !== 'undefined' ? document.title : '')
   useEffect(() => {
-    if (isMyTurn && !wasMyTurnRef.current) {
-      playTone({ freq: 880, dur: 0.4, gain: 0.15 })
-      buzz([160, 80, 160])
-      const original = document.title
-      let flashCount = 0
-      const flashTimer = setInterval(() => {
-        document.title = flashCount % 2 === 0 ? "⏰ YOU'RE UP" : original
-        flashCount++
-        if (flashCount > 10) {
-          clearInterval(flashTimer)
-          document.title = original
-        }
-      }, 800)
-    }
+    const fire = isMyTurn && !wasMyTurnRef.current
     wasMyTurnRef.current = isMyTurn
+    if (!fire) return undefined
+    playTone({ freq: 880, dur: 0.4, gain: 0.15 })
+    buzz([160, 80, 160])
+    const original = baseTitleRef.current
+    let flashCount = 0
+    const flashTimer = setInterval(() => {
+      document.title = flashCount % 2 === 0 ? "⏰ YOU'RE UP" : original
+      flashCount++
+      if (flashCount > 10) {
+        clearInterval(flashTimer)
+        document.title = original
+      }
+    }, 800)
+    // Unmounting mid-flash used to leave the interval running and the alarm
+    // clock stuck in the tab.
+    return () => {
+      clearInterval(flashTimer)
+      document.title = original
+    }
   }, [isMyTurn])
 
   if (league?.format !== 'fantasy') return null

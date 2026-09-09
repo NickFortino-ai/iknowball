@@ -232,6 +232,14 @@ export default function FantasyDraftRoom({ league }) {
 
   const isMyTurn = currentPick?.user_id === profile?.id
   const completedPicks = picks.filter((p) => p.player_id)
+  // The queue minus anyone already drafted, computed ONCE. The tab badge and
+  // the list were deriving this separately — the list filtered, the badge used
+  // queue.length raw — so an emptied queue still read "Queue (2)". The
+  // down-arrow bounds had the same problem, disabling on the wrong row.
+  const visibleQueue = useMemo(() => {
+    const drafted = new Set(completedPicks.map((p) => p.player_id))
+    return (queue || []).filter((q) => !drafted.has(q.player_id))
+  }, [queue, completedPicks])
   // What Undo would reverse. undoLastDraftPick targets the highest
   // pick_number, so sort rather than trusting the array's incoming order.
   const lastCompletedPick = completedPicks.length
@@ -341,27 +349,40 @@ export default function FantasyDraftRoom({ league }) {
   }, [draftStatus])
 
   const wasMyTurnRef = useRef(false)
+  // The tab title before any flashing. Captured once at mount: the old code
+  // read document.title at flash time, so a flash starting while a previous
+  // one was mid-cycle captured "⏰ YOU'RE UP" as the thing to restore, and
+  // every later restore put the alarm clock back permanently — including
+  // after the draft ended.
+  const baseTitleRef = useRef(typeof document !== 'undefined' ? document.title : '')
   useEffect(() => {
-    if (isMyTurn && !wasMyTurnRef.current && draftStatus === 'in_progress') {
-      toast("You're on the clock!", 'success')
-      playTone({ freq: 880, dur: 0.4, gain: 0.15 })
-      // Buzz too: iOS Web Audio obeys the physical silent switch inside a
-      // Capacitor WebView, so a muted phone hears nothing. Vibration is the
-      // only alert that reaches someone with their ringer off — which, at a
-      // draft, is most people.
-      buzz([160, 80, 160])
-      const original = document.title
-      let flashCount = 0
-      const flashTimer = setInterval(() => {
-        document.title = flashCount % 2 === 0 ? "⏰ YOU'RE UP" : original
-        flashCount++
-        if (flashCount > 10) {
-          clearInterval(flashTimer)
-          document.title = original
-        }
-      }, 800)
-    }
+    const fire = isMyTurn && !wasMyTurnRef.current && draftStatus === 'in_progress'
     wasMyTurnRef.current = isMyTurn
+    if (!fire) return undefined
+    toast("You're on the clock!", 'success')
+    playTone({ freq: 880, dur: 0.4, gain: 0.15 })
+    // Buzz too: iOS Web Audio obeys the physical silent switch inside a
+    // Capacitor WebView, so a muted phone hears nothing. Vibration is the
+    // only alert that reaches someone with their ringer off — which, at a
+    // draft, is most people.
+    buzz([160, 80, 160])
+    const original = baseTitleRef.current
+    let flashCount = 0
+    const flashTimer = setInterval(() => {
+      document.title = flashCount % 2 === 0 ? "⏰ YOU'RE UP" : original
+      flashCount++
+      if (flashCount > 10) {
+        clearInterval(flashTimer)
+        document.title = original
+      }
+    }, 800)
+    // Cleanup runs when the turn ends, the draft status changes, or the room
+    // unmounts — so the alarm stops as soon as the pick is in, instead of
+    // flashing out its full eight seconds at someone who has already picked.
+    return () => {
+      clearInterval(flashTimer)
+      document.title = original
+    }
   }, [isMyTurn, draftStatus])
 
   // Auto-scroll to latest pick
@@ -976,7 +997,7 @@ export default function FantasyDraftRoom({ league }) {
           const isActive = activeTab === t
           const filledCount = slotPlan.filled
           const totalCount = slotPlan.totalRoster
-          const badge = t === 'My Roster' ? `${filledCount}/${totalCount}` : t === 'Queue' ? (queue?.length || 0) : null
+          const badge = t === 'My Roster' ? `${filledCount}/${totalCount}` : t === 'Queue' ? visibleQueue.length : null
           return (
             <button
               key={t}
@@ -1181,9 +1202,8 @@ export default function FantasyDraftRoom({ league }) {
       )}
 
       {activeTab === 'Queue' && (() => {
-        // Hide queue entries for players already drafted
-        const draftedSet = new Set(picks.filter((p) => p.player_id).map((p) => p.player_id))
-        const visibleQueue = (queue || []).filter((q) => !draftedSet.has(q.player_id))
+        // visibleQueue is computed once at component scope so the tab badge,
+        // this list and the reorder bounds cannot drift apart again.
         return (
         <div className="rounded-xl border border-text-primary/20 p-4">
           <div className="flex items-center justify-between mb-3">
@@ -1221,7 +1241,7 @@ export default function FantasyDraftRoom({ league }) {
                   ) : (
                     <>
                       <button onClick={() => moveQueue(q.player_id, 'up')} disabled={i === 0} className="text-text-muted hover:text-text-primary w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary disabled:opacity-30" title="Move up">▲</button>
-                      <button onClick={() => moveQueue(q.player_id, 'down')} disabled={i === queue.length - 1} className="text-text-muted hover:text-text-primary w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary disabled:opacity-30" title="Move down">▼</button>
+                      <button onClick={() => moveQueue(q.player_id, 'down')} disabled={i === visibleQueue.length - 1} className="text-text-muted hover:text-text-primary w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary disabled:opacity-30" title="Move down">▼</button>
                     </>
                   )}
                   <button onClick={() => toggleQueue(q.player_id)} className="text-text-muted hover:text-incorrect w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary text-lg" title="Remove">×</button>

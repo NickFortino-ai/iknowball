@@ -590,6 +590,14 @@ export function useFantasySettings(leagueId) {
     queryKey: ['leagues', leagueId, 'fantasy', 'settings'],
     queryFn: () => api.get(`/leagues/${leagueId}/fantasy/settings`),
     enabled: !!leagueId,
+    // draft_status lives here, and it drives the entire paused / live / on-the-
+    // clock UI — yet this was the one draft query that never polled. The board
+    // polls every 5s but that is a different key, and useRealtimeDraft
+    // invalidates 'draft' and 'players' and not 'settings', so a pause only
+    // surfaced on a window-focus refetch. Observed 2026-09-09: a commissioner
+    // did not see his own league paused while another manager did, because
+    // that manager happened to tab back in.
+    refetchInterval: 10000,
   })
 }
 
@@ -1007,6 +1015,11 @@ export function useRealtimeDraft(leagueId, userId) {
       }, () => {
         queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'draft'] })
         queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'players'] })
+        // 'settings' carries draft_status. Without this a pause or resume was
+        // invisible to a client whose socket was healthy — the one piece of
+        // state that most needs to propagate instantly was the one the
+        // realtime handler ignored.
+        queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'settings'] })
       })
       .on('presence', { event: 'sync' }, () => {
         setPresentUserIds(new Set(Object.keys(channel.presenceState())))
