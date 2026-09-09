@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js'
 import { createNotification } from '../services/notificationService.js'
 import { getNFLState } from '../services/sleeperService.js'
 import { fetchAll } from '../utils/fetchAll.js'
+import { isUnavailable } from '../utils/injuryStatus.js'
 
 /**
  * Send "your starter is OUT" warnings to fantasy team owners.
@@ -36,12 +37,12 @@ export async function sendNflInjuryWarnings() {
   //
   // Fetched by "has any status" and filtered here rather than widening the
   // .in() list, so a casing change from Sleeper ("SUS" vs "Sus") can't
-  // silently reopen the same hole. Mirrors UNAVAILABLE_STATUSES in
-  // NflSalaryCapView.jsx — the two should agree about who cannot play.
+  // silently reopen the same hole. The definition lives in
+  // utils/injuryStatus.js, shared with the projection guards in
+  // fantasyService — they must agree about who cannot play.
   //
   // Questionable is deliberately absent: a warning for a player who may well
   // suit up trains people to ignore the notification.
-  const UNAVAILABLE = new Set(['out', 'ir', 'pup', 'sus', 'suspended', 'dnr'])
 
   const statused = await fetchAll(
     supabase
@@ -51,9 +52,7 @@ export async function sendNflInjuryWarnings() {
       .not('team', 'is', null)
       .order('id')
   )
-  const outPlayers = (statused || []).filter(
-    (p) => UNAVAILABLE.has(String(p.injury_status || '').toLowerCase())
-  )
+  const outPlayers = (statused || []).filter((p) => isUnavailable(p.injury_status))
 
   if (!outPlayers?.length) {
     logger.debug('No unavailable NFL players to warn about')

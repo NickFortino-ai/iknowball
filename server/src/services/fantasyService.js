@@ -4,6 +4,7 @@ import { effectiveAdp as computeEffectiveAdp } from '../utils/effectiveAdp.js'
 import { getLeagueSyncInfo } from './draftPrepService.js'
 import { fetchAll } from '../utils/fetchAll.js'
 import { buildStarterSlots, buildLineupValidationMaps, isStarterSlot } from '../utils/rosterSlots.js'
+import { isUnavailable } from '../utils/injuryStatus.js'
 import { cached } from '../utils/memoCache.js'
 import { throwIfInfra } from '../utils/dbError.js'
 
@@ -3499,8 +3500,12 @@ export async function getRoster(leagueId, userId) {
       for (const p of projRows || []) projRowByPlayer[p.player_id] = p
       for (const r of rows) {
         const onBye = r.nfl_players?.bye_week === week
+        // A player who cannot take the field has no projection, same as a bye.
+        // Sleeper keeps publishing one for players on IR — Jayden Higgins was
+        // out for the season and still projected 10.1.
+        const cannotPlay = isUnavailable(r.nfl_players?.injury_status)
         const computed = computeIdpAwareProjection(projRowByPlayer[r.player_id], r.nfl_players?.position, projCol, rules)
-        r.weekly_projection = onBye ? 0 : (computed != null ? Math.round(computed * 10) / 10 : null)
+        r.weekly_projection = (onBye || cannotPlay) ? 0 : (computed != null ? Math.round(computed * 10) / 10 : null)
       }
     }
   } catch (err) {
@@ -4215,6 +4220,11 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
       pos_rank: posRanks[p.id] || null,
       season_points: Math.round((s.pts || 0) * 10) / 10,
       weekly_projection: (() => {
+        // Zero for anyone who cannot play, matching the bye-week rule on the
+        // roster path. Sleeper still publishes a projection for players on IR,
+        // so sorting the available list by PROJ put a season-ending injury at
+        // the very top — Jayden Higgins (IR) above every healthy player.
+        if (isUnavailable(p.injury_status)) return 0
         const computed = computeIdpAwareProjection(weeklyProjRowMap[p.id], p.position, weeklyProjCol, weeklyRules)
         return computed != null ? Math.round(computed * 10) / 10 : null
       })(),
