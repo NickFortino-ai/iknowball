@@ -1713,6 +1713,7 @@ export async function autoDraftPick(leagueId, userId) {
       posById[r.id] = r.position
     }
     // If K/DEF is forced, only return K or DEF candidates.
+    let fallbackId = null
     for (const id of undrafted) {
       const pos = posById[id]
       // A queued or highly-ranked player from outside this league's pool
@@ -1727,9 +1728,31 @@ export async function autoDraftPick(leagueId, userId) {
         if (fillsNeed(pos)) return id
         continue
       }
-      if (isEligible(pos)) return id
+      if (isEligible(pos)) {
+        // Prefer a player who fills a still-empty REQUIRED starter slot over
+        // pure best-available, and remember the best non-filler as a fallback.
+        //
+        // Without this, autopick was best-available-within-caps until the
+        // late-round forcing kicked in, and early ADP is RB-heavy — so in a
+        // league starting 2 RB and 1 FLEX an autodrafter took FIVE running
+        // backs before its first quarterback, which is the RB cap
+        // (rb + flex + 2) exactly. It never broke a rule; it just had no
+        // reason to prefer the position it actually still needed.
+        //
+        // This is a preference, not a restriction: it still walks the user's
+        // queue and rankings in order and still takes the best available, it
+        // just asks "does this fill a hole?" first. K and DEF are excluded
+        // until round 11 by isEligible above, so they don't get pulled early
+        // just for being unfilled. FLEX and SUPERFLEX are excluded from the
+        // need table by design, so depth still comes from best-available once
+        // the required slots are covered.
+        if (fillsNeed(pos)) return id
+        if (fallbackId == null) fallbackId = id
+      }
     }
-    return null
+    // Nobody filled a hole — take the best eligible player we saw. This is
+    // the old behaviour, now the fallback rather than the first answer.
+    return fallbackId
   }
 
   // 1. Try the user's in-room draft queue first
