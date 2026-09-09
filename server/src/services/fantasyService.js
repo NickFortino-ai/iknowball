@@ -4130,7 +4130,15 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   const idpSlice = hasIdp
     ? availableAll.filter((p) => isIdpPlayer(p.position) && !isOffensePlayer(p.position)).sort(sortFn)
     : []
-  const ranked = [...offenseSlice, ...kickerSlice, ...defSlice, ...idpSlice]
+  // Sorted as one list, not concatenated. The slices decide MEMBERSHIP —
+  // which players belong in this league's pool — but appending them in
+  // sequence made the browse order "all offense, then kickers, then all
+  // IDP". In an IDP league that pushed every defender past ~400 offensive
+  // players, so the ranked list showed a gap exactly where each IDP player
+  // should have been: Myles Garrett is overall rank 107 and appeared
+  // nowhere near row 107, though searching his name still found him.
+  // Re-sorting restores true rank order across the combined pool.
+  const ranked = [...offenseSlice, ...kickerSlice, ...defSlice, ...idpSlice].sort(sortFn)
 
   // Does this league SCORE individual defense, regardless of whether it has
   // IDP roster slots? These are independent settings, and "Salary and Peanut
