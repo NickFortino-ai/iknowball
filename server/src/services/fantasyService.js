@@ -1479,7 +1479,7 @@ export async function autoFillLineupsForLeague(leagueId) {
  * bench — which would otherwise leave the lineup looking incomplete and
  * trip the roster-cap check on the next add.
  */
-async function fillEmptyStarterSlots(leagueId, userId) {
+export async function fillEmptyStarterSlots(leagueId, userId) {
   if (!leagueId || !userId) return
   const settings = await getFantasySettings(leagueId)
   const rosterSlots = settings?.roster_slots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6 }
