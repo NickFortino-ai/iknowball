@@ -5221,12 +5221,56 @@ export async function detectAndNotifyStatCorrections(week, season, newRows, oldS
     return 0
   }
 
+  // Only a FINAL game can produce a correction. While a game is in progress
+  // every scoring play moves a player's total, and this compared old points
+  // to new with no game-status check — so on 2026-09-09, with Patriots @
+  // Seahawks live, managers got a "stat correction" push every time Jaxon
+  // Smith-Njigba scored. Those were not corrections, they were points.
+  //
+  // Teams whose week-N game has finished are the only ones eligible. A real
+  // correction lands hours or days later, always against a final game, so
+  // nothing legitimate is lost by waiting for the whistle.
+  const finalTeams = new Set()
+  try {
+    const { data: sportRow } = await supabase
+      .from('sports').select('id').eq('key', 'americanfootball_nfl').single()
+    if (sportRow) {
+      const { data: weekGames } = await supabase
+        .from('games')
+        .select('home_team, away_team, status')
+        .eq('sport_id', sportRow.id)
+        .eq('status', 'final')
+        .gte('starts_at', new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString())
+      for (const g of weekGames || []) {
+        const h = NFL_FULL_TO_ABBR[g.home_team]
+        const a = NFL_FULL_TO_ABBR[g.away_team]
+        if (h) finalTeams.add(h)
+        if (a) finalTeams.add(a)
+      }
+    }
+  } catch (err) {
+    logger.warn({ err: err.message }, 'Could not resolve final games — skipping correction notifications')
+    return { detected: 0, notified: 0 }
+  }
+  if (!finalTeams.size) return { detected: 0, notified: 0 }
+
+  const changedIds = newRows.map((r) => r.player_id).filter(Boolean)
+  const teamByPlayer = {}
+  if (changedIds.length) {
+    const players = await fetchAll(
+      supabase.from('nfl_players').select('id, team').in('id', changedIds).order('id')
+    )
+    for (const pl of players || []) teamByPlayer[pl.id] = pl.team
+  }
+
   const corrections = []
   for (const r of newRows) {
     const old = oldStatsByPlayer[r.player_id]
     if (!old) continue
     // Don't fire for first-time inserts (old row had no points yet)
     if (old.pts_half_ppr == null) continue
+    // Mid-game scoring is not a correction.
+    if (!finalTeams.has(teamByPlayer[r.player_id])) continue
     const oldPts = Number(old.pts_half_ppr) || 0
     const newPts = Number(r.pts_half_ppr) || 0
     if (Math.abs(newPts - oldPts) >= STAT_CORRECTION_THRESHOLD) {
