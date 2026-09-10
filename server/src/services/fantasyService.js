@@ -8136,8 +8136,11 @@ export async function scoreFantasyMatchupsWeek(week, season) {
     // the state a league is in when its bracket was never generated, so
     // returning here would strand the leagues most in need of recovery.
     // weekIsFinal isn't computed yet at this point, and the lifecycle's
-    // steps are all idempotent, so gate on the same Tuesday-3am-ET rule.
-    if (isWeekFinalNow()) {
+    // steps are all idempotent, so gate on the same week-complete check.
+    // MUST be awaited — isWeekFinalNow became async when it stopped guessing
+    // from the calendar, and an un-awaited call returns a Promise, which is
+    // always truthy.
+    if (await isWeekFinalNow(week, season)) {
       try {
         await runPlayoffLifecycle(week, season)
       } catch (err) {
@@ -8336,7 +8339,7 @@ export async function scoreFantasyMatchupsWeek(week, season) {
   // For now we mark status='active' until the cron explicitly finalizes via the
   // late-night Monday tick. The complete-leagues code already accepts 'completed'
   // matchups for standings; we'll flip status to 'completed' once Monday games end.
-  const weekIsFinal = isWeekFinalNow()
+  const weekIsFinal = await isWeekFinalNow(week, season)
 
   // 7. Update each matchup with home/away points
   let scored = 0
@@ -8423,11 +8426,61 @@ export async function scoreFantasyMatchupsWeek(week, season) {
 // An NFL week is considered complete after 3 AM Tuesday Eastern (post-MNF)
 // through Saturday. Extracted so the no-matchup path and the normal path
 // can't drift on when a week counts as done.
-function isWeekFinalNow() {
-  const et = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
-  const day = et.getDay()
-  const hour = et.getHours()
-  return (day === 2 && hour >= 3) || (day > 2 && day !== 0)
+/**
+ * Is every NFL game in this week actually finished?
+ *
+ * This used to be a calendar guess — "Tuesday 3am ET onward, or any day
+ * after" — which assumed the week always runs Thursday to Monday. It does,
+ * almost always. On 2026-09-09 it did not: the season opened on a WEDNESDAY,
+ * so the moment that game kicked off the code believed Week 1 was over,
+ * marked every matchup completed at 0-0, and pushed "You tied 0-0 in Week 1"
+ * to everyone.
+ *
+ * A heuristic that is right most weeks and silently wrong on the exceptions
+ * is worse than no heuristic, and the exceptions keep coming: Black Friday,
+ * Christmas, the international early kickoffs. So this reads the games.
+ *
+ * Conservative in two ways, both deliberate — a week wrongly held open just
+ * finalises late, a week wrongly closed sends everyone a fabricated result:
+ *   - unknown schedule → not final
+ *   - fewer games found than the schedule lists → not final, so a game
+ *     missing from `games` blocks finalisation instead of allowing it
+ */
+async function isWeekFinalNow(week, season) {
+  if (!week || !season) return false
+  try {
+    const { data: sched } = await supabase
+      .from('nfl_schedule')
+      .select('game_date')
+      .eq('season', season)
+      .eq('week', week)
+    if (!sched?.length) return false
+
+    const dates = sched.map((r) => r.game_date).filter(Boolean).sort()
+    if (!dates.length) return false
+    const first = dates[0]
+    // game_date is the ET calendar date; a Monday-night kickoff lands on the
+    // NEXT UTC day, so the window runs two days past the last listed date.
+    const end = new Date(new Date(`${dates[dates.length - 1]}T00:00:00Z`).getTime() + 2 * 86400000).toISOString()
+
+    const { data: sportRow } = await supabase
+      .from('sports').select('id').eq('key', 'americanfootball_nfl').single()
+    if (!sportRow) return false
+
+    const { data: games } = await supabase
+      .from('games')
+      .select('status')
+      .eq('sport_id', sportRow.id)
+      .gte('starts_at', first)
+      .lt('starts_at', end)
+    if (!games?.length) return false
+
+    const finals = games.filter((g) => g.status === 'final').length
+    return finals >= sched.length
+  } catch (err) {
+    logger.warn({ err: err.message, week, season }, 'Could not determine week completion — treating week as unfinished')
+    return false
+  }
 }
 
 // Playoff lifecycle: generate the bracket, advance rounds, flag clinches.
