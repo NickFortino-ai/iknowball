@@ -569,6 +569,20 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 return `${day} ${time} ${at}`
               }
 
+              // Surnames stay on ONE line. "Croskey-Merritt" wrapped under
+              // break-words and pushed the game line down, making that row
+              // taller than every other one. Rather than truncate a real name,
+              // step the type down as it gets longer — 15 characters at 11px
+              // occupies about what 9 characters do at 14px, so the long ones
+              // fit whole. truncate is the backstop for anything longer still,
+              // which ellipsises instead of reflowing the row.
+              function lastNameSize(last) {
+                const len = (last || '').length
+                if (len > 14) return 'text-[11px]'
+                if (len > 11) return 'text-xs'
+                return 'text-sm'
+              }
+
               function abbrevName(name) {
                 if (!name) return '--'
                 // D/ST names like "Titans D/ST" — just show "Titans"
@@ -596,7 +610,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                         <>
                           {n.first && <div className="text-[11px] font-medium text-text-primary/70">{n.first}</div>}
                           <div className="flex items-center gap-1 min-w-0">
-                            <span className="text-sm font-bold text-text-primary break-words min-w-0">{n.last}</span>
+                            <span className={`${lastNameSize(n.last)} font-bold text-text-primary truncate min-w-0`}>{n.last}</span>
                             {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
                           </div>
                         </>
@@ -667,7 +681,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                           {n.first && <div className="text-[11px] font-medium text-text-primary/70">{n.first}</div>}
                           <div className="flex items-center justify-end gap-1 min-w-0">
                             {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
-                            <span className="text-sm font-bold text-text-primary break-words min-w-0">{n.last}</span>
+                            <span className={`${lastNameSize(n.last)} font-bold text-text-primary truncate min-w-0`}>{n.last}</span>
                           </div>
                         </>
                       )})()}
