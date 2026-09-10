@@ -538,9 +538,14 @@ function MatchupLive({ league, week, season, fantasySettings }) {
 
 export default function FantasyLiveView({ league, fantasySettings }) {
   const isSalaryCap = fantasySettings?.format === 'salary_cap'
-  const season = 2026
-  // TODO: determine current NFL week dynamically
-  const week = fantasySettings?.single_week || 1
+  const season = fantasySettings?.season || 2026
+  // current_week first. This was `single_week || 1`, and single_week is null in
+  // every league that exists — so it evaluated to a hard 1 and the Live tab
+  // would have gone on showing Week 1 all season, for salary cap and
+  // traditional alike, while the rest of the app moved on. current_week is
+  // what the nightly rollover advances; single_week stays as the fallback for
+  // single-week leagues, which pin to one week by design.
+  const week = fantasySettings?.current_week || fantasySettings?.single_week || 1
 
   if (isSalaryCap) {
     return <SalaryCapLive league={league} week={week} season={season} />
