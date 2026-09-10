@@ -301,7 +301,11 @@ async function syncSportLiveScores(sportKey) {
   }
 
   if (unmatched.length) {
-    const espnTeams = espnEvents.map((e) => `${e.awayTeam} @ ${e.homeTeam}`)
+    // allEvents, not espnEvents — the latter is only a FIELD NAME in the
+    // debug log above, never a variable. This threw ReferenceError and killed
+    // the whole sync for that sport, but only when something was unmatched,
+    // which is why it surfaced intermittently rather than immediately.
+    const espnTeams = allEvents.map((e) => `${e.awayTeam} @ ${e.homeTeam}`)
     logger.info({ sportKey, unmatched, espnTeams }, 'Unmatched games — no ESPN match found')
   }
 

@@ -309,7 +309,13 @@ export function startScheduler() {
       } catch (err) { logger.error({ err }, 'NFL DFS salary scheduler failed') }
       // Auto-rollover current_week for all active fantasy leagues
       try {
-        const nflState = state || await getNFLState()
+        // Was `state || await getNFLState()`, and `state` was never declared
+        // in any enclosing scope — the nearby variable is state2, and that
+        // one lives inside a different try block. So this threw
+        // ReferenceError on every run, the catch below swallowed it as
+        // "Fantasy week rollover failed", and current_week never advanced
+        // for any league. There is no local state to reuse here; just fetch.
+        const nflState = await getNFLState()
         if (nflState?.week && nflState?.season) {
           await rolloverFantasyWeek(nflState.week, nflState.season)
         }
