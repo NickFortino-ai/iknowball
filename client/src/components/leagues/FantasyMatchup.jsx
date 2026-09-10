@@ -171,8 +171,12 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
             the height so a whole week is scannable at once. Avatars and score
             type are a step smaller to match. Still expands on tap. */}
         <div className={`${compact ? "hidden md:flex" : "flex"} items-center gap-2 md:gap-3 mb-2`}>
-          {/* Home identity — right-aligned so it reads inward toward the score */}
-          <div className="flex-1 min-w-0 text-right">
+          {/* Avatars sit on the OUTSIDE edges, each team's text reading away
+              from the centre — home left-aligned beside its avatar, away
+              right-aligned beside its own. The scores hold the middle. */}
+          <Avatar user={matchup.home_user} size="lg" className="!w-10 !h-10 md:!w-12 md:!h-12 shrink-0" />
+
+          <div className="flex-1 min-w-0 text-left">
             <div className={`text-sm md:text-lg font-bold truncate ${isCompleted && homeWinning ? 'text-correct' : matchup.home_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
               {matchup.home_user?.display_name || matchup.home_user?.username}
             </div>
@@ -183,8 +187,6 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               <div className="text-[10px] md:text-xs text-text-muted">{matchup.home_user.record.wins}-{matchup.home_user.record.losses}</div>
             )}
           </div>
-
-          <Avatar user={matchup.home_user} size="lg" className="!w-10 !h-10 md:!w-12 md:!h-12 shrink-0" />
 
           {hasScores || isCompleted ? (
             <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
@@ -216,10 +218,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
             <span className="text-text-muted text-base md:text-lg font-display shrink-0">vs</span>
           )}
 
-          <Avatar user={matchup.away_user} size="lg" className="!w-10 !h-10 md:!w-12 md:!h-12 shrink-0" />
-
-          {/* Away identity — left-aligned, mirroring home */}
-          <div className="flex-1 min-w-0 text-left">
+          <div className="flex-1 min-w-0 text-right">
             <div className={`text-sm md:text-lg font-bold truncate ${isCompleted && !homeWinning ? 'text-correct' : matchup.away_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
               {matchup.away_user?.display_name || matchup.away_user?.username}
             </div>
@@ -230,6 +229,8 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               <div className="text-[10px] md:text-xs text-text-muted">{matchup.away_user.record.wins}-{matchup.away_user.record.losses}</div>
             )}
           </div>
+
+          <Avatar user={matchup.away_user} size="lg" className="!w-10 !h-10 md:!w-12 md:!h-12 shrink-0" />
         </div>
 
         {isCompleted && hasScores && (
