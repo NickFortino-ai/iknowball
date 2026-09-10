@@ -78,7 +78,15 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
     }
   }
 
+  // Salary cap standings don't expand. Their rosters live in dfs_rosters and
+  // are already presented properly on the Live tab, so the expansion was both
+  // redundant and — because RosterList reads the traditional fantasy_rosters
+  // endpoint — permanently empty, rendering "No roster yet" underneath a
+  // manager showing real points.
+  const canExpand = !isSalaryCap
+
   function toggleExpand(userId) {
+    if (!canExpand) return
     setExpandedUserId((prev) => (prev === userId ? null : userId))
   }
 
@@ -134,7 +142,7 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
                 <Fragment key={s.userId}>
                   <tr
                     onClick={() => toggleExpand(s.userId)}
-                    className={`border-b border-text-primary/10 hover:bg-text-primary/5 transition-colors cursor-pointer ${
+                    className={`border-b border-text-primary/10 transition-colors ${canExpand ? 'hover:bg-text-primary/5 cursor-pointer' : ''} ${
                       isExpanded ? 'bg-text-primary/5' : ''
                     } ${p ? `${p.bg} border-l-4 ${p.accent}` : ''}`}
                   >
@@ -226,7 +234,7 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
               <div key={s.userId} className={`border-b border-text-primary/10 ${p ? `${p.bg} border-l-4 ${p.accent}` : ''}`}>
                 <div
                   onClick={() => toggleExpand(s.userId)}
-                  className={`flex items-stretch hover:bg-text-primary/5 transition-colors cursor-pointer ${rowHeight}`}
+                  className={`flex items-stretch transition-colors ${canExpand ? 'hover:bg-text-primary/5 cursor-pointer' : ''} ${rowHeight}`}
                 >
                   <div className={`sticky left-0 z-10 backdrop-blur-sm shrink-0 flex items-center ${p ? p.bg : 'bg-bg-primary/40'}`}>
                     <div className="px-2 text-center w-8">
