@@ -122,13 +122,55 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
           the old two-row stack and left a lot of dead space around a card
           half the height. */}
       <button onClick={onToggle} className="w-full px-3 py-2.5 md:px-4 md:py-3 hover:bg-text-primary/5 transition-colors">
+        {/* Mobile: one line per team, stacked. The side-by-side layout below
+            has to fit two names, two records and two scores across a phone,
+            which truncates everything to initials. Stacking gives each team a
+            full-width line, so long team names survive. Desktop keeps the
+            single-row version — it has the horizontal room and benefits from
+            the head-to-head read. */}
+        <div className="md:hidden space-y-1.5 mb-2">
+          {[
+            { user: matchup.home_user, points: matchup.home_points, proj: isCompleted ? hPregame : hProj, winning: homeWinning },
+            { user: matchup.away_user, points: matchup.away_points, proj: isCompleted ? aPregame : aProj, winning: !homeWinning },
+          ].map((side, i) => (
+            <div key={i} className="flex items-center gap-2.5 text-left">
+              <Avatar user={side.user} size="lg" className="!w-9 !h-9 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className={`text-sm font-bold truncate ${isCompleted && side.winning ? 'text-correct' : side.user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
+                  {side.user?.fantasy_team_name || side.user?.display_name || side.user?.username}
+                </div>
+                <div className="text-[11px] text-text-muted truncate">
+                  {/* When a fantasy team name exists it takes the headline, so
+                      the manager's name moves down here beside the record —
+                      otherwise the person is unidentifiable. */}
+                  {side.user?.fantasy_team_name && (
+                    <>{side.user?.display_name || side.user?.username}
+                      {side.user?.record && ' · '}</>
+                  )}
+                  {side.user?.record && `${side.user.record.wins}-${side.user.record.losses}`}
+                </div>
+              </div>
+              <div className="flex flex-col items-end shrink-0">
+                {(hasScores || isCompleted) ? (
+                  <span className={`font-display text-xl tabular-nums ${isCompleted && side.winning ? 'text-correct' : 'text-white'}`}>
+                    {(side.points || 0).toFixed(1)}
+                  </span>
+                ) : null}
+                {(side.proj ?? 0) > 0 && (
+                  <span className="text-[11px] text-text-muted tabular-nums leading-tight">{side.proj.toFixed(1)}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
         {/* One row: name/record outboard, avatar, then the scores centred.
             This used to be two stacked rows — avatars and scores on top,
             names and records beneath — which made each card tall enough that
             only two matchups fit on screen. Collapsing them roughly halves
             the height so a whole week is scannable at once. Avatars and score
             type are a step smaller to match. Still expands on tap. */}
-        <div className="flex items-center gap-2 md:gap-3 mb-2">
+        <div className="hidden md:flex items-center gap-2 md:gap-3 mb-2">
           {/* Home identity — right-aligned so it reads inward toward the score */}
           <div className="flex-1 min-w-0 text-right">
             <div className={`text-sm md:text-lg font-bold truncate ${isCompleted && homeWinning ? 'text-correct' : matchup.home_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
@@ -230,6 +272,21 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
       {/* Expanded roster comparison */}
       {isExpanded && matchup.home_roster && (
         <div className="border-t border-text-primary/10 p-3">
+          {/* Mobile only: label the two roster columns. The collapsed card is
+              stacked on phones, so nothing above establishes which side is
+              which — and the roster below is position-centred with home on
+              the left and away on the right. Desktop's header already reads
+              left-to-right, so it does not need this. */}
+          <div className="lg:hidden flex items-center justify-between gap-2 pb-2 mb-2 border-b border-text-primary/10">
+            <span className={`flex-1 min-w-0 truncate text-xs font-bold ${matchup.home_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
+              {matchup.home_user?.fantasy_team_name || matchup.home_user?.display_name || matchup.home_user?.username}
+            </span>
+            <span className="text-[10px] text-text-muted shrink-0">vs</span>
+            <span className={`flex-1 min-w-0 truncate text-right text-xs font-bold ${matchup.away_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
+              {matchup.away_user?.fantasy_team_name || matchup.away_user?.display_name || matchup.away_user?.username}
+            </span>
+          </div>
+
           {/* Desktop: full table with stat lines and projections */}
           <div className="hidden lg:block">
             <div className="grid grid-cols-[1fr_3.5rem_4rem_3rem_4rem_3.5rem_1fr] gap-1 text-xs text-text-muted uppercase tracking-wider px-1 pb-2 border-b border-text-primary/10 mb-1">
