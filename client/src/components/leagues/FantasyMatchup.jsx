@@ -195,7 +195,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
           <div className="flex items-center gap-2">
             <Avatar user={matchup.home_user} size="lg" className="!w-11 !h-11 shrink-0" />
             {matchup.home_user?.record && (
-              <span className="text-[11px] text-text-muted shrink-0">
+              <span className="text-[11px] text-white shrink-0">
                 {matchup.home_user.record.wins}-{matchup.home_user.record.losses}
               </span>
             )}
@@ -221,7 +221,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               )}
             </div>
             {matchup.away_user?.record && (
-              <span className="text-[11px] text-text-muted shrink-0">
+              <span className="text-[11px] text-white shrink-0">
                 {matchup.away_user.record.wins}-{matchup.away_user.record.losses}
               </span>
             )}
@@ -557,7 +557,15 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 const d = new Date(p.game_starts_at)
                 if (isNaN(d)) return at
                 const day = d.toLocaleDateString(undefined, { weekday: 'short' })
-                const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }).replace(' ', '')
+                // Drop ":00" on the hour — "Sun 10AM vs BAL" instead of
+                // "Sun 10:00AM vs BAL". Three characters, and they were the
+                // difference between the line fitting and ellipsising on a
+                // phone. Kickoffs at :25 and :15 keep their minutes, so no
+                // information is lost, and most of the slate is on the hour.
+                const onTheHour = d.getMinutes() === 0
+                const time = d
+                  .toLocaleTimeString(undefined, onTheHour ? { hour: 'numeric' } : { hour: 'numeric', minute: '2-digit' })
+                  .replace(' ', '')
                 return `${day} ${time} ${at}`
               }
 
@@ -576,7 +584,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 <div key={i} className="flex border-b border-text-primary/10">
                   {/* Home player — left aligned */}
                   <div
-                    className="flex-1 px-2 py-2.5 cursor-pointer hover:bg-text-primary/5 transition-colors min-w-0"
+                    className="flex-1 px-1.5 py-2.5 cursor-pointer hover:bg-text-primary/5 transition-colors min-w-0"
                     onClick={() => hp?.player_id && onPlayerClick(hp.player_id)}
                   >
                     {/* Injury badge sits inline after the surname rather than
@@ -614,33 +622,33 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       as Yahoo: the number you'll eventually care about holds
                       the slot, and what was expected of him sits right below
                       for comparison. */}
-                  <div className="w-11 flex flex-col items-end pt-3 shrink-0 leading-tight">
-                    <span className={`text-base font-display font-bold ${
+                  <div className="w-9 flex flex-col items-end pt-3 shrink-0 leading-tight">
+                    <span className={`text-sm font-display font-bold ${
                       hp?.game_status === 'live' ? 'text-accent' : hLive || weekStatus === 'past' ? 'text-white' : 'text-text-muted'
                     }`}>
                       {hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}
                     </span>
                     {(hp?.projected_pregame ?? hp?.projected) != null && !hp?.on_bye && (
-                      <span className="text-[11px] text-text-primary/50 tabular-nums">
+                      <span className="text-[10px] text-text-primary/50 tabular-nums">
                         {(hp.projected_pregame ?? hp.projected).toFixed(1)}
                       </span>
                     )}
                   </div>
 
                   {/* Position center column */}
-                  <div className="w-9 flex items-start justify-center pt-3.5 shrink-0">
+                  <div className="w-8 flex items-start justify-center pt-3.5 shrink-0">
                     <span className="text-[10px] font-bold text-white">{slotLabel}</span>
                   </div>
 
                   {/* Away points — mirror of the home column above. */}
-                  <div className="w-11 flex flex-col items-start pt-3 shrink-0 leading-tight">
-                    <span className={`text-base font-display font-bold ${
+                  <div className="w-9 flex flex-col items-start pt-3 shrink-0 leading-tight">
+                    <span className={`text-sm font-display font-bold ${
                       ap?.game_status === 'live' ? 'text-accent' : aLive || weekStatus === 'past' ? 'text-white' : 'text-text-muted'
                     }`}>
                       {aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}
                     </span>
                     {(ap?.projected_pregame ?? ap?.projected) != null && !ap?.on_bye && (
-                      <span className="text-[11px] text-text-primary/50 tabular-nums">
+                      <span className="text-[10px] text-text-primary/50 tabular-nums">
                         {(ap.projected_pregame ?? ap.projected).toFixed(1)}
                       </span>
                     )}
@@ -648,7 +656,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
 
                   {/* Away player — right aligned */}
                   <div
-                    className="flex-1 px-2 py-2.5 cursor-pointer hover:bg-text-primary/5 transition-colors min-w-0 text-right"
+                    className="flex-1 px-1.5 py-2.5 cursor-pointer hover:bg-text-primary/5 transition-colors min-w-0 text-right"
                     onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}
                   >
                     {/* Mirror of the home cell — badge inline before the
