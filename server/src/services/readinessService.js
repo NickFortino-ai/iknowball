@@ -211,11 +211,10 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
     if (byFormat.td_pass?.length) {
       await computeTdPassReadiness(byFormat.td_pass, userId, result)
     }
-    if (byFormat.sacks?.length) {
-      await computeSacksReadiness(byFormat.sacks, userId, result)
-    }
-    if (byFormat.ints?.length) {
-      await computeIntsReadiness(byFormat.ints, userId, result)
+    for (const [fmt, table] of Object.entries(WEEKLY_THREE_PICK_TABLES)) {
+      if (byFormat[fmt]?.length) {
+        await computeWeeklyThreePickReadiness(byFormat[fmt], userId, result, table)
+      }
     }
     if (byFormat.fantasy?.length) {
       await computeFantasyReadiness(byFormat.fantasy, userId, result)
@@ -367,10 +366,14 @@ async function applyInjuryDowngrades(byFormat, userId, todayET, result) {
     }
   }
 
-  // ── NFL weekly (Sacks, Ints, TD Pass) ───────────────────────────
+  // ── NFL weekly (Sacks, Ints, Tackles, Receptions, TD Pass) ──────
+  // Driven off the same table map as readiness itself, so a format can't be
+  // wired into one sweep and forgotten in the other — which is how Tackles
+  // and Receptions ended up with no clip and no injury downgrade.
   const nflWeekly = []
-  if (byFormat.sacks?.length) nflWeekly.push({ table: 'sacks_picks', col: 'sleeper_player_id', leagues: byFormat.sacks })
-  if (byFormat.ints?.length) nflWeekly.push({ table: 'ints_picks', col: 'sleeper_player_id', leagues: byFormat.ints })
+  for (const [fmt, table] of Object.entries(WEEKLY_THREE_PICK_TABLES)) {
+    if (byFormat[fmt]?.length) nflWeekly.push({ table, col: 'sleeper_player_id', leagues: byFormat[fmt] })
+  }
   if (byFormat.td_pass?.length) nflWeekly.push({ table: 'td_pass_picks', col: 'qb_player_id', leagues: byFormat.td_pass })
   if (nflWeekly.length) {
     const { data: injuredPlayers } = await supabase
@@ -819,34 +822,32 @@ async function computeTdPassReadiness(leagues, userId, result) {
   }
 }
 
-async function computeSacksReadiness(leagues, userId, result) {
-  const { getCurrentNflWeek } = await import('./tdPassService.js')
-  const { week, isPreSeason } = await getCurrentNflWeek()
-  if (isPreSeason) return
-  const leagueIds = leagues.map((l) => l.id)
-  const { data: picks } = await supabase
-    .from('sacks_picks')
-    .select('league_id')
-    .in('league_id', leagueIds)
-    .eq('user_id', userId)
-    .eq('week', week)
-  const counts = {}
-  for (const p of picks || []) counts[p.league_id] = (counts[p.league_id] || 0) + 1
-  for (const l of leagues) {
-    const n = counts[l.id] || 0
-    if (n >= 3) set(result, l.id, 'ready', `Week ${week} picks in (3/3)`)
-    else if (n > 0) set(result, l.id, 'attention', `Week ${week} picks in (${n}/3)`)
-    else set(result, l.id, 'action', `Week ${week} picks not in yet`)
-  }
+/**
+ * Sacks, Ints, Tackles and Receptions are one contest with four different
+ * stats: pick exactly three NFL players for the week (every one of those
+ * routes rejects `players.length !== 3`). Readiness is therefore identical
+ * across them apart from which picks table to count.
+ *
+ * This used to be one copy-pasted function per format, and when Tackles and
+ * Receptions were added nobody made a fifth and sixth copy — so those two
+ * formats silently produced no clip at all, for anyone, ever. Keeping it
+ * table-driven means adding the next stat contest is a one-line entry here
+ * and in the injury sweep, not a new function to forget.
+ */
+const WEEKLY_THREE_PICK_TABLES = {
+  sacks: 'sacks_picks',
+  ints: 'ints_picks',
+  tackles: 'tackles_picks',
+  receptions: 'receptions_picks',
 }
 
-async function computeIntsReadiness(leagues, userId, result) {
+async function computeWeeklyThreePickReadiness(leagues, userId, result, table) {
   const { getCurrentNflWeek } = await import('./tdPassService.js')
   const { week, isPreSeason } = await getCurrentNflWeek()
   if (isPreSeason) return
   const leagueIds = leagues.map((l) => l.id)
   const { data: picks } = await supabase
-    .from('ints_picks')
+    .from(table)
     .select('league_id')
     .in('league_id', leagueIds)
     .eq('user_id', userId)
