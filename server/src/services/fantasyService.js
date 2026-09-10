@@ -4456,10 +4456,33 @@ export async function setFantasyLineup(leagueId, userId, slotAssignments) {
       newSlotByPlayer[r.player_id] = 'bench'
     }
   }
+  // Assignments for players on locked teams are refused — you can't move
+  // someone in or out of your lineup once his game has kicked off. The one
+  // exception is a move BETWEEN two non-scoring slots (bench <-> IR): that
+  // can't change what the lineup scored this week, so freezing it only stops
+  // people from stashing an injured bench player where he belongs.
+  //
+  // Refusals are collected rather than dropped on the floor. They used to be a
+  // bare `continue`, so saving a bench change and an IR change together
+  // reported "Lineup saved" and silently applied only the first — the second
+  // change just evaporated with no error anywhere.
+  const skippedLocked = []
   for (const a of slotAssignments) {
     const r = rosterByPlayerId[a.player_id]
-    // Don't change locked players via assignment either
-    if (lockedTeams.has(r.nfl_players?.team)) continue
+    if (lockedTeams.has(r.nfl_players?.team)) {
+      const movingBetweenNonScoringSlots = !isStarterSlot(r.slot) && !isStarterSlot(a.slot)
+      if (!movingBetweenNonScoringSlots) {
+        if (r.slot !== a.slot) {
+          skippedLocked.push({
+            player_id: a.player_id,
+            full_name: r.nfl_players?.full_name || 'A player',
+            from: r.slot,
+            to: a.slot,
+          })
+        }
+        continue
+      }
+    }
     newSlotByPlayer[a.player_id] = a.slot
   }
 
@@ -4495,7 +4518,10 @@ export async function setFantasyLineup(leagueId, userId, slotAssignments) {
     }
   }
 
-  return { updated, locked_teams: [...lockedTeams] }
+  if (skippedLocked.length) {
+    logger.info({ leagueId, userId, skippedLocked }, 'Lineup save refused moves for locked players')
+  }
+  return { updated, locked_teams: [...lockedTeams], skipped_locked: skippedLocked }
 }
 
 /**

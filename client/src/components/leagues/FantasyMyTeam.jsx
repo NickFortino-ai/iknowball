@@ -661,12 +661,23 @@ export default function FantasyMyTeam({ league }) {
     if (!draftSlots) return
     const slots = Object.entries(draftSlots).map(([player_id, slot]) => ({ player_id, slot }))
     try {
+      let res
       if (isFutureWeek) {
-        await setWeeklyLineup.mutateAsync({ week: activeWeek, slots })
+        res = await setWeeklyLineup.mutateAsync({ week: activeWeek, slots })
       } else {
-        await setLineup.mutateAsync(slots)
+        res = await setLineup.mutateAsync(slots)
       }
-      toast('Lineup saved', 'success')
+      // The server refuses moves for players whose game has kicked off. That
+      // used to be invisible: save two changes, one of them on a locked
+      // player, and you got a clean "Lineup saved" with only the other one
+      // applied. Name whoever was refused instead.
+      const refused = res?.skipped_locked || []
+      if (refused.length) {
+        const names = refused.map((s) => s.full_name).join(', ')
+        toast(`Saved, but ${names} ${refused.length > 1 ? 'have' : 'has'} already played and can't be moved`, 'error')
+      } else {
+        toast('Lineup saved', 'success')
+      }
       setDraftSlots(null)
       setSelected(null)
     } catch (err) {
