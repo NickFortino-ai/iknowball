@@ -95,10 +95,16 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
   const aProj = matchup.away_projected || 0
   const totalProj = hProj + aProj
   const homePct = totalProj > 0 ? Math.round((hProj / totalProj) * 100) : 50
-  // Pre-game projection survives the kickoff blend, so we can show what
-  // each team was projected to score even after games go final.
-  const hPregame = matchup.home_pregame_projected ?? hProj
-  const aPregame = matchup.away_pregame_projected ?? aProj
+  // Pre-game projection survives the kickoff blend, so a completed matchup
+  // shows what each team was projected to score rather than its own final
+  // score restated.
+  //
+  // No `?? hProj` fallback: hProj is the blended value, which for a finished
+  // matchup IS the final score — falling back to it was what produced
+  // "Proj 156.4" beside 156.4. Past weeks legitimately have no stored
+  // projection, so this stays null and the number is omitted entirely.
+  const hPregame = matchup.home_pregame_projected ?? null
+  const aPregame = matchup.away_pregame_projected ?? null
 
   return (
     <div className={`rounded-xl border-2 overflow-hidden ${
@@ -144,7 +150,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 <span className={`font-display text-xl md:text-3xl tabular-nums ${isCompleted && homeWinning ? 'text-correct' : 'text-white'}`}>
                   {(matchup.home_points || 0).toFixed(1)}
                 </span>
-                {(!isCompleted ? hProj : hPregame) > 0 && (
+                {((isCompleted ? hPregame : hProj) ?? 0) > 0 && (
                   <span className="text-[10px] text-text-muted leading-tight">{(isCompleted ? hPregame : hProj).toFixed(1)}</span>
                 )}
               </div>
@@ -153,7 +159,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 <span className={`font-display text-xl md:text-3xl tabular-nums ${isCompleted && !homeWinning ? 'text-correct' : 'text-white'}`}>
                   {(matchup.away_points || 0).toFixed(1)}
                 </span>
-                {(!isCompleted ? aProj : aPregame) > 0 && (
+                {((isCompleted ? aPregame : aProj) ?? 0) > 0 && (
                   <span className="text-[10px] text-text-muted leading-tight">{(isCompleted ? aPregame : aProj).toFixed(1)}</span>
                 )}
               </div>

@@ -966,8 +966,17 @@ router.get('/matchup-week', async (req, res) => {
         home_user: m.home_user, away_user: m.away_user,
         home_points: Math.round(hp * 100) / 100,
         away_points: Math.round(ap * 100) / 100,
-        home_projected: Math.round(hp * 100) / 100,
-        away_projected: Math.round(ap * 100) / 100,
+        // NULL, not the final score. This used to report the actual points as
+        // the "projection", so a past matchup showed Proj 156.4 beside 156.4
+        // and the number looked like an uncannily perfect forecast.
+        //
+        // The real pregame projection is not recoverable for a past week —
+        // nothing snapshots it at lock time, and buildRoster below sets each
+        // player's `projected` to his points. So rather than invent one, send
+        // null and let the client omit the row. Restoring a true historical
+        // projection would mean persisting it when the week locks.
+        home_projected: null,
+        away_projected: null,
         home_roster: homeRoster, away_roster: awayRoster,
       }
     })
