@@ -530,11 +530,15 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
     )
     if (!myMatchup) return false
     const allSlots = [...(myMatchup.home_roster || []), ...(myMatchup.away_roster || [])]
-    const hasLive = allSlots.some((s) => s.game_status === 'live')
-    const hasFinal = allSlots.some((s) => s.game_status === 'final')
-    const hasUpcoming = allSlots.some((s) => s.game_status === 'upcoming')
-    // Glow from first kickoff to last final: any game started (live or final) AND not all done
-    return (hasLive || hasFinal) && (hasLive || hasUpcoming)
+    // Only while a game is ACTUALLY in progress.
+    //
+    // This used to glow from first kickoff to last final — "any game started
+    // and not all done" — which for a normal NFL week meant Thursday night
+    // through Monday night, roughly five days including every gap between
+    // windows. A badge lit most of the week reads as decoration rather than
+    // signal, and "your matchup is underway" is already obvious from the
+    // scores. Now it means: something is happening right now, go look.
+    return allSlots.some((s) => s.game_status === 'live')
   })()
   const items = []
 
