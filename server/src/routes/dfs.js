@@ -29,6 +29,21 @@ function buildH2HSlotMeta(rosterSlots) {
 }
 
 const router = Router()
+
+// ESPN's NFL abbreviations are not quite Sleeper's, and nfl_players.team holds
+// Sleeper's. WSH is the only one that differs, but it differed silently: a
+// lookup of gameScores['WAS'] simply missed, so all 68 Washington players got
+// no opponent, no kickoff and no score — and because gameStatuses['WAS'] was
+// undefined and fell back to 'pre', a permanent status of 'upcoming'. Their
+// points rendered as "--" however long ago they played, and the live
+// projection blend treated them as not having started.
+//
+// players.js carries the same alias for the same reason.
+const ESPN_TO_SLEEPER_TEAM = { WSH: 'WAS' }
+function normalizeTeamAbbrev(abbr) {
+  if (!abbr) return abbr
+  return ESPN_TO_SLEEPER_TEAM[abbr] || abbr
+}
 router.use(requireAuth)
 
 // Get player pool with salaries
@@ -369,8 +384,8 @@ router.get('/live', async (req, res) => {
         const teams = comp.competitors || []
         const homeTeam = teams.find((t) => t.homeAway === 'home')
         const awayTeam = teams.find((t) => t.homeAway === 'away')
-        const homeAbbrev = homeTeam?.team?.abbreviation
-        const awayAbbrev = awayTeam?.team?.abbreviation
+        const homeAbbrev = normalizeTeamAbbrev(homeTeam?.team?.abbreviation)
+        const awayAbbrev = normalizeTeamAbbrev(awayTeam?.team?.abbreviation)
         const homeScore = parseInt(homeTeam?.score) || 0
         const awayScore = parseInt(awayTeam?.score) || 0
 
@@ -562,7 +577,7 @@ router.get('/matchup-live', async (req, res) => {
 
         const period = comp.status?.period || null
         const clock = comp.status?.displayClock || null
-        const teams = (comp.competitors || []).map(c => ({ abbrev: c.team?.abbreviation, score: parseInt(c.score) || 0, homeAway: c.homeAway }))
+        const teams = (comp.competitors || []).map(c => ({ abbrev: normalizeTeamAbbrev(c.team?.abbreviation), score: parseInt(c.score) || 0, homeAway: c.homeAway }))
         const homeTeam = teams.find(t => t.homeAway === 'home')
         const awayTeam = teams.find(t => t.homeAway === 'away')
         for (const t of teams) {
