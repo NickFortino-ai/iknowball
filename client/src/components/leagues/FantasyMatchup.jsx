@@ -71,7 +71,7 @@ function buildStatLine(stats, position) {
   return parts.length ? parts.join(', ') : null
 }
 
-function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayerClick, blurbIds, starterSet, slotLabels, isChampionship }) {
+function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayerClick, blurbIds, starterSet, slotLabels, isChampionship, compact = false }) {
   const isMyMatchup = matchup.home_user?.id === myId || matchup.away_user?.id === myId
   const isCompleted = matchup.status === 'completed' || weekStatus === 'past'
   const homeWinning = (matchup.home_points || 0) >= (matchup.away_points || 0)
@@ -128,7 +128,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
             full-width line, so long team names survive. Desktop keeps the
             single-row version — it has the horizontal room and benefits from
             the head-to-head read. */}
-        <div className="md:hidden space-y-1.5 mb-2">
+        <div className={`${compact ? "md:hidden" : "hidden"} space-y-1.5 mb-2`}>
           {[
             { user: matchup.home_user, points: matchup.home_points, proj: isCompleted ? hPregame : hProj, winning: homeWinning },
             { user: matchup.away_user, points: matchup.away_points, proj: isCompleted ? aPregame : aProj, winning: !homeWinning },
@@ -170,7 +170,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
             only two matchups fit on screen. Collapsing them roughly halves
             the height so a whole week is scannable at once. Avatars and score
             type are a step smaller to match. Still expands on tap. */}
-        <div className="hidden md:flex items-center gap-2 md:gap-3 mb-2">
+        <div className={`${compact ? "hidden md:flex" : "flex"} items-center gap-2 md:gap-3 mb-2`}>
           {/* Home identity — right-aligned so it reads inward toward the score */}
           <div className="flex-1 min-w-0 text-right">
             <div className={`text-sm md:text-lg font-bold truncate ${isCompleted && homeWinning ? 'text-correct' : matchup.home_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
@@ -277,7 +277,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               which — and the roster below is position-centred with home on
               the left and away on the right. Desktop's header already reads
               left-to-right, so it does not need this. */}
-          <div className="lg:hidden flex items-center justify-between gap-2 pb-2 mb-2 border-b border-text-primary/10">
+          <div className={`${compact ? "lg:hidden flex" : "hidden"} items-center justify-between gap-2 pb-2 mb-2 border-b border-text-primary/10`}>
             <span className={`flex-1 min-w-0 truncate text-xs font-bold ${matchup.home_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
               {matchup.home_user?.fantasy_team_name || matchup.home_user?.display_name || matchup.home_user?.username}
             </span>
@@ -829,6 +829,7 @@ export default function FantasyMatchup({ league, fantasySettings }) {
           return (
             <MatchupCard
               key={matchup.id}
+              compact
               matchup={matchup}
               myId={profile?.id}
               weekStatus={weekStatus}
