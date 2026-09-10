@@ -375,7 +375,20 @@ async function applyInjuryDowngrades(byFormat, userId, todayET, result) {
     if (byFormat[fmt]?.length) nflWeekly.push({ table, col: 'sleeper_player_id', leagues: byFormat[fmt] })
   }
   if (byFormat.td_pass?.length) nflWeekly.push({ table: 'td_pass_picks', col: 'qb_player_id', leagues: byFormat.td_pass })
-  if (nflWeekly.length) {
+
+  // Survivor pools can be player-based (touchdown survivor writes player_id /
+  // player_name), and those picks are just as swappable — and just as ruined
+  // by an inactive — as any weekly pick. They read from the same nfl_players
+  // injury set below, but can't join the loop above: survivor_picks has no
+  // week/season columns, keying off league_week_id and status instead.
+  // Only leagues readiness actually computed a state for. The dispatch above
+  // deliberately skips some survivor leagues (daily pools whose sport is done
+  // for the day, NFL pools still in preseason) and leaving those blank is the
+  // point — a downgrade here would conjure a clip where the file's own rule
+  // is that showing nothing beats lying with one.
+  const survivorLeagues = (byFormat.survivor || []).filter((l) => result.get(l.id)?.state)
+
+  if (nflWeekly.length || survivorLeagues.length) {
     const { data: injuredPlayers } = await supabase
       .from('nfl_players')
       .select('id, injury_status')
@@ -389,6 +402,31 @@ async function applyInjuryDowngrades(byFormat, userId, todayET, result) {
     }
     if (outIds.length || yellowIds.length) {
       const outSet = new Set(outIds)
+
+      if (survivorLeagues.length) {
+        // Only `pending` picks. lockPicks flips a pick to `locked` the moment
+        // its game kicks off, and a locked pick can't be changed — telling
+        // someone their player is Out once it's too late to swap is noise,
+        // not a warning. Team-based picks carry a null player_id and simply
+        // don't match the `.in()`.
+        const { data: badPicks } = await supabase
+          .from('survivor_picks')
+          .select('league_id, player_id')
+          .in('league_id', survivorLeagues.map((l) => l.id))
+          .eq('user_id', userId)
+          .eq('status', 'pending')
+          .in('player_id', [...outIds, ...yellowIds])
+        const outHit = new Set()
+        const yellowHit = new Set()
+        for (const p of badPicks || []) {
+          if (outSet.has(p.player_id)) outHit.add(p.league_id)
+          else yellowHit.add(p.league_id)
+        }
+        for (const id of outHit) set(result, id, 'action', 'Injured player on your survivor pick — swap before kickoff')
+        for (const id of yellowHit) if (!outHit.has(id)) downgradeAttention(id, 'Questionable player on your survivor pick')
+      }
+
+      if (!nflWeekly.length) return
       const { getCurrentNflWeek } = await import('./tdPassService.js')
       const { week, season } = await getCurrentNflWeek()
       for (const { table, col, leagues } of nflWeekly) {
