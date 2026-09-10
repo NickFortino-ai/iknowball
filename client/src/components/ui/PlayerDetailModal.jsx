@@ -3,6 +3,7 @@ import { useNbaDfsPlayerGamelog } from '../../hooks/useLeagues'
 import { getTeamColor } from '../../lib/teamColors'
 import LoadingSpinner from './LoadingSpinner'
 import InjuryBadge from './InjuryBadge'
+import { nflTeamNickname } from '../../lib/nflTeamNames'
 
 // MLB two-way players appear in our salary table as two rows: one priced
 // off batting stats (UTIL) and one off pitching (SP, with -P suffix on
@@ -395,7 +396,16 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
               return (
                 <div className="text-xs text-text-muted mt-1">
                   {displayPosition ? <>{displayPosition} · </> : null}
-                  {player.team && <span className="text-text-primary font-semibold">{player.team}</span>}
+                  {/* Spell the team out where we can. Gated on NFL: the
+                      nickname map is NFL-only, and the abbreviations collide
+                      across leagues (ATL is Falcons and Dream, LV is Raiders
+                      and Aces), so an unguarded lookup would mislabel WNBA and
+                      NBA players. Anything else keeps the abbreviation. */}
+                  {player.team && (
+                    <span className="text-text-primary font-semibold">
+                      {(sport === 'americanfootball_nfl' && nflTeamNickname(player.team)) || player.team}
+                    </span>
+                  )}
                 </div>
               )
             })()}

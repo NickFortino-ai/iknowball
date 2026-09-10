@@ -4,6 +4,7 @@ import { usePlayerDetail } from '../../hooks/useLeagues'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { getTeamColor } from '../../lib/teamColors'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import { nflTeamNickname } from '../../lib/nflTeamNames'
 
 const INJURY_COLORS = {
   Out: 'text-incorrect',
@@ -483,7 +484,7 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
               )}
               <h2 className="font-display text-2xl text-text-primary">{data.player.full_name}</h2>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-text-muted">{data.player.position} · {data.player.team || 'FA'}</span>
+                <span className="text-xs text-text-muted">{data.player.position} · {nflTeamNickname(data.player.team) || data.player.team || 'FA'}</span>
                 <InjuryBadge status={data.player.injury_status} />
               </div>
               {data.season_summary && data.season_summary.games_played > 0 && (
