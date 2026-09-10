@@ -258,7 +258,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                     </div>
                   </div>
                   <div className="text-right text-text-primary/60 text-xs">{hp?.projected?.toFixed(1) || '--'}</div>
-                  <div className={`text-right font-bold text-sm ${hp?.game_status === 'live' ? 'text-orange-400' : hp?.game_status === 'final' ? 'text-white' : 'text-text-muted'}`}>
+                  <div className={`text-right font-bold text-base md:text-lg tabular-nums ${hp?.game_status === 'live' ? 'text-orange-400' : hp?.game_status === 'final' ? 'text-white' : 'text-text-muted'}`}>
                     {hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}
                   </div>
                   <div className="text-center">
@@ -266,7 +266,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       {slotLabels[hp?.slot] || (hp?.position) || '?'}
                     </span>
                   </div>
-                  <div className={`text-left font-bold text-sm ${ap?.game_status === 'live' ? 'text-orange-400' : ap?.game_status === 'final' ? 'text-white' : 'text-text-muted'}`}>
+                  <div className={`text-left font-bold text-base md:text-lg tabular-nums ${ap?.game_status === 'live' ? 'text-orange-400' : ap?.game_status === 'final' ? 'text-white' : 'text-text-muted'}`}>
                     {aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}
                   </div>
                   <div className="text-left text-text-primary/60 text-xs">{ap?.projected?.toFixed(1) || '--'}</div>
@@ -327,9 +327,9 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                     </div>
                   </div>
                   <div className="text-right text-text-primary/40 text-xs">{hp?.projected?.toFixed(1) || '--'}</div>
-                  <div className="text-right text-text-muted text-xs">{hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}</div>
+                  <div className="text-right text-text-muted text-sm font-semibold tabular-nums">{hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}</div>
                   <div className="text-center"><span className="text-[10px] font-semibold text-text-muted">BN</span></div>
-                  <div className="text-left text-text-muted text-xs">{aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}</div>
+                  <div className="text-left text-text-muted text-sm font-semibold tabular-nums">{aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}</div>
                   <div className="text-left text-text-primary/40 text-xs">{ap?.projected?.toFixed(1) || '--'}</div>
                   <div className="flex items-center gap-2 justify-end min-w-0 cursor-pointer hover:bg-text-primary/5 rounded px-1 py-0.5" onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}>
                     <div className="min-w-0 text-right">
