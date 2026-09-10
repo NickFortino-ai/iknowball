@@ -574,6 +574,11 @@ router.get('/matchup-live', async (req, res) => {
               teamScore: t.score, oppScore: opp?.score || 0,
               oppAbbrev: opp?.abbrev || null,
               isHome: t.homeAway === 'home',
+              // Kickoff, so each player row can show "Sun 10:00AM @ IND" in
+              // the viewer's own timezone. ESPN gives it as UTC ISO; the
+              // client formats it -- the server has no idea where the viewer
+              // is, so any formatting done here would be wrong for someone.
+              kickoff: event.date || null,
             }
           }
         }
@@ -686,6 +691,7 @@ router.get('/matchup-live', async (req, res) => {
       game_status: status,
       game_period: gs.period || null,
       game_clock: gs.clock || null,
+      game_starts_at: gs.kickoff || null,
       opponent: gs.oppAbbrev || null,
       team_score: gs.teamScore ?? null,
       opp_score: gs.oppScore ?? null,

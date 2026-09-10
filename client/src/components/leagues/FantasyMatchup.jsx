@@ -164,13 +164,94 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
           ))}
         </div>
 
+        {/* My Matchup on mobile. The desktop single row has to fit two team
+            names, two manager names, two records and two scores across a
+            phone, so everything collapsed to "THE VERY G…". Split into three
+            full-width rows instead, each with home on the left edge and away
+            on the right:
+
+              TEAM NAME                         TEAM NAME
+              [av] 0-0   145.0  proj  154.3   0-0 [av]
+              Manager                           Manager
+
+            Team name gets the top row to itself so it has the whole width and
+            can align hard against the edge; the manager's name sits under its
+            own avatar. All Matchups keeps its stacked one-line-per-team
+            layout above — this is deliberately only the `!compact` case. */}
+        <div className={`${compact ? "hidden" : "md:hidden"} mb-2`}>
+          {(matchup.home_user?.fantasy_team_name || matchup.away_user?.fantasy_team_name) && (
+            <div className="flex items-start justify-between gap-2 mb-1">
+              {[matchup.home_user, matchup.away_user].map((u, i) => (
+                <div
+                  key={i}
+                  className={`flex-1 min-w-0 text-[11px] uppercase italic font-semibold tracking-wide truncate text-text-primary/70 ${i ? 'text-right' : 'text-left'}`}
+                >
+                  {u?.fantasy_team_name || ''}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <Avatar user={matchup.home_user} size="lg" className="!w-9 !h-9 shrink-0" />
+            {matchup.home_user?.record && (
+              <span className="text-[11px] text-text-muted shrink-0">
+                {matchup.home_user.record.wins}-{matchup.home_user.record.losses}
+              </span>
+            )}
+            <div className="flex-1 flex items-center justify-center gap-1.5 min-w-0">
+              {(hasScores || isCompleted) ? (
+                <>
+                  <span className={`font-display text-xl tabular-nums ${isCompleted && homeWinning ? 'text-correct' : 'text-white'}`}>
+                    {(matchup.home_points || 0).toFixed(1)}
+                  </span>
+                  <span className="text-text-muted text-sm">-</span>
+                  <span className={`font-display text-xl tabular-nums ${isCompleted && !homeWinning ? 'text-correct' : 'text-white'}`}>
+                    {(matchup.away_points || 0).toFixed(1)}
+                  </span>
+                </>
+              ) : totalProj > 0 ? (
+                <>
+                  <span className="font-display text-lg text-text-muted tabular-nums">{hProj.toFixed(1)}</span>
+                  <span className="text-text-muted text-[10px]">proj</span>
+                  <span className="font-display text-lg text-text-muted tabular-nums">{aProj.toFixed(1)}</span>
+                </>
+              ) : (
+                <span className="text-text-muted text-base font-display">vs</span>
+              )}
+            </div>
+            {matchup.away_user?.record && (
+              <span className="text-[11px] text-text-muted shrink-0">
+                {matchup.away_user.record.wins}-{matchup.away_user.record.losses}
+              </span>
+            )}
+            <Avatar user={matchup.away_user} size="lg" className="!w-9 !h-9 shrink-0" />
+          </div>
+
+          <div className="flex items-start justify-between gap-2 mt-0.5">
+            {[
+              { user: matchup.home_user, winning: homeWinning },
+              { user: matchup.away_user, winning: !homeWinning },
+            ].map((side, i) => (
+              <div
+                key={i}
+                className={`flex-1 min-w-0 text-sm font-bold truncate ${i ? 'text-right' : 'text-left'} ${
+                  isCompleted && side.winning ? 'text-correct' : side.user?.id === myId ? 'text-accent' : 'text-text-primary'
+                }`}
+              >
+                {side.user?.display_name || side.user?.username}
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* One row: name/record outboard, avatar, then the scores centred.
             This used to be two stacked rows — avatars and scores on top,
             names and records beneath — which made each card tall enough that
             only two matchups fit on screen. Collapsing them roughly halves
             the height so a whole week is scannable at once. Avatars and score
             type are a step smaller to match. Still expands on tap. */}
-        <div className={`${compact ? "hidden md:flex" : "flex"} items-center gap-2 md:gap-3 mb-2`}>
+        <div className="hidden md:flex items-center gap-2 md:gap-3 mb-2">
           {/* Avatars sit on the OUTSIDE edges, each team's text reading away
               from the centre — home left-aligned beside its avatar, away
               right-aligned beside its own. The scores hold the middle. */}
@@ -437,25 +518,47 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               const hLive = hp?.game_status === 'live' || hp?.game_status === 'final'
               const aLive = ap?.game_status === 'live' || ap?.game_status === 'final'
 
-              function gameScoreLine(p) {
-                if (!p?.opponent) return null
-                const teamScore = p.team_score ?? ''
-                const oppScore = p.opp_score ?? ''
-                return p.is_home
-                  ? `${p.team} ${teamScore} vs ${p.opponent} ${oppScore}`
-                  : `${p.team} ${teamScore} @ ${p.opponent} ${oppScore}`
-              }
-
-              function gameClockLine(p) {
+              // One line for everything about the player's real game, the way
+              // Yahoo does it. This used to be up to three stacked lines --
+              // score line, clock line, and (pre-game) a separate opponent
+              // line plus a "Proj: 18.4" line -- which made every player row a
+              // row taller than it needed to be.
+              //
+              //   upcoming  Sun 10:00AM @ IND
+              //   live      Q3 5:12 · 10-13 @ Sea
+              //   final     Final (L) 10-13 @ Sea
+              //
+              // Kickoff is formatted from game_starts_at in the VIEWER's
+              // timezone -- the server sends UTC precisely because it cannot
+              // know where the reader is.
+              function gameLine(p) {
                 if (!p) return null
-                if (p.game_status === 'final') return 'Final'
-                if (p.game_status === 'live') {
+                if (p.on_bye) return 'BYE'
+                if (!p.opponent) return null
+                const at = p.is_home ? `vs ${p.opponent}` : `@ ${p.opponent}`
+
+                if (p.game_status === 'final' || p.game_status === 'live') {
+                  const us = p.team_score ?? 0
+                  const them = p.opp_score ?? 0
+                  const score = `${us}-${them}`
+                  if (p.game_status === 'final') {
+                    // (W)/(L)/(T) from the player's team's perspective.
+                    const wl = us > them ? 'W' : us < them ? 'L' : 'T'
+                    return `Final (${wl}) ${score} ${at}`
+                  }
                   const period = p.game_period
                     ? (p.game_period <= 4 ? `Q${p.game_period}` : p.game_period === 5 ? 'OT' : `${p.game_period - 4}OT`)
-                    : '?'
-                  return `${period} ${p.game_clock || ''}`
+                    : ''
+                  const clock = [period, p.game_clock].filter(Boolean).join(' ')
+                  return `${clock ? clock + ' · ' : ''}${score} ${at}`
                 }
-                return null
+
+                if (!p.game_starts_at) return at
+                const d = new Date(p.game_starts_at)
+                if (isNaN(d)) return at
+                const day = d.toLocaleDateString(undefined, { weekday: 'short' })
+                const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }).replace(' ', '')
+                return `${day} ${time} ${at}`
               }
 
               function abbrevName(name) {
@@ -487,23 +590,9 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       </div>
                       {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
                     </div>
-                    {(hLive || weekStatus === 'past') && hp?.opponent ? (
-                      <div className="text-[11px] text-text-primary">{gameScoreLine(hp)}</div>
-                    ) : hp?.on_bye ? (
-                      <div className="text-[11px] text-text-muted font-bold">BYE</div>
-                    ) : (
-                      <>
-                        {hp?.opponent && (
-                          <div className="text-[11px] text-text-muted">{hp.is_home ? 'vs' : '@'} {hp.opponent}</div>
-                        )}
-                        {hp?.projected != null && (
-                          <div className="text-[11px] text-text-primary/60">Proj: {hp.projected.toFixed(1)}</div>
-                        )}
-                      </>
-                    )}
-                    {gameClockLine(hp) && (
-                      <div className={`text-[11px] font-semibold ${hp.game_status === 'live' ? 'text-accent' : 'text-text-muted'}`}>
-                        {gameClockLine(hp)}
+                    {gameLine(hp) && (
+                      <div className={`text-[11px] ${hp?.game_status === 'live' ? 'text-accent font-semibold' : 'text-text-muted'}`}>
+                        {gameLine(hp)}
                       </div>
                     )}
                     {hStat && (hLive || weekStatus === 'past') && (
@@ -511,13 +600,22 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                     )}
                   </div>
 
-                  {/* Home points */}
-                  <div className="w-11 flex items-start justify-end pt-3 shrink-0">
+                  {/* Home points, with the pre-game projection tucked underneath
+                      rather than on its own line in the name block. Same idea
+                      as Yahoo: the number you'll eventually care about holds
+                      the slot, and what was expected of him sits right below
+                      for comparison. */}
+                  <div className="w-11 flex flex-col items-end pt-3 shrink-0 leading-tight">
                     <span className={`text-base font-display font-bold ${
                       hp?.game_status === 'live' ? 'text-accent' : hLive || weekStatus === 'past' ? 'text-white' : 'text-text-muted'
                     }`}>
                       {hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}
                     </span>
+                    {(hp?.projected_pregame ?? hp?.projected) != null && !hp?.on_bye && (
+                      <span className="text-[11px] text-text-primary/50 tabular-nums">
+                        {(hp.projected_pregame ?? hp.projected).toFixed(1)}
+                      </span>
+                    )}
                   </div>
 
                   {/* Position center column */}
@@ -525,13 +623,18 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                     <span className="text-[10px] font-bold text-white">{slotLabel}</span>
                   </div>
 
-                  {/* Away points */}
-                  <div className="w-11 flex items-start justify-start pt-3 shrink-0">
+                  {/* Away points — mirror of the home column above. */}
+                  <div className="w-11 flex flex-col items-start pt-3 shrink-0 leading-tight">
                     <span className={`text-base font-display font-bold ${
                       ap?.game_status === 'live' ? 'text-accent' : aLive || weekStatus === 'past' ? 'text-white' : 'text-text-muted'
                     }`}>
                       {aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}
                     </span>
+                    {(ap?.projected_pregame ?? ap?.projected) != null && !ap?.on_bye && (
+                      <span className="text-[11px] text-text-primary/50 tabular-nums">
+                        {(ap.projected_pregame ?? ap.projected).toFixed(1)}
+                      </span>
+                    )}
                   </div>
 
                   {/* Away player — right aligned */}
@@ -550,23 +653,9 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                         )})()}
                       </div>
                     </div>
-                    {(aLive || weekStatus === 'past') && ap?.opponent ? (
-                      <div className="text-[11px] text-text-primary">{gameScoreLine(ap)}</div>
-                    ) : ap?.on_bye ? (
-                      <div className="text-[11px] text-text-muted font-bold">BYE</div>
-                    ) : (
-                      <>
-                        {ap?.opponent && (
-                          <div className="text-[11px] text-text-muted">{ap.is_home ? 'vs' : '@'} {ap.opponent}</div>
-                        )}
-                        {ap?.projected != null && (
-                          <div className="text-[11px] text-text-primary/60">Proj: {ap.projected.toFixed(1)}</div>
-                        )}
-                      </>
-                    )}
-                    {gameClockLine(ap) && (
-                      <div className={`text-[11px] font-semibold ${ap.game_status === 'live' ? 'text-accent' : 'text-text-muted'}`}>
-                        {gameClockLine(ap)}
+                    {gameLine(ap) && (
+                      <div className={`text-[11px] ${ap?.game_status === 'live' ? 'text-accent font-semibold' : 'text-text-muted'}`}>
+                        {gameLine(ap)}
                       </div>
                     )}
                     {aStat && (aLive || weekStatus === 'past') && (
