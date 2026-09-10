@@ -19,3 +19,27 @@ export const UNAVAILABLE_INJURY_STATUSES = new Set([
 export function isUnavailable(injuryStatus) {
   return UNAVAILABLE_INJURY_STATUSES.has(String(injuryStatus || '').toLowerCase())
 }
+
+// Which designations can occupy an IR roster slot in traditional fantasy.
+//
+// A SUPERSET of "Out" and "IR": PUP is a multi-week absence by definition — a
+// player on the physically-unable-to-perform list misses a minimum number of
+// games — so holding him on the active roster costs a manager a slot for
+// something he cannot influence. Added 2026-09-10 at Nick's request.
+//
+// 'injured reserve' is here because the raw feed has used the long form as
+// well as 'IR'.
+//
+// Deliberately NOT here, though all three are also unavailable: 'sus'
+// (suspension is disciplinary, not injury), 'dnr', and 'doubtful' (a
+// week-to-week tag, not a long-term absence). Widen only on request — this is
+// a league-rules decision, not a data-correctness one, which is why it does
+// NOT simply reuse isUnavailable().
+export const IR_ELIGIBLE_STATUSES = new Set([
+  'out', 'ir', 'injured reserve', 'pup',
+])
+
+/** True when this injury_status may be placed in an IR slot. */
+export function isIrEligible(injuryStatus) {
+  return IR_ELIGIBLE_STATUSES.has(String(injuryStatus || '').toLowerCase())
+}

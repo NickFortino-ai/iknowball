@@ -4,6 +4,7 @@ import { effectiveAdp as computeEffectiveAdp } from '../utils/effectiveAdp.js'
 import { getLeagueSyncInfo } from './draftPrepService.js'
 import { fetchAll } from '../utils/fetchAll.js'
 import { buildStarterSlots, buildLineupValidationMaps, isStarterSlot } from '../utils/rosterSlots.js'
+import { isIrEligible } from '../utils/injuryStatus.js'
 import { isUnavailable } from '../utils/injuryStatus.js'
 import { cached } from '../utils/memoCache.js'
 import { throwIfInfra } from '../utils/dbError.js'
@@ -4431,9 +4432,8 @@ export async function setFantasyLineup(leagueId, userId, slotAssignments) {
       throw err
     }
     if (a.slot === 'ir') {
-      const status = (r.nfl_players?.injury_status || '').toLowerCase()
-      if (status !== 'out' && status !== 'ir' && status !== 'injured reserve') {
-        const err = new Error(`${r.nfl_players?.full_name || 'Player'} isn't injured (Out or IR) and can't be placed on IR`)
+      if (!isIrEligible(r.nfl_players?.injury_status)) {
+        const err = new Error(`${r.nfl_players?.full_name || 'Player'} isn't Out, IR or PUP and can't be placed on IR`)
         err.status = 400
         throw err
       }
@@ -4709,9 +4709,8 @@ export async function setFantasyWeeklyLineup(leagueId, userId, week, season, slo
       throw err
     }
     if (a.slot === 'ir') {
-      const status = (r.nfl_players?.injury_status || '').toLowerCase()
-      if (status !== 'out' && status !== 'ir' && status !== 'injured reserve') {
-        const err = new Error(`${r.nfl_players?.full_name || 'Player'} isn't injured (Out or IR) and can't be placed on IR`)
+      if (!isIrEligible(r.nfl_players?.injury_status)) {
+        const err = new Error(`${r.nfl_players?.full_name || 'Player'} isn't Out, IR or PUP and can't be placed on IR`)
         err.status = 400
         throw err
       }

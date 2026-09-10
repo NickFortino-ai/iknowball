@@ -11,6 +11,7 @@ import { ProposeTradeModal } from './FantasyTrades'
 import BlurbDot, { markBlurbSeen } from './BlurbDot'
 import InjuryBadge from '../ui/InjuryBadge'
 import { TradeDropModal } from './FantasyTrades'
+import { isIrEligible } from '../../lib/injuryStatus'
 
 // Explicit past-tense map — templating `${action}ed` gives "declineed" and
 // `${action}d` gives "canceld" / "vetod". Hand-mapping avoids both traps
@@ -129,7 +130,7 @@ function formatSeasonStats(position, stats) {
 // InjuryBadge imported at top of file (see ui/InjuryBadge.jsx).
 
 function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail, blurbIds, editMode, showSeasonStats = true, isDropTarget = false }) {
-  const canIR = row?.nfl_players?.injury_status === 'Out' || row?.nfl_players?.injury_status === 'IR'
+  const canIR = isIrEligible(row?.nfl_players?.injury_status)
   const isInIR = row?.slot === 'ir'
 
   function handleRowClick() {
