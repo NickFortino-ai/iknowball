@@ -4,6 +4,7 @@ import { createNotification } from '../services/notificationService.js'
 import { getNFLState } from '../services/sleeperService.js'
 import { fetchAll } from '../utils/fetchAll.js'
 import { isUnavailable } from '../utils/injuryStatus.js'
+import { NFL_FULL_TO_ABBR } from '../services/fantasyService.js'
 
 /**
  * Send "your starter is OUT" warnings to fantasy team owners.
@@ -209,7 +210,16 @@ async function buildNflKickoffByTeam(season, week) {
     .order('game_date', { ascending: true })
   if (!schedule?.length) return null
   const rangeStart = schedule[0].game_date
-  const rangeEnd = schedule[schedule.length - 1].game_date
+  // nfl_schedule.game_date is an ET calendar date; games.starts_at is UTC. A
+  // Monday-night kickoff at 8:15 PM ET is 00:15Z the NEXT UTC day, so bounding
+  // the query at `${lastGameDate}T23:59:59Z` cut off every Monday night game —
+  // KC/DEN in Week 1, for one, which left both rosters with no kickoff entry
+  // and therefore no post-kickoff guard. Pad the tail by two days; the
+  // following week's Thursday game is still ~3 days beyond that, so nothing
+  // from the next week leaks in.
+  const lastDate = new Date(`${schedule[schedule.length - 1].game_date}T00:00:00Z`)
+  lastDate.setUTCDate(lastDate.getUTCDate() + 2)
+  const rangeEnd = lastDate.toISOString().slice(0, 10)
   const { data: games } = await supabase
     .from('games')
     .select('starts_at, home_team, away_team, sports!inner(key)')
@@ -222,8 +232,17 @@ async function buildNflKickoffByTeam(season, week) {
     const kt = new Date(g.starts_at).getTime()
     for (const team of [g.home_team, g.away_team]) {
       if (!team) continue
-      const cur = map[team]
-      if (!cur || kt < cur) map[team] = kt
+      // games.home_team / away_team are Odds API DISPLAY NAMES ("Seattle
+      // Seahawks") while nfl_players.team is a Sleeper ABBREVIATION ("SEA").
+      // This map used to be keyed by the raw display name and then looked up
+      // as kickoffByTeam[player.team], so every lookup returned undefined and
+      // the post-kickoff guard below never once fired — every owner of an
+      // already-played injured starter got told to "swap him out before
+      // kickoff". Keyed by abbreviation now; the raw name is kept as a
+      // fallback key in case a team is missing from the mapping table.
+      const abbr = NFL_FULL_TO_ABBR[team] || team
+      const cur = map[abbr]
+      if (!cur || kt < cur) map[abbr] = kt
     }
   }
   return map
