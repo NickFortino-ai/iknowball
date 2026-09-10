@@ -43,6 +43,71 @@ function splitName(name) {
   return { first: parts[0], last: parts.slice(1).join(' ') }
 }
 
+// One line for everything about the player's real game, the way
+// Yahoo does it. This used to be up to three stacked lines --
+// score line, clock line, and (pre-game) a separate opponent
+// line plus a "Proj: 18.4" line -- which made every player row a
+// row taller than it needed to be.
+//
+//   upcoming  Sun 10:00AM @ IND
+//   live      Q3 5:12 · 10-13 @ Sea
+//   final     Final (L) 10-13 @ Sea
+//
+// Kickoff is formatted from game_starts_at in the VIEWER's
+// timezone -- the server sends UTC precisely because it cannot
+// know where the reader is.
+function gameLine(p) {
+  if (!p) return null
+  if (p.on_bye) return 'BYE'
+  if (!p.opponent) return null
+  const at = p.is_home ? `vs ${p.opponent}` : `@ ${p.opponent}`
+
+  if (p.game_status === 'final' || p.game_status === 'live') {
+    const us = p.team_score ?? 0
+    const them = p.opp_score ?? 0
+    const score = `${us}-${them}`
+    if (p.game_status === 'final') {
+      // (W)/(L)/(T) from the player's team's perspective.
+      const wl = us > them ? 'W' : us < them ? 'L' : 'T'
+      return `Final (${wl}) ${score} ${at}`
+    }
+    const period = p.game_period
+      ? (p.game_period <= 4 ? `Q${p.game_period}` : p.game_period === 5 ? 'OT' : `${p.game_period - 4}OT`)
+      : ''
+    const clock = [period, p.game_clock].filter(Boolean).join(' ')
+    return `${clock ? clock + ' · ' : ''}${score} ${at}`
+  }
+
+  if (!p.game_starts_at) return at
+  const d = new Date(p.game_starts_at)
+  if (isNaN(d)) return at
+  const day = d.toLocaleDateString(undefined, { weekday: 'short' })
+  // Drop ":00" on the hour — "Sun 10AM vs BAL" instead of
+  // "Sun 10:00AM vs BAL". Three characters, and they were the
+  // difference between the line fitting and ellipsising on a
+  // phone. Kickoffs at :25 and :15 keep their minutes, so no
+  // information is lost, and most of the slate is on the hour.
+  const onTheHour = d.getMinutes() === 0
+  const time = d
+    .toLocaleTimeString(undefined, onTheHour ? { hour: 'numeric' } : { hour: 'numeric', minute: '2-digit' })
+    .replace(' ', '')
+  return `${day} ${time} ${at}`
+}
+
+// Surnames stay on ONE line. "Croskey-Merritt" wrapped under
+// break-words and pushed the game line down, making that row
+// taller than every other one. Rather than truncate a real name,
+// step the type down as it gets longer — 15 characters at 11px
+// occupies about what 9 characters do at 14px, so the long ones
+// fit whole. truncate is the backstop for anything longer still,
+// which ellipsises instead of reflowing the row.
+function lastNameSize(last) {
+  const len = (last || '').length
+  if (len > 14) return 'text-[11px]'
+  if (len > 11) return 'text-xs'
+  return 'text-sm'
+}
+
 function buildStatLine(stats, position) {
   if (!stats) return null
   const parts = []
@@ -412,11 +477,20 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                         <span className="font-bold text-text-primary truncate">{displayName(hp?.player_name)}</span>
                         {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
                       </div>
-                      {hStat && <div className="text-xs text-text-primary truncate">{hStat}</div>}
-                      {!hStat && hp?.opponent && (
-                        <div className="text-[11px] text-text-primary/75">{hp.is_home ? 'vs' : '@'} {hp.opponent}</div>
+                      {/* Same one-line game summary the mobile rows use —
+                          "Sun 10AM vs BAL" pre-kickoff, "Final (L) 10-13 @ SEA"
+                          after. Desktop previously showed a bare "@ LAR" with
+                          no kickoff time, and dropped even that once a stat
+                          line existed, so there was no way to see when or
+                          against whom a player was playing. The stat line now
+                          sits under it rather than replacing it. Projections
+                          stay in their own column here. */}
+                      {gameLine(hp) && (
+                        <div className={`text-[11px] truncate ${hp?.game_status === 'live' ? 'text-accent font-semibold' : 'text-text-primary/75'}`}>
+                          {gameLine(hp)}
+                        </div>
                       )}
-                      {hp?.on_bye && <div className="text-[10px] text-yellow-400 font-bold">BYE</div>}
+                      {hStat && <div className="text-xs text-text-primary truncate">{hStat}</div>}
                     </div>
                   </div>
                   <div className="text-right text-text-primary/75 text-xs">{(hp?.projected_pregame ?? hp?.projected)?.toFixed(1) || '--'}</div>
@@ -442,11 +516,12 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                         {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
                         <span className="font-bold text-text-primary truncate">{displayName(ap?.player_name)}</span>
                       </div>
-                      {aStat && <div className="text-xs text-text-primary truncate">{aStat}</div>}
-                      {!aStat && ap?.opponent && (
-                        <div className="text-[11px] text-text-primary/75">{ap.is_home ? 'vs' : '@'} {ap.opponent}</div>
+                      {gameLine(ap) && (
+                        <div className={`text-[11px] truncate ${ap?.game_status === 'live' ? 'text-accent font-semibold' : 'text-text-primary/75'}`}>
+                          {gameLine(ap)}
+                        </div>
                       )}
-                      {ap?.on_bye && <div className="text-[10px] text-yellow-400 font-bold">BYE</div>}
+                      {aStat && <div className="text-xs text-text-primary truncate">{aStat}</div>}
                     </div>
                     {ap?.headshot_url ? (
                       <img src={ap.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
@@ -517,71 +592,6 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               const aStat = buildStatLine(ap?.stats, ap?.position)
               const hLive = hp?.game_status === 'live' || hp?.game_status === 'final'
               const aLive = ap?.game_status === 'live' || ap?.game_status === 'final'
-
-              // One line for everything about the player's real game, the way
-              // Yahoo does it. This used to be up to three stacked lines --
-              // score line, clock line, and (pre-game) a separate opponent
-              // line plus a "Proj: 18.4" line -- which made every player row a
-              // row taller than it needed to be.
-              //
-              //   upcoming  Sun 10:00AM @ IND
-              //   live      Q3 5:12 · 10-13 @ Sea
-              //   final     Final (L) 10-13 @ Sea
-              //
-              // Kickoff is formatted from game_starts_at in the VIEWER's
-              // timezone -- the server sends UTC precisely because it cannot
-              // know where the reader is.
-              function gameLine(p) {
-                if (!p) return null
-                if (p.on_bye) return 'BYE'
-                if (!p.opponent) return null
-                const at = p.is_home ? `vs ${p.opponent}` : `@ ${p.opponent}`
-
-                if (p.game_status === 'final' || p.game_status === 'live') {
-                  const us = p.team_score ?? 0
-                  const them = p.opp_score ?? 0
-                  const score = `${us}-${them}`
-                  if (p.game_status === 'final') {
-                    // (W)/(L)/(T) from the player's team's perspective.
-                    const wl = us > them ? 'W' : us < them ? 'L' : 'T'
-                    return `Final (${wl}) ${score} ${at}`
-                  }
-                  const period = p.game_period
-                    ? (p.game_period <= 4 ? `Q${p.game_period}` : p.game_period === 5 ? 'OT' : `${p.game_period - 4}OT`)
-                    : ''
-                  const clock = [period, p.game_clock].filter(Boolean).join(' ')
-                  return `${clock ? clock + ' · ' : ''}${score} ${at}`
-                }
-
-                if (!p.game_starts_at) return at
-                const d = new Date(p.game_starts_at)
-                if (isNaN(d)) return at
-                const day = d.toLocaleDateString(undefined, { weekday: 'short' })
-                // Drop ":00" on the hour — "Sun 10AM vs BAL" instead of
-                // "Sun 10:00AM vs BAL". Three characters, and they were the
-                // difference between the line fitting and ellipsising on a
-                // phone. Kickoffs at :25 and :15 keep their minutes, so no
-                // information is lost, and most of the slate is on the hour.
-                const onTheHour = d.getMinutes() === 0
-                const time = d
-                  .toLocaleTimeString(undefined, onTheHour ? { hour: 'numeric' } : { hour: 'numeric', minute: '2-digit' })
-                  .replace(' ', '')
-                return `${day} ${time} ${at}`
-              }
-
-              // Surnames stay on ONE line. "Croskey-Merritt" wrapped under
-              // break-words and pushed the game line down, making that row
-              // taller than every other one. Rather than truncate a real name,
-              // step the type down as it gets longer — 15 characters at 11px
-              // occupies about what 9 characters do at 14px, so the long ones
-              // fit whole. truncate is the backstop for anything longer still,
-              // which ellipsises instead of reflowing the row.
-              function lastNameSize(last) {
-                const len = (last || '').length
-                if (len > 14) return 'text-[11px]'
-                if (len > 11) return 'text-xs'
-                return 'text-sm'
-              }
 
               function abbrevName(name) {
                 if (!name) return '--'
