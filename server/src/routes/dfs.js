@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { NFL_FULL_TO_ABBR } from '../services/fantasyService.js'
 import { buildStarterSlots, SLOT_LABELS } from '../utils/rosterSlots.js'
 import { supabase } from '../config/supabase.js'
 import { requireAuth } from '../middleware/auth.js'
@@ -96,20 +97,32 @@ router.post('/roster', async (req, res) => {
       if (weekSchedule?.length) {
         const rangeStart = weekSchedule[0].game_date
         const rangeEnd = weekSchedule[weekSchedule.length - 1].game_date
+        // game_date is the ET calendar date, but starts_at is UTC — a Monday
+        // night kickoff (00:15Z) lands on the NEXT UTC day. Ending the window
+        // at rangeEnd 23:59Z silently dropped that game, so both its teams
+        // had no kickoff at all and could never lock. Week 1 found 15 of 16.
+        const rangeEndUtc = new Date(new Date(`${rangeEnd}T00:00:00Z`).getTime() + 2 * 86400000).toISOString()
         const { data: nflGames } = await supabase
           .from('games')
           .select('starts_at, home_team, away_team, sports!inner(key)')
           .eq('sports.key', 'americanfootball_nfl')
           .gte('starts_at', `${rangeStart}T00:00:00Z`)
-          .lte('starts_at', `${rangeEnd}T23:59:59Z`)
+          .lt('starts_at', rangeEndUtc)
 
+        // Keyed by ABBREVIATION. games.home_team is a full display name
+        // ("Seattle Seahawks") while nfl_players.team is an abbreviation
+        // ("SEA"), and the lookups below use the player's value — so keying
+        // this map by the raw game name meant every lookup missed and the
+        // lock never fired for anyone. Reported live on 2026-09-09: Jaxon
+        // Smith-Njigba was still addable midway through his own game.
         const kickoffByTeam = {}
         for (const g of nflGames || []) {
           const kt = new Date(g.starts_at).getTime()
           for (const team of [g.home_team, g.away_team]) {
-            if (!team) continue
-            const cur = kickoffByTeam[team]
-            if (!cur || kt < cur) kickoffByTeam[team] = kt
+            const abbr = NFL_FULL_TO_ABBR[team]
+            if (!abbr) continue
+            const cur = kickoffByTeam[abbr]
+            if (!cur || kt < cur) kickoffByTeam[abbr] = kt
           }
         }
 
