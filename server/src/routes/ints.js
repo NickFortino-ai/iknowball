@@ -74,7 +74,16 @@ router.get('/players', async (req, res) => {
 
   const matchupByTeam = await getCurrentWeekMatchups()
 
+  // Locked players are only sent when the caller asks for them. Shipped
+  // native builds predate the is_locked field entirely and render whatever
+  // arrives as a normal, selectable row -- so returning locked players
+  // unconditionally let app users pick someone whose game had kicked off and
+  // then have the whole 3-player submit rejected. Web sends locked=1; older
+  // bundles omit it and keep the previous filtered behaviour until they
+  // update.
+  const includeLocked = req.query.locked === '1'
   const pool = (defenders || [])
+    .filter((d) => includeLocked || !lockedTeams.has(d.team))
     .map((d) => {
       const m = matchupByTeam[d.team] || null
       return {

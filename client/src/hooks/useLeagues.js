@@ -1539,7 +1539,7 @@ export function useWnbaThreePointStandings(leagueId) {
 export function useSacksPlayers() {
   return useQuery({
     queryKey: ['sacks', 'players'],
-    queryFn: () => api.get('/sacks/players'),
+    queryFn: () => api.get('/sacks/players?locked=1'),
     staleTime: 60_000,
   })
 }
@@ -1584,7 +1584,7 @@ export function useSacksStandings(leagueId) {
 export function useIntsPlayers() {
   return useQuery({
     queryKey: ['ints', 'players'],
-    queryFn: () => api.get('/ints/players'),
+    queryFn: () => api.get('/ints/players?locked=1'),
     staleTime: 60_000,
   })
 }
@@ -1629,7 +1629,7 @@ export function useIntsStandings(leagueId) {
 export function useTacklesPlayers() {
   return useQuery({
     queryKey: ['tackles', 'players'],
-    queryFn: () => api.get('/tackles/players'),
+    queryFn: () => api.get('/tackles/players?locked=1'),
     staleTime: 60_000,
   })
 }
@@ -1674,7 +1674,7 @@ export function useTacklesStandings(leagueId) {
 export function useReceptionsPlayers() {
   return useQuery({
     queryKey: ['receptions', 'players'],
-    queryFn: () => api.get('/receptions/players'),
+    queryFn: () => api.get('/receptions/players?locked=1'),
     staleTime: 60_000,
   })
 }
