@@ -184,7 +184,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               {[matchup.home_user, matchup.away_user].map((u, i) => (
                 <div
                   key={i}
-                  className={`flex-1 min-w-0 text-[11px] uppercase italic font-semibold tracking-wide truncate text-text-primary/70 ${i ? 'text-right' : 'text-left'}`}
+                  className={`flex-1 min-w-0 text-[11px] uppercase italic font-semibold tracking-wide truncate text-text-primary/85 ${i ? 'text-right' : 'text-left'}`}
                 >
                   {u?.fantasy_team_name || ''}
                 </div>
@@ -212,9 +212,9 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 </>
               ) : totalProj > 0 ? (
                 <>
-                  <span className="font-display text-lg text-text-muted tabular-nums">{hProj.toFixed(1)}</span>
-                  <span className="text-text-muted text-[10px]">proj</span>
-                  <span className="font-display text-lg text-text-muted tabular-nums">{aProj.toFixed(1)}</span>
+                  <span className="font-display text-lg text-text-primary/75 tabular-nums">{hProj.toFixed(1)}</span>
+                  <span className="text-text-primary/70 text-[10px]">proj</span>
+                  <span className="font-display text-lg text-text-primary/75 tabular-nums">{aProj.toFixed(1)}</span>
                 </>
               ) : (
                 <span className="text-text-muted text-base font-display">vs</span>
@@ -276,7 +276,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                   {(matchup.home_points || 0).toFixed(1)}
                 </span>
                 {((isCompleted ? hPregame : hProj) ?? 0) > 0 && (
-                  <span className="text-[10px] text-text-muted leading-tight">{(isCompleted ? hPregame : hProj).toFixed(1)}</span>
+                  <span className="text-[10px] text-text-primary/70 leading-tight">{(isCompleted ? hPregame : hProj).toFixed(1)}</span>
                 )}
               </div>
               <span className="text-text-muted text-sm">-</span>
@@ -285,14 +285,14 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                   {(matchup.away_points || 0).toFixed(1)}
                 </span>
                 {((isCompleted ? aPregame : aProj) ?? 0) > 0 && (
-                  <span className="text-[10px] text-text-muted leading-tight">{(isCompleted ? aPregame : aProj).toFixed(1)}</span>
+                  <span className="text-[10px] text-text-primary/70 leading-tight">{(isCompleted ? aPregame : aProj).toFixed(1)}</span>
                 )}
               </div>
             </div>
           ) : totalProj > 0 ? (
             <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
               <span className="font-display text-lg md:text-2xl text-text-muted tabular-nums">{hProj.toFixed(1)}</span>
-              <span className="text-text-muted text-[10px]">proj</span>
+              <span className="text-text-primary/70 text-[10px]">proj</span>
               <span className="font-display text-lg md:text-2xl text-text-muted tabular-nums">{aProj.toFixed(1)}</span>
             </div>
           ) : (
@@ -414,7 +414,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       </div>
                       {hStat && <div className="text-xs text-text-primary truncate">{hStat}</div>}
                       {!hStat && hp?.opponent && (
-                        <div className="text-[11px] text-text-muted">{hp.is_home ? 'vs' : '@'} {hp.opponent}</div>
+                        <div className="text-[11px] text-text-primary/75">{hp.is_home ? 'vs' : '@'} {hp.opponent}</div>
                       )}
                       {hp?.on_bye && <div className="text-[10px] text-yellow-400 font-bold">BYE</div>}
                     </div>
@@ -444,7 +444,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       </div>
                       {aStat && <div className="text-xs text-text-primary truncate">{aStat}</div>}
                       {!aStat && ap?.opponent && (
-                        <div className="text-[11px] text-text-muted">{ap.is_home ? 'vs' : '@'} {ap.opponent}</div>
+                        <div className="text-[11px] text-text-primary/75">{ap.is_home ? 'vs' : '@'} {ap.opponent}</div>
                       )}
                       {ap?.on_bye && <div className="text-[10px] text-yellow-400 font-bold">BYE</div>}
                     </div>
@@ -608,7 +608,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                     <div className="mb-0.5 min-w-0 leading-tight">
                       {(() => { const n = splitName(hp?.player_name); return (
                         <>
-                          {n.first && <div className="text-[11px] font-medium text-text-primary/70">{n.first}</div>}
+                          {n.first && <div className="text-[11px] font-medium text-text-primary/80">{n.first}</div>}
                           <div className="flex items-center gap-1 min-w-0">
                             <span className={`${lastNameSize(n.last)} font-bold text-text-primary truncate min-w-0`}>{n.last}</span>
                             {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
@@ -622,12 +622,12 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                         from p-3 to px-2 to buy that width back; anything that
                         still doesn't fit ellipsises rather than reflowing. */}
                     {gameLine(hp) && (
-                      <div className={`text-[11px] truncate ${hp?.game_status === 'live' ? 'text-accent font-semibold' : 'text-text-muted'}`}>
+                      <div className={`text-[11px] truncate ${hp?.game_status === 'live' ? 'text-accent font-semibold' : 'text-text-primary/75'}`}>
                         {gameLine(hp)}
                       </div>
                     )}
                     {hStat && (hLive || weekStatus === 'past') && (
-                      <div className="text-[11px] text-text-primary/70 mt-0.5">{hStat}</div>
+                      <div className="text-[11px] text-text-primary/80 mt-0.5">{hStat}</div>
                     )}
                   </div>
 
@@ -643,7 +643,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       {hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}
                     </span>
                     {(hp?.projected_pregame ?? hp?.projected) != null && !hp?.on_bye && (
-                      <span className="text-[10px] text-text-primary/50 tabular-nums">
+                      <span className="text-[10px] text-text-primary/70 tabular-nums">
                         {(hp.projected_pregame ?? hp.projected).toFixed(1)}
                       </span>
                     )}
@@ -662,7 +662,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       {aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}
                     </span>
                     {(ap?.projected_pregame ?? ap?.projected) != null && !ap?.on_bye && (
-                      <span className="text-[10px] text-text-primary/50 tabular-nums">
+                      <span className="text-[10px] text-text-primary/70 tabular-nums">
                         {(ap.projected_pregame ?? ap.projected).toFixed(1)}
                       </span>
                     )}
@@ -678,7 +678,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                     <div className="mb-0.5 min-w-0 leading-tight">
                       {(() => { const n = splitName(ap?.player_name); return (
                         <>
-                          {n.first && <div className="text-[11px] font-medium text-text-primary/70">{n.first}</div>}
+                          {n.first && <div className="text-[11px] font-medium text-text-primary/80">{n.first}</div>}
                           <div className="flex items-center justify-end gap-1 min-w-0">
                             {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
                             <span className={`${lastNameSize(n.last)} font-bold text-text-primary truncate min-w-0`}>{n.last}</span>
@@ -687,12 +687,12 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       )})()}
                     </div>
                     {gameLine(ap) && (
-                      <div className={`text-[11px] truncate ${ap?.game_status === 'live' ? 'text-accent font-semibold' : 'text-text-muted'}`}>
+                      <div className={`text-[11px] truncate ${ap?.game_status === 'live' ? 'text-accent font-semibold' : 'text-text-primary/75'}`}>
                         {gameLine(ap)}
                       </div>
                     )}
                     {aStat && (aLive || weekStatus === 'past') && (
-                      <div className="text-[11px] text-text-primary/70 mt-0.5">{aStat}</div>
+                      <div className="text-[11px] text-text-primary/80 mt-0.5">{aStat}</div>
                     )}
                   </div>
                 </div>
