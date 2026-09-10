@@ -4,6 +4,7 @@ import { useNflDfsLive, useFantasyMatchupLive } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { useReadState, useMarkRead, READ_KINDS } from '../../hooks/useReadState'
 import Avatar from '../ui/Avatar'
+import UserProfileModal from '../profile/UserProfileModal'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { SkeletonCard } from '../ui/Skeleton'
 import PlayerDetailModal from './PlayerDetailModal'
@@ -83,6 +84,7 @@ function SalaryCapLive({ league, week, season }) {
   const { profile } = useAuth()
   const { data: liveData, isLoading } = useNflDfsLive(league.id, week, season)
   const [expandedUserId, setExpandedUserId] = useState(null)
+  const [profileUserId, setProfileUserId] = useState(null)
   const [detailPlayerId, setDetailPlayerId] = useState(null)
 
   if (isLoading) return (
@@ -115,12 +117,33 @@ function SalaryCapLive({ league, week, season }) {
 
         return (
           <div key={m.user_id}>
-            <button
+            {/* Row is a div, not a button: the avatar inside is its own button
+                (tap through to the profile) and nesting a button in a button
+                is invalid HTML — browsers drop or reparent the inner one.
+                role/tabIndex/onKeyDown keep it keyboard-operable. */}
+            <div
+              role="button"
+              tabIndex={0}
               onClick={() => setExpandedUserId(isExpanded ? null : m.user_id)}
-              className={`w-full rounded-xl border ${borderColor} bg-bg-primary transition-all text-left ${isWinner ? 'p-5' : 'p-4'}`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setExpandedUserId(isExpanded ? null : m.user_id)
+                }
+              }}
+              className={`w-full cursor-pointer rounded-xl border ${borderColor} bg-bg-primary transition-all text-left ${isWinner ? 'p-5' : 'p-4'}`}
             >
               <div className="flex items-center gap-3">
-                <Avatar user={m.user} size={isWinner ? 'xl' : 'lg'} />
+                {/* stopPropagation so tapping the avatar opens the profile
+                    instead of also toggling the roster underneath. */}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setProfileUserId(m.user_id) }}
+                  className="shrink-0 rounded-full hover:opacity-80 active:scale-95 transition"
+                  aria-label={`View ${m.user?.display_name || m.user?.username || 'user'}'s profile`}
+                >
+                  <Avatar user={m.user} size={isWinner ? 'xl' : 'lg'} />
+                </button>
                 <div className="flex-1 min-w-0">
                   <span className={`font-bold truncate ${isWinner ? 'text-lg text-accent' : isMe ? 'text-accent text-base' : 'text-text-primary text-base'}`}>
                     {m.user?.display_name || m.user?.username}
@@ -147,7 +170,7 @@ function SalaryCapLive({ league, week, season }) {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
-            </button>
+            </div>
 
             {isExpanded && m.slots?.length > 0 && (
               <div className="mt-1 rounded-xl border border-text-primary/10 overflow-hidden">
@@ -232,6 +255,9 @@ function SalaryCapLive({ league, week, season }) {
       })}
       {detailPlayerId && (
         <PlayerDetailModal leagueId={league.id} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
+      )}
+      {profileUserId && (
+        <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
       )}
     </div>
   )
