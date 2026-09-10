@@ -112,64 +112,74 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
         </div>
       )}
       {/* Matchup header — always visible */}
-      <button onClick={onToggle} className="w-full p-4 hover:bg-text-primary/5 transition-colors">
-        {/* Avatars + scores row — prominent, top */}
-        <div className="flex items-center justify-center gap-4 md:gap-6 mb-3">
-          <Avatar user={matchup.home_user} size="2xl" className="!w-16 !h-16 md:!w-20 md:!h-20" />
-          {hasScores || isCompleted ? (
-            <>
-              <div className="flex flex-col items-center">
-                <span className={`font-display text-2xl md:text-4xl ${isCompleted && homeWinning ? 'text-correct' : 'text-white'}`}>
-                  {(matchup.home_points || 0).toFixed(1)}
-                </span>
-                {(!isCompleted ? hProj : hPregame) > 0 && (
-                  <span className="text-[10px] md:text-xs text-text-muted leading-tight">Proj {(isCompleted ? hPregame : hProj).toFixed(1)}</span>
-                )}
-              </div>
-              <span className="text-text-muted text-sm md:text-base">-</span>
-              <div className="flex flex-col items-center">
-                <span className={`font-display text-2xl md:text-4xl ${isCompleted && !homeWinning ? 'text-correct' : 'text-white'}`}>
-                  {(matchup.away_points || 0).toFixed(1)}
-                </span>
-                {(!isCompleted ? aProj : aPregame) > 0 && (
-                  <span className="text-[10px] md:text-xs text-text-muted leading-tight">Proj {(isCompleted ? aPregame : aProj).toFixed(1)}</span>
-                )}
-              </div>
-            </>
-          ) : totalProj > 0 ? (
-            <>
-              <span className="font-display text-xl md:text-3xl text-text-muted">{hProj.toFixed(1)}</span>
-              <span className="text-text-muted text-xs md:text-sm">proj</span>
-              <span className="font-display text-xl md:text-3xl text-text-muted">{aProj.toFixed(1)}</span>
-            </>
-          ) : (
-            <span className="text-text-muted text-lg md:text-xl font-display">vs</span>
-          )}
-          <Avatar user={matchup.away_user} size="2xl" className="!w-16 !h-16 md:!w-20 md:!h-20" />
-        </div>
-
-        {/* Names row — under avatars */}
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex-1 min-w-0 text-left">
-            <div className={`text-sm md:text-xl font-bold truncate ${isCompleted && homeWinning ? 'text-correct' : matchup.home_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
+      {/* Tighter padding now that the header is one row — p-4 was sized for
+          the old two-row stack and left a lot of dead space around a card
+          half the height. */}
+      <button onClick={onToggle} className="w-full px-3 py-2.5 md:px-4 md:py-3 hover:bg-text-primary/5 transition-colors">
+        {/* One row: name/record outboard, avatar, then the scores centred.
+            This used to be two stacked rows — avatars and scores on top,
+            names and records beneath — which made each card tall enough that
+            only two matchups fit on screen. Collapsing them roughly halves
+            the height so a whole week is scannable at once. Avatars and score
+            type are a step smaller to match. Still expands on tap. */}
+        <div className="flex items-center gap-2 md:gap-3 mb-2">
+          {/* Home identity — right-aligned so it reads inward toward the score */}
+          <div className="flex-1 min-w-0 text-right">
+            <div className={`text-sm md:text-lg font-bold truncate ${isCompleted && homeWinning ? 'text-correct' : matchup.home_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
               {matchup.home_user?.display_name || matchup.home_user?.username}
             </div>
             {matchup.home_user?.fantasy_team_name && (
-              <div className="text-[11px] md:text-sm text-text-primary/70 uppercase italic font-semibold tracking-wide truncate">{matchup.home_user.fantasy_team_name}</div>
+              <div className="text-[10px] md:text-xs text-text-primary/70 uppercase italic font-semibold tracking-wide truncate">{matchup.home_user.fantasy_team_name}</div>
             )}
             {matchup.home_user?.record && (
-              <div className="text-[10px] md:text-sm text-text-muted">{matchup.home_user.record.wins}-{matchup.home_user.record.losses}</div>
+              <div className="text-[10px] md:text-xs text-text-muted">{matchup.home_user.record.wins}-{matchup.home_user.record.losses}</div>
             )}
           </div>
-          <div className="flex-1 min-w-0 text-right">
-            <div className={`text-sm md:text-xl font-bold truncate ${isCompleted && !homeWinning ? 'text-correct' : matchup.away_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
+
+          <Avatar user={matchup.home_user} size="lg" className="!w-10 !h-10 md:!w-12 md:!h-12 shrink-0" />
+
+          {hasScores || isCompleted ? (
+            <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+              <div className="flex flex-col items-center">
+                <span className={`font-display text-xl md:text-3xl tabular-nums ${isCompleted && homeWinning ? 'text-correct' : 'text-white'}`}>
+                  {(matchup.home_points || 0).toFixed(1)}
+                </span>
+                {(!isCompleted ? hProj : hPregame) > 0 && (
+                  <span className="text-[10px] text-text-muted leading-tight">{(isCompleted ? hPregame : hProj).toFixed(1)}</span>
+                )}
+              </div>
+              <span className="text-text-muted text-sm">-</span>
+              <div className="flex flex-col items-center">
+                <span className={`font-display text-xl md:text-3xl tabular-nums ${isCompleted && !homeWinning ? 'text-correct' : 'text-white'}`}>
+                  {(matchup.away_points || 0).toFixed(1)}
+                </span>
+                {(!isCompleted ? aProj : aPregame) > 0 && (
+                  <span className="text-[10px] text-text-muted leading-tight">{(isCompleted ? aPregame : aProj).toFixed(1)}</span>
+                )}
+              </div>
+            </div>
+          ) : totalProj > 0 ? (
+            <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+              <span className="font-display text-lg md:text-2xl text-text-muted tabular-nums">{hProj.toFixed(1)}</span>
+              <span className="text-text-muted text-[10px]">proj</span>
+              <span className="font-display text-lg md:text-2xl text-text-muted tabular-nums">{aProj.toFixed(1)}</span>
+            </div>
+          ) : (
+            <span className="text-text-muted text-base md:text-lg font-display shrink-0">vs</span>
+          )}
+
+          <Avatar user={matchup.away_user} size="lg" className="!w-10 !h-10 md:!w-12 md:!h-12 shrink-0" />
+
+          {/* Away identity — left-aligned, mirroring home */}
+          <div className="flex-1 min-w-0 text-left">
+            <div className={`text-sm md:text-lg font-bold truncate ${isCompleted && !homeWinning ? 'text-correct' : matchup.away_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
               {matchup.away_user?.display_name || matchup.away_user?.username}
             </div>
             {matchup.away_user?.fantasy_team_name && (
-              <div className="text-[11px] md:text-sm text-text-primary/70 uppercase italic font-semibold tracking-wide truncate">{matchup.away_user.fantasy_team_name}</div>
+              <div className="text-[10px] md:text-xs text-text-primary/70 uppercase italic font-semibold tracking-wide truncate">{matchup.away_user.fantasy_team_name}</div>
             )}
             {matchup.away_user?.record && (
-              <div className="text-[10px] md:text-sm text-text-muted">{matchup.away_user.record.wins}-{matchup.away_user.record.losses}</div>
+              <div className="text-[10px] md:text-xs text-text-muted">{matchup.away_user.record.wins}-{matchup.away_user.record.losses}</div>
             )}
           </div>
         </div>
