@@ -233,7 +233,7 @@ function SalaryCapLive({ league, week, season }) {
                               </span>
                             )}
                           </div>
-                          {(slot.game_status === 'live' || slot.game_status === 'final') && (
+                          {(slot.game_status === 'live' || slot.game_status === 'final') ? (
                             <div className="flex flex-col items-end shrink-0 lg:ml-6 lg:w-16 lg:text-right">
                               <span className="text-base lg:text-lg font-display text-white">
                                 {Math.round((slot.points_earned || 0) * 10) / 10}
@@ -242,7 +242,19 @@ function SalaryCapLive({ league, week, season }) {
                                 <span className="text-[10px] text-text-primary/60">/ {slot.projected.toFixed(1)}</span>
                               )}
                             </div>
-                          )}
+                          ) : slot.projected != null ? (
+                            /* Players who haven't kicked off used to render NOTHING here —
+                               no score, no projection. But the team's "Proj" total is
+                               mostly made of them, so a manager with 6 yet to play saw
+                               108.5 at the top and only three contributing numbers in the
+                               list. Show the projection so the total can be reconciled. */
+                            <div className="flex flex-col items-end shrink-0 lg:ml-6 lg:w-16 lg:text-right">
+                              <span className="text-base lg:text-lg font-display text-text-muted">
+                                {slot.projected.toFixed(1)}
+                              </span>
+                              <span className="text-[10px] text-text-primary/40">proj</span>
+                            </div>
+                          ) : null}
                         </>
                       )}
                     </div>
