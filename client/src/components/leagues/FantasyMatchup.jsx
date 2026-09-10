@@ -576,22 +576,31 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 <div key={i} className="flex border-b border-text-primary/10">
                   {/* Home player — left aligned */}
                   <div
-                    className="flex-1 p-3 cursor-pointer hover:bg-text-primary/5 transition-colors min-w-0"
+                    className="flex-1 px-2 py-2.5 cursor-pointer hover:bg-text-primary/5 transition-colors min-w-0"
                     onClick={() => hp?.player_id && onPlayerClick(hp.player_id)}
                   >
-                    <div className="flex items-start gap-1 mb-0.5 min-w-0">
-                      <div className="flex-1 min-w-0 leading-tight">
-                        {(() => { const n = splitName(hp?.player_name); return (
-                          <>
-                            {n.first && <div className="text-[11px] font-medium text-text-primary/70">{n.first}</div>}
-                            <div className="text-sm font-bold text-text-primary break-words">{n.last}</div>
-                          </>
-                        )})()}
-                      </div>
-                      {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
+                    {/* Injury badge sits inline after the surname rather than
+                        pinned to the far edge of the row. It used to be a
+                        flex sibling of a flex-1 name block, which pushed it
+                        against the score column and left a gap mid-row. */}
+                    <div className="mb-0.5 min-w-0 leading-tight">
+                      {(() => { const n = splitName(hp?.player_name); return (
+                        <>
+                          {n.first && <div className="text-[11px] font-medium text-text-primary/70">{n.first}</div>}
+                          <div className="flex items-center gap-1 min-w-0">
+                            <span className="text-sm font-bold text-text-primary break-words min-w-0">{n.last}</span>
+                            {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
+                          </div>
+                        </>
+                      )})()}
                     </div>
+                    {/* truncate, not wrap: "Mon 5:15PM vs DEN" was breaking
+                        the opponent onto its own line and costing the row a
+                        full line for three characters. Cell padding trimmed
+                        from p-3 to px-2 to buy that width back; anything that
+                        still doesn't fit ellipsises rather than reflowing. */}
                     {gameLine(hp) && (
-                      <div className={`text-[11px] ${hp?.game_status === 'live' ? 'text-accent font-semibold' : 'text-text-muted'}`}>
+                      <div className={`text-[11px] truncate ${hp?.game_status === 'live' ? 'text-accent font-semibold' : 'text-text-muted'}`}>
                         {gameLine(hp)}
                       </div>
                     )}
@@ -639,22 +648,24 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
 
                   {/* Away player — right aligned */}
                   <div
-                    className="flex-1 p-3 cursor-pointer hover:bg-text-primary/5 transition-colors min-w-0 text-right"
+                    className="flex-1 px-2 py-2.5 cursor-pointer hover:bg-text-primary/5 transition-colors min-w-0 text-right"
                     onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}
                   >
-                    <div className="flex items-start gap-1 justify-end mb-0.5 min-w-0">
-                      {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
-                      <div className="flex-1 min-w-0 leading-tight text-right">
-                        {(() => { const n = splitName(ap?.player_name); return (
-                          <>
-                            {n.first && <div className="text-[11px] font-medium text-text-primary/70">{n.first}</div>}
-                            <div className="text-sm font-bold text-text-primary break-words">{n.last}</div>
-                          </>
-                        )})()}
-                      </div>
+                    {/* Mirror of the home cell — badge inline before the
+                        surname so it reads inward from the right edge. */}
+                    <div className="mb-0.5 min-w-0 leading-tight">
+                      {(() => { const n = splitName(ap?.player_name); return (
+                        <>
+                          {n.first && <div className="text-[11px] font-medium text-text-primary/70">{n.first}</div>}
+                          <div className="flex items-center justify-end gap-1 min-w-0">
+                            {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
+                            <span className="text-sm font-bold text-text-primary break-words min-w-0">{n.last}</span>
+                          </div>
+                        </>
+                      )})()}
                     </div>
                     {gameLine(ap) && (
-                      <div className={`text-[11px] ${ap?.game_status === 'live' ? 'text-accent font-semibold' : 'text-text-muted'}`}>
+                      <div className={`text-[11px] truncate ${ap?.game_status === 'live' ? 'text-accent font-semibold' : 'text-text-muted'}`}>
                         {gameLine(ap)}
                       </div>
                     )}
