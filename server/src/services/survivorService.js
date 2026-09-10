@@ -255,6 +255,23 @@ export async function submitTouchdownPick(leagueId, userId, weekId, playerId) {
   if (playerGame && weeks?.length) {
     const gameWeek = weeks.find((w) => playerGame.starts_at >= w.starts_at && playerGame.starts_at <= w.ends_at)
     if (gameWeek) {
+      // The pick must land in the week the user was picking for. `upcomingGames`
+      // only contains games that have not started, so a player whose game is
+      // already underway matches his NEXT game instead — and this used to
+      // quietly file the pick under that later week.
+      //
+      // Observed 2026-09-09: a manager picked Jaxon Smith-Njigba during his
+      // own game. Rather than being refused, the pick was written to Week 2.
+      // He then picked again for Week 1, and his row showed two players, which
+      // read as "I got two picks in one week".
+      //
+      // week_id is required and validated by the route, so the caller always
+      // states its intent. Honour it or refuse — never silently retarget.
+      if (weekId && gameWeek.id !== weekId) {
+        const err = new Error(`${player.full_name} has already played this week — pick a player whose game hasn't started yet`)
+        err.status = 400
+        throw err
+      }
       resolvedWeekId = gameWeek.id
     } else {
       const err = new Error("That game falls outside this league's schedule — pick a player whose game is on or after the league start date.")

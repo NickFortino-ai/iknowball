@@ -326,18 +326,23 @@ export async function getAvailableQBs(leagueId, userId) {
 
   // If no stats exist yet (preseason), use curated ranking; otherwise sort by TDs
   // In both cases, bye-week QBs (no matchup) sink to the bottom
+  // Locked and already-used QBs deliberately KEEP their normal position in
+  // the TD ordering — they are greyed in place, not banished to the bottom.
+  // Seeing that the league's top passer is unavailable this week is useful
+  // information; making him vanish down the list hides it.
+  const sinkRank = (q) => (q.matchup ? 0 : 1)
   const hasStats = Object.values(tdMap).some((v) => v > 0)
   if (hasStats) {
     pool.sort((a, b) => {
-      const aBye = a.matchup ? 0 : 1
-      const bBye = b.matchup ? 0 : 1
+      const aBye = sinkRank(a)
+      const bBye = sinkRank(b)
       if (aBye !== bBye) return aBye - bBye
       return b.season_pass_tds - a.season_pass_tds || a.full_name.localeCompare(b.full_name)
     })
   } else {
     pool.sort((a, b) => {
-      const aBye = a.matchup ? 0 : 1
-      const bBye = b.matchup ? 0 : 1
+      const aBye = sinkRank(a)
+      const bBye = sinkRank(b)
       if (aBye !== bBye) return aBye - bBye
       const aRank = PRESEASON_QB_RANK[a.full_name] ?? 999
       const bRank = PRESEASON_QB_RANK[b.full_name] ?? 999
