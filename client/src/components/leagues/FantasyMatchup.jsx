@@ -236,8 +236,15 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
           <div className="text-xs text-text-muted text-center mb-1">Final</div>
         )}
 
-        {/* Win probability bar (live) or result bar (completed) or projection bar (future) */}
-        {isCompleted && hasScores ? (
+        {/* Win probability bar (live) / result bar (completed) / projection bar
+            (future).
+            Hidden while a compact card is collapsed. In the All Matchups list
+            every row carries one, so the screen becomes a stack of bars that
+            says less than the scores directly above them — and the bar is a
+            derived read of numbers already on the row. It comes back on
+            expand, where there is room for it to mean something. My Matchup
+            is not compact, so it always shows one. */}
+        {(!compact || isExpanded) && (isCompleted && hasScores ? (
           // Final: only the winner's half is green; the loser's half stays
           // gray. Lets a glance at the bar tell you who won without the
           // misleading full-green-across-a-loss problem.
@@ -266,7 +273,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               <div className={`bg-accent/60 transition-all ${orangeOnRight ? 'rounded-r-full' : 'rounded-l-full'}`} style={{ width: `${orangePct}%` }} />
             </div>
           )
-        })() : null}
+        })() : null)}
       </button>
 
       {/* Expanded roster comparison */}
