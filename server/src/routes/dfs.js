@@ -139,7 +139,7 @@ router.post('/roster', async (req, res) => {
               (n) => n.roster_slot === s.roster_slot && n.player_id === s.player_id
             )
             if (!preserved) {
-              return res.status(400).json({ error: `${info.name}'s game has started — cannot swap` })
+              return res.status(400).json({ error: `${info.name} has already played this week — cannot swap him out` })
             }
           }
         }
@@ -152,7 +152,7 @@ router.post('/roster', async (req, res) => {
           if (ko && ko <= now) {
             const wasExisting = existingSlots.some((es) => es.player_id === s.player_id)
             if (!wasExisting) {
-              return res.status(400).json({ error: `${info.name}'s game has already started` })
+              return res.status(400).json({ error: `${info.name} has already played this week` })
             }
           }
         }

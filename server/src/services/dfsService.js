@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js'
+import { NFL_FULL_TO_ABBR } from './fantasyService.js'
 import { logger } from '../utils/logger.js'
 import { calculateFantasyPoints } from './sleeperService.js'
 import { fetchAll } from '../utils/fetchAll.js'
@@ -9,6 +10,54 @@ const FLEX_ELIGIBLE = ['RB', 'WR', 'TE']
 /**
  * Get player pool with salaries for a given week.
  */
+/**
+ * Earliest kickoff per team for an NFL week, keyed by ABBREVIATION.
+ *
+ * Shared so the lineup validator and the player pool cannot disagree about
+ * who is locked. Two traps live in here, both of which shipped as bugs:
+ *
+ *   - games.home_team is a display name ("Seattle Seahawks") while
+ *     nfl_players.team is an abbreviation ("SEA"). Keying by the raw game
+ *     value made every lookup miss, so nothing ever locked.
+ *   - game_date is the ET calendar date but starts_at is UTC, so a Monday
+ *     night kickoff (00:15Z) falls on the NEXT UTC day. A window ending at
+ *     the last ET date found 15 of 16 Week 1 games and left both teams in
+ *     the missing one permanently unlockable.
+ */
+export async function getNflKickoffByTeam(week, season) {
+  const { data: weekSchedule } = await supabase
+    .from('nfl_schedule')
+    .select('game_date')
+    .eq('season', season)
+    .eq('week', week)
+    .not('game_date', 'is', null)
+    .order('game_date', { ascending: true })
+  if (!weekSchedule?.length) return {}
+
+  const rangeStart = weekSchedule[0].game_date
+  const rangeEnd = weekSchedule[weekSchedule.length - 1].game_date
+  const rangeEndUtc = new Date(new Date(`${rangeEnd}T00:00:00Z`).getTime() + 2 * 86400000).toISOString()
+
+  const { data: nflGames } = await supabase
+    .from('games')
+    .select('starts_at, home_team, away_team, sports!inner(key)')
+    .eq('sports.key', 'americanfootball_nfl')
+    .gte('starts_at', `${rangeStart}T00:00:00Z`)
+    .lt('starts_at', rangeEndUtc)
+
+  const kickoffByTeam = {}
+  for (const g of nflGames || []) {
+    const kt = new Date(g.starts_at).getTime()
+    for (const team of [g.home_team, g.away_team]) {
+      const abbr = NFL_FULL_TO_ABBR[team]
+      if (!abbr) continue
+      const cur = kickoffByTeam[abbr]
+      if (!cur || kt < cur) kickoffByTeam[abbr] = kt
+    }
+  }
+  return kickoffByTeam
+}
+
 export async function getPlayerPool(week, season, position = null) {
   let query = supabase
     .from('dfs_weekly_salaries')
@@ -73,13 +122,26 @@ export async function getPlayerPool(week, season, position = null) {
   // week 1 slate, 24% of it, priced as high as $5,500 and including Ben
   // Roethlisberger. Team defenses always carry a team, so this cannot drop
   // the DEF slot's only options.
+  // is_locked: has this player's game already kicked off? The server already
+  // REJECTS adding a locked player, but the pool gave the client no way to
+  // show it — Jaxon Smith-Njigba sat in the list mid-game looking addable,
+  // and tapping him just failed. Sent as a flag rather than filtering him
+  // out, so the UI can grey him instead of having him silently vanish.
+  const kickoffByTeam = await getNflKickoffByTeam(week, season)
+  const now = Date.now()
+
   return (data || [])
     .filter((d) => ROSTERABLE.has(d.nfl_players?.position))
     .filter((d) => d.nfl_players?.team)
-    .map((d) => ({
-      ...d.nfl_players,
-      salary: d.salary,
-    }))
+    .map((d) => {
+      const ko = kickoffByTeam[d.nfl_players?.team]
+      return {
+        ...d.nfl_players,
+        salary: d.salary,
+        is_locked: ko != null && ko <= now,
+        kickoff_at: ko != null ? new Date(ko).toISOString() : null,
+      }
+    })
 }
 
 /**

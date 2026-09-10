@@ -410,10 +410,20 @@ export default function NflSalaryCapView({ league }) {
                   </div>
                   <span className="text-base font-semibold text-accent tabular-nums shrink-0">${(player.salary || 0).toLocaleString()}</span>
                 </button>
+                {/* A locked player stays listed but is visibly unavailable.
+                    The server has always rejected adding one; the pool just
+                    had no way to say so, so a player mid-game looked addable
+                    and tapping + simply failed. */}
                 {isEditing && (
                   <button
-                    onClick={() => addPlayer(player)}
-                    className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none"
+                    onClick={() => !player.is_locked && addPlayer(player)}
+                    disabled={player.is_locked}
+                    title={player.is_locked ? 'Game already started' : undefined}
+                    className={`w-8 h-8 rounded-full border flex items-center justify-center shrink-0 text-lg font-bold leading-none transition-colors ${
+                      player.is_locked
+                        ? 'border-text-muted/30 text-text-muted cursor-not-allowed'
+                        : 'border-accent/40 text-accent hover:bg-accent hover:text-white'
+                    }`}
                   >
                     +
                   </button>

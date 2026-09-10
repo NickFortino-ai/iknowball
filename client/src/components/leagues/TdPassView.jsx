@@ -316,12 +316,12 @@ export default function TdPassView({ league, tab = 'picks' }) {
               <button
                 key={qb.id}
                 type="button"
-                onClick={() => !qb.used && handlePick(qb)}
-                disabled={submit.isPending || qb.used}
+                onClick={() => !qb.used && !qb.is_locked && handlePick(qb)}
+                disabled={submit.isPending || qb.used || qb.is_locked}
                 // text-left: <button> defaults to text-align:center, so the
                 // matchup line under the name rendered centred while the name
                 // itself looked left-aligned only because it's a flex child.
-                className={`w-full text-left flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 transition-colors ${qb.used ? 'opacity-40 cursor-not-allowed' : 'hover:bg-text-primary/5 cursor-pointer'} ${!qb.used && (qb.injury_status === 'Out' || !qb.matchup) ? 'opacity-40' : ''}`}
+                className={`w-full text-left flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 transition-colors ${qb.used || qb.is_locked ? 'opacity-40 cursor-not-allowed' : 'hover:bg-text-primary/5 cursor-pointer'} ${!qb.used && !qb.is_locked && (qb.injury_status === 'Out' || !qb.matchup) ? 'opacity-40' : ''}`}
               >
                 {/* Shared component so a headshot that 404s falls back to initials
                       instead of vanishing — the inline version only had a
@@ -333,6 +333,14 @@ export default function TdPassView({ league, tab = 'picks' }) {
                     <span className="text-sm font-bold text-text-primary truncate">{qb.full_name}</span>
                     {qb.used && (
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-text-muted/20 text-text-muted">Used</span>
+                    )}
+                    {/* Locked QBs used to be filtered out server-side, which
+                        made a quarterback whose game had started look like he
+                        did not exist — searching "lock" for Drew Lock returned
+                        "No QBs match your search" mid-game. Shown and greyed
+                        now, same treatment as Used. */}
+                    {qb.is_locked && !qb.used && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-text-muted/20 text-text-muted">Started</span>
                     )}
                     {!qb.matchup && !qb.used && (
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-text-primary/10 text-text-muted">BYE</span>

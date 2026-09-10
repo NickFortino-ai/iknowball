@@ -304,8 +304,11 @@ export async function getAvailableQBs(leagueId, userId) {
   // Pull current-week NFL games so we can attach matchup info to each QB
   const matchupByTeam = await getCurrentWeekMatchups()
 
+  // Locked QBs are FLAGGED, not removed. Filtering them out made a
+  // quarterback whose game had started look like he did not exist —
+  // searching "lock" for Drew Lock returned "No QBs match your search"
+  // while Seattle was playing. The client greys them instead.
   const pool = (qbs || [])
-    .filter((q) => !lockedTeams.has(q.team))
     .map((q) => {
       const m = matchupByTeam[q.team] || null
       return {
@@ -314,6 +317,7 @@ export async function getAvailableQBs(leagueId, userId) {
         team: q.team,
         headshot_url: q.headshot_url,
         injury_status: q.injury_status,
+        is_locked: lockedTeams.has(q.team),
         season_pass_tds: tdMap[q.id] || 0,
         used: usedSet.has(q.id),
         matchup: m, // { opponent, home_away, starts_at } | null
@@ -432,7 +436,10 @@ export async function submitPick(leagueId, userId, qbPlayerId) {
   // Lock check — can't pick a QB whose game has already started
   const lockedTeams = await getLockedTeamSet()
   if (lockedTeams.has(qb.team)) {
-    const err = new Error("That QB's game has already started")
+    // Name the player. "That QB's game has already started" leaves someone
+    // who tapped a row wondering which one, especially now that locked QBs
+    // stay listed rather than disappearing.
+    const err = new Error(`${qb.full_name || 'That QB'} has already played this week`)
     err.status = 400
     throw err
   }
