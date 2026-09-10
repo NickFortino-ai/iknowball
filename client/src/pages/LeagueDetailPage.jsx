@@ -510,36 +510,10 @@ function GlobalPointsTable({ memberCount, bonusForRank, footnote }) {
 function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournament, bracketEntries, fantasySettings: parentFantasySettings }) {
   const [editingNarrative, setEditingNarrative] = useState(false)
   const [narrativeText, setNarrativeText] = useState('')
-  const { profile } = useAuth()
   const settings = league.settings || {}
   const isDaily = settings.pick_frequency === 'daily'
   const toggleAutoConnect = useToggleAutoConnect()
   const { data: fantasySettings } = useFantasySettings(['nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'fantasy'].includes(league.format) ? league.id : null)
-  const isTraditionalFantasy = league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap'
-  const currentNflWeek = fantasySettings?.current_week || fantasySettings?.single_week || 1
-  const { data: liveMatchupData } = useFantasyMatchupLive(
-    isTraditionalFantasy ? league.id : null,
-    currentNflWeek,
-    fantasySettings?.season || 2026
-  )
-  // Matchups tab glows when any player on either side of user's matchup has a live or in-progress game
-  const matchupsLive = (() => {
-    if (!liveMatchupData?.matchups || !isTraditionalFantasy) return false
-    const myMatchup = liveMatchupData.matchups.find((m) =>
-      m.home_user?.id === profile?.id || m.away_user?.id === profile?.id
-    )
-    if (!myMatchup) return false
-    const allSlots = [...(myMatchup.home_roster || []), ...(myMatchup.away_roster || [])]
-    // Only while a game is ACTUALLY in progress.
-    //
-    // This used to glow from first kickoff to last final — "any game started
-    // and not all done" — which for a normal NFL week meant Thursday night
-    // through Monday night, roughly five days including every gap between
-    // windows. A badge lit most of the week reads as decoration rather than
-    // signal, and "your matchup is underway" is already obvious from the
-    // scores. Now it means: something is happening right now, go look.
-    return allSlots.some((s) => s.game_status === 'live')
-  })()
   const items = []
 
   // Date range / duration
@@ -1938,10 +1912,15 @@ export default function LeagueDetailPage() {
     )
     if (!myMatchup) return false
     const allSlots = [...(myMatchup.home_roster || []), ...(myMatchup.away_roster || [])]
-    const hasLive = allSlots.some((s) => s.game_status === 'live')
-    const hasFinal = allSlots.some((s) => s.game_status === 'final')
-    const hasUpcoming = allSlots.some((s) => s.game_status === 'upcoming')
-    return (hasLive || hasFinal) && (hasLive || hasUpcoming)
+    // Only while a game is ACTUALLY in progress.
+    //
+    // This used to glow from first kickoff to last final — "any game started
+    // and not all done" — which for a normal NFL week meant Thursday night
+    // through Monday night, roughly five days including every gap between
+    // windows. A badge lit most of the week reads as decoration rather than
+    // signal, and "your matchup is underway" is already obvious from the
+    // scores. Now it means: something is happening right now, go look.
+    return allSlots.some((s) => s.game_status === 'live')
   })()
   const backdropSport = getBackdropFilterKey(league)
   const { data: availableBackdrops } = useLeagueBackdrops(backdropSport)
