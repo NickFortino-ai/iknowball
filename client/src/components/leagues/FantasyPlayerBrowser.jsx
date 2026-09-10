@@ -415,12 +415,15 @@ export default function FantasyPlayerBrowser({ league }) {
                         <span className="text-sm font-semibold text-text-primary truncate hover:text-accent transition-colors">{player.full_name}</span>
                         <InjuryBadge status={player.injury_status} />
                         <BlurbDot playerId={player.id} blurbIds={blurbIds} />
-                        {onWaivers && (
-                          <span className="text-[10px] font-bold text-yellow-500" title="On waivers">W</span>
-                        )}
-                        {isClaimed && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-accent" title="Pending claim">C</span>
-                        )}
+                        {/* No "W" or "C" letters here. Waivers is already the
+                            blue + (green + is a free agent), and a pending
+                            claim already shows twice: the + swaps to a … in
+                            the action column, and the row appears under Your
+                            Pending Claims with a cancel button.
+                            W was the least accurate thing in the row besides:
+                            on_waivers means pool-membership OR kickoff-locked,
+                            so it read "On waivers" over players who were never
+                            dropped and whose team had simply already played. */}
                       </div>
                       <div className="text-[10px] text-text-muted">
                         {player.position} · {player.team || 'FA'}
