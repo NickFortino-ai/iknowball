@@ -262,10 +262,10 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               {matchup.home_user?.display_name || matchup.home_user?.username}
             </div>
             {matchup.home_user?.fantasy_team_name && (
-              <div className="text-[10px] md:text-xs text-text-primary/70 uppercase italic font-semibold tracking-wide truncate">{matchup.home_user.fantasy_team_name}</div>
+              <div className="text-[10px] md:text-xs text-text-primary/85 uppercase italic font-semibold tracking-wide truncate">{matchup.home_user.fantasy_team_name}</div>
             )}
             {matchup.home_user?.record && (
-              <div className="text-[10px] md:text-xs text-text-muted">{matchup.home_user.record.wins}-{matchup.home_user.record.losses}</div>
+              <div className="text-[10px] md:text-xs text-white">{matchup.home_user.record.wins}-{matchup.home_user.record.losses}</div>
             )}
           </div>
 
@@ -291,9 +291,9 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
             </div>
           ) : totalProj > 0 ? (
             <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-              <span className="font-display text-lg md:text-2xl text-text-muted tabular-nums">{hProj.toFixed(1)}</span>
+              <span className="font-display text-lg md:text-2xl text-text-primary/75 tabular-nums">{hProj.toFixed(1)}</span>
               <span className="text-text-primary/70 text-[10px]">proj</span>
-              <span className="font-display text-lg md:text-2xl text-text-muted tabular-nums">{aProj.toFixed(1)}</span>
+              <span className="font-display text-lg md:text-2xl text-text-primary/75 tabular-nums">{aProj.toFixed(1)}</span>
             </div>
           ) : (
             <span className="text-text-muted text-base md:text-lg font-display shrink-0">vs</span>
@@ -304,10 +304,10 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               {matchup.away_user?.display_name || matchup.away_user?.username}
             </div>
             {matchup.away_user?.fantasy_team_name && (
-              <div className="text-[10px] md:text-xs text-text-primary/70 uppercase italic font-semibold tracking-wide truncate">{matchup.away_user.fantasy_team_name}</div>
+              <div className="text-[10px] md:text-xs text-text-primary/85 uppercase italic font-semibold tracking-wide truncate">{matchup.away_user.fantasy_team_name}</div>
             )}
             {matchup.away_user?.record && (
-              <div className="text-[10px] md:text-xs text-text-muted">{matchup.away_user.record.wins}-{matchup.away_user.record.losses}</div>
+              <div className="text-[10px] md:text-xs text-white">{matchup.away_user.record.wins}-{matchup.away_user.record.losses}</div>
             )}
           </div>
 
@@ -378,7 +378,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
 
           {/* Desktop: full table with stat lines and projections */}
           <div className="hidden lg:block">
-            <div className="grid grid-cols-[1fr_3.5rem_4rem_3rem_4rem_3.5rem_1fr] gap-1 text-xs text-text-muted uppercase tracking-wider px-1 pb-2 border-b border-text-primary/10 mb-1">
+            <div className="grid grid-cols-[1fr_3.5rem_4rem_3rem_4rem_3.5rem_1fr] gap-1 text-xs text-text-primary/70 uppercase tracking-wider px-1 pb-2 border-b border-text-primary/10 mb-1">
               <span>Player</span>
               <span className="text-right">Proj</span>
               <span className="text-right font-semibold">Pts</span>
@@ -419,8 +419,8 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       {hp?.on_bye && <div className="text-[10px] text-yellow-400 font-bold">BYE</div>}
                     </div>
                   </div>
-                  <div className="text-right text-text-primary/60 text-xs">{(hp?.projected_pregame ?? hp?.projected)?.toFixed(1) || '--'}</div>
-                  <div className={`text-right font-bold text-base md:text-lg tabular-nums ${hp?.game_status === 'live' ? 'text-orange-400' : hp?.game_status === 'final' ? 'text-white' : 'text-text-muted'}`}>
+                  <div className="text-right text-text-primary/75 text-xs">{(hp?.projected_pregame ?? hp?.projected)?.toFixed(1) || '--'}</div>
+                  <div className={`text-right font-bold text-base md:text-lg tabular-nums ${hp?.game_status === 'live' ? 'text-orange-400' : hp?.game_status === 'final' ? 'text-white' : 'text-text-primary/70'}`}>
                     {hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}
                   </div>
                   <div className="text-center">
@@ -428,10 +428,10 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       {slotLabels[hp?.slot] || (hp?.position) || '?'}
                     </span>
                   </div>
-                  <div className={`text-left font-bold text-base md:text-lg tabular-nums ${ap?.game_status === 'live' ? 'text-orange-400' : ap?.game_status === 'final' ? 'text-white' : 'text-text-muted'}`}>
+                  <div className={`text-left font-bold text-base md:text-lg tabular-nums ${ap?.game_status === 'live' ? 'text-orange-400' : ap?.game_status === 'final' ? 'text-white' : 'text-text-primary/70'}`}>
                     {aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}
                   </div>
-                  <div className="text-left text-text-primary/60 text-xs">{(ap?.projected_pregame ?? ap?.projected)?.toFixed(1) || '--'}</div>
+                  <div className="text-left text-text-primary/75 text-xs">{(ap?.projected_pregame ?? ap?.projected)?.toFixed(1) || '--'}</div>
                   {/* Away player */}
                   <div
                     className="flex items-center gap-2.5 justify-end min-w-0 cursor-pointer hover:bg-text-primary/5 rounded px-1 py-0.5"
@@ -488,11 +488,11 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       {hStat && <div className="text-[10px] text-text-primary truncate">{hStat}</div>}
                     </div>
                   </div>
-                  <div className="text-right text-text-primary/40 text-xs">{(hp?.projected_pregame ?? hp?.projected)?.toFixed(1) || '--'}</div>
-                  <div className="text-right text-text-muted text-sm font-semibold tabular-nums">{hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}</div>
-                  <div className="text-center"><span className="text-[10px] font-semibold text-text-muted">BN</span></div>
-                  <div className="text-left text-text-muted text-sm font-semibold tabular-nums">{aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}</div>
-                  <div className="text-left text-text-primary/40 text-xs">{(ap?.projected_pregame ?? ap?.projected)?.toFixed(1) || '--'}</div>
+                  <div className="text-right text-text-primary/65 text-xs">{(hp?.projected_pregame ?? hp?.projected)?.toFixed(1) || '--'}</div>
+                  <div className="text-right text-text-primary/70 text-sm font-semibold tabular-nums">{hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}</div>
+                  <div className="text-center"><span className="text-[10px] font-semibold text-text-primary/70">BN</span></div>
+                  <div className="text-left text-text-primary/70 text-sm font-semibold tabular-nums">{aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}</div>
+                  <div className="text-left text-text-primary/65 text-xs">{(ap?.projected_pregame ?? ap?.projected)?.toFixed(1) || '--'}</div>
                   <div className="flex items-center gap-2 justify-end min-w-0 cursor-pointer hover:bg-text-primary/5 rounded px-1 py-0.5" onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}>
                     <div className="min-w-0 text-right">
                       <span className="font-semibold text-text-primary truncate block text-xs">{displayName(ap?.player_name)}</span>
@@ -724,20 +724,20 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       {/* Home bench player */}
                       <div className="flex-1 p-2 min-w-0 cursor-pointer" onClick={() => hp?.player_id && onPlayerClick(hp.player_id)}>
                         <span className="text-xs font-semibold text-text-primary truncate block">{displayName(hp?.player_name)}</span>
-                        {hStat && (hLive || weekStatus === 'past') && <div className="text-[10px] text-text-primary/50">{hStat}</div>}
+                        {hStat && (hLive || weekStatus === 'past') && <div className="text-[10px] text-text-primary/70">{hStat}</div>}
                       </div>
                       <div className="w-11 flex items-start justify-end pt-2 shrink-0">
-                        <span className="text-sm font-display text-text-muted">{hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}</span>
+                        <span className="text-sm font-display text-text-primary/70">{hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}</span>
                       </div>
                       <div className="w-9 flex items-start justify-center pt-2.5 shrink-0">
-                        <span className="text-[10px] font-bold text-text-muted">BN</span>
+                        <span className="text-[10px] font-bold text-text-primary/70">BN</span>
                       </div>
                       <div className="w-11 flex items-start justify-start pt-2 shrink-0">
-                        <span className="text-sm font-display text-text-muted">{aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}</span>
+                        <span className="text-sm font-display text-text-primary/70">{aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}</span>
                       </div>
                       <div className="flex-1 p-2 min-w-0 text-right cursor-pointer" onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}>
                         <span className="text-xs font-semibold text-text-primary truncate block">{displayName(ap?.player_name)}</span>
-                        {aStat && (aLive || weekStatus === 'past') && <div className="text-[10px] text-text-primary/50">{aStat}</div>}
+                        {aStat && (aLive || weekStatus === 'past') && <div className="text-[10px] text-text-primary/70">{aStat}</div>}
                       </div>
                     </div>
                   )
