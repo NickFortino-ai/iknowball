@@ -193,7 +193,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
           )}
 
           <div className="flex items-center gap-2">
-            <Avatar user={matchup.home_user} size="lg" className="!w-9 !h-9 shrink-0" />
+            <Avatar user={matchup.home_user} size="lg" className="!w-11 !h-11 shrink-0" />
             {matchup.home_user?.record && (
               <span className="text-[11px] text-text-muted shrink-0">
                 {matchup.home_user.record.wins}-{matchup.home_user.record.losses}
@@ -225,7 +225,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 {matchup.away_user.record.wins}-{matchup.away_user.record.losses}
               </span>
             )}
-            <Avatar user={matchup.away_user} size="lg" className="!w-9 !h-9 shrink-0" />
+            <Avatar user={matchup.away_user} size="lg" className="!w-11 !h-11 shrink-0" />
           </div>
 
           <div className="flex items-start justify-between gap-2 mt-0.5">
