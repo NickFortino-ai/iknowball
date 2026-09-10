@@ -1,5 +1,5 @@
 import { supabase } from '../config/supabase.js'
-import { NFL_FULL_TO_ABBR } from './fantasyService.js'
+import { NFL_FULL_TO_ABBR, isWeekFinalNow } from './fantasyService.js'
 import { logger } from '../utils/logger.js'
 import { calculateFantasyPoints } from './sleeperService.js'
 import { fetchAll } from '../utils/fetchAll.js'
@@ -476,6 +476,15 @@ export async function scoreNflDfsWeek(week, season) {
 
   // 5. Upsert dfs_weekly_results rows per league
   let scored = 0
+  // Nobody has "won the week" until the week is over. This crowned a winner
+  // on every scoring pass, so after a single Wednesday-night game the leader
+  // of one played game already showed a W in the standings.
+  //
+  // Points and rank still update live — that is the whole point of the Live
+  // tab — but is_week_winner stays false until every game in the week is
+  // final, because getDFSStandings counts it as weeklyWins.
+  const weekIsFinal = await isWeekFinalNow(week, season)
+
   for (const [leagueId, entries] of Object.entries(leagueRosters)) {
     entries.sort((a, b) => b.totalPoints - a.totalPoints)
     const results = entries.map((e, i) => ({
@@ -485,7 +494,7 @@ export async function scoreNflDfsWeek(week, season) {
       season,
       total_points: e.totalPoints,
       week_rank: i + 1,
-      is_week_winner: i === 0,
+      is_week_winner: weekIsFinal && i === 0,
     }))
 
     const { error } = await supabase

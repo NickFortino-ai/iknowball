@@ -2340,6 +2340,45 @@ export async function setDraftQueue(leagueId, userId, playerIds) {
  * Sorted by wins DESC, then PF DESC as the tiebreaker.
  */
 export async function getFantasyStandings(leagueId) {
+  // Salary cap leagues have no head-to-head matchups, and everything below
+  // derives from fantasy_matchups — so this returned every member with zeroes
+  // and the Standings tab showed "--" for wins and points while
+  // dfs_weekly_results already held real totals.
+  //
+  // Delegates to getDFSStandings and maps it onto the shape the shared
+  // FantasyStandings component reads: it already relabels these columns as
+  // "Wins" and "Points" for salary cap, it just never received the numbers.
+  const { data: leagueFormat } = await supabase
+    .from('fantasy_settings')
+    .select('format')
+    .eq('league_id', leagueId)
+    .maybeSingle()
+
+  if (leagueFormat?.format === 'salary_cap') {
+    const { getDFSStandings } = await import('./dfsService.js')
+    const dfs = await getDFSStandings(leagueId)
+    const rows = Array.isArray(dfs) ? dfs : (dfs?.standings || [])
+    return rows.map((r) => ({
+      user: r.user,
+      user_id: r.user?.id,
+      fantasy_team_name: null,
+      fantasy_clinched_at: null,
+      fantasy_eliminated_at: null,
+      final_rank: null,
+      // weeklyWins is "weeks won", the salary cap analogue of a W. There are
+      // no losses or ties to report, and PA is meaningless without an
+      // opponent, so those stay zero rather than being invented.
+      wins: r.weeklyWins || 0,
+      losses: 0,
+      ties: 0,
+      pf: r.totalPoints || 0,
+      pa: 0,
+      streak: null,
+      games_played: (r.weeks || []).length,
+      rank: r.rank,
+    }))
+  }
+
   // Pull league members for the base list (so 0-game teams still show up).
   // final_rank is set by finalizeFantasyChampion and drives the sort order
   // on completed leagues; null for active/open leagues.
@@ -8446,7 +8485,7 @@ export async function scoreFantasyMatchupsWeek(week, season) {
  *   - fewer games found than the schedule lists → not final, so a game
  *     missing from `games` blocks finalisation instead of allowing it
  */
-async function isWeekFinalNow(week, season) {
+export async function isWeekFinalNow(week, season) {
   if (!week || !season) return false
   try {
     const { data: sched } = await supabase
