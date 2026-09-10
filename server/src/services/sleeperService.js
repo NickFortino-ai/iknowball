@@ -473,7 +473,8 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
 
   // Sleeper response shape: { player_id, stats: { pass_yd, gms_active, ... } }
   // Stats are nested under `stats`, NOT at the top level.
-  const rows = data
+  // `let` because the FK prefilter below reassigns it.
+  let rows = data
     .filter((row) => row.player_id && (row.stats?.gms_active > 0 || row.stats?.gp > 0))
     .map((row) => {
       const s = row.stats || {}
@@ -564,9 +565,38 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
     }
   } catch { /* non-fatal */ }
 
-  // Batch upsert with per-row fallback. If a chunk fails (likely an FK
-  // violation from a player_id we don't have in nfl_players), retry each
-  // row individually so one bad apple doesn't kill the whole chunk.
+  // Drop stats for players we don't have before upserting.
+  //
+  // Sleeper reports stats for players absent from nfl_players — 34 in week 1
+  // of 2026, practice-squad callups and late signings, only two with any
+  // fantasy production and none rostered anywhere. Every one violates the
+  // foreign key, so the fast chunked path failed on EVERY sync and fell back
+  // to inserting row by row. That is the slow path running permanently during
+  // live games, plus an error line each time.
+  //
+  // The per-row fallback below stays as the real safety net; this just stops
+  // it being the normal case.
+  try {
+    const ids = [...new Set(rows.map((r) => r.player_id).filter(Boolean))]
+    const known = new Set()
+    for (let i = 0; i < ids.length; i += 300) {
+      const { data } = await supabase
+        .from('nfl_players').select('id').in('id', ids.slice(i, i + 300))
+      for (const p of data || []) known.add(String(p.id))
+    }
+    const before = rows.length
+    rows = rows.filter((r) => known.has(String(r.player_id)))
+    if (before !== rows.length) {
+      logger.info({ season, week, dropped: before - rows.length }, 'Dropped stat rows for players not in nfl_players')
+    }
+  } catch (err) {
+    // Non-fatal: fall through and let the per-row fallback handle it.
+    logger.warn({ err: err.message }, 'Could not prefilter stat rows against nfl_players')
+  }
+
+  // Batch upsert with per-row fallback. If a chunk still fails (an FK
+  // violation from a player added between the filter above and now), retry
+  // each row individually so one bad apple doesn't kill the whole chunk.
   const CHUNK = 500
   let upserted = 0
   let skipped = 0
