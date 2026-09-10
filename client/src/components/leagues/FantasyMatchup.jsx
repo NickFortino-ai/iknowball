@@ -951,10 +951,12 @@ export default function FantasyMatchup({ league, fantasySettings }) {
           )
         })()
       ) : (
-        // All Matchups view — user's matchup expanded, others collapsed
+        // All Matchups view — everything collapsed until tapped, the user's
+        // own matchup included. It used to default open via an inverted
+        // `collapse-<id>` sentinel, which made the one card you already have a
+        // whole tab for the only thing you had to scroll past to see the rest.
         sorted.map((matchup) => {
-          const isMyMatchup = matchup.home_user?.id === profile?.id || matchup.away_user?.id === profile?.id
-          const isExpanded = (isMyMatchup && !expandedMatchups.has(`collapse-${matchup.id}`)) || expandedMatchups.has(matchup.id)
+          const isExpanded = expandedMatchups.has(matchup.id)
           const isChampionship = isPlayoffWeek && !matchup.is_consolation && matchup.round === maxRound
           return (
             <MatchupCard
@@ -966,14 +968,8 @@ export default function FantasyMatchup({ league, fantasySettings }) {
               isExpanded={isExpanded}
               onToggle={() => setExpandedMatchups((prev) => {
                 const next = new Set(prev)
-                if (isMyMatchup) {
-                  const key = `collapse-${matchup.id}`
-                  if (next.has(key)) next.delete(key)
-                  else next.add(key)
-                } else {
-                  if (next.has(matchup.id)) next.delete(matchup.id)
-                  else next.add(matchup.id)
-                }
+                if (next.has(matchup.id)) next.delete(matchup.id)
+                else next.add(matchup.id)
                 return next
               })}
               onPlayerClick={openPlayerDetail}
