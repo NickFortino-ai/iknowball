@@ -115,6 +115,13 @@ export default function SacksView({ league, tab = 'picks' }) {
   }, [players, search, selectedIds])
 
   function addPlayer(player) {
+    if (player.is_locked) {
+      // Says what's actually true. Locked players are shown now rather than
+      // filtered out, so the reason has to be legible: his game already
+      // kicked off, not "he's unavailable".
+      toast(`${player.player_name}'s game has already started`, 'error')
+      return
+    }
     if (selected.length >= 3) {
       toast('Maximum 3 picks per week', 'error')
       return
@@ -387,6 +394,10 @@ export default function SacksView({ league, tab = 'picks' }) {
           <div className="max-h-[50vh] overflow-y-auto">
             {filteredPlayers.map((player) => {
               const isExhausted = usedPlayerIds.has(player.sleeper_player_id) && !thisWeekPickIds.has(player.sleeper_player_id)
+              // Locked players stay in the list, greyed in place rather than
+              // sunk or removed — seeing who leads the stat is the point, and
+              // they keep their sorted position.
+              const isLocked = !!player.is_locked
               return (
               <div
                 key={player.sleeper_player_id}
@@ -395,7 +406,7 @@ export default function SacksView({ league, tab = 'picks' }) {
                 onClick={() => setDetailPlayer(player)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setDetailPlayer(player) }}
                 className={`flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 transition-colors cursor-pointer ${
-                  isExhausted ? 'opacity-40' : 'hover:bg-text-primary/5'
+                  isExhausted || isLocked ? 'opacity-40' : 'hover:bg-text-primary/5'
                 }`}
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -407,6 +418,9 @@ export default function SacksView({ league, tab = 'picks' }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
+                      {isLocked && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-text-muted/20 text-text-muted shrink-0">Started</span>
+                      )}
                       <InjuryBadge status={player.injury_status} />
                     </div>
                     <div className="text-xs text-text-muted">
@@ -422,7 +436,7 @@ export default function SacksView({ league, tab = 'picks' }) {
                 {(!hasSavedPicks || editing) && (
                   <button
                     onClick={(e) => { e.stopPropagation(); addPlayer(player) }}
-                    disabled={selected.length >= 3 || isExhausted}
+                    disabled={selected.length >= 3 || isExhausted || isLocked}
                     className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     +

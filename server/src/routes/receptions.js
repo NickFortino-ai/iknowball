@@ -74,7 +74,6 @@ router.get('/players', async (req, res) => {
   const matchupByTeam = await getCurrentWeekMatchups()
 
   const pool = (receivers || [])
-    .filter((d) => !lockedTeams.has(d.team))
     .map((d) => {
       const m = matchupByTeam[d.team] || null
       return {
@@ -83,6 +82,13 @@ router.get('/players', async (req, res) => {
         position: d.position,
         team: d.team,
         headshot_url: d.headshot_url,
+        // Locked players stay in the pool, flagged rather than dropped. The
+        // filter that used to remove them also removed whoever currently
+        // leads the stat -- browsing "who has the most" is the main reason
+        // to open this list -- and the submit path already rejects a locked
+        // pick with "<name>'s game has already started", so the filter was
+        // only ever redundant defence.
+        is_locked: lockedTeams.has(d.team),
         injury_status: d.injury_status,
         season_receptions: recMap[d.id] || 0,
         opponent: m?.opponent || null,
@@ -97,7 +103,13 @@ router.get('/players', async (req, res) => {
     const bBye = b.opponent ? 0 : 1
     if (aBye !== bBye) return aBye - bBye
     if (hasStats) {
-      return b.season_receptions - a.season_receptions || a.player_name.localeCompare(b.player_name)
+      // Tie-break on the curated preseason rank before the name. Without
+      // it the first recorded stat of the season flips the whole list to
+      // live totals, and the ~1000 players still on zero all tie and fall
+      // into alphabetical order -- burying every elite name.
+      return b.season_receptions - a.season_receptions
+        || (PRESEASON_RECEPTION_RANK[a.player_name] ?? 999) - (PRESEASON_RECEPTION_RANK[b.player_name] ?? 999)
+        || a.player_name.localeCompare(b.player_name)
     }
     const aRank = PRESEASON_RECEPTION_RANK[a.player_name] ?? 999
     const bRank = PRESEASON_RECEPTION_RANK[b.player_name] ?? 999
