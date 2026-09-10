@@ -374,8 +374,19 @@ export function startScheduler() {
     }, { timezone: 'America/New_York' })
     logger.info('Fantasy global rankings scheduled: nightly 4:00 AM ET')
 
-    // Fantasy waivers — process all pending claims at 3:00 AM ET Wednesdays
-    cron.schedule('0 3 * * 3', async () => {
+    // Fantasy waivers — every 15 minutes, resolve claims for any player whose
+    // waiver period has elapsed, and free the ones nobody claimed.
+    //
+    // This replaces a Wednesday-3AM-only run. The weekly batch still happens
+    // at 3 AM ET Wednesday, because every Sunday-through-Tuesday drop carries
+    // clears_at = Wednesday 3 AM and so becomes eligible on that tick. What
+    // this adds is the mid-week case: a Wednesday-to-Saturday drop clears 24h
+    // later and is now a real priority contest between whoever filed a claim,
+    // instead of unlocking silently and going to whoever clicked Add first.
+    //
+    // Cheap when idle — leagues with no elapsed pool rows and no pending
+    // claims return immediately.
+    cron.schedule('*/15 * * * *', async () => {
       try {
         const { processAllPendingWaivers } = await import('../services/fantasyService.js')
         await processAllPendingWaivers()
@@ -383,7 +394,7 @@ export function startScheduler() {
         logger.error({ err }, 'Fantasy waivers cron failed')
       }
     }, { timezone: 'America/New_York' })
-    logger.info('Fantasy waivers scheduled: Wednesdays 3:00 AM ET')
+    logger.info('Fantasy waivers scheduled: every 15 minutes')
 
     cron.schedule('*/2 * * * *', async () => {
       try { await settleNBAProps() } catch (err) { logger.error({ err }, 'NBA prop auto-settlement failed') }

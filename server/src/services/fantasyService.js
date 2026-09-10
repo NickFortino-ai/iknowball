@@ -5919,19 +5919,53 @@ export async function getLockedTeamsForLeague(leagueId) {
 
 /**
  * Returns the set of player_ids currently waiver-locked for the league.
- * A player is waiver-locked if either (a) they sit in fantasy_waiver_pool with
- * clears_at in the future, or (b) their NFL team's current-week game has
- * already started.
+ * A player is waiver-locked if either (a) they sit in fantasy_waiver_pool at
+ * all, or (b) their NFL team's current-week game has already started.
+ *
+ * Note (a) is presence, NOT clears_at > now. It used to be the latter, which
+ * meant a mid-week drop stopped being locked the instant its 24h elapsed and
+ * became a first-come-first-served add — whoever happened to be looking won,
+ * and any pending claims on that player sat until Wednesday and then failed
+ * with "Player no longer available". Claims are supposed to be a priority
+ * contest, so the player now stays locked until the waiver processor has
+ * actually resolved the claims against them and deleted the row (runs every
+ * 15 minutes, so at most a short wait past clears_at).
  */
+// How far past clears_at a pool row keeps locking its player. Normally the
+// processor sweeps the row within 15 minutes of clearing, so this never comes
+// into play. It matters only if that job stops running: presence-based locking
+// is not self-healing the way the old clears_at > now test was, and without a
+// valve a dead cron would leave every dropped player permanently unaddable.
+// Six hours is long enough that it can't be hit while the job is healthy, and
+// short enough that a real outage degrades to the old free-agent behaviour
+// instead of freezing the waiver wire.
+const WAIVER_LOCK_GRACE_MS = 6 * 60 * 60 * 1000
+
 export async function getWaiverLockedPlayerIds(leagueId) {
-  const nowIso = new Date().toISOString()
   const { data: pool } = await supabase
     .from('fantasy_waiver_pool')
-    .select('player_id')
+    .select('player_id, clears_at')
     .eq('league_id', leagueId)
-    .gt('clears_at', nowIso)
-  const locked = new Set((pool || []).map((r) => r.player_id))
+  const staleBefore = Date.now() - WAIVER_LOCK_GRACE_MS
+  const locked = new Set(
+    (pool || [])
+      .filter((r) => new Date(r.clears_at).getTime() > staleBefore)
+      .map((r) => r.player_id)
+  )
 
+  for (const pid of await getKickedOffPlayerIds(leagueId)) locked.add(pid)
+  return locked
+}
+
+/**
+ * Just the "their NFL game has already started" half of the waiver lock.
+ * Split out because the waiver processor needs it on its own: it has to skip
+ * claims on players whose game is in progress, without also treating every
+ * player sitting in the pool as ineligible (the pool is exactly what it is
+ * there to resolve).
+ */
+async function getKickedOffPlayerIds(leagueId) {
+  const locked = new Set()
   const lockedTeams = await getLockedTeamsForLeague(leagueId)
   if (lockedTeams.size > 0) {
     // fetchAll: every player on a locked team, which is ~2,600 rows with a
@@ -6245,11 +6279,37 @@ export async function getMyWaiverClaims(leagueId, userId) {
  * Each successful claim adds the player to the user's bench (and drops the
  * specified drop player if set). Failed claims get fail_reason set.
  */
+/**
+ * Delete pool rows whose waiver period has elapsed — those players become free
+ * agents. Split out and run via `finally` because locking is now presence-based:
+ * every early return in the claim resolver (no settings, no pending claims, no
+ * eligible claims) used to skip the sweep, which was harmless when the lock
+ * expired on its own clock. It is not harmless now — a league where nobody
+ * happened to file a claim would leave its dropped players locked permanently.
+ */
+async function sweepClearedWaiverPool(leagueId) {
+  const { error } = await supabase
+    .from('fantasy_waiver_pool')
+    .delete()
+    .eq('league_id', leagueId)
+    .lte('clears_at', new Date().toISOString())
+  if (error) logger.error({ error, leagueId }, 'Waiver pool sweep failed')
+}
+
 export async function processLeagueWaivers(leagueId) {
+  try {
+    return await resolveLeagueWaiverClaims(leagueId)
+  } finally {
+    await sweepClearedWaiverPool(leagueId)
+  }
+}
+
+async function resolveLeagueWaiverClaims(leagueId) {
   const settings = await getFantasySettings(leagueId)
   if (!settings) return { processed: 0 }
   const isFaab = settings.waiver_type === 'faab'
-  const isPriority = settings.waiver_type === 'priority'
+  // 'priority' and anything else non-FAAB both take the rolling path now, so
+  // there is no longer a separate isPriority branch to key off.
 
   const { data: claims } = await supabase
     .from('fantasy_waiver_claims')
@@ -6288,35 +6348,46 @@ export async function processLeagueWaivers(leagueId) {
     claimsByPlayer[c.add_player_id].push(c)
   }
 
-  // Priority waivers: recompute every member's priority from current
-  // standings before processing this batch. Worst rank gets priority 1
-  // (first pick), best rank gets last priority. This is the inverse-of-
-  // standings reset that ESPN/Yahoo/Sleeper all call "Standard" or
-  // "Priority" waivers — distinct from rolling, where the winner of a
-  // claim drops to the bottom for next time.
+  // Priority waivers are a ROLLING list: the order is seeded once (reverse
+  // draft order, at draft completion) and thereafter the only thing that
+  // moves it is winning a claim — winner goes to the back, everyone below
+  // them moves up one. See the award step further down.
   //
-  // Pre-season fallback: if no team has played a completed matchup yet,
-  // keep the existing priority (which was set from reverse draft order
-  // when the draft completed). This handles Week 1 waivers gracefully.
-  if (isPriority) {
-    try {
-      const standings = await getFantasyStandings(leagueId)
-      const hasGamesPlayed = standings.some((s) => (s.games_played || 0) > 0)
-      if (hasGamesPlayed) {
-        const totalTeams = standings.length
-        for (const s of standings) {
-          const newPriority = totalTeams - s.rank + 1
-          await supabase
-            .from('fantasy_waiver_state')
-            .update({ priority: newPriority, updated_at: new Date().toISOString() })
-            .eq('league_id', leagueId)
-            .eq('user_id', s.user_id)
-        }
-      }
-    } catch (err) {
-      logger.error({ err, leagueId }, 'Priority waiver standings recompute failed — falling back to existing priorities')
-    }
+  // This used to recompute every member's priority from current standings at
+  // the start of each run, and the winner did not move. That is coherent when
+  // waivers run exactly once a week, but claims now resolve every 15 minutes
+  // as players clear, and under a per-run standings reset the last-place team
+  // would win every contested claim, all season, without ever giving up its
+  // position. Rolling is also what Yahoo does in waiver-priority leagues.
+  //
+  // Nothing to do at batch start now — the order is already correct.
+
+  // Only resolve claims for players who have actually cleared. This job now
+  // runs every 15 minutes rather than once on Wednesday, so it has to leave
+  // alone anything still sitting out its waiver period:
+  //
+  //   - pool row with clears_at in the future -> still on waivers, wait
+  //   - NFL team's game has kicked off        -> can't be acquired mid-game
+  //
+  // A claim on a player with no pool row at all is resolvable — that's a
+  // player who already cleared and had their row swept.
+  //
+  // The Sunday-to-Wednesday batch still behaves exactly as before: those
+  // drops all carry clears_at = Wednesday 3 AM, so they become eligible
+  // together on the run at (or just after) 3 AM.
+  const { data: poolRows } = await supabase
+    .from('fantasy_waiver_pool')
+    .select('player_id, clears_at')
+    .eq('league_id', leagueId)
+  const nowMs = Date.now()
+  const notYetCleared = new Set(
+    (poolRows || []).filter((r) => new Date(r.clears_at).getTime() > nowMs).map((r) => r.player_id)
+  )
+  const kickedOff = await getKickedOffPlayerIds(leagueId)
+  for (const pid of Object.keys(claimsByPlayer)) {
+    if (notYetCleared.has(pid) || kickedOff.has(pid)) delete claimsByPlayer[pid]
   }
+  if (!Object.keys(claimsByPlayer).length) return { processed: 0 }
 
   // Get current waiver state for tiebreak / priority sort
   const stateRows = await getWaiverStateForLeague(leagueId)
@@ -6560,14 +6631,11 @@ export async function processLeagueWaivers(leagueId) {
         .eq('league_id', leagueId)
         .eq('user_id', winner.user_id)
       stateByUser[winner.user_id].faab_remaining = newRemaining
-    } else if (isPriority) {
-      // Priority (inverse-standings reset) waivers: do NOT shuffle. The
-      // batch-start recompute already set priorities based on current
-      // standings; winning a single claim doesn't change a team's spot.
-      // Priorities will be recomputed again on the next waiver run.
     } else {
       // Rolling priority: winner goes to the back, everyone else with worse
-      // priority moves up by 1
+      // priority moves up by 1. This is now the path for waiver_type
+      // 'priority' as well — the old branch that deliberately did NOT shuffle
+      // relied on a per-run standings recompute that no longer happens.
       const winnerPri = stateByUser[winner.user_id]?.priority || stateRows.length
       const maxPri = stateRows.length
       // Move winner to back
@@ -6611,16 +6679,8 @@ export async function processLeagueWaivers(leagueId) {
     }
   }
 
-  // Anything left in the waiver pool whose clears_at has passed becomes a
-  // free agent. Also remove the players who were just awarded — those are
-  // off waivers regardless of their original clears_at.
-  const nowIso = new Date().toISOString()
-  await supabase
-    .from('fantasy_waiver_pool')
-    .delete()
-    .eq('league_id', leagueId)
-    .lte('clears_at', nowIso)
-
+  // The pool sweep that used to live here now runs in processLeagueWaivers'
+  // finally block, so it also covers the early-return paths.
   logger.info({ leagueId, processed }, 'Waivers processed for league')
   return { processed }
 }
