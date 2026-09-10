@@ -657,9 +657,21 @@ router.get('/matchup-live', async (req, res) => {
     const onBye = player.bye_week === w
     const weeklyProj = onBye ? 0 : (weeklyProjMap[r.player_id] != null ? weeklyProjMap[r.player_id] : (seasonAvgMap[r.player_id] || 0))
 
-    // Projected points: actual so far + remaining fraction * projection
+    // TWO different numbers, deliberately:
+    //
+    // `projected` blends — actual so far plus the unplayed fraction of the
+    // projection — and is what the TEAM total sums to give a live estimate of
+    // where a matchup finishes. That behaviour is correct there.
+    //
+    // `projected_pregame` is the untouched weekly projection, for the PROJ
+    // column beside each player. Using the blended value there meant a
+    // finished player's projection collapsed onto his actual score — Jadarian
+    // Price read "PROJ 7.8 / PTS 7.8" — which tells you nothing. The point of
+    // that column is what was EXPECTED of him, so you can see who beat or
+    // missed it.
     const progress = gameProgressFraction(teamState, gameScores[team]?.period)
     const projected = onBye ? 0 : (status === 'final' ? pts : pts + weeklyProj * (1 - progress))
+    const projectedPregame = onBye ? 0 : weeklyProj
 
     const gs = gameScores[team] || {}
     userRosters[r.user_id].push({
@@ -667,6 +679,7 @@ router.get('/matchup-live', async (req, res) => {
       player_id: r.player_id,
       player_name: player.full_name || '?',
       position: player.position || '?',
+      projected_pregame: Math.round(projectedPregame * 10) / 10,
       team,
       headshot_url: player.headshot_url || null,
       injury_status: player.injury_status || null,

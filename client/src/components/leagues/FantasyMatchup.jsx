@@ -267,7 +267,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       {hp?.on_bye && <div className="text-[10px] text-yellow-400 font-bold">BYE</div>}
                     </div>
                   </div>
-                  <div className="text-right text-text-primary/60 text-xs">{hp?.projected?.toFixed(1) || '--'}</div>
+                  <div className="text-right text-text-primary/60 text-xs">{(hp?.projected_pregame ?? hp?.projected)?.toFixed(1) || '--'}</div>
                   <div className={`text-right font-bold text-base md:text-lg tabular-nums ${hp?.game_status === 'live' ? 'text-orange-400' : hp?.game_status === 'final' ? 'text-white' : 'text-text-muted'}`}>
                     {hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}
                   </div>
@@ -279,7 +279,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                   <div className={`text-left font-bold text-base md:text-lg tabular-nums ${ap?.game_status === 'live' ? 'text-orange-400' : ap?.game_status === 'final' ? 'text-white' : 'text-text-muted'}`}>
                     {aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}
                   </div>
-                  <div className="text-left text-text-primary/60 text-xs">{ap?.projected?.toFixed(1) || '--'}</div>
+                  <div className="text-left text-text-primary/60 text-xs">{(ap?.projected_pregame ?? ap?.projected)?.toFixed(1) || '--'}</div>
                   {/* Away player */}
                   <div
                     className="flex items-center gap-2.5 justify-end min-w-0 cursor-pointer hover:bg-text-primary/5 rounded px-1 py-0.5"
@@ -336,11 +336,11 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       {hStat && <div className="text-[10px] text-text-primary truncate">{hStat}</div>}
                     </div>
                   </div>
-                  <div className="text-right text-text-primary/40 text-xs">{hp?.projected?.toFixed(1) || '--'}</div>
+                  <div className="text-right text-text-primary/40 text-xs">{(hp?.projected_pregame ?? hp?.projected)?.toFixed(1) || '--'}</div>
                   <div className="text-right text-text-muted text-sm font-semibold tabular-nums">{hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}</div>
                   <div className="text-center"><span className="text-[10px] font-semibold text-text-muted">BN</span></div>
                   <div className="text-left text-text-muted text-sm font-semibold tabular-nums">{aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}</div>
-                  <div className="text-left text-text-primary/40 text-xs">{ap?.projected?.toFixed(1) || '--'}</div>
+                  <div className="text-left text-text-primary/40 text-xs">{(ap?.projected_pregame ?? ap?.projected)?.toFixed(1) || '--'}</div>
                   <div className="flex items-center gap-2 justify-end min-w-0 cursor-pointer hover:bg-text-primary/5 rounded px-1 py-0.5" onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}>
                     <div className="min-w-0 text-right">
                       <span className="font-semibold text-text-primary truncate block text-xs">{displayName(ap?.player_name)}</span>
