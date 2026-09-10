@@ -3491,47 +3491,10 @@ export async function getDraftBoard(leagueId) {
 /**
  * Get user's fantasy roster.
  */
-/**
- * Salary cap rosters live in dfs_rosters / dfs_roster_slots. Reshaped into the
- * same row shape fantasy_rosters produces — { player_id, slot, nfl_players } —
- * so every consumer of getRoster works unchanged. DFS slot names (QB, RB1,
- * FLEX, DEF) lowercase to exactly the keys buildStarterSlots derives from a
- * salary cap league's roster_slots config, so starter/bench classification
- * lands correctly without special-casing.
- */
-async function getSalaryCapRosterRows(leagueId, userId) {
-  const { getCurrentNflWeek } = await import('./tdPassService.js')
-  const { getDFSRoster } = await import('./dfsService.js')
-  const { season, week } = await getCurrentNflWeek()
-  const roster = await getDFSRoster(leagueId, userId, week, season)
-  if (!roster) return []
-  return (roster.dfs_roster_slots || [])
-    .filter((s) => s.nfl_players)
-    .map((s) => ({
-      player_id: s.player_id,
-      slot: String(s.roster_slot || '').toLowerCase(),
-      nfl_players: s.nfl_players,
-    }))
-}
-
+// Only ever called for traditional fantasy — its sole consumer is RosterList,
+// which now renders only in non-salary-cap standings. Salary cap rosters live
+// in dfs_rosters and are presented on the Live tab.
 export async function getRoster(leagueId, userId) {
-  // Salary cap leagues keep their rosters in dfs_rosters / dfs_roster_slots,
-  // not fantasy_rosters. This function reads fantasy_rosters, so expanding a
-  // manager in salary cap standings hit an empty table and rendered "No roster
-  // yet" over someone plainly showing 38.3 points.
-  //
-  // Handled here rather than in the client so it reaches already-shipped
-  // native builds, which call this same endpoint. Dynamic import because
-  // dfsService imports this module — a static import would be circular.
-  const { data: fmt } = await supabase
-    .from('fantasy_settings')
-    .select('format')
-    .eq('league_id', leagueId)
-    .maybeSingle()
-  if (fmt?.format === 'salary_cap') {
-    return getSalaryCapRosterRows(leagueId, userId)
-  }
-
   const { data, error } = await supabase
     .from('fantasy_rosters')
     .select('*, nfl_players(id, full_name, position, team, headshot_url, injury_status, bye_week)')
