@@ -331,7 +331,11 @@ router.get('/live', async (req, res) => {
   }
 
   // Weekly projections from Sleeper — prefer over season averages for matchup context
-  const projCol = { ppr: 'pts_ppr', half_ppr: 'pts_half_ppr', standard: 'pts_std' }[settings?.scoring_format] || 'pts_half_ppr'
+  // leagueSettings, not settings — this handler names it leagueSettings, and
+  // `settings` was never declared here at all. Optional chaining does not save
+  // an undeclared identifier: it threw ReferenceError, so /dfs/live returned
+  // 500 every call and the salary cap Live tab read "No rosters for this week".
+  const projCol = { ppr: 'pts_ppr', half_ppr: 'pts_half_ppr', standard: 'pts_std' }[leagueSettings?.scoring_format] || 'pts_half_ppr'
   const weeklyProjMap = {}
   if (allPlayerIds.length) {
     const { data: projRows } = await supabase
