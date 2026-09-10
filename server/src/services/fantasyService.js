@@ -6677,7 +6677,14 @@ async function resolveLeagueWaiverClaims(leagueId) {
       if (loser.id === winner.id) continue
       await supabase
         .from('fantasy_waiver_claims')
-        .update({ status: 'failed', fail_reason: 'Outbid by another claim', processed_at: new Date().toISOString() })
+        // "Outbid" only describes FAAB. In a priority league nobody bid on
+        // anything — the claim lost on waiver order — and telling a manager
+        // they were outbid in a league with no bidding is just confusing.
+        .update({
+          status: 'failed',
+          fail_reason: isFaab ? 'Outbid by another claim' : 'Another team had higher waiver priority',
+          processed_at: new Date().toISOString(),
+        })
         .eq('id', loser.id)
     }
   }
