@@ -6362,19 +6362,23 @@ async function resolveLeagueWaiverClaims(leagueId) {
   //
   // Nothing to do at batch start now — the order is already correct.
 
-  // Only resolve claims for players who have actually cleared. This job now
-  // runs every 15 minutes rather than once on Wednesday, so it has to leave
-  // alone anything still sitting out its waiver period:
+  // Only resolve claims for players who have actually cleared waivers. This
+  // job now runs every 15 minutes rather than once on Wednesday, so it has to
+  // leave alone anything still sitting out its waiver period — a pool row with
+  // clears_at in the future. A claim on a player with no pool row at all is
+  // resolvable: that's someone who already cleared and had their row swept.
   //
-  //   - pool row with clears_at in the future -> still on waivers, wait
-  //   - NFL team's game has kicked off        -> can't be acquired mid-game
+  // The Sunday-to-Wednesday batch still behaves exactly as before: those drops
+  // all carry clears_at = Wednesday 3 AM, so they become eligible together on
+  // the run at (or just after) 3 AM.
   //
-  // A claim on a player with no pool row at all is resolvable — that's a
-  // player who already cleared and had their row swept.
-  //
-  // The Sunday-to-Wednesday batch still behaves exactly as before: those
-  // drops all carry clears_at = Wednesday 3 AM, so they become eligible
-  // together on the run at (or just after) 3 AM.
+  // Deliberately NOT gated on whether the player's NFL game has kicked off.
+  // That guard seems right and is actively harmful: a kicked-off player can't
+  // be added directly (the free-agent path rejects him), so a claim is the
+  // ONLY way to get him, and skipping those claims here would strand them
+  // until the league rolls to the next week — up to six days. It also buys
+  // nothing, since an awarded player is inserted to 'bench', so acquiring
+  // someone whose game already finished has no scoring effect either way.
   const { data: poolRows } = await supabase
     .from('fantasy_waiver_pool')
     .select('player_id, clears_at')
@@ -6383,9 +6387,8 @@ async function resolveLeagueWaiverClaims(leagueId) {
   const notYetCleared = new Set(
     (poolRows || []).filter((r) => new Date(r.clears_at).getTime() > nowMs).map((r) => r.player_id)
   )
-  const kickedOff = await getKickedOffPlayerIds(leagueId)
   for (const pid of Object.keys(claimsByPlayer)) {
-    if (notYetCleared.has(pid) || kickedOff.has(pid)) delete claimsByPlayer[pid]
+    if (notYetCleared.has(pid)) delete claimsByPlayer[pid]
   }
   if (!Object.keys(claimsByPlayer).length) return { processed: 0 }
 
