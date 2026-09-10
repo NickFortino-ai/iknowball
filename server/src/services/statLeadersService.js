@@ -185,7 +185,12 @@ async function fetchCategoriesForSport(espnPath, categoryNames, typeCode = 2, se
   // filtered out by division below — at limit=15 the FBS survivors were
   // 0-3 per category. Still ONE request either way (~150ms), and the
   // dereference count is unchanged since filtering happens first.
-  const limit = espnPath.includes('college-football') ? 200 : 15
+  // 30 rather than 15 because ESPN duplicates every athlete in several NFL
+  // categories, so deduping downstream halves whatever we ask for — at 15 a
+  // top-ten table came back with seven distinct players. Costs only a larger
+  // JSON payload: the expensive per-athlete dereference runs after the slice,
+  // on ten, however many we fetch here.
+  const limit = espnPath.includes('college-football') ? 200 : 30
   const url = `https://sports.core.api.espn.com/v2/sports/${espnPath}/seasons/${season}/types/${typeCode}/leaders?limit=${limit}`
   let data
   try {
@@ -320,7 +325,22 @@ async function fetchOne(sportKey) {
     const cfgEntry = config.categories.find((c) => c.name === requestedName)
     const label = cfgEntry?.label || cat.displayName
     const isTotalOfPerGame = !!cat.totalStatName
-    const topN = (cat.leaders || []).slice(0, isTotalOfPerGame ? 25 : 10)
+    // ESPN returns each athlete TWICE in these categories — same athlete
+    // ref, same team, same value. Verified live against the NFL 2026
+    // passingYards category, which returned six entries for three players.
+    // It is not an early-season artifact that resolves as games are played,
+    // and slicing before deduping meant a top-five that was really a top
+    // three. Dedupe on the athlete ref first, so the slice yields up to N
+    // DISTINCT players — and naturally shows fewer when fewer exist.
+    const seenAthlete = new Set()
+    const distinct = (cat.leaders || []).filter((l) => {
+      const key = l?.athlete?.$ref || l?.athlete?.id || null
+      if (!key) return true
+      if (seenAthlete.has(key)) return false
+      seenAthlete.add(key)
+      return true
+    })
+    const topN = distinct.slice(0, isTotalOfPerGame ? 25 : 10)
     const leaders = await Promise.all(
       topN.map((l) => dereferenceLeader(l, requestedName, cat.totalStatName).catch(() => null)),
     )
