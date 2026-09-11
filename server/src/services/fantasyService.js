@@ -260,7 +260,7 @@ const IDP_POSITIONS = new Set([
 export function computeIdpAwareProjection(projRow, position, projCol, rules) {
   if (!projRow) return null
   if (IDP_POSITIONS.has(position)) {
-    return applyScoringRules({
+    const idpPoints = applyScoringRules({
       idp_sack: projRow.idp_sack || 0,
       idp_int: projRow.idp_int || 0,
       idp_tkl_solo: projRow.idp_tkl_solo || 0,
@@ -271,6 +271,22 @@ export function computeIdpAwareProjection(projRow, position, projCol, rules) {
       idp_ff: projRow.idp_ff || 0,
       idp_fum_rec: projRow.idp_fum_rec || 0,
     }, rules)
+
+    // Plus whatever he is projected to do on offence. This used to return the
+    // IDP total ALONE, which zeroed out two-way players: Travis Hunter is
+    // listed DB, projects no defensive stats at all, and so read 0.0 while
+    // Sleeper projected him 3.6 as a receiver. His actual score has always
+    // included it — applyScoringRules runs over the whole stat row, receiving
+    // and defensive alike — so the projection was computed on a different
+    // basis than the number it gets compared against.
+    //
+    // Safe to add rather than double-counting, which was the worry: measured
+    // across all 421 defenders with a Week 1 projection, pts_* is FLAT with
+    // respect to IDP production — averaging 0.31 for 4+ projected
+    // tackles/sacks, 0.34 for 2-4, 0.20 for 0-2. It carries no IDP scoring of
+    // its own, just the small odds of a defensive or return touchdown, which
+    // genuinely does belong in the total.
+    return (Number(idpPoints) || 0) + (Number(projRow[projCol]) || 0)
   }
   return projRow[projCol]
 }
