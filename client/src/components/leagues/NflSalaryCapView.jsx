@@ -268,11 +268,22 @@ export default function NflSalaryCapView({ league }) {
                       </div>
                     </div>
                     </button>
-                    {isLocked ? (
-                      <span className="text-sm font-display text-text-primary">{Math.round(pointsEarned * 10) / 10}</span>
-                    ) : (
-                      <span className="text-sm font-bold text-correct">${(player.salary || 0).toLocaleString()}</span>
-                    )}
+                    {/* Salary AND points, rather than swapping one for the
+                        other at kickoff. The price is what you paid and stays
+                        relevant all week — it was disappearing exactly when
+                        you'd want to judge the buy against what he returned.
+                        Salary steps down to the smaller muted green the pool
+                        list uses; points sit right of it in bold.
+
+                        The points slot is always rendered — an em dash before
+                        kickoff — so the right edge stays aligned down all nine
+                        rows instead of shifting as players lock one by one. */}
+                    <span className="text-xs font-semibold text-correct/80 tabular-nums shrink-0">
+                      ${(player.salary || 0).toLocaleString()}
+                    </span>
+                    <span className="text-sm font-display text-text-primary tabular-nums w-11 text-right shrink-0">
+                      {isLocked ? Math.round(pointsEarned * 10) / 10 : '\u2013'}
+                    </span>
                     {!isLocked && isEditing && (
                       <button
                         onClick={() => removeSlot(slot.key)}
