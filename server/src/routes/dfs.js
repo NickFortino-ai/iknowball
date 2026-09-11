@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { NFL_FULL_TO_ABBR } from '../services/fantasyService.js'
+import { NFL_FULL_TO_ABBR, computeIdpAwareProjection } from '../services/fantasyService.js'
 import { buildStarterSlots, SLOT_LABELS } from '../utils/rosterSlots.js'
 import { supabase } from '../config/supabase.js'
 import { requireAuth } from '../middleware/auth.js'
@@ -634,17 +634,28 @@ router.get('/matchup-live', async (req, res) => {
 
   // Weekly projections from Sleeper — prefer over season averages
   const projColH2H = { ppr: 'pts_ppr', half_ppr: 'pts_half_ppr', standard: 'pts_std' }[settings?.scoring_format] || 'pts_half_ppr'
-  const weeklyProjMap = {}
+  // The whole row, not just the pre-baked offensive total. pts_ppr /
+  // pts_half_ppr / pts_std are OFFENSIVE scoring projections, so a defender
+  // projected for two solo tackles and most of a sack came through as ~1.0 —
+  // the handful of points Sleeper expects him to score on offence. Travis
+  // Hunter made it obvious: he projected 3.6 where every other IDP sat near
+  // 1, because he actually plays receiver, and 3.6 was his RECEIVING
+  // projection with his defensive production contributing nothing.
+  //
+  // computeIdpAwareProjection runs the projected IDP stat lines through the
+  // league's own scoring rules for defensive positions and falls back to the
+  // pre-baked total for everyone else. It already backed the roster, player
+  // browser and player detail screens — the matchup view was the one place
+  // still reading the raw column.
+  const weeklyProjRowMap = {}
   if (allPlayerIds.length) {
     const { data: projRows } = await supabase
       .from('nfl_player_projections')
-      .select(`player_id, ${projColH2H}`)
+      .select(`player_id, ${projColH2H}, idp_sack, idp_int, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec`)
       .eq('season', s)
       .eq('week', w)
       .in('player_id', [...new Set(allPlayerIds)])
-    for (const p of projRows || []) {
-      if (p[projColH2H] != null) weeklyProjMap[p.player_id] = Number(p[projColH2H])
-    }
+    for (const p of projRows || []) weeklyProjRowMap[p.player_id] = p
   }
 
   // Estimate game progress fraction (NFL: 4 quarters, 60 min)
@@ -675,7 +686,8 @@ router.get('/matchup-live', async (req, res) => {
     const pts = applyRulesH2H(stat, leagueRules)
     // Zero projection for bye-week players
     const onBye = player.bye_week === w
-    const weeklyProj = onBye ? 0 : (weeklyProjMap[r.player_id] != null ? weeklyProjMap[r.player_id] : (seasonAvgMap[r.player_id] || 0))
+    const projected_ = computeIdpAwareProjection(weeklyProjRowMap[r.player_id], player.position, projColH2H, leagueRules)
+    const weeklyProj = onBye ? 0 : (projected_ != null ? Number(projected_) : (seasonAvgMap[r.player_id] || 0))
 
     // TWO different numbers, deliberately:
     //
