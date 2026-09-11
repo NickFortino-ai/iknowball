@@ -9,6 +9,7 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import { SkeletonCard } from '../ui/Skeleton'
 import Avatar from '../ui/Avatar'
 import { toast } from '../ui/Toast'
+import PlayerHeadshot from '../ui/PlayerHeadshot'
 
 // Explicit past-tense map — templating `${action}ed` gives "declineed" and
 // `${action}d` gives "canceld" / "vetod". Kept in sync with the identical
@@ -148,7 +149,9 @@ function TransactionRow({ txn, onTapPlayer }) {
   const typeConfig = {
     add: { icon: '+', color: 'text-correct', label: 'added' },
     drop: { icon: '-', color: 'text-incorrect', label: 'dropped' },
-    waiver_add: { icon: '+', color: 'text-correct', label: 'claimed (waiver)' },
+    // "acquired X through waivers" rather than "claimed (waiver) X" — reads
+    // as a sentence instead of a log line with a parenthetical type tag.
+    waiver_add: { icon: '+', color: 'text-correct', label: 'acquired', suffix: 'through waivers' },
     waiver_drop: { icon: '-', color: 'text-incorrect', label: 'dropped' },
     draft: { icon: '\u2605', color: 'text-text-primary', label: 'drafted' },
   }
@@ -164,17 +167,23 @@ function TransactionRow({ txn, onTapPlayer }) {
         {cfg.icon}
       </span>
       <button type="button" onClick={handleTap} className="shrink-0">
-        {player.headshot_url ? (
-          <img src={player.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0 hover:ring-2 hover:ring-accent/40 transition-all" onError={(e) => { e.target.style.display = 'none' }} />
-        ) : (
-          <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 hover:ring-2 hover:ring-accent/40 transition-all" />
-        )}
+        {/* Shared component: falls back to initials rather than an empty grey
+            disc. The old fallback rendered a blank circle when a player had
+            no headshot, and the inline <img> only hid itself on error — so a
+            broken URL left nothing at all. */}
+        <PlayerHeadshot
+          name={player.full_name}
+          url={player.headshot_url}
+          size="md"
+          className="hover:ring-2 hover:ring-accent/40 transition-all"
+        />
       </button>
       <div className="flex-1 min-w-0">
         <div className="text-base text-text-primary">
           <span className="font-semibold">{user.display_name || user.username}</span>
           {' '}<span className="text-text-primary/60">{cfg.label}</span>{' '}
           <span className="font-semibold">{player.full_name}</span>
+          {cfg.suffix && <span className="text-text-primary/60">{' '}{cfg.suffix}</span>}
         </div>
         <div className="text-xs text-text-muted">
           {player.position} · {player.team || 'FA'}
