@@ -55,6 +55,7 @@ import { getSeasonEndDate, isSeasonUnderway } from '../lib/seasonDates'
 import { formatStartDateShort, formatEndDateShort, formatEndDateLong, formatDraftDateShort } from '../lib/leagueDate'
 import { todaySportsDay, leagueStartSportsDay } from '../lib/sportsDay'
 import { MODAL_INSET_STYLE } from '../lib/modalInset'
+import { DEFAULT_RULES } from '../components/leagues/ScoringRulesEditor'
 
 const REPORT_FORMATS = ['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs']
 
@@ -208,13 +209,11 @@ function formatDateRange(startsAt, endsAt) {
 // hideKicking: salary cap lineups have no K slot (see SLOTS in
 // NflSalaryCapView), so kicking rules are unreachable scoring — listing
 // them implies you can roster a kicker.
-function ScoringRulesDisplay({ rules, format, hideKicking = false }) {
-  const [open, setOpen] = useState(false)
-  if (!rules) return null
-
-  const formatLabel = format === 'ppr' ? 'PPR' : format === 'half_ppr' ? 'Half PPR' : format === 'standard' ? 'Standard' : 'Custom'
-
-  const Row = ({ label, value }) => (
+// Hoisted out of ScoringRulesDisplay: declared inside the component it was
+// rebuilt on every render, which eslint flags once per usage — twenty-odd
+// errors from a single stateless row renderer.
+function Row({ label, value }) {
+  return (
     <div className="flex justify-between py-1.5 border-b border-text-primary/5 last:border-0">
       <span className="text-sm text-text-primary">{label}</span>
       <span className={`text-sm font-semibold tabular-nums ${value > 0 ? 'text-correct' : value < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
@@ -222,6 +221,21 @@ function ScoringRulesDisplay({ rules, format, hideKicking = false }) {
       </span>
     </div>
   )
+}
+
+function ScoringRulesDisplay({ rules: storedRules, format, hideKicking = false }) {
+  const [open, setOpen] = useState(false)
+  if (!storedRules) return null
+
+  // Layer the defaults underneath, exactly as the server does when it scores
+  // (`{ ...DEFAULT_SCORING_RULES, ...rules }` in applyScoringRules). Without
+  // this the panel lies about leagues created before a category existed:
+  // their stored scoring_rules JSONB has no return_yd or return_td key, so
+  // Returns would render blank while the server was busily awarding points
+  // for them.
+  const rules = { ...DEFAULT_RULES, ...storedRules }
+
+  const formatLabel = format === 'ppr' ? 'PPR' : format === 'half_ppr' ? 'Half PPR' : format === 'standard' ? 'Standard' : 'Custom'
 
   return (
     <div className="mt-3 pt-3 border-t border-text-primary/10">
@@ -256,6 +270,11 @@ function ScoringRulesDisplay({ rules, format, hideKicking = false }) {
           <div>
             <div className="text-xs uppercase tracking-wider text-text-primary font-bold mb-1.5">Misc</div>
             <Row label="Fumble Lost" value={rules.fum_lost} />
+          </div>
+          <div>
+            <div className="text-xs uppercase tracking-wider text-text-primary font-bold mb-1.5">Returns</div>
+            <Row label="Return Yard" value={rules.return_yd} />
+            <Row label="Return TD" value={rules.return_td} />
           </div>
           {!hideKicking && (
             <div>
