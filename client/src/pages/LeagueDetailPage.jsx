@@ -243,9 +243,15 @@ function PreDraftScoringEditor({ league, fantasySettings }) {
   const [error, setError] = useState(null)
   const updateSettings = useUpdateFantasySettings()
 
+  // Traditional only. Salary cap leagues live under the same
+  // leagues.format='fantasy' umbrella but are deliberately locked to Half
+  // PPR — the salary algorithm is calibrated against it, so letting a
+  // commissioner re-weight scoring would quietly invalidate every price on
+  // the board. The create page does not offer the editor for them either.
+  const isSalaryCap = fantasySettings?.format === 'salary_cap'
   const draftStatus = fantasySettings?.draft_status
   const draftStarted = draftStatus === 'completed' || draftStatus === 'in_progress'
-  if (league.format !== 'fantasy' || draftStarted) return null
+  if (league.format !== 'fantasy' || isSalaryCap || draftStarted) return null
 
   const slots = fantasySettings?.roster_slots || {}
   const idpCount = (slots.dl || 0) + (slots.lb || 0) + (slots.db || 0) + (slots.s || 0)
