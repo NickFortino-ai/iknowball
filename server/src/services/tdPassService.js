@@ -472,7 +472,7 @@ export async function submitPick(leagueId, userId, qbPlayerId) {
   // delete-then-insert. Otherwise, delete the prior row and insert fresh.
   const { data: existing } = await supabase
     .from('td_pass_picks')
-    .select('id, qb_player_id')
+    .select('id, qb_player_id, qb_name, team')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
     .eq('week', week)
@@ -480,6 +480,21 @@ export async function submitPick(leagueId, userId, qbPlayerId) {
 
   if (existing && existing.qb_player_id === qbPlayerId) {
     return existing
+  }
+
+  // The lock check above only covers the QB being picked. Swapping is done by
+  // tapping a different QB, which replaces the row outright — so without this
+  // a manager could pick a QB on Thursday, watch him throw for nothing, and
+  // tap someone else on Sunday, erasing the result. The existing pick's own
+  // team has to be checked, and it is on the row rather than requiring a
+  // lookup.
+  //
+  // Re-confirming the same QB returns above, so a locked pick can still be
+  // saved over itself harmlessly.
+  if (existing && existing.team && lockedTeams.has(existing.team)) {
+    const err = new Error(`${existing.qb_name || 'Your current QB'} has already played this week — he can't be swapped out`)
+    err.status = 400
+    throw err
   }
 
   if (existing) {
