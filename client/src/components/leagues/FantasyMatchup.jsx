@@ -120,6 +120,9 @@ function buildStatLine(stats, position) {
   } else if (position === 'K') {
     if (stats.fgm) parts.push(`${stats.fgm} FG`)
     if (stats.fgm_50_plus) parts.push(`${stats.fgm_50_plus} 50+`)
+    // Misses cost points (-3 / -2 / -1 by range) and were shown nowhere, so a
+    // kicker's total read lower than his line explained.
+    if (stats.fgmiss) parts.push(`${stats.fgmiss} Miss`)
     if (stats.xpm) parts.push(`${stats.xpm} XP`)
   } else if (position === 'DEF') {
     if (stats.def_sack) parts.push(`${stats.def_sack} SK`)
@@ -133,6 +136,11 @@ function buildStatLine(stats, position) {
     if (stats.rec_yds) parts.push(`${stats.rec_yds} ReYD`)
     if (stats.rec_td) parts.push(`${stats.rec_td} ReTD`)
   }
+  // Return yardage applies at every position — a returner is as often a WR or
+  // RB as a defensive back — so it sits outside the position branches. Same
+  // for INT return yards, which only defenders ever have.
+  if (stats.ret_yds) parts.push(`${stats.ret_yds} RetYD`)
+  if (stats.idp_int_ret_yd) parts.push(`${stats.idp_int_ret_yd} IntRetYD`)
   return parts.length ? parts.join(', ') : null
 }
 

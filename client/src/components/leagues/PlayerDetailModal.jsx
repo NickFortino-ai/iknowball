@@ -103,6 +103,7 @@ function baseColumnsFor(position, weeks) {
       { key: 'pts', label: 'Pts' },
       { key: 'fgm', label: 'FG' },
       { key: 'fgm_50_plus', label: '50+' },
+      { key: 'fgmiss', label: 'Miss' },
       { key: 'xpm', label: 'XP' },
     ]
     const anyNonZero = (key) => (weeks || []).some((w) => (Number(w[key]) || 0) !== 0)
@@ -198,6 +199,17 @@ function CurrentWeekNarrative({ position, week }) {
     if (week.rush_yd) parts.push(`${week.rush_yd} rushing yards on ${week.rush_att || '?'} carries${week.rush_td ? `, ${week.rush_td} rushing TD` : ''}`)
   } else if (position === 'K') {
     if (week.fgm) parts.push(`${week.fgm} field goal${week.fgm !== 1 ? 's' : ''} made${week.fgm_50_plus ? ` (${week.fgm_50_plus} from 50+)` : ''}`)
+    // Misses carry a penalty (-3 / -2 / -1 by range) and were shown nowhere,
+    // so a kicker's total read lower than his line explained. Named by range
+    // where we have it, since the penalty differs by range.
+    {
+      const misses = [
+        week.fgmiss_0_39 ? `${week.fgmiss_0_39} under 40` : null,
+        week.fgmiss_40_49 ? `${week.fgmiss_40_49} from 40-49` : null,
+        week.fgmiss_50_plus ? `${week.fgmiss_50_plus} from 50+` : null,
+      ].filter(Boolean)
+      if (misses.length) parts.push(`${misses.join(', ')} missed`)
+    }
     if (week.xpm) parts.push(`${week.xpm} extra point${week.xpm !== 1 ? 's' : ''} made`)
     // Trick-play stats — rare for kickers, but if they exist they contribute
     // to the total points, so surface them rather than leaving the user
@@ -242,6 +254,13 @@ function CurrentWeekNarrative({ position, week }) {
   if (position !== 'DEF' && !IDP_POSITION_CODES.includes(position)) {
     parts.push(...idpNarrativeParts(week))
   }
+
+  // Return yardage sits outside the position chain for the same reason as
+  // the defensive block above: a returner is as often a WR or RB as a
+  // defensive back, and it scores for all of them now.
+  const retYds = (Number(week.kr_yd) || 0) + (Number(week.pr_yd) || 0)
+  if (retYds) parts.push(`${retYds} return yards`)
+  if (week.idp_int_ret_yd) parts.push(`${week.idp_int_ret_yd} interception return yards`)
 
   return (
     <div>

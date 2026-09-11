@@ -738,7 +738,15 @@ router.get('/matchup-live', async (req, res) => {
         fum: stat.fum_lost || 0,
         fgm: stat.fgm || ((stat.fgm_0_39 || 0) + (stat.fgm_40_49 || 0) + (stat.fgm_50_plus || 0)),
         fgm_50_plus: stat.fgm_50_plus || 0,
+        // Missed kicks. They cost points (-3 / -2 / -1 by range) and appeared
+        // nowhere on the player card, so a kicker's total read lower than his
+        // visible line explained.
+        fgmiss: (stat.fgmiss_0_39 || 0) + (stat.fgmiss_40_49 || 0) + (stat.fgmiss_50_plus || 0),
         xpm: stat.xpm || 0,
+        xpa: stat.xpa || 0,
+        // Return yardage, now that it scores.
+        ret_yds: (Number(stat.kr_yd) || 0) + (Number(stat.pr_yd) || 0),
+        idp_int_ret_yd: Number(stat.idp_int_ret_yd) || 0,
         def_td: stat.def_td || 0,
         def_int: stat.def_int || 0,
         def_sack: Number(stat.def_sack) || 0,

@@ -523,7 +523,14 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
         fga: s.fga || 0,
         fgm_0_39: (s.fgm_0_19 || 0) + (s.fgm_20_29 || 0) + (s.fgm_30_39 || 0),
         fgm_40_49: s.fgm_40_49 || 0,
-        fgm_50_plus: s.fgm_50_plus || 0,
+        // Sleeper's key is fgm_50p, NOT fgm_50_plus — that is our column
+        // name, not theirs. Reading the wrong one meant every made 50+ field
+        // goal was dropped: Eddy Pineiro's 56-yarder scored zero, putting him
+        // at 5 points where Sleeper had him at 10. The MISS two lines below
+        // reads fgmiss_50p correctly, which is why misses registered and
+        // makes did not. Both spellings accepted so a rename upstream can't
+        // silently reopen it.
+        fgm_50_plus: s.fgm_50p || s.fgm_50_plus || 0,
         // Sleeper splits misses across 5 buckets; collapse to the same 3
         // ranges as fgm_* so the editor stays tidy. fgmiss_50p is Sleeper's
         // own naming for 50+.

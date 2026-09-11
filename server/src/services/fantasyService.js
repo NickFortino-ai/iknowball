@@ -5647,6 +5647,16 @@ export async function getPlayerDetail(leagueId, playerId) {
       fum_lost: w.fum_lost || 0,
       fgm: (w.fgm_0_39 || 0) + (w.fgm_40_49 || 0) + (w.fgm_50_plus || 0),
       fgm_50_plus: w.fgm_50_plus || 0,
+      // Misses, combined for the weekly table and kept per-range for the
+      // narrative, which names the range because the penalty differs by it.
+      fgmiss: (w.fgmiss_0_39 || 0) + (w.fgmiss_40_49 || 0) + (w.fgmiss_50_plus || 0),
+      fgmiss_0_39: w.fgmiss_0_39 || 0,
+      fgmiss_40_49: w.fgmiss_40_49 || 0,
+      fgmiss_50_plus: w.fgmiss_50_plus || 0,
+      // Return yardage, now that it scores.
+      kr_yd: Number(w.kr_yd) || 0,
+      pr_yd: Number(w.pr_yd) || 0,
+      idp_int_ret_yd: Number(w.idp_int_ret_yd) || 0,
       xpm: w.xpm || 0,
       def_td: w.def_td || 0,
       def_int: w.def_int || 0,
