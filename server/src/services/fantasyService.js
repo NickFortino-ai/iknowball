@@ -739,6 +739,10 @@ const PRESEASON_ONLY_FIELDS = new Set([
   'playoff_start_week', 'championship_week', 'format',
 ])
 
+// Scoring is not a commissioner choice in salary cap leagues — see the guard
+// in updateFantasySettings.
+const SALARY_CAP_LOCKED_FIELDS = new Set(['scoring_rules', 'scoring_format'])
+
 // Fields the commissioner can change during the season
 const SEASON_ALLOWED_FIELDS = new Set([
   'trade_deadline', 'trade_review', 'current_week',
@@ -760,6 +764,22 @@ export async function updateFantasySettings(leagueId, updates) {
       current = await createFantasySettings(leagueId, { format: league.format })
     }
   }
+  // Salary cap leagues are locked to Half PPR at every stage, draft or not.
+  // The salary algorithm is calibrated against that scoring, so re-weighting
+  // it would quietly invalidate every price on the board while the prices
+  // themselves stayed put. Neither the create page nor the gear modal offers
+  // the editor for them, but that only made it unreachable, not disallowed —
+  // and champion_metric is the precedent for a settings field that looked
+  // protected because no screen exposed it.
+  if (current?.format === 'salary_cap') {
+    const locked = Object.keys(updates).filter((k) => SALARY_CAP_LOCKED_FIELDS.has(k))
+    if (locked.length) {
+      const err = new Error(`Cannot change ${locked.join(', ')} in a salary cap league — scoring is fixed to Half PPR, which the salary pricing is calibrated against`)
+      err.status = 400
+      throw err
+    }
+  }
+
   const draftDone = current?.draft_status === 'completed'
   const draftLive = current?.draft_status === 'in_progress'
 
