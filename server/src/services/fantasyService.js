@@ -73,6 +73,9 @@ export const DEFAULT_SCORING_RULES = {
   idp_qb_hit: 0,
   idp_ff: 2,
   idp_fum_rec: 2,
+  // Interception return yards, at the same 1-per-25 rate as kick and punt
+  // returns. A defender used to get the INT and nothing for taking it back.
+  idp_int_ret_yd: 0.04,
   // Points allowed brackets (max points first)
   def_pa_brackets: [
     { max: 0,  pts: 10 },
@@ -233,6 +236,7 @@ export function applyScoringRules(stat, rules) {
   pts += (Number(stat.idp_qb_hit) || 0) * (r.idp_qb_hit || 0)
   pts += (stat.idp_ff || 0) * (r.idp_ff || 0)
   pts += (stat.idp_fum_rec || 0) * (r.idp_fum_rec || 0)
+  pts += (Number(stat.idp_int_ret_yd) || 0) * (r.idp_int_ret_yd || 0)
 
   // Yardage bonuses
   if (r.bonuses_enabled) {
@@ -282,6 +286,7 @@ export function computeIdpAwareProjection(projRow, position, projCol, rules) {
       idp_qb_hit: projRow.idp_qb_hit || 0,
       idp_ff: projRow.idp_ff || 0,
       idp_fum_rec: projRow.idp_fum_rec || 0,
+      idp_int_ret_yd: projRow.idp_int_ret_yd || 0,
     }, rules)
 
     // Plus whatever he is projected to do on offence. This used to return the
@@ -3570,7 +3575,7 @@ export async function getRoster(leagueId, userId) {
     if (playerIds.length) {
       const { data: stats } = await supabase
         .from('nfl_player_stats')
-        .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, rec_tgt, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec')
+        .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, rec_tgt, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec, kr, kr_yd, pr, pr_yd, idp_int_ret_yd')
         .eq('week', week)
         .eq('season', season)
         .in('player_id', playerIds)
@@ -3599,7 +3604,7 @@ export async function getRoster(leagueId, userId) {
         : 'pts_half_ppr'
       const { data: projRows } = await supabase
         .from('nfl_player_projections')
-        .select(`player_id, ${projCol}, idp_sack, idp_int, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec`)
+        .select(`player_id, ${projCol}, idp_sack, idp_int, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec, idp_int_ret_yd, pr, pr_yd, pr_td`)
         .eq('season', season)
         .eq('week', week)
         .in('player_id', playerIds)
@@ -3632,7 +3637,7 @@ export async function getRoster(leagueId, userId) {
     if (playerIds.length) {
       const { data: allStats } = await supabase
         .from('nfl_player_stats')
-        .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, rec_tgt, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec')
+        .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, rec_tgt, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec, kr, kr_yd, pr, pr_yd, idp_int_ret_yd')
         .eq('season', season)
         .in('player_id', playerIds)
       const agg = {}
@@ -4062,7 +4067,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
     fetchAll(
       supabase
         .from('nfl_player_stats')
-        .select(`player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_ff, idp_fum_rec, idp_qb_hit`)
+        .select(`player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_ff, idp_fum_rec, idp_qb_hit, kr, kr_yd, pr, pr_yd, idp_int_ret_yd`)
         .eq('season', statSeason)
         .order('player_id')
     )
@@ -4138,7 +4143,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
         () => fetchAll(
           supabase
             .from('nfl_player_projections')
-            .select(`player_id, ${weeklyProjCol}, idp_sack, idp_int, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec`)
+            .select(`player_id, ${weeklyProjCol}, idp_sack, idp_int, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec, idp_int_ret_yd, pr, pr_yd, pr_td`)
             .eq('season', curSeason)
             .eq('week', curWeek)
             .order('player_id', { ascending: true })
@@ -5570,7 +5575,7 @@ export async function getPlayerDetail(leagueId, playerId) {
 
   const { data: weeks } = await supabase
     .from('nfl_player_stats')
-    .select('week, season, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec')
+    .select('week, season, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec, kr, kr_yd, pr, pr_yd, idp_int_ret_yd')
     .eq('player_id', playerId)
     .eq('season', season)
     .order('week', { ascending: true })
@@ -5661,7 +5666,7 @@ export async function getPlayerDetail(leagueId, playerId) {
       : 'pts_half_ppr'
     const { data: projRows } = await supabase
       .from('nfl_player_projections')
-      .select(`week, ${projCol}, idp_sack, idp_int, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec`)
+      .select(`week, ${projCol}, idp_sack, idp_int, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec, idp_int_ret_yd, pr, pr_yd, pr_td`)
       .eq('player_id', playerId)
       .eq('season', season)
       .in('week', upcomingWeeks.map((w) => w.week))
@@ -5751,7 +5756,7 @@ export async function getPlayerDetail(leagueId, playerId) {
         const posStats = await fetchAll(
           supabase
             .from('nfl_player_stats')
-            .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec')
+            .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec, kr, kr_yd, pr, pr_yd, idp_int_ret_yd')
             .eq('season', season)
             .in('player_id', posPlayerIds)
             .order('player_id')
@@ -8457,7 +8462,7 @@ export async function scoreFantasyMatchupsWeek(week, season) {
   if (allPlayerIds.length) {
     const { data: stats } = await supabase
       .from('nfl_player_stats')
-      .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec')
+      .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec, kr, kr_yd, pr, pr_yd, idp_int_ret_yd')
       .eq('week', week)
       .eq('season', season)
       .in('player_id', allPlayerIds)

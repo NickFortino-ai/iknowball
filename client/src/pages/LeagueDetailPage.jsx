@@ -275,6 +275,7 @@ function ScoringRulesDisplay({ rules: storedRules, format, hideKicking = false }
             <div className="text-xs uppercase tracking-wider text-text-primary font-bold mb-1.5">Returns</div>
             <Row label="Return Yard" value={rules.return_yd} />
             <Row label="Return TD" value={rules.return_td} />
+            <Row label="INT Return Yard" value={rules.idp_int_ret_yd} />
           </div>
           {!hideKicking && (
             <div>

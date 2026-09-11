@@ -57,6 +57,7 @@ export const DEFAULT_RULES = {
   idp_tkl_loss: 2,
   idp_sack: 2,
   idp_int: 3,
+  idp_int_ret_yd: 0.04,
   idp_pass_def: 1,
   idp_qb_hit: 0,
   idp_ff: 2,
@@ -372,6 +373,7 @@ export default function ScoringRulesEditor({ value, onChange, defenseMode }) {
               <NumberField label="QB Hit" value={rules.idp_qb_hit} onChange={(v) => set('idp_qb_hit', v)} step={0.5} />
               <NumberField label="Forced Fumble" value={rules.idp_ff} onChange={(v) => set('idp_ff', v)} step={1} />
               <NumberField label="Fumble Recovery" value={rules.idp_fum_rec} onChange={(v) => set('idp_fum_rec', v)} step={1} />
+              <NumberField label="INT Return Yd" value={rules.idp_int_ret_yd} onChange={(v) => set('idp_int_ret_yd', v)} step={0.01} info="Yards gained returning an interception, at the same rate as kick and punt returns. Stacks with the INT itself." />
             </div>
           </div>
           )}
