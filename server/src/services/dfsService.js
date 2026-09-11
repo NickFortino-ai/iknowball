@@ -183,6 +183,42 @@ export async function getDFSRoster(leagueId, userId, week, season) {
     } catch (err) {
       logger.error({ err: err.message, leagueId, week, season }, 'Kickoff lock recompute failed; falling back to stored is_locked')
     }
+
+    // points_earned is stale for the same reason is_locked was: it is a
+    // column written by a scoring pass, not a live figure. Christian
+    // McCaffrey played Thursday night and scored 11.30 while his slot still
+    // read 0, so the roster showed a locked player with no points.
+    //
+    // Recomputed here from the league's own scoring rules, so the roster
+    // agrees with the matchup view and the player modal instead of trailing
+    // whenever the scoring pass last ran. Only overrides where a stat row
+    // exists — a player who has not played keeps his stored value.
+    try {
+      const { applyScoringRules, buildScoringRulesFromPreset, SCORING_STAT_COLUMNS } = await import('./fantasyService.js')
+      const { data: settings } = await supabase
+        .from('fantasy_settings')
+        .select('scoring_format, scoring_rules')
+        .eq('league_id', leagueId)
+        .maybeSingle()
+      const rules = settings?.scoring_rules || buildScoringRulesFromPreset(settings?.scoring_format)
+      const playerIds = roster.dfs_roster_slots.map((s) => s.player_id).filter(Boolean)
+      if (playerIds.length) {
+        const { data: statRows } = await supabase
+          .from('nfl_player_stats')
+          .select(`player_id, ${SCORING_STAT_COLUMNS}`)
+          .eq('season', season)
+          .eq('week', week)
+          .in('player_id', playerIds)
+        const byPlayer = {}
+        for (const st of statRows || []) byPlayer[st.player_id] = st
+        for (const slot of roster.dfs_roster_slots) {
+          const st = byPlayer[slot.player_id]
+          if (st) slot.points_earned = Math.round(applyScoringRules(st, rules) * 100) / 100
+        }
+      }
+    } catch (err) {
+      logger.error({ err: err.message, leagueId, week, season }, 'Points recompute failed; falling back to stored points_earned')
+    }
   }
 
   return roster
