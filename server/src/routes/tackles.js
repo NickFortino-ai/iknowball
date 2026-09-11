@@ -252,7 +252,7 @@ router.post('/picks', async (req, res) => {
 
   const { data: existingPicks } = await supabase
     .from('tackles_picks')
-    .select('id, sleeper_player_id')
+    .select('id, sleeper_player_id, player_name, team')
     .eq('league_id', league_id)
     .eq('user_id', req.user.id)
     .eq('season', season)
@@ -260,9 +260,23 @@ router.post('/picks', async (req, res) => {
 
   const newIds = new Set(players.map((p) => p.sleeper_player_id))
   const existingIds = new Set((existingPicks || []).map((p) => p.sleeper_player_id))
-  const toDeleteIds = (existingPicks || [])
-    .filter((p) => !newIds.has(p.sleeper_player_id))
-    .map((p) => p.id)
+  // A pick whose game has kicked off cannot be REMOVED either. The guard
+  // above only rejects locked players being added, so submitting a new set
+  // that simply omitted a locked pick deleted him silently — De'Zhaun
+  // Stribling was swapped out the morning after he had already played,
+  // taking his production with him.
+  //
+  // Checked against the stored team on the pick rather than the submitted
+  // payload, because the player being removed is by definition absent from
+  // what was submitted.
+  const removed = (existingPicks || []).filter((p) => !newIds.has(p.sleeper_player_id))
+  const lockedRemoval = removed.find((p) => p.team && lockedTeams.has(p.team))
+  if (lockedRemoval) {
+    return res.status(400).json({
+      error: `${lockedRemoval.player_name || 'That player'}'s game has already started — he can't be swapped out`,
+    })
+  }
+  const toDeleteIds = removed.map((p) => p.id)
   const toInsert = players
     .filter((p) => !existingIds.has(p.sleeper_player_id))
     .map((p) => ({
