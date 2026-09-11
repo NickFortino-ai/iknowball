@@ -56,6 +56,7 @@ import { formatStartDateShort, formatEndDateShort, formatEndDateLong, formatDraf
 import { todaySportsDay, leagueStartSportsDay } from '../lib/sportsDay'
 import { MODAL_INSET_STYLE } from '../lib/modalInset'
 import { DEFAULT_RULES } from '../components/leagues/ScoringRulesEditor'
+import ScoringRulesEditor from '../components/leagues/ScoringRulesEditor'
 
 const REPORT_FORMATS = ['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs']
 
@@ -219,6 +220,86 @@ function Row({ label, value }) {
       <span className={`text-sm font-semibold tabular-nums ${value > 0 ? 'text-correct' : value < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
         {value > 0 ? '+' : ''}{value}
       </span>
+    </div>
+  )
+}
+
+/**
+ * Commissioner-facing scoring editor, gear icon, BEFORE the draft only.
+ *
+ * The server has always enforced the window — scoring_rules and
+ * scoring_format sit in PRESEASON_ONLY_FIELDS, so updateFantasySettings
+ * rejects them once the draft is in progress or complete. What was missing
+ * was any way to reach it after league creation: the editor existed only on
+ * the create page, so a commissioner who wanted a different rate had one shot
+ * and no second chance.
+ *
+ * Gated on the same condition the server enforces, so the UI never offers a
+ * save the API will refuse.
+ */
+function PreDraftScoringEditor({ league, fantasySettings }) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState(null)
+  const [error, setError] = useState(null)
+  const updateSettings = useUpdateFantasySettings()
+
+  const draftStatus = fantasySettings?.draft_status
+  const draftStarted = draftStatus === 'completed' || draftStatus === 'in_progress'
+  if (league.format !== 'fantasy' || draftStarted) return null
+
+  const slots = fantasySettings?.roster_slots || {}
+  const idpCount = (slots.dl || 0) + (slots.lb || 0) + (slots.db || 0) + (slots.s || 0)
+  const rules = draft || { ...DEFAULT_RULES, ...(fantasySettings?.scoring_rules || {}) }
+
+  async function save() {
+    setError(null)
+    try {
+      await updateSettings.mutateAsync({ leagueId: league.id, scoring_rules: rules })
+      setDraft(null)
+      setOpen(false)
+    } catch (err) {
+      setError(err.message || 'Failed to save scoring rules')
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-text-primary/20 bg-bg-primary/60 overflow-hidden">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-text-primary/5 transition-colors">
+        <div className="text-left">
+          <div className="text-sm font-semibold text-text-primary">Edit Scoring Rules</div>
+          <div className="text-[11px] text-text-muted">Locked once the draft begins</div>
+        </div>
+        <svg className={`w-4 h-4 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="px-4 pb-4">
+          <ScoringRulesEditor
+            value={rules}
+            onChange={setDraft}
+            defenseMode={idpCount > 0 ? 'idp' : 'def'}
+          />
+          {error && <div className="mt-3 text-xs text-incorrect">{error}</div>}
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={save}
+              disabled={!draft || updateSettings.isPending}
+              className="flex-1 py-2.5 rounded-lg font-semibold text-sm bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {updateSettings.isPending ? 'Saving…' : 'Save Scoring Rules'}
+            </button>
+            {draft && (
+              <button
+                onClick={() => { setDraft(null); setError(null) }}
+                className="px-4 py-2.5 rounded-lg text-sm font-semibold border border-text-primary/20 text-text-secondary hover:bg-text-primary/5 transition-colors"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -3127,6 +3208,10 @@ export default function LeagueDetailPage() {
                   <div className="mt-4">
                     <LeagueSettingsEditor league={league} updateLeague={updateLeague} hasLockedPicks={league.has_locked_picks} />
                   </div>
+                )}
+
+                {isCommissioner && (
+                  <PreDraftScoringEditor league={league} fantasySettings={fantasySettings} />
                 )}
 
                 {/* Report a Problem — commissioner-only. Available for every
