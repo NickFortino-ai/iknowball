@@ -160,6 +160,31 @@ export async function getDFSRoster(leagueId, userId, week, season) {
     .eq('season', season)
     .maybeSingle()
 
+  // is_locked is recomputed from kickoff times on every read rather than
+  // trusted from the column. The stored value is a snapshot taken when the
+  // roster was SAVED — set a lineup on Tuesday and every slot is written
+  // false, and it stays false all week however many games kick off. Christian
+  // McCaffrey played Thursday night, held points, and still came back
+  // is_locked: false, so the roster offered a remove button for a player who
+  // could not legally be removed.
+  //
+  // Same kickoff source the player pool uses, so the roster and the pool
+  // agree about who is locked instead of disagreeing by however long ago the
+  // lineup was saved.
+  if (roster?.dfs_roster_slots?.length) {
+    try {
+      const kickoffByTeam = await getNflKickoffByTeam(week, season)
+      const now = Date.now()
+      for (const slot of roster.dfs_roster_slots) {
+        const team = slot.nfl_players?.team
+        const ko = team ? kickoffByTeam[team] : null
+        slot.is_locked = slot.is_locked || (ko != null && ko <= now)
+      }
+    } catch (err) {
+      logger.error({ err: err.message, leagueId, week, season }, 'Kickoff lock recompute failed; falling back to stored is_locked')
+    }
+  }
+
   return roster
 }
 
