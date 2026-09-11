@@ -47,6 +47,7 @@ function columnsFor(position) {
     { key: 'pts', label: 'Pts' },
     { key: 'fgm', label: 'FG' },
     { key: 'fgm_50_plus', label: '50+' },
+    { key: 'fgmiss', label: 'Miss' },
     { key: 'xpm', label: 'XP' },
   ]
   if (position === 'DEF') return [

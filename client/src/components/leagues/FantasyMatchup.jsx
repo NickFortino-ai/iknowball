@@ -108,6 +108,26 @@ function lastNameSize(last) {
   return 'text-sm'
 }
 
+const IDP_STAT_POSITIONS = new Set([
+  'DL', 'DE', 'DT', 'NT', 'LB', 'ILB', 'OLB', 'MLB', 'DB', 'CB', 'S', 'FS', 'SS',
+])
+
+// Tackles, sacks and the rest, in the order a box score reads them. Defenders
+// score in every preset, so a defender with points and no stat line looked
+// like the number came from nowhere.
+function idpStatParts(stats) {
+  const parts = []
+  if (stats.idp_tkl_solo) parts.push(`${stats.idp_tkl_solo} Tkl`)
+  if (stats.idp_tkl_ast) parts.push(`${stats.idp_tkl_ast} Ast`)
+  if (stats.idp_tkl_loss) parts.push(`${stats.idp_tkl_loss} TFL`)
+  if (stats.idp_sack) parts.push(`${stats.idp_sack} Sk`)
+  if (stats.idp_int) parts.push(`${stats.idp_int} INT`)
+  if (stats.idp_pass_def) parts.push(`${stats.idp_pass_def} PD`)
+  if (stats.idp_ff) parts.push(`${stats.idp_ff} FF`)
+  if (stats.idp_fum_rec) parts.push(`${stats.idp_fum_rec} FR`)
+  return parts
+}
+
 function buildStatLine(stats, position) {
   if (!stats) return null
   const parts = []
@@ -129,6 +149,8 @@ function buildStatLine(stats, position) {
     if (stats.def_int) parts.push(`${stats.def_int} INT`)
     if (stats.def_fum_rec) parts.push(`${stats.def_fum_rec} FR`)
     if (stats.def_td) parts.push(`${stats.def_td} TD`)
+  } else if (IDP_STAT_POSITIONS.has(position)) {
+    parts.push(...idpStatParts(stats))
   } else {
     if (stats.rush_yds) parts.push(`${stats.rush_yds} RuYD`)
     if (stats.rush_td) parts.push(`${stats.rush_td} RuTD`)
@@ -139,6 +161,10 @@ function buildStatLine(stats, position) {
   // Return yardage applies at every position — a returner is as often a WR or
   // RB as a defensive back — so it sits outside the position branches. Same
   // for INT return yards, which only defenders ever have.
+  // A non-IDP-filed player who still recorded defensive stats — a two-way
+  // player, or a receiver who made the tackle after an interception — scores
+  // for them, so they belong on his line too.
+  if (!IDP_STAT_POSITIONS.has(position)) parts.push(...idpStatParts(stats))
   if (stats.ret_yds) parts.push(`${stats.ret_yds} RetYD`)
   if (stats.idp_int_ret_yd) parts.push(`${stats.idp_int_ret_yd} IntRetYD`)
   return parts.length ? parts.join(', ') : null

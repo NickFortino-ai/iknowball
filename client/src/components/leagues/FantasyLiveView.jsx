@@ -25,6 +25,26 @@ function buildH2HSlotMeta(rosterSlots) {
   return { starterSet: new Set(order), slotLabels: labels, slotOrder: order }
 }
 
+const IDP_STAT_POSITIONS = new Set([
+  'DL', 'DE', 'DT', 'NT', 'LB', 'ILB', 'OLB', 'MLB', 'DB', 'CB', 'S', 'FS', 'SS',
+])
+
+// Tackles, sacks and the rest, in the order a box score reads them. Defenders
+// score in every preset, so a defender with points and no stat line looked
+// like the number came from nowhere.
+function idpStatParts(stats) {
+  const parts = []
+  if (stats.idp_tkl_solo) parts.push(`${stats.idp_tkl_solo} Tkl`)
+  if (stats.idp_tkl_ast) parts.push(`${stats.idp_tkl_ast} Ast`)
+  if (stats.idp_tkl_loss) parts.push(`${stats.idp_tkl_loss} TFL`)
+  if (stats.idp_sack) parts.push(`${stats.idp_sack} Sk`)
+  if (stats.idp_int) parts.push(`${stats.idp_int} INT`)
+  if (stats.idp_pass_def) parts.push(`${stats.idp_pass_def} PD`)
+  if (stats.idp_ff) parts.push(`${stats.idp_ff} FF`)
+  if (stats.idp_fum_rec) parts.push(`${stats.idp_fum_rec} FR`)
+  return parts
+}
+
 function buildStatLine(stats, position) {
   if (!stats) return null
   const parts = []
@@ -37,6 +57,9 @@ function buildStatLine(stats, position) {
   } else if (position === 'K') {
     if (stats.fgm) parts.push(`${stats.fgm} FG`)
     if (stats.fgm_50_plus) parts.push(`${stats.fgm_50_plus} 50+`)
+    // Misses cost points, so they belong on the line — without them a
+    // kicker's total reads higher than his stats explain.
+    if (stats.fgmiss) parts.push(`${stats.fgmiss} Miss`)
     if (stats.xpm) parts.push(`${stats.xpm} XP`)
   } else if (position === 'DEF') {
     if (stats.def_sack) parts.push(`${stats.def_sack} SK`)
@@ -45,6 +68,8 @@ function buildStatLine(stats, position) {
     if (stats.def_td) parts.push(`${stats.def_td} TD`)
     if (stats.def_safety) parts.push(`${stats.def_safety} SAF`)
     if (stats.def_pts_allowed != null) parts.push(`${stats.def_pts_allowed} PA`)
+  } else if (IDP_STAT_POSITIONS.has(position)) {
+    parts.push(...idpStatParts(stats))
   } else {
     if (stats.rush_yds) parts.push(`${stats.rush_yds} RuYD`)
     if (stats.rush_td) parts.push(`${stats.rush_td} RuTD`)
@@ -53,6 +78,10 @@ function buildStatLine(stats, position) {
     if (stats.rec_td) parts.push(`${stats.rec_td} ReTD`)
     if (stats.fum) parts.push(`${stats.fum} FUM`)
   }
+  // Return yardage applies at every position, so it sits outside the branches.
+  if (!IDP_STAT_POSITIONS.has(position)) parts.push(...idpStatParts(stats))
+  if (stats.ret_yds) parts.push(`${stats.ret_yds} RetYD`)
+  if (stats.idp_int_ret_yd) parts.push(`${stats.idp_int_ret_yd} IntRetYD`)
   return parts.length > 0 ? parts.join(' \u00b7 ') : null
 }
 

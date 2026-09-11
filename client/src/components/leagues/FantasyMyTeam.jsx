@@ -79,6 +79,7 @@ const POSITION_STAT_CONFIG = {
   K: [
     { key: 'fgm', label: 'FGM' },
     { key: 'fgm_50_plus', label: '50+' },
+    { key: 'fgmiss', label: 'MISS' },
     { key: 'xpm', label: 'XPM' },
   ],
   DEF: [

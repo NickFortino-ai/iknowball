@@ -452,13 +452,30 @@ router.get('/live', async (req, res) => {
           fum: stat.fum_lost || 0,
           fgm: stat.fgm || 0,
           fgm_50_plus: stat.fgm_50_plus || 0,
+          // Misses carry a penalty, so the stat line has to show them or the
+          // total reads higher than the line explains.
+          fgmiss: (stat.fgmiss_0_39 || 0) + (stat.fgmiss_40_49 || 0) + (stat.fgmiss_50_plus || 0),
           xpm: stat.xpm || 0,
+          ret_yds: (Number(stat.kr_yd) || 0) + (Number(stat.pr_yd) || 0),
+          idp_int_ret_yd: Number(stat.idp_int_ret_yd) || 0,
           def_td: stat.def_td || 0,
           def_int: stat.def_int || 0,
           def_sack: Number(stat.def_sack) || 0,
           def_fum_rec: stat.def_fum_rec || 0,
           def_safety: stat.def_safety || 0,
           def_pts_allowed: stat.def_pts_allowed,
+          // IDP. These score in every preset, so a defender who had points and
+          // no stat line looked like the points came from nowhere — the client
+          // had no defensive numbers to render.
+          idp_tkl_solo: stat.idp_tkl_solo || 0,
+          idp_tkl_ast: stat.idp_tkl_ast || 0,
+          idp_tkl_loss: stat.idp_tkl_loss || 0,
+          idp_sack: Number(stat.idp_sack) || 0,
+          idp_int: stat.idp_int || 0,
+          idp_pass_def: stat.idp_pass_def || 0,
+          idp_qb_hit: stat.idp_qb_hit || 0,
+          idp_ff: stat.idp_ff || 0,
+          idp_fum_rec: stat.idp_fum_rec || 0,
         } : null,
       }
     })
@@ -752,7 +769,19 @@ router.get('/matchup-live', async (req, res) => {
         def_sack: Number(stat.def_sack) || 0,
         def_fum_rec: stat.def_fum_rec || 0,
         def_safety: stat.def_safety || 0,
-        def_pts_allowed: stat.def_pts_allowed,
+          def_pts_allowed: stat.def_pts_allowed,
+        // IDP. These score in every preset, so a defender who had points and
+        // no stat line looked like the points came from nowhere — the client
+        // had no defensive numbers to render.
+        idp_tkl_solo: stat.idp_tkl_solo || 0,
+        idp_tkl_ast: stat.idp_tkl_ast || 0,
+        idp_tkl_loss: stat.idp_tkl_loss || 0,
+        idp_sack: Number(stat.idp_sack) || 0,
+        idp_int: stat.idp_int || 0,
+        idp_pass_def: stat.idp_pass_def || 0,
+        idp_qb_hit: stat.idp_qb_hit || 0,
+        idp_ff: stat.idp_ff || 0,
+        idp_fum_rec: stat.idp_fum_rec || 0,
       } : null,
     })
   }

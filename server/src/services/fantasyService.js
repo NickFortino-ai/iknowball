@@ -3636,6 +3636,12 @@ export async function getRoster(leagueId, userId) {
         statsByPlayer[st.player_id] = {
           ...st,
           fgm: (st.fgm_0_39 || 0) + (st.fgm_40_49 || 0) + (st.fgm_50_plus || 0),
+          // Same derivation as fgm: the ranges are stored separately because
+          // they score differently, but the stat line wants one number. Without
+          // this the MISS column renders nothing while the points already
+          // reflect the penalty.
+          fgmiss: (st.fgmiss_0_39 || 0) + (st.fgmiss_40_49 || 0) + (st.fgmiss_50_plus || 0),
+          ret_yds: (Number(st.kr_yd) || 0) + (Number(st.pr_yd) || 0),
         }
       }
       for (const r of rows) {
@@ -3704,6 +3710,8 @@ export async function getRoster(leagueId, userId) {
       // Compute fgm from component fields
       for (const pid of Object.keys(agg)) {
         agg[pid].fgm = (agg[pid].fgm_0_39 || 0) + (agg[pid].fgm_40_49 || 0) + (agg[pid].fgm_50_plus || 0)
+        agg[pid].fgmiss = (agg[pid].fgmiss_0_39 || 0) + (agg[pid].fgmiss_40_49 || 0) + (agg[pid].fgmiss_50_plus || 0)
+        agg[pid].ret_yds = (agg[pid].kr_yd || 0) + (agg[pid].pr_yd || 0)
       }
       for (const r of rows) {
         r.season_stats = agg[r.player_id] || null
@@ -5693,6 +5701,20 @@ export async function getPlayerDetail(leagueId, playerId) {
       def_fum_rec: w.def_fum_rec || 0,
       def_safety: w.def_safety || 0,
       def_pts_allowed: w.def_pts_allowed,
+      // IDP. The modal has had per-position IDP columns and an
+      // idpNarrativeParts() builder all along — they rendered blank because
+      // the week rows only ever carried def_* (team defense), never the
+      // individual fields. Same shape as every other bug tonight: the UI was
+      // ready, the payload silently wasn't.
+      idp_tkl_solo: w.idp_tkl_solo || 0,
+      idp_tkl_ast: w.idp_tkl_ast || 0,
+      idp_tkl_loss: w.idp_tkl_loss || 0,
+      idp_sack: Number(w.idp_sack) || 0,
+      idp_int: w.idp_int || 0,
+      idp_pass_def: w.idp_pass_def || 0,
+      idp_qb_hit: w.idp_qb_hit || 0,
+      idp_ff: w.idp_ff || 0,
+      idp_fum_rec: w.idp_fum_rec || 0,
     }
   })
 
