@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { cached } from '../utils/memoCache.js'
 import { fetchPlayerProps } from './oddsService.js'
 import { getMarketLabel, PROP_MARKETS } from '../utils/propMarkets.js'
 import { calculateRiskPoints, calculateRewardPoints } from '../utils/scoring.js'
@@ -1083,6 +1084,68 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
       }
     }
 
+    // ── NCAAF ──────────────────────────────────────────────────────
+    // College has no stored stat table — nothing like nfl_player_stats — so
+    // until now a college prop simply got no live line while its card showed
+    // a live game clock.
+    //
+    // Settlement solves this with one ESPN summary fetch PER GAME, which is
+    // fine for a job that runs after games end but not on a request path:
+    // ESPN per-host blocked this server on 2026-08-26 over call volume, and
+    // that was background traffic, not users refreshing a props page.
+    //
+    // The scoreboard carries per-game leaders for exactly the categories we
+    // need, in ONE call covering every game on the slate. Cached for 30s, so
+    // a whole page of college props — and every user looking at them — shares
+    // a single fetch.
+    //
+    // Limitation, deliberately accepted: ESPN lists only the TOP player per
+    // category, so a prop on a non-leading player still gets no line. That is
+    // no worse than today, and the leader is who props are usually written
+    // on — Malachi Toney was the receiving leader on the card that prompted
+    // this. A per-game summary fallback for unmatched players is the next
+    // step if gaps show up; it is left out here because that is precisely
+    // where the 403 risk lives.
+    const ncaafLockedPicks = lockedPicks.filter((p) => p.player_props?.games?.sports?.key === 'americanfootball_ncaaf')
+    const ncaafByName = {}
+    if (ncaafLockedPicks.length) {
+      try {
+        const events = await cached('ncaafScoreboardLive', 30_000, async () => {
+          const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?limit=200')
+          if (!res.ok) throw new Error(`ESPN NCAAF scoreboard ${res.status}`)
+          return (await res.json()).events || []
+        })
+        for (const ev of events) {
+          for (const cat of ev.competitions?.[0]?.leaders || []) {
+            for (const l of cat.leaders || []) {
+              const name = l.athlete?.displayName
+              if (!name) continue
+              const key = normalizeName(name)
+              const row = ncaafByName[key] || (ncaafByName[key] = {})
+              // displayValue packs several stats into one string, and which
+              // ones depend on the category:
+              //   passingYards    "14/15, 252 YDS, 3 TD"
+              //   rushingYards    "10 CAR, 142 YDS, 2 TD"
+              //   receivingYards  "4 REC, 96 YDS, 1 TD"
+              // so receivingYards alone covers both reception markets.
+              const dv = String(l.displayValue || '')
+              const yds = dv.match(/([\d,]+)\s*YDS/i)
+              const num = (m) => (m ? Number(m[1].replace(/,/g, '')) : null)
+              if (cat.name === 'passingYards') row.pass_yd = num(yds)
+              else if (cat.name === 'rushingYards') row.rush_yd = num(yds)
+              else if (cat.name === 'receivingYards') {
+                row.rec_yd = num(yds)
+                row.rec = num(dv.match(/(\d+)\s*REC/i))
+              }
+            }
+          }
+        }
+        logger.info({ players: Object.keys(ncaafByName).length, events: events.length }, 'Live stat enrichment: NCAAF scoreboard leaders loaded')
+      } catch (err) {
+        logger.error({ err: err.message }, 'Live stat enrichment: NCAAF scoreboard load failed')
+      }
+    }
+
     // Attach live stats to each locked pick
     for (const pick of lockedPicks) {
       const playerName = pick.player_props?.player_name
@@ -1095,6 +1158,7 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
       const mlb = (espnId && mlbById[espnId]) || mlbByName[normName]
       const wnba = (espnId && wnbaById[espnId]) || wnbaByName[normName]
       const nfl = nflByName[normName]
+      const ncaaf = ncaafByName[normName]
 
       if (nba) {
         const mapped = mapNbaStatToMarket(nba, marketKey)
@@ -1113,6 +1177,23 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
         const mapped = mapNflStatToMarket(nfl, marketKey)
         pick.live_stat = mapped
         logger.info({ playerName, marketKey, mapped, gameStatus }, 'Live stat enriched (NFL)')
+      } else if (ncaaf) {
+        // Same four markets settleNCAAFProps maps, and the same shape — the
+        // comment there says "keep in sync with the NCAAF branch of
+        // enrichLockedPicksWithLiveStats", which until now did not exist.
+        // undefined rather than null for an unmapped market, so a market we
+        // have no college data for is left alone instead of being asserted
+        // as zero.
+        const mapped = {
+          player_pass_yds: ncaaf.pass_yd,
+          player_rush_yds: ncaaf.rush_yd,
+          player_reception_yds: ncaaf.rec_yd,
+          player_receptions: ncaaf.rec,
+        }[marketKey]
+        if (mapped != null) {
+          pick.live_stat = mapped
+          logger.info({ playerName, marketKey, mapped, gameStatus }, 'Live stat enriched (NCAAF)')
+        }
       } else {
         // Basketball "haven't played yet" fallback: a bench player whose
         // game is live but who hasn't checked in (or has checked in but
