@@ -132,6 +132,35 @@ export const IDP_STAT_KEYS = [
  * Apply a league's scoring_rules to a single nfl_player_stats row and
  * return the total fantasy points.
  */
+/**
+ * Every nfl_player_stats column applyScoringRules reads.
+ *
+ * Exported and shared because this list was previously written out by hand in
+ * a dozen separate .select() literals, and a column missing from one of them
+ * is INVISIBLE: the field arrives undefined, multiplies to zero, and the
+ * player simply scores less with no error anywhere. That is not hypothetical
+ * — it shipped three times in one night. Return yards scored nothing because
+ * kr_yd was in no list; a missed field goal cost nothing in the matchup view
+ * because fgmiss_* was in none of dfs.js's; and every IDP tackle and sack
+ * scored zero there for the same reason, so the live matchup view and the
+ * persisted score disagreed.
+ *
+ * Add a scored column here and to applyScoringRules, and every query that
+ * uses this constant picks it up. Do not inline the list again.
+ */
+export const SCORING_STAT_COLUMNS = [
+  'pass_att', 'pass_cmp', 'pass_yd', 'pass_td', 'pass_int',
+  'rush_att', 'rush_yd', 'rush_td',
+  'rec', 'rec_yd', 'rec_td', 'rec_tgt',
+  'fum_lost', 'two_pt',
+  'fgm', 'fga', 'fgm_0_39', 'fgm_40_49', 'fgm_50_plus',
+  'fgmiss_0_39', 'fgmiss_40_49', 'fgmiss_50_plus', 'xpm', 'xpa',
+  'def_sack', 'def_int', 'def_fum_rec', 'def_td', 'def_safety', 'def_pts_allowed',
+  'idp_tkl_solo', 'idp_tkl_ast', 'idp_tkl_loss', 'idp_sack', 'idp_int',
+  'idp_pass_def', 'idp_qb_hit', 'idp_ff', 'idp_fum_rec', 'idp_int_ret_yd',
+  'return_td', 'kr', 'kr_yd', 'pr', 'pr_yd',
+].join(', ')
+
 export function applyScoringRules(stat, rules) {
   if (!stat) return 0
   const r = { ...DEFAULT_SCORING_RULES, ...(rules || {}) }
@@ -3595,7 +3624,7 @@ export async function getRoster(leagueId, userId) {
     if (playerIds.length) {
       const { data: stats } = await supabase
         .from('nfl_player_stats')
-        .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, rec_tgt, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec, kr, kr_yd, pr, pr_yd, idp_int_ret_yd')
+        .select(`player_id, ${SCORING_STAT_COLUMNS}`)
         .eq('week', week)
         .eq('season', season)
         .in('player_id', playerIds)
@@ -3657,7 +3686,7 @@ export async function getRoster(leagueId, userId) {
     if (playerIds.length) {
       const { data: allStats } = await supabase
         .from('nfl_player_stats')
-        .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, rec_tgt, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec, kr, kr_yd, pr, pr_yd, idp_int_ret_yd')
+        .select(`player_id, ${SCORING_STAT_COLUMNS}`)
         .eq('season', season)
         .in('player_id', playerIds)
       const agg = {}
@@ -4087,7 +4116,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
     fetchAll(
       supabase
         .from('nfl_player_stats')
-        .select(`player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_ff, idp_fum_rec, idp_qb_hit, kr, kr_yd, pr, pr_yd, idp_int_ret_yd`)
+        .select(`player_id, ${SCORING_STAT_COLUMNS}`)
         .eq('season', statSeason)
         .order('player_id')
     )
@@ -5595,7 +5624,7 @@ export async function getPlayerDetail(leagueId, playerId) {
 
   const { data: weeks } = await supabase
     .from('nfl_player_stats')
-    .select('week, season, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec, kr, kr_yd, pr, pr_yd, idp_int_ret_yd')
+    .select(`week, season, ${SCORING_STAT_COLUMNS}`)
     .eq('player_id', playerId)
     .eq('season', season)
     .order('week', { ascending: true })
@@ -5786,7 +5815,7 @@ export async function getPlayerDetail(leagueId, playerId) {
         const posStats = await fetchAll(
           supabase
             .from('nfl_player_stats')
-            .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec, kr, kr_yd, pr, pr_yd, idp_int_ret_yd')
+            .select(`player_id, ${SCORING_STAT_COLUMNS}`)
             .eq('season', season)
             .in('player_id', posPlayerIds)
             .order('player_id')
@@ -8492,7 +8521,7 @@ export async function scoreFantasyMatchupsWeek(week, season) {
   if (allPlayerIds.length) {
     const { data: stats } = await supabase
       .from('nfl_player_stats')
-      .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, xpa, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec, kr, kr_yd, pr, pr_yd, idp_int_ret_yd')
+      .select(`player_id, ${SCORING_STAT_COLUMNS}`)
       .eq('week', week)
       .eq('season', season)
       .in('player_id', allPlayerIds)
