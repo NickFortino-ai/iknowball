@@ -25,6 +25,8 @@ export const DEFAULT_RULES = {
   rec_td: 6,
   rec_2pt: 2,
   fum_lost: -2,
+  return_td: 6,
+  return_yd: 0.04,
   fgm_0_39: 3,
   fgm_40_49: 4,
   fgm_50_plus: 5,
@@ -272,6 +274,17 @@ export default function ScoringRulesEditor({ value, onChange, defenseMode }) {
             <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Misc</h4>
             <div className="grid grid-cols-2 gap-3">
               <NumberField label="Fumble Lost" value={rules.fum_lost} onChange={(v) => set('fum_lost', v)} step={1} />
+            </div>
+          </div>
+
+          {/* Returns — kick and punt yardage is summed, so one rate covers
+              both. Return TD also covers interception and fumble return
+              scores, which is how Sleeper aggregates them. */}
+          <div>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Returns</h4>
+            <div className="grid grid-cols-2 gap-3">
+              <NumberField label="Pts per Return Yd" value={rules.return_yd} onChange={(v) => set('return_yd', v)} step={0.01} />
+              <NumberField label="Pts per Return TD" value={rules.return_td} onChange={(v) => set('return_td', v)} step={1} />
             </div>
           </div>
 

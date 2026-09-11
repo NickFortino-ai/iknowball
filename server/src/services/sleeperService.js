@@ -508,6 +508,12 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
           (s.td_int || 0) +
           (s.td_fum || 0) +
           (s.td_fum_rec || 0),
+        // Kick / punt returns. Sleeper has always sent these; we simply
+        // never stored them, so return yardage could not score.
+        kr: s.kr || 0,
+        kr_yd: s.kr_yd || 0,
+        pr: s.pr || 0,
+        pr_yd: s.pr_yd || 0,
         fum_lost: s.fum_lost || 0,
         two_pt: (s.pass_2pt || 0) + (s.rush_2pt || 0) + (s.rec_2pt || 0),
         fgm: s.fgm || 0,
@@ -795,6 +801,12 @@ export async function syncWeeklyProjections(season, week) {
       idp_qb_hit: proj.stats.idp_qb_hit ?? 0,
       idp_ff: proj.stats.idp_ff ?? 0,
       idp_fum_rec: proj.stats.idp_fum_rec ?? 0,
+      // Punt returns only — Sleeper's projection payload has pr / pr_yd /
+      // pr_td but no kick-return equivalent, so kick-return yardage can be
+      // scored and never projected. Upstream gap, not ours to paper over.
+      pr: proj.stats.pr ?? 0,
+      pr_yd: proj.stats.pr_yd ?? 0,
+      pr_td: proj.stats.pr_td ?? 0,
       updated_at: new Date().toISOString(),
     }))
 

@@ -39,6 +39,13 @@ export const DEFAULT_SCORING_RULES = {
   rec_2pt: 2,
   // Misc
   fum_lost: -2,
+  // Returns. return_td covers kick, punt, interception and fumble return
+  // scores (Sleeper aggregates them), and was previously stored but never
+  // awarded — a punt returned for a touchdown was worth nothing. return_yd
+  // applies to kick and punt return yardage combined, at the conventional
+  // 1 point per 25 yards.
+  return_td: 6,
+  return_yd: 0.04,
   // Kicker
   fgm_0_39: 3,
   fgm_40_49: 4,
@@ -143,6 +150,11 @@ export function applyScoringRules(stat, rules) {
 
   // Misc
   pts += (stat.fum_lost || 0) * (r.fum_lost || 0)
+
+  // Returns. Kick and punt yardage are stored separately to stay faithful to
+  // the feed and summed here, because combining them is a scoring decision.
+  pts += (stat.return_td || 0) * (r.return_td || 0)
+  pts += ((Number(stat.kr_yd) || 0) + (Number(stat.pr_yd) || 0)) * (r.return_yd || 0)
   // Two-point conversions. Sleeper rolls all 2pt types into a single
   // `two_pt` field — no type distinction at the source. We infer the
   // most-likely type from the same stat row's offensive activity:
@@ -286,9 +298,22 @@ export function computeIdpAwareProjection(projRow, position, projCol, rules) {
     // tackles/sacks, 0.34 for 2-4, 0.20 for 0-2. It carries no IDP scoring of
     // its own, just the small odds of a defensive or return touchdown, which
     // genuinely does belong in the total.
-    return (Number(idpPoints) || 0) + (Number(projRow[projCol]) || 0)
+    return (Number(idpPoints) || 0) + (Number(projRow[projCol]) || 0) + returnProjection(projRow, rules)
   }
-  return projRow[projCol]
+  return (Number(projRow[projCol]) || 0) + returnProjection(projRow, rules)
+}
+
+/**
+ * Projected points from returns. Punt only — Sleeper's projection payload has
+ * pr / pr_yd / pr_td and no kick-return equivalent, so a kick returner scores
+ * return points he is never projected for. That asymmetry is upstream; the
+ * alternative is projecting nothing at all for returns, which is further from
+ * the truth than projecting the half we can see.
+ */
+function returnProjection(projRow, rules) {
+  if (!projRow || !rules) return 0
+  return (Number(projRow.pr_yd) || 0) * (rules.return_yd || 0)
+    + (Number(projRow.pr_td) || 0) * (rules.return_td || 0)
 }
 
 /**
