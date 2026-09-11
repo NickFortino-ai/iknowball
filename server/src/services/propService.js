@@ -10,6 +10,7 @@ import { fetchCompletedGameStats as fetchNbaStatsFromEspn } from '../jobs/scoreN
 import { fetchCompletedGameStats as fetchMlbStatsFromEspn } from '../jobs/scoreMLBDFS.js'
 import { fetchCompletedWNBAGameStats as fetchWnbaStatsFromEspn } from '../jobs/scoreWNBADFS.js'
 import { normalizeName, stripAccents } from '../utils/name.js'
+import { fetchAll } from '../utils/fetchAll.js'
 import { todaySportsDay, yesterdaySportsDay, sportsDayBoundsUtc } from '../utils/sportsDay.js'
 import { getPlayerHeadshotUrl, refreshPlayerHeadshotCache } from './espnService.js'
 
@@ -28,6 +29,18 @@ const SHORT_TO_FULL_SPORT_KEY = {
   nhl: 'icehockey_nhl',
   mls: 'soccer_usa_mls',
   wc: 'soccer_world_cup',
+}
+
+// Name key for matching a sportsbook's spelling to ours. Strips accents,
+// periods, apostrophes and name suffixes — "Tre' Harris" vs "Tre Harris" was
+// the single miss across a full slate before apostrophes were included.
+function normalizePropPlayerName(name) {
+  return stripAccents(String(name || ''))
+    .replace(/[.']/g, '')
+    .replace(/\s+(jr|sr|ii|iii|iv)\s*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
 }
 
 // Odds API sport key → ESPN sportPath (used by the headshot cache).
@@ -239,6 +252,33 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey) {
     }
   }
 
+  // NFL headshots come from our own nfl_players rows, not the ESPN roster
+  // cache. That cache is keyed by a SPORT_TEAMS list which has entries for
+  // NBA, MLB and WNBA and none for football — so every NFL prop card rendered
+  // with initials, silently, even though americanfootball_nfl was mapped in
+  // SPORT_KEY_TO_ESPN_PATH.
+  //
+  // Sleeper already gives us a headshot for essentially every rostered NFL
+  // player, so this is one indexed read instead of 32 ESPN roster fetches,
+  // and it matched 195 of 196 distinct prop players on the current slate.
+  const nflHeadshotByName = {}
+  if (fullSportKey === 'americanfootball_nfl') {
+    try {
+      const players = await fetchAll(
+        supabase
+          .from('nfl_players')
+          .select('full_name, headshot_url')
+          .not('headshot_url', 'is', null)
+          .order('id'),
+      )
+      for (const pl of players || []) {
+        nflHeadshotByName[normalizePropPlayerName(pl.full_name)] = pl.headshot_url
+      }
+    } catch (err) {
+      logger.warn({ err: err.message }, 'NFL headshot lookup failed — cards fall back to initials')
+    }
+  }
+
   const now = Date.now()
 
   await Promise.all(games.map(async (game) => {
@@ -292,7 +332,10 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey) {
             bookmaker: primary.key,
             external_event_id: game.external_id,
           }
-          if (sportPath) {
+          const nflUrl = nflHeadshotByName[normalizePropPlayerName(playerName)]
+          if (nflUrl) {
+            row.player_headshot_url = nflUrl
+          } else if (sportPath) {
             const url = getPlayerHeadshotUrl(playerName, sportPath)
             if (url) row.player_headshot_url = url
           }
