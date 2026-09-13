@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js'
 import { settleProps } from '../services/propService.js'
 import { getCurrentNflWeek } from '../services/tdPassService.js'
 import { stripAccents } from '../utils/name.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 // Map prop market_key → actual value from an nfl_player_stats row (Sleeper
 // weekly stats). Keep in sync with the NFL branch of
@@ -72,11 +73,21 @@ export async function settleNFLProps() {
 
   // Pull this week's stats joined to player names so we can match props
   // (which only carry player_name) without a separate id map.
-  const { data: stats } = await supabase
-    .from('nfl_player_stats')
-    .select('player_id, pass_yd, pass_td, pass_cmp, pass_att, pass_int, rush_yd, rush_att, rec, rec_yd, rec_td, rush_td, return_td, nfl_players!inner(full_name)')
-    .eq('season', season)
-    .eq('week', week)
+  // fetchAll: a full NFL week passed 1,600 stat rows on the first real
+  // Sunday, and Supabase silently caps an unpaginated select at 1,000. Props
+  // for anyone beyond the cut simply never settled — games final, picks
+  // locked, actual_value null — with no error to show for it. Worse, without
+  // an explicit sort the rows Postgres returns are arbitrary, so WHICH
+  // players fell outside the cap changed between runs: Jahmyr Gibbs resolved
+  // in one pass and vanished in the next.
+  const stats = await fetchAll(
+    supabase
+      .from('nfl_player_stats')
+      .select('player_id, pass_yd, pass_td, pass_cmp, pass_att, pass_int, rush_yd, rush_att, rec, rec_yd, rec_td, rush_td, return_td, nfl_players!inner(full_name)')
+      .eq('season', season)
+      .eq('week', week)
+      .order('player_id', { ascending: true }),
+  )
 
   if (!stats?.length) return
 
