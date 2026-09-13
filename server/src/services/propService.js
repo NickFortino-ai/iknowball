@@ -1128,11 +1128,21 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
       try {
         const { getCurrentNflWeek } = await import('./tdPassService.js')
         const { season, week } = await getCurrentNflWeek()
-        const { data: nflStats } = await supabase
-          .from('nfl_player_stats')
-          .select('player_id, pass_yd, pass_td, pass_cmp, pass_att, pass_int, rush_yd, rush_att, rec, rec_yd, rec_td, rush_td, return_td, nfl_players!inner(full_name)')
-          .eq('season', season)
-          .eq('week', week)
+        // fetchAll, not a bare select: a full NFL week is ~1,150 stat rows and
+        // Supabase silently caps an unpaginated query at 1,000. Ja'Marr Chase
+        // sat past the cut, so his locked prop showed no live stat mid-game
+        // while Gibbs and Watson — who happened to land inside the first
+        // thousand — resolved fine. Nothing errored; the rows simply weren't
+        // there. .order('player_id') keeps paging deterministic, otherwise
+        // rows shift between pages and some are skipped or repeated.
+        const nflStats = await fetchAll(
+          supabase
+            .from('nfl_player_stats')
+            .select('player_id, pass_yd, pass_td, pass_cmp, pass_att, pass_int, rush_yd, rush_att, rec, rec_yd, rec_td, rush_td, return_td, nfl_players!inner(full_name)')
+            .eq('season', season)
+            .eq('week', week)
+            .order('player_id', { ascending: true }),
+        )
         for (const s of nflStats || []) {
           const name = s.nfl_players?.full_name
           if (name) nflByName[normalizeName(name)] = s
