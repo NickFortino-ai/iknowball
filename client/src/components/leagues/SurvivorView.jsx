@@ -132,21 +132,33 @@ export default function SurvivorView({ league }) {
   // left 'pending' (locked or settled) — otherwise a user in "pre-pick
   // tomorrow" mode who accidentally taps a today game would overwrite
   // their settled pick and lose the credit.
+  // True once the user's pick for this period can no longer be changed —
+  // its game has kicked off, so the pick has left 'pending'.
+  const pickIsLocked = !!todayPick && todayPick.status !== 'pending'
+
   const pickWeekGames = useMemo(() => {
     if (!games?.length) return []
     let upcoming = league?.starts_at
       ? games.filter((g) => g.starts_at >= league.starts_at)
       : games
-    if (todayPick && todayPick.status !== 'pending' && actualCurrentWeek?.starts_at && actualCurrentWeek?.ends_at) {
-      upcoming = upcoming.filter((g) =>
-        !(g.starts_at >= actualCurrentWeek.starts_at && g.starts_at <= actualCurrentWeek.ends_at)
-      )
+
+    // ALWAYS bound to the current period. This used to skip the bound once
+    // the user had picked, which let future weeks through — and since the
+    // odds feed only publishes a few days out, "next week" was whatever
+    // single game happened to be loaded. In Week 1 that surfaced one lone
+    // Sep 21 Giants game with nothing to indicate it belonged to Week 2.
+    if (pickWeek?.starts_at && pickWeek?.ends_at) {
+      upcoming = upcoming.filter((g) => g.starts_at >= pickWeek.starts_at && g.starts_at <= pickWeek.ends_at)
     }
-    if (!board?.user_has_picked && pickWeek?.starts_at && pickWeek?.ends_at) {
-      return upcoming.filter((g) => g.starts_at >= pickWeek.starts_at && g.starts_at <= pickWeek.ends_at)
-    }
+
+    // Having picked is NOT the same as being committed. While the picked
+    // game has not kicked off the pick can still be changed, so the rest of
+    // the week's games stay on offer. Once it starts, there is nothing left
+    // to choose this period.
+    if (pickIsLocked) return []
+
     return upcoming
-  }, [games, pickWeek, board?.user_has_picked, league?.starts_at, todayPick, actualCurrentWeek])
+  }, [games, pickWeek, league?.starts_at, pickIsLocked])
 
   // Detect when user has used every available team in current period (pool expansion)
   const poolExpanded = useMemo(() => {
@@ -326,6 +338,21 @@ export default function SurvivorView({ league }) {
                 <div className="text-sm text-text-primary mb-1 font-semibold">Not open yet</div>
                 <div className="text-xs text-text-secondary">
                   Picks open {new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                </div>
+              </>
+            ) : pickIsLocked ? (
+              <>
+                {/* Distinct from the generic empty slate: there ARE games, the
+                    user simply has no choice left this period because his
+                    pick has kicked off. Saying "no games available" there
+                    reads as something being broken. */}
+                <div className="text-sm text-text-primary mb-1 font-semibold">
+                  {todayPick?.team_name ? `You're locked in with ${todayPick.team_name}` : "You're locked in for this week"}
+                </div>
+                <div className="text-xs text-text-secondary">
+                  {actualCurrentWeek?.ends_at
+                    ? `Next week's picks open ${new Date(actualCurrentWeek.ends_at).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`
+                    : "Next week's picks open when this week ends"}
                 </div>
               </>
             ) : (
