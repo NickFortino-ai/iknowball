@@ -26,6 +26,7 @@ import {
 } from '../services/invitationService.js'
 import { sendLeagueInviteEmail } from '../services/emailService.js'
 import { createCommissionerReport, listReportsForCommissioner, postReportMessage, markCommissionerReportsRead } from '../services/commissionerReportService.js'
+import { getLockedTeamSet } from '../services/tdPassService.js'
 import {
   submitSurvivorPick,
   submitTouchdownPick,
@@ -925,6 +926,14 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
   }
   const hasStats = Object.values(tdMap).some((v) => v > 0)
 
+  // Teams whose game this period has already kicked off. The submit path
+  // already refuses these — "X has already played this week" — but the list
+  // was offering them anyway, so the first a manager heard of it was an error
+  // after tapping. Jaxon Smith-Njigba (SEA, played Wednesday) and Kyren
+  // Williams (LAR, played Thursday) were both sitting near the top of the
+  // board on Sunday afternoon.
+  const lockedTeams = await getLockedTeamSet()
+
   const players = (data || []).map((p) => {
     const matchup = matchupByTeam[p.team] || null
     return {
@@ -933,6 +942,11 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
       on_bye: !matchup,
       matchup,
       season_tds: tdMap[p.id] || 0,
+      // Flagged rather than filtered out, matching the single-stat contests:
+      // seeing who has scored is the point of a board sorted by season TDs,
+      // and dropping the leaders once their game kicks off hides exactly the
+      // players a manager is weighing. The submit path already refuses them.
+      is_locked: lockedTeams.has(p.team),
     }
   })
 

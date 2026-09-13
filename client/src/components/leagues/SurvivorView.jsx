@@ -316,7 +316,12 @@ export default function SurvivorView({ league }) {
       )}
 
       {/* Touchdown pick form */}
-      {showPickForm && !leagueCompleted && userIsAlive && isTouchdown && pickWeek && (
+      {/* Touchdown picker — hidden once the pick has LOCKED, same rule as the
+          team pick form below. While the picked player's game has not kicked
+          off the pick can still be changed, so the picker stays. Once it has,
+          there is nothing left to choose and showing a full player board
+          invites a tap that the server would only reject. */}
+      {showPickForm && !leagueCompleted && userIsAlive && isTouchdown && pickWeek && !pickIsLocked && (
         <TouchdownPicker
           league={league}
           pickWeek={pickWeek}
@@ -325,6 +330,19 @@ export default function SurvivorView({ league }) {
             setShowPickForm(false)
           }}
         />
+      )}
+
+      {showPickForm && !leagueCompleted && userIsAlive && isTouchdown && pickIsLocked && (
+        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10 text-center py-8">
+          <div className="text-sm text-text-primary mb-1 font-semibold">
+            {todayPick?.player_name ? `You're locked in with ${todayPick.player_name}` : "You're locked in for this week"}
+          </div>
+          <div className="text-xs text-text-secondary">
+            {actualCurrentWeek?.ends_at
+              ? `Next week's picks open ${new Date(actualCurrentWeek.ends_at).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`
+              : "Next week's picks open when this week ends"}
+          </div>
+        </div>
       )}
 
       {/* Standard team pick form — pre-start vs empty-slate variants. */}

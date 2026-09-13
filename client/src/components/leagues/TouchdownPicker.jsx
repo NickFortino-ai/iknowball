@@ -26,6 +26,13 @@ export default function TouchdownPicker({ league, pickWeek, onPick }) {
       toast(`You've already used ${player.full_name}`, 'error')
       return
     }
+    // Says what's actually true. The submit path refuses these too, but the
+    // list keeps showing them — the board is sorted by season TDs, so the
+    // leaders are exactly who a manager is weighing even once they've played.
+    if (player.is_locked) {
+      toast(`${player.full_name}'s game has already started`, 'error')
+      return
+    }
     try {
       await submitPick.mutateAsync({
         leagueId: league.id,
@@ -99,7 +106,7 @@ export default function TouchdownPicker({ league, pickWeek, onPick }) {
                   <div
                     key={player.id}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                      player.used || player.on_bye
+                      player.used || player.on_bye || player.is_locked
                         ? 'opacity-40'
                         : 'hover:bg-accent/10'
                     }`}
@@ -129,7 +136,7 @@ export default function TouchdownPicker({ league, pickWeek, onPick }) {
                     <button
                       type="button"
                       onClick={() => handlePick(player)}
-                      disabled={player.used || player.on_bye || submitPick.isPending}
+                      disabled={player.used || player.on_bye || player.is_locked || submitPick.isPending}
                       className="flex-1 min-w-0 text-left disabled:cursor-not-allowed"
                     >
                       <div className="flex items-center gap-1.5">
@@ -140,6 +147,9 @@ export default function TouchdownPicker({ league, pickWeek, onPick }) {
                         )}
                         {player.on_bye && !player.used && (
                           <span className="text-[10px] font-bold text-text-muted">BYE</span>
+                        )}
+                        {player.is_locked && !player.used && !player.on_bye && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-text-muted/20 text-text-muted">Started</span>
                         )}
                       </div>
                       <div className="text-xs text-text-muted">
