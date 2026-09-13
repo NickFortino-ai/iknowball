@@ -70,6 +70,40 @@ const PROPS_UNSUPPORTED_SPORT_KEYS = new Set([
   'americanfootball_nfl_preseason',
 ])
 
+/**
+ * Fill player_headshot_url on NFL prop rows from our own nfl_players table.
+ *
+ * Shared because there are TWO row builders — syncPropsForGame and the
+ * user-facing load — and only one of them had the lookup. Same player, same
+ * market, different line is a different row, so Joe Burrow appeared with a
+ * headshot at 269.5 yards and initials at 267.5.
+ *
+ * One indexed read rather than 32 ESPN roster fetches, and the same image the
+ * rest of fantasy shows. No-op for other sports.
+ */
+export async function attachNflHeadshots(rows, sportKey) {
+  if (sportKey !== 'americanfootball_nfl') return
+  const needing = rows.filter((r) => !r.player_headshot_url && r.player_name)
+  if (!needing.length) return
+  try {
+    const players = await fetchAll(
+      supabase
+        .from('nfl_players')
+        .select('full_name, headshot_url')
+        .not('headshot_url', 'is', null)
+        .order('id'),
+    )
+    const byName = {}
+    for (const pl of players || []) byName[normalizePropPlayerName(pl.full_name)] = pl.headshot_url
+    for (const r of needing) {
+      const url = byName[normalizePropPlayerName(r.player_name)]
+      if (url) r.player_headshot_url = url
+    }
+  } catch (err) {
+    logger.warn({ err: err.message }, 'NFL headshot attach failed — cards fall back to initials')
+  }
+}
+
 export async function syncPropsForGame(gameId, markets) {
   // Get game details
   const { data: game, error: gameError } = await supabase
@@ -166,6 +200,7 @@ export async function syncPropsForGame(gameId, markets) {
 
   // Upsert props — omit status so existing published/locked props keep their status
   for (const row of rows) {
+    await attachNflHeadshots([row], sportKey)
     const { error } = await supabase
       .from('player_props')
       .upsert(row, { onConflict: 'game_id,player_name,market_key,line' })
@@ -261,23 +296,6 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey) {
   // Sleeper already gives us a headshot for essentially every rostered NFL
   // player, so this is one indexed read instead of 32 ESPN roster fetches,
   // and it matched 195 of 196 distinct prop players on the current slate.
-  const nflHeadshotByName = {}
-  if (fullSportKey === 'americanfootball_nfl') {
-    try {
-      const players = await fetchAll(
-        supabase
-          .from('nfl_players')
-          .select('full_name, headshot_url')
-          .not('headshot_url', 'is', null)
-          .order('id'),
-      )
-      for (const pl of players || []) {
-        nflHeadshotByName[normalizePropPlayerName(pl.full_name)] = pl.headshot_url
-      }
-    } catch (err) {
-      logger.warn({ err: err.message }, 'NFL headshot lookup failed — cards fall back to initials')
-    }
-  }
 
   const now = Date.now()
 
@@ -332,10 +350,7 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey) {
             bookmaker: primary.key,
             external_event_id: game.external_id,
           }
-          const nflUrl = nflHeadshotByName[normalizePropPlayerName(playerName)]
-          if (nflUrl) {
-            row.player_headshot_url = nflUrl
-          } else if (sportPath) {
+          if (sportPath) {
             const url = getPlayerHeadshotUrl(playerName, sportPath)
             if (url) row.player_headshot_url = url
           }
@@ -370,6 +385,7 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey) {
       const preserved = preserve.get(`${row.player_name}|${row.line}`)
       row.status = preserved || 'published'
     }
+    await attachNflHeadshots(rows, fullSportKey)
 
     // Chunked upsert with per-row fallback — a single poisoned row
     // (e.g. odd Unicode in player_name) shouldn't nuke the whole game's slate.
