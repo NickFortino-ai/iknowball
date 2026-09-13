@@ -707,75 +707,46 @@ export async function scoreTouchdownSurvivorPicks(gameId) {
   })
   if (!picks.length) return
 
-  // Get the game's external_id for ESPN lookup
-  const { data: game } = await supabase
+  // Touchdowns come from nfl_player_stats, not from scraping ESPN's scoring
+  // plays. The old path built a set of ESPN athlete ids from
+  // summary.scoringPlays[].athleteId / .scoringAthletes — and ESPN populates
+  // NEITHER field. Both are absent on every play; only the text carries the
+  // scorer ("Jonathan Taylor 1 Yd Rush"). So the id set was ALWAYS empty and
+  // every touchdown survivor pick was marked failed regardless of what the
+  // player actually did. Jahmyr Gibbs (2 rushing TDs) and Jonathan Taylor
+  // (2 rushing TDs) each lost a life on the first real Sunday.
+  //
+  // A second, independent failure sat underneath it: nfl_players.espn_id is
+  // null for plenty of players — Gibbs included — and the old code treated a
+  // missing id as "did not score" rather than "cannot tell".
+  //
+  // We already sync rushing, receiving and return touchdowns per player per
+  // week from Sleeper, and every other scoring path in the app trusts them.
+  const { data: gameRow2 } = await supabase
     .from('games')
-    .select('external_id, sports(key)')
+    .select('starts_at, season, week, sports(key)')
     .eq('id', gameId)
     .single()
+  if (gameRow2?.sports?.key !== 'americanfootball_nfl') return
 
-  if (!game?.external_id) return
+  const { getCurrentNflWeek } = await import('./tdPassService.js')
+  const nflState = await getCurrentNflWeek()
+  const season = gameRow2.season || nflState.season
+  const week = gameRow2.week || nflState.week
 
-  // Fetch ESPN box score to find TD scorers
-  const espnPath = game.sports?.key === 'americanfootball_nfl' ? 'football/nfl' : null
-  if (!espnPath) return
+  const playerIds = [...new Set(picks.map((p) => p.player_id).filter(Boolean))]
+  if (!playerIds.length) return
 
-  // Fetch the ESPN scoreboard to find the event by team matching
-  const gameRow = await supabase.from('games').select('starts_at, home_team, away_team').eq('id', gameId).single()
-  const gd = gameRow.data
-  if (!gd) return
+  const { data: statRows } = await supabase
+    .from('nfl_player_stats')
+    .select('player_id, rush_td, rec_td, return_td')
+    .eq('season', season)
+    .eq('week', week)
+    .in('player_id', playerIds)
 
-  const etDate = new Date(new Date(gd.starts_at).toLocaleString('en-US', { timeZone: 'America/New_York' }))
-  const dateStr = `${etDate.getFullYear()}${String(etDate.getMonth() + 1).padStart(2, '0')}${String(etDate.getDate()).padStart(2, '0')}`
-
-  let tdPlayerIds = new Set()
-  try {
-    const sbRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${espnPath}/scoreboard?dates=${dateStr}`)
-    if (!sbRes.ok) return
-    const sbData = await sbRes.json()
-
-    // Find the matching event
-    const matchTeam = (a, b) => {
-      const an = a.toLowerCase(), bn = b.toLowerCase()
-      if (an.includes(bn) || bn.includes(an)) return true
-      return an.split(/\s+/).pop() === bn.split(/\s+/).pop()
-    }
-    const espnEvent = (sbData.events || []).find((ev) => {
-      const comp = ev.competitions?.[0]
-      if (!comp) return false
-      const h = comp.competitors?.find((c) => c.homeAway === 'home')
-      const a = comp.competitors?.find((c) => c.homeAway === 'away')
-      return h && a && matchTeam(h.team?.displayName || '', gd.home_team) && matchTeam(a.team?.displayName || '', gd.away_team)
-    })
-
-    if (!espnEvent) return
-
-    // Fetch the summary for scoring plays
-    const sumRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${espnPath}/summary?event=${espnEvent.id}`)
-    if (!sumRes.ok) return
-    const summary = await sumRes.json()
-
-    // Extract TD scorers from scoring plays
-    const scoringPlays = summary.scoringPlays || []
-    for (const play of scoringPlays) {
-      const text = (play.text || '').toLowerCase()
-      // Non-passing TDs: rush, reception, fumble recovery, kick/punt return
-      const isNonPassTD = text.includes('rush') || text.includes('reception') || text.includes('return') ||
-        text.includes('fumble') || text.includes('run ')
-      const isPassTD = text.includes('pass') && !text.includes('return')
-
-      if (isNonPassTD || !isPassTD) {
-        // The scorer is typically the first athlete mentioned
-        if (play.athleteId) tdPlayerIds.add(String(play.athleteId))
-        // Also check scoringAthletes array
-        for (const sa of play.scoringAthletes || []) {
-          if (sa.id) tdPlayerIds.add(String(sa.id))
-        }
-      }
-    }
-  } catch (err) {
-    logger.error({ err, gameId }, 'Failed to fetch TD scoring data from ESPN')
-    return
+  const tdsByPlayer = {}
+  for (const st of statRows || []) {
+    tdsByPlayer[st.player_id] = (st.rush_td || 0) + (st.rec_td || 0) + (st.return_td || 0)
   }
 
   // Score each pick
@@ -789,15 +760,11 @@ export async function scoreTouchdownSurvivorPicks(gameId) {
 
     if (memberCheck && !memberCheck.is_alive) continue
 
-    // Look up the player's ESPN ID from nfl_players
-    const { data: nflPlayer } = await supabase
-      .from('nfl_players')
-      .select('espn_id')
-      .eq('id', pick.player_id)
-      .single()
-
-    const espnId = nflPlayer?.espn_id
-    const survived = espnId ? tdPlayerIds.has(espnId) : false
+    // No stat row yet means the sync has not caught up, NOT that he failed.
+    // Skip and let a later pass settle it — the old code's "missing id means
+    // eliminated" is exactly how this went wrong.
+    if (tdsByPlayer[pick.player_id] === undefined) continue
+    const survived = tdsByPlayer[pick.player_id] > 0
 
     const isDaily = pick.leagues?.settings?.pick_frequency === 'daily'
     const periodLabel = isDaily ? 'Day' : 'Week'
@@ -847,7 +814,7 @@ export async function scoreTouchdownSurvivorPicks(gameId) {
     await checkSurvivorWinner(leagueId)
   }
 
-  logger.info({ gameId, picks: picks.length, tdPlayers: tdPlayerIds.size }, 'Touchdown survivor picks scored')
+  logger.info({ gameId, picks: picks.length, scorers: Object.values(tdsByPlayer).filter((n) => n > 0).length }, 'Touchdown survivor picks scored')
 }
 
 export async function scoreSurvivorPicks(gameId, winner) {
