@@ -792,7 +792,10 @@ export async function scoreTouchdownSurvivorPicks(gameId) {
       const newLives = Math.max(0, (member?.lives_remaining || 1) - 1)
       await supabase
         .from('league_members')
-        .update({ lives_remaining: newLives, is_alive: newLives > 0, eliminated_week: newLives === 0 ? rawWeekNum : null, updated_at: new Date().toISOString() })
+        // No updated_at on league_members — including it made PostgREST
+        // reject the whole update, silently, because the error was never
+        // captured. The life was never actually taken here.
+        .update({ lives_remaining: newLives, is_alive: newLives > 0, eliminated_week: newLives === 0 ? rawWeekNum : null })
         .eq('league_id', pick.league_id)
         .eq('user_id', pick.user_id)
 
@@ -824,11 +827,19 @@ export async function scoreSurvivorPicks(gameId, winner) {
   // a stale ESPN snapshot before lockPicks could see 'upcoming'). Without
   // the 'pending' fallback the pick stays unsettled forever and the user
   // never gets eliminated, blocking the league from declaring a winner.
+  // TEAM picks only. Touchdown survivor picks live in the same table with
+  // player_id set and picked_team null, and scoreGames calls this function
+  // BEFORE scoreTouchdownSurvivorPicks on the same game. Without this filter
+  // a touchdown pick was read as a team pick, failed the winner comparison
+  // against a null team, and was eliminated — taking a life with it. The
+  // touchdown scorer then found nothing left in 'locked'/'pending' to score.
+  // That is how five managers whose players scored were charged a life.
   const { data: rawPicks, error } = await supabase
     .from('survivor_picks')
     .select('*, leagues(name, settings, starts_at), league_weeks(week_number, starts_at)')
     .eq('game_id', gameId)
     .in('status', ['locked', 'pending'])
+    .is('player_id', null)
 
   if (error) {
     logger.error({ error, gameId }, 'Failed to fetch survivor picks for scoring')
