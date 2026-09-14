@@ -95,6 +95,10 @@ const POSITION_STAT_CONFIG = {
 // / SS). Map each family to the same stat template so the display is
 // consistent regardless of which specific position code is on file.
 const IDP_STAT_TEMPLATE = [
+  // Leads the line: a defensive TD is the single biggest thing an IDP can
+  // do and it was missing here entirely. Sleeper sends it as idp_def_td and
+  // the sync folds it into the def_td column (see sleeperService.js).
+  { key: 'def_td', label: 'TD' },
   { key: 'idp_tkl_solo', label: 'SOLO' },
   { key: 'idp_tkl_ast', label: 'AST' },
   { key: 'idp_tkl_loss', label: 'TFL' },

@@ -494,20 +494,25 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
         rec: s.rec || 0,
         rec_yd: s.rec_yd || 0,
         rec_td: s.rec_td || 0,
-        // Aggregate all non-offensive TDs a player scored — kick/punt
-        // returns (td_special / td_st), defensive INT returns (td_int),
-        // defensive fumble returns (td_fum / td_fum_rec). Books grade
-        // player_anytime_td on ANY touchdown, so leaving these out
+        // Special-teams TD a player scored (kick or punt return). Books
+        // grade player_anytime_td on ANY touchdown, so leaving this out
         // silently under-grades a WR who scored on a punt return.
-        // Defensive `|| 0` on every possible key so Sleeper naming
-        // drift (they've moved keys around historically) doesn't crash
-        // the sync.
-        return_td:
-          (s.td_special || 0) +
-          (s.td_st || 0) +
-          (s.td_int || 0) +
-          (s.td_fum || 0) +
-          (s.td_fum_rec || 0),
+        //
+        // `st_td` is the PLAYER-level key. `kr_td` / `pr_td` look like the
+        // obvious choices and are NOT — they only ever appear on `TEAM_*`
+        // aggregate rows, never on an individual player, so mapping them
+        // here would score nothing. Verified against the 2025 wk1-3 feeds.
+        //
+        // The previous five keys (td_special / td_st / td_int / td_fum /
+        // td_fum_rec) do not exist in Sleeper's feed at all — checked every
+        // key across 2025 wk1-3 and 2026 wk1. return_td was therefore always
+        // 0 and return-TD scoring could never fire.
+        //
+        // `misc_td` is deliberately NOT added: on the rows that carry it,
+        // it co-occurs with st_td for what appears to be the same blocked-
+        // kick return, and double-crediting a TD is worse than missing a
+        // rare one.
+        return_td: s.st_td || 0,
         // Kick / punt returns. Sleeper has always sent these; we simply
         // never stored them, so return yardage could not score.
         // Individual INT return yards. Sleeper's int_ret_yd is the TEAM
@@ -539,7 +544,19 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
         fgmiss_50_plus: s.fgmiss_50p || 0,
         xpm: s.xpm || 0,
         xpa: s.xpa || 0,
-        def_td: s.def_td || 0,
+        // Two different Sleeper keys land in this one column, and they never
+        // co-occur on the same row (verified: 0 rows carry both):
+        //   def_td      — a TEAM D/ST row's defensive TD
+        //   idp_def_td  — an INDIVIDUAL defender's own TD (pick-six, fumble
+        //                 return). We only ever read def_td, so T.J. Watt's
+        //                 week 1 pick-six was dropped on import and he scored
+        //                 nothing for it.
+        // Both are worth 6 to their respective scorer, and the D/ST unit and
+        // the individual defender SHOULD both be credited for the same play.
+        // Folding idp_def_td in here rather than adding a column also means
+        // it scores immediately in leagues with stored custom scoring_rules,
+        // which already carry def_td but would have no rule for a new key.
+        def_td: (s.def_td || 0) + (s.idp_def_td || 0),
         def_int: s.int || 0,
         def_sack: s.sack || 0,
         def_fum_rec: s.fum_rec || 0,

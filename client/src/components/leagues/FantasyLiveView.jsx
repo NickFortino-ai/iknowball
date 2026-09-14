@@ -34,6 +34,9 @@ const IDP_STAT_POSITIONS = new Set([
 // like the number came from nowhere.
 function idpStatParts(stats) {
   const parts = []
+  // Defensive TD first — biggest single play an IDP can make. Sleeper sends
+  // it as idp_def_td; the sync folds it into def_td (see sleeperService.js).
+  if (stats.def_td) parts.push(`${stats.def_td} TD`)
   if (stats.idp_tkl_solo) parts.push(`${stats.idp_tkl_solo} Tkl`)
   if (stats.idp_tkl_ast) parts.push(`${stats.idp_tkl_ast} Ast`)
   if (stats.idp_tkl_loss) parts.push(`${stats.idp_tkl_loss} TFL`)
