@@ -451,7 +451,11 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
 
   // Query sources in parallel (some skipped for 'all' / 'highlights' / 'hot_takes' scope)
   const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, leagueWins, h2hPicks, hotTakes, hotTakeReminders, sweatShares, viralHotTakes, futuresPicks] = await Promise.all([
-    // Source 1: Notable picks — settled where (correct AND odds >= 250) OR (multiplier >= 3)
+    // Source 1: Notable picks — settled WINS only, either (odds >= 250) or
+    // (multiplier >= 3). Multipliers used to post win or loss while underdogs
+    // posted only on a win, so two sources with opposite rules sat side by
+    // side in one feed: 45% of multiplier cards were losses while a long-odds
+    // miss was silently dropped. The Hub now broadcasts hits from both.
     // Fetches at +250 threshold; "all" scope filters to +300 during processing
     skipForHotTakes ||
     applyBefore(filterByUser(supabase
@@ -459,7 +463,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .select('id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, game_id, games(home_team, away_team, home_score, away_score, sports(name, key))'),
       'user_id', connectedIds)
       .eq('status', 'settled')
-      .or('and(is_correct.eq.true,odds_at_pick.gte.250),multiplier.gte.3'), 'updated_at')
+      .or('and(is_correct.eq.true,odds_at_pick.gte.250),and(is_correct.eq.true,multiplier.gte.3)'), 'updated_at')
       .order('updated_at', { ascending: false })
       .limit(50),
 
@@ -654,7 +658,11 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     if (pick.multiplier >= 3 && pick.is_correct) {
       type = 'multiplier_hit'
     } else if (pick.multiplier >= 3 && !pick.is_correct) {
-      type = 'multiplier_miss'
+      // Unreachable from the query above, which is now win-only. Kept as a
+      // guard rather than deleted: a miss reaching this point would otherwise
+      // fall through to the generic 'pick' card and quietly publish the loss
+      // the query is meant to exclude.
+      continue
     } else if (pick.is_correct && pick.odds_at_pick >= underdogMin) {
       type = 'underdog_hit'
     } else if (pick.is_correct && pick.odds_at_pick < underdogMin) {
