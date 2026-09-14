@@ -33,7 +33,7 @@ import { scoreSquares } from './scoreSquares.js'
 import { syncMLBLineups } from './syncMLBLineups.js'
 import { sendScheduledEmails } from './sendScheduledEmails.js'
 import { syncNflStatsCurrentWeek, startNflStatsTickLoop } from './syncNflStats.js'
-import { syncPlayers, syncProjections, syncWeeklyProjections, syncByeWeeks, getNFLState } from '../services/sleeperService.js'
+import { syncPlayers, syncProjections, syncWeeklyProjections, syncByeWeeks, getNFLState, enrichEspnIds } from '../services/sleeperService.js'
 import { generateSalaries as generateNflDfsSalaries, publishSalaries as publishNflDfsSalaries } from '../services/dfsService.js'
 import { rolloverFantasyWeek } from '../services/fantasyService.js'
 import { sendNflInjuryWarnings } from './nflInjuryWarnings.js'
@@ -265,6 +265,13 @@ export function startScheduler() {
         const state = await getNFLState()
         if (state?.season) await syncByeWeeks(state.season)
       } catch (err) { logger.error({ err }, 'NFL syncByeWeeks job failed') }
+      // Fill nfl_players.espn_id for players Sleeper had no ESPN id for.
+      // Player modals fetch their gamelog from ESPN by athlete id, so a null
+      // here means no stats render at all. This existed only as a manual
+      // admin POST and had never been scheduled, so coverage just decayed:
+      // 74% of active players were missing an id. Runs after syncPlayers so
+      // players signed or traded in the last day get an id within 24 hours.
+      try { await enrichEspnIds() } catch (err) { logger.error({ err }, 'NFL enrichEspnIds job failed') }
       // Sync weekly projections for ALL 18 regular-season weeks so the
       // My Team + player modal show projections continuously across the
       // season (Yahoo-style). Sleeper's projections evolve through the

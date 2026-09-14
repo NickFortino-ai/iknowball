@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 const SLEEPER_BASE = 'https://api.sleeper.app/v1'
 const SLEEPER_CDN = 'https://sleepercdn.com/content/nfl/players'
@@ -249,15 +250,26 @@ export async function enrichEspnIds() {
     }
   }
 
-  // Pull every active, team-rostered NFL player missing espn_id
-  const { data: missing, error } = await supabase
-    .from('nfl_players')
-    .select('id, full_name, team, position')
-    .is('espn_id', null)
-    .not('team', 'is', null)
-    .in('position', ['QB','RB','WR','TE','K','DE','DT','NT','DL','LB','ILB','OLB','MLB','CB','S','FS','SS','DB'])
-
-  if (error) {
+  // Pull every active, team-rostered NFL player missing espn_id.
+  //
+  // Paged. This said "every" and wasn't: a plain select stops at Supabase's
+  // silent 1000-row cap, and there were 1,584 players missing an id. Each
+  // run filled exactly 1000 and reported total:1000, which reads like the
+  // whole set rather than a truncated page — so 584 players kept their null
+  // id no matter how many times the job ran. .order('id') keeps paging
+  // deterministic so pages can't skip or repeat rows.
+  let missing
+  try {
+    missing = await fetchAll(
+      supabase
+        .from('nfl_players')
+        .select('id, full_name, team, position')
+        .is('espn_id', null)
+        .not('team', 'is', null)
+        .in('position', ['QB','RB','WR','TE','K','DE','DT','NT','DL','LB','ILB','OLB','MLB','CB','S','FS','SS','DB'])
+        .order('id', { ascending: true }),
+    )
+  } catch (error) {
     logger.error({ error }, 'Failed to fetch players missing espn_id')
     return { updated: 0, unmatched: 0, total: 0, roster_errors: rosterErrors }
   }

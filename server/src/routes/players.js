@@ -836,6 +836,23 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
       if (nflRow?.id) blurbLookupId = nflRow.id
     } else if (nflRow?.espn_id) {
       espnId = nflRow.espn_id
+    } else {
+      // Sleeper id in, no espn_id on file. Falling through left espnId as
+      // the SLEEPER id and fetched ESPN's gamelog with it — which does not
+      // fail, it silently returns a DIFFERENT PLAYER. Sleeper 8329 is Devin
+      // Lloyd; ESPN 8329 is Brett Pierce, retired, so Lloyd's modal showed
+      // an empty week 1 and would have shown Pierce's stats had he any.
+      //
+      // enrichEspnIds now covers ~96% of active players (was 26%), but the
+      // tail is real: newly signed players exist here before the next
+      // enrichment run. Blank beats wrong, so refuse the lookup instead of
+      // guessing. The schedule/bye portion of the modal still renders off
+      // nflRow below.
+      logger.warn(
+        { sleeperId: rawId, team: nflRow?.team },
+        'NFL gamelog skipped — player has no espn_id, refusing to fetch with a Sleeper id',
+      )
+      espnId = null
     }
     if (nflRow?.team) nflPlayerTeam = nflRow.team
     if (nflRow?.bye_week) nflPlayerByeWeek = nflRow.bye_week
