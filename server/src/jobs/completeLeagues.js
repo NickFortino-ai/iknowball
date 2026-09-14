@@ -1263,6 +1263,31 @@ export async function completeLeagues() {
         const nowMs = Date.now()
         const endsAtMs = new Date(league.ends_at).getTime()
         if (nowMs < endsAtMs) {
+          // The season itself is the authority on whether play is over, not
+          // the games table. games only holds what the odds feed has
+          // published — a rolling few days — so between the last game of one
+          // day going final and the next day's slate syncing, the whole
+          // remaining window looks complete. Both guardrails below pass in
+          // that gap: there ARE games, and the latest one has started.
+          //
+          // That is exactly what happened on 2026-09-13 at ~11:30pm ET. "The
+          // seam 2026" (mlb_dfs) and "Home Run Derby" (hr_derby) both
+          // finalized two weeks early, in the same cron pass, with MLB's
+          // regular season running to Sep 28. Different commissioners, same
+          // sync gap.
+          //
+          // season_dates is admin-maintained and already clamps ends_at, so
+          // if the sport's regular season has not reached its end date there
+          // is nothing to reason about: play continues.
+          const sd = latestSeasonDatesPerSport.get(league.sport)
+          const seasonEndIso = sd?.playoff_ends_at || sd?.regular_season_ends_at
+          if (seasonEndIso && Date.now() < new Date(seasonEndIso).getTime()) {
+            logger.info(
+              { leagueId: league.id, sport: league.sport, seasonEndIso },
+              'Skipping early completion — sport season is still in progress',
+            )
+            continue
+          }
           if (!rangeGames?.length) {
             logger.info({ leagueId: league.id }, 'Skipping early completion — no games yet synced for league window')
             continue
