@@ -125,8 +125,28 @@ function formatSeasonStats(position, stats) {
   // are meaningful. Keep the order from the config so what does show
   // reads in the same canonical sequence.
   const nonZero = config.filter((c) => (Number(stats[c.key]) || 0) > 0)
-  if (nonZero.length === 0) return null
-  return nonZero.map((c) => {
+
+  // Two-way players. Travis Hunter's position arrives as "WR/DB", and the
+  // dual-position rule above takes the FIRST part — so he got the WR
+  // template and the tackle he actually recorded (and scores for) was
+  // dropped. His player modal showed it while his roster row did not.
+  // Any defensive production by a player whose template isn't the IDP one
+  // gets appended, same as FantasyMatchup / FantasyLiveView already do.
+  //
+  // Note this is specifically why first-part-wins isn't enough for hybrids:
+  // the half of his line that the template discards is real scoring.
+  //
+  // Excluded: IDP positions (the template IS the IDP one, so appending
+  // would duplicate every stat) and DEF, which is a team D/ST row whose
+  // numbers are the unit's, not one player's.
+  const isIdpTemplate = config === IDP_STAT_TEMPLATE
+  const extras = (isIdpTemplate || lookupKey === 'DEF')
+    ? []
+    : IDP_STAT_TEMPLATE.filter((c) => (Number(stats[c.key]) || 0) > 0)
+
+  const shown = [...nonZero, ...extras]
+  if (shown.length === 0) return null
+  return shown.map((c) => {
     const val = Number(stats[c.key]) || 0
     return `${c.comma ? val.toLocaleString() : val} ${c.label}`
   }).join(' · ')
