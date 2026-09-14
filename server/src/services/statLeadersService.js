@@ -89,7 +89,17 @@ const SPORT_CONFIG = {
       { name: 'totalTouchdowns', label: 'TDs' },
       { name: 'sacks', label: 'Sacks' },
       { name: 'interceptions', label: 'INTs' },
-      { name: 'totalTackles', label: 'Tackles' },
+      // ESPN's totalTackles is SOLO + ASSISTED combined, which is the stat
+      // ESPN, Yahoo and NFL.com all publish -- Anthony Hill Jr. week 1 is
+      // 2 solo + 14 ast = 16 here.
+      //
+      // Our tackles CONTEST deliberately scores solo + 0.5 * ast (= 9 for
+      // the same player), a fantasy convention. Both numbers are right;
+      // they measure different things. They were both labelled "Tackles",
+      // so the drill-in and the contest looked like they disagreed about a
+      // fact. Renamed here rather than changing either number: the board
+      // keeps matching every external source, and the contest is untouched.
+      { name: 'totalTackles', label: 'Comb. Tkl' },
     ],
   },
   basketball_nba: {
@@ -154,7 +164,17 @@ const SPORT_CONFIG = {
       { name: 'totalTouchdowns', label: 'TDs' },
       { name: 'sacks', label: 'Sacks' },
       { name: 'interceptions', label: 'INTs' },
-      { name: 'totalTackles', label: 'Tackles' },
+      // ESPN's totalTackles is SOLO + ASSISTED combined, which is the stat
+      // ESPN, Yahoo and NFL.com all publish -- Anthony Hill Jr. week 1 is
+      // 2 solo + 14 ast = 16 here.
+      //
+      // Our tackles CONTEST deliberately scores solo + 0.5 * ast (= 9 for
+      // the same player), a fantasy convention. Both numbers are right;
+      // they measure different things. They were both labelled "Tackles",
+      // so the drill-in and the contest looked like they disagreed about a
+      // fact. Renamed here rather than changing either number: the board
+      // keeps matching every external source, and the contest is untouched.
+      { name: 'totalTackles', label: 'Comb. Tkl' },
     ],
   },
   basketball_ncaab: {
