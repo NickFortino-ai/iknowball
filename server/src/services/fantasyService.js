@@ -3745,6 +3745,31 @@ export async function getRoster(leagueId, userId) {
     logger.warn({ err, leagueId, userId }, 'Failed to enrich roster with current-week opponent')
   }
 
+  // Per-player kickoff lock, so Edit Roster can render locked players as
+  // untappable instead of letting a manager move someone whose game has
+  // already been played. setFantasyLineup REFUSES those moves server-side
+  // (see skipped_locked), but until now the roster payload carried no lock
+  // signal at all — so the UI happily staged a move that could never save.
+  //
+  // Same signal and same field name the single-stat contests already use
+  // (routes/ints.js, routes/leagues.js), so the client treatment matches.
+  //
+  // Purely additive: this adds a field to rows that already exist rather
+  // than adding rows to a list, so shipped app bundles that don't know the
+  // field simply ignore it. (The `?locked=1` opt-in was needed in the other
+  // direction — there, new ROWS would have rendered as selectable.)
+  try {
+    const lockedTeams = await getLockedTeamsForLeague(leagueId)
+    for (const r of rows) {
+      r.is_locked = lockedTeams.has(r.nfl_players?.team)
+    }
+  } catch (err) {
+    // Leave the field undefined rather than defaulting to false — a false
+    // here would tell the client "safe to move" about a player we failed to
+    // check, which is the exact failure this is meant to prevent.
+    logger.warn({ err, leagueId, userId }, 'Failed to enrich roster with lock state')
+  }
+
   return rows
 }
 

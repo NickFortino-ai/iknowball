@@ -134,26 +134,49 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
   const canIR = isIrEligible(row?.nfl_players?.injury_status)
   const isInIR = row?.slot === 'ir'
 
+  // Kickoff lock (server stamps is_locked on the roster payload). Once a
+  // player's game has started, setFantasyLineup refuses to move him in or
+  // out of the lineup — so in Edit Roster he is untappable rather than
+  // tappable-then-rejected-on-save.
+  //
+  // Exception mirrors the server's: a move between two NON-scoring slots
+  // (bench <-> IR) can't change what the lineup scored, so it stays allowed.
+  // That's the IR buttons below, not the row tap — the row tap is the
+  // lineup swap, which is always refused for a locked player.
+  const inNonScoringSlot = row?.slot === 'bench' || isInIR
+  const lockedForEdit = editMode && row?.is_locked === true
+  const irAllowedWhileLocked = !row?.is_locked || inNonScoringSlot
+
   function handleRowClick() {
     if (editMode) {
+      if (lockedForEdit) return
       onTap?.()
     } else {
+      // Outside edit mode the row still opens the player detail card —
+      // a locked player is only frozen for lineup changes, not unreadable.
       onViewDetail?.(row?.player_id)
     }
   }
 
+  // Deliberately NOT the `disabled` attribute on the row button below: the
+  // IR controls are nested inside it, and a disabled button makes its
+  // descendants non-interactive too — which would kill the bench -> IR move
+  // that stays legal while locked. handleRowClick guards the tap instead.
   return (
     <div className="relative">
       <button
         type="button"
         onClick={handleRowClick}
+        aria-disabled={lockedForEdit || undefined}
         className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg border transition-colors text-left ${
           isSelected
             ? 'border-accent bg-accent/10'
             : isDropTarget
               ? 'border-accent/60 bg-accent/5 ring-1 ring-accent/40'
-              : 'border-text-primary/10 bg-bg-primary/40 hover:bg-bg-card-hover'
-        } ${dimmed ? 'opacity-40' : ''}`}
+              : lockedForEdit
+                ? 'border-text-primary/10 bg-bg-primary/40'
+                : 'border-text-primary/10 bg-bg-primary/40 hover:bg-bg-card-hover'
+        } ${dimmed ? 'opacity-40' : ''} ${lockedForEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         {row?.nfl_players?.headshot_url && (
           <img
@@ -226,7 +249,11 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
             </div>
           )
         })()}
-        {editMode && (canIR && !isInIR && onMoveToIR) && (
+        {/* irAllowedWhileLocked: a locked player sitting on the bench may
+            still go to IR (bench -> IR scores nothing either way), but a
+            locked STARTER cannot — that's a scoring-slot move and the
+            server refuses it. */}
+        {editMode && (canIR && !isInIR && onMoveToIR) && irAllowedWhileLocked && (
           <span
             role="button"
             onClick={(e) => { e.stopPropagation(); onMoveToIR(row.player_id) }}
