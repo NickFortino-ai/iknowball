@@ -338,12 +338,23 @@ export default function SacksView({ league, tab = 'picks' }) {
         })()}
 
         {hasSavedPicks && !editing ? (
-          <button
-            onClick={() => setEditing(true)}
-            className="w-full py-3 rounded-xl font-display border-2 border-accent text-accent bg-accent/5 hover:bg-accent/10 transition-colors mb-6"
-          >
-            Edit Picks
-          </button>
+          allPicksLocked ? (
+            /* Every pick's game has kicked off, so there is nothing left to
+               change. Edit used to open normally and show a remove X on each
+               locked player, then fail only on save with "<player>'s game has
+               already started" — a dead end you could only find by trying.
+               Say it up front instead. */
+            <div className="w-full py-3 rounded-xl font-display border-2 border-text-primary/15 text-text-primary/70 text-center mb-6">
+              Picks locked — all games started
+            </div>
+          ) : (
+            <button
+              onClick={() => setEditing(true)}
+              className="w-full py-3 rounded-xl font-display border-2 border-accent text-accent bg-accent/5 hover:bg-accent/10 transition-colors mb-6"
+            >
+              Edit Picks
+            </button>
+          )
         ) : (
           <button
             onClick={handleSubmit}

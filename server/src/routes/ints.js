@@ -147,7 +147,25 @@ router.get('/picks', async (req, res) => {
     .eq('season', season)
     .eq('week', week)
 
-  res.json(data || [])
+  // Stamp kickoff state onto each saved pick. These rows are stored at pick
+  // time and carry no game info, so the client had nothing to test: its
+  // "every pick locked" check read an absent game_starts_at, evaluated
+  // false forever, and left Edit clickable after every game had kicked off.
+  // Tapping it opened the editor with a remove X on each player and then
+  // failed on save with "<name>'s game has already started".
+  //
+  // Team-level signal, the same one /players and the submit path use, so
+  // all three agree on what "locked" means.
+  const [lockedTeams, matchupByTeam] = await Promise.all([
+    getLockedTeamSet(),
+    getCurrentWeekMatchups(),
+  ])
+
+  res.json((data || []).map((p) => ({
+    ...p,
+    game_starts_at: matchupByTeam[p.team]?.starts_at || null,
+    is_locked: lockedTeams.has(p.team),
+  })))
 })
 
 // Defenders exhausted for this season under the league's pick_reuse
