@@ -1044,6 +1044,13 @@ export async function backfillStuckSurvivorPicks() {
   for (const [gameId, winner] of byGame) {
     try {
       await scoreSurvivorPicks(gameId, winner)
+      // Touchdown picks too. This only ever called the team scorer, which
+      // used to "work" by accident — it had no player_id filter, so it
+      // swallowed touchdown picks and eliminated them. Now that it correctly
+      // skips them, a touchdown pick whose game finalized without the
+      // touchdown scorer running would stay 'locked' forever with no job able
+      // to settle it. Saquon Barkley's pick sat stuck exactly that way.
+      await scoreTouchdownSurvivorPicks(gameId)
     } catch (err) {
       logger.error({ err, gameId }, 'backfillStuckSurvivorPicks: rescore threw')
     }
