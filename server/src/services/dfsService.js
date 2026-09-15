@@ -58,6 +58,45 @@ export async function getNflKickoffByTeam(week, season) {
   return kickoffByTeam
 }
 
+/**
+ * NFL position overrides, shared by the pool and the pricing run.
+ *
+ * nfl_players.position is Sleeper's classification and it moves. Travis
+ * Hunter is carried as 'DB'; he was priced and rosterable in week 1, Sleeper
+ * reclassified him, and he silently vanished from the week 2 pool. An
+ * override row ('WR/DB') has existed since 2026-09-05 and traditional
+ * fantasy honours it — the DFS paths did not.
+ *
+ * Returns { primary, display }:
+ *   primary — the side that scores, used for slot eligibility, filtering and
+ *             pricing. 'WR/DB' -> 'WR'.
+ *   display — the full override string, for the UI label.
+ */
+async function loadDfsPositionOverrides() {
+  const { data } = await supabase
+    .from('player_position_overrides')
+    .select('player_name, position, team')
+    .eq('sport_key', 'americanfootball_nfl')
+  const byName = {}
+  const byNameTeam = {}
+  for (const o of data || []) {
+    if (!o.player_name || !o.position) continue
+    const entry = { primary: String(o.position).split('/')[0].trim().toUpperCase(), display: o.position }
+    const nm = o.player_name.toLowerCase()
+    if (o.team) byNameTeam[`${nm}|${String(o.team).toLowerCase()}`] = entry
+    else byName[nm] = entry
+  }
+  const names = (data || []).map((o) => o.player_name).filter(Boolean)
+  return {
+    names,
+    lookup(player) {
+      const nm = (player?.full_name || '').toLowerCase()
+      const scoped = player?.team ? byNameTeam[`${nm}|${String(player.team).toLowerCase()}`] : null
+      return scoped || byName[nm] || null
+    },
+  }
+}
+
 export async function getPlayerPool(week, season, position = null) {
   let query = supabase
     .from('dfs_weekly_salaries')
@@ -130,13 +169,24 @@ export async function getPlayerPool(week, season, position = null) {
   const kickoffByTeam = await getNflKickoffByTeam(week, season)
   const now = Date.now()
 
+  const overrides = await loadDfsPositionOverrides()
+
   return (data || [])
-    .filter((d) => ROSTERABLE.has(d.nfl_players?.position))
+    .filter((d) => {
+      const ov = overrides.lookup(d.nfl_players)
+      return ROSTERABLE.has(ov?.primary || d.nfl_players?.position)
+    })
     .filter((d) => d.nfl_players?.team)
     .map((d) => {
       const ko = kickoffByTeam[d.nfl_players?.team]
+      const ov = overrides.lookup(d.nfl_players)
       return {
         ...d.nfl_players,
+        // `position` stays the PRIMARY so slot eligibility and the client's
+        // position tabs keep matching on an exact value. The full 'WR/DB'
+        // goes out separately for display.
+        position: ov?.primary || d.nfl_players?.position,
+        display_position: ov?.display || d.nfl_players?.position,
         salary: d.salary,
         is_locked: ko != null && ko <= now,
         kickoff_at: ko != null ? new Date(ko).toISOString() : null,
@@ -669,11 +719,63 @@ export async function generateSalaries(week, season) {
   const players = await fetchAll(
     supabase
       .from('nfl_players')
-      .select('id, position, team, injury_status, depth_chart_order, bye_week')
+      .select('id, full_name, position, team, injury_status, depth_chart_order, bye_week')
       .not('team', 'is', null)
       .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
       .order('id')
   )
+
+  // Position overrides — two-way and mis-filed players.
+  //
+  // The query above filters on nfl_players.position, so a player Sleeper
+  // files outside the offensive set never reaches pricing. Travis Hunter is
+  // carried as 'DB'; he was priced in week 1, Sleeper reclassified him, and
+  // in week 2 he silently vanished from the pool entirely. Traditional
+  // fantasy already reads player_position_overrides (he has a 'WR/DB' row);
+  // DFS pricing did not.
+  //
+  // Dual positions like 'WR/DB' price off the FIRST part — that's the side
+  // that generates fantasy points here.
+  const { data: overrideRows } = await supabase
+    .from('player_position_overrides')
+    .select('player_name, position, team')
+    .eq('sport_key', 'americanfootball_nfl')
+  const overrideByName = {}
+  const overrideByNameTeam = {}
+  for (const o of overrideRows || []) {
+    if (!o.player_name || !o.position) continue
+    const primary = String(o.position).split('/')[0].trim().toUpperCase()
+    const nm = o.player_name.toLowerCase()
+    if (o.team) overrideByNameTeam[`${nm}|${o.team.toLowerCase()}`] = primary
+    else overrideByName[nm] = primary
+  }
+  const effectivePosition = (pl) => {
+    const nm = (pl.full_name || '').toLowerCase()
+    const scoped = pl.team ? overrideByNameTeam[`${nm}|${String(pl.team).toLowerCase()}`] : null
+    return scoped || overrideByName[nm] || pl.position
+  }
+
+  // Pull in anyone an override reclassifies INTO the priced set but whose raw
+  // position kept them out of the query above. Mirrors the override-players
+  // fetch in fantasyService.searchAvailablePlayers.
+  const overrideNames = (overrideRows || []).map((o) => o.player_name).filter(Boolean)
+  if (overrideNames.length) {
+    const knownIds = new Set(players.map((pl) => pl.id))
+    const extra = await fetchAll(
+      supabase
+        .from('nfl_players')
+        .select('id, full_name, position, team, injury_status, depth_chart_order, bye_week')
+        .not('team', 'is', null)
+        .in('full_name', overrideNames)
+        .order('id')
+    )
+    for (const pl of extra || []) {
+      if (knownIds.has(pl.id)) continue
+      if (!REPLACEMENT_RANK[effectivePosition(pl)]) continue
+      players.push(pl)
+      logger.info({ player: pl.full_name, raw: pl.position, priced_as: effectivePosition(pl) }, 'DFS pricing: player added via position override')
+    }
+  }
 
   // Sleeper weekly projections for THIS (season, week). This is the entire
   // pricing signal — no gamelog blend, no staleness discount, no defensive
@@ -706,8 +808,9 @@ export async function generateSalaries(week, season) {
   const projByPos = { QB: [], RB: [], WR: [], TE: [], K: [], DEF: [] }
   for (const p of players || []) {
     const proj = projectionMap.get(p.id)
-    if (proj != null && proj > 0 && projByPos[p.position]) {
-      projByPos[p.position].push(proj)
+    const ppos = effectivePosition(p)
+    if (proj != null && proj > 0 && projByPos[ppos]) {
+      projByPos[ppos].push(proj)
     }
   }
   const replacementByPos = {}
@@ -723,7 +826,7 @@ export async function generateSalaries(week, season) {
 
   const salaries = []
   for (const player of players || []) {
-    const pos = player.position
+    const pos = effectivePosition(player)
     if (!REPLACEMENT_RANK[pos]) continue // unknown position, skip
 
     const proj = projectionMap.get(player.id) || 0
