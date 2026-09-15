@@ -228,8 +228,15 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
         {/* Stat line — desktop only. Always the week being viewed:
             week_stats on the current/live week, season_stats on past
             weeks (server overloads season_stats with that-week's stats
-            in the lineup-history path). Season totals live in the
-            player detail modal.
+            in the lineup-history path).
+
+            The header above used to read "Season Total", which this
+            column has never shown — on the current week it renders
+            week_stats, and before kickoff those are empty, so the label
+            sat over a blank column promising something else. It reads
+            "Week N" now. Real season totals live in the player detail
+            modal, which sums every stat across played weeks in a sticky
+            Total row and is the better home for them anyway.
             Sits in a flex-grow column with text-left so it reads
             close to the player name (not jammed against the points
             column on the right). Header above the table mirrors this
@@ -972,13 +979,13 @@ export default function FantasyMyTeam({ league }) {
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center gap-3">
           <h3 className="text-base font-semibold text-text-primary">Starting Lineup</h3>
-          {/* Column label for the season-total stat line that PlayerRow
-              renders on desktop. Hidden in edit mode (stat line is also
-              hidden when editMode is true). Sits to the left of the
-              Edit button so it visually anchors above where the stats
-              column begins in each row. */}
+          {/* Column label for the stat line PlayerRow renders on desktop.
+              Names the week being viewed — the column shows that week's
+              stats, never a season total. Hidden in edit mode (the stat
+              line is hidden then too). Sits to the left of the Edit
+              button so it anchors above where the stats column begins. */}
           {!editMode && (
-            <span className="hidden md:inline-block text-xs uppercase tracking-wider text-text-muted ml-auto mr-auto">Season Total</span>
+            <span className="hidden md:inline-block text-xs uppercase tracking-wider text-text-muted ml-auto mr-auto">Week {activeWeek}</span>
           )}
           {(isCurrentWeek || isFutureWeek) && !editMode && (
             <button
@@ -1052,7 +1059,7 @@ export default function FantasyMyTeam({ league }) {
         <div className="px-4 py-3 border-b border-border flex items-baseline gap-3">
           <h3 className="text-base font-semibold text-text-primary">Bench</h3>
           {!editMode && (
-            <span className="hidden md:inline-block text-xs uppercase tracking-wider text-text-muted ml-auto mr-auto">Season Total</span>
+            <span className="hidden md:inline-block text-xs uppercase tracking-wider text-text-muted ml-auto mr-auto">Week {activeWeek}</span>
           )}
           <span className="text-xs text-text-muted font-mono ml-auto md:ml-0">{benchPlayers.length}/{benchSlots}</span>
         </div>
