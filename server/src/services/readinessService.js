@@ -983,9 +983,29 @@ async function computeFantasyReadiness(leagues, userId, result) {
 
   const { data: rosters } = await supabase
     .from('fantasy_rosters')
-    .select('league_id, player_id, slot, nfl_players(full_name, injury_status, bye_week)')
+    .select('league_id, player_id, slot, nfl_players(full_name, injury_status, bye_week, team)')
     .in('league_id', leagueIds)
     .eq('user_id', userId)
+
+  // Kickoff locks. Readiness is a call to ACTION, so it must only speak to
+  // players the manager can still do something about. Before this, a starter
+  // whose game had already been played still drove the flag red -- Kyler
+  // Murray sat Out in a salary-cap lineup after his game finished, so the
+  // card stayed red until the week rolled with nothing the manager could do.
+  // Locked players are excluded from every injury/bye check below; if the
+  // only problems are locked, the lineup reads green because everything
+  // still editable is fine.
+  let lockedTeams = new Set()
+  try {
+    const { getLockedTeamSet } = await import('./tdPassService.js')
+    lockedTeams = await getLockedTeamSet()
+  } catch (err) {
+    // Fail OPEN (empty set = nothing locked = previous behaviour). Treating
+    // an errored lookup as "everything locked" would suppress real warnings
+    // about players who can still be benched.
+    logger.warn({ err }, 'Readiness: locked-team lookup failed, treating all players as editable')
+  }
+  const isEditable = (p) => !p?.team || !lockedTeams.has(p.team)
 
   // Current NFL week — used to flag bye-week starters
   let currentNflWeek = null
@@ -1010,7 +1030,7 @@ async function computeFantasyReadiness(leagues, userId, result) {
   if (salaryCapLeagueIds.length && currentNflWeek) {
     const { data: dfsRosters } = await supabase
       .from('dfs_rosters')
-      .select('league_id, id, dfs_roster_slots(player_id, nfl_players(full_name, injury_status, bye_week))')
+      .select('league_id, id, dfs_roster_slots(player_id, nfl_players(full_name, injury_status, bye_week, team))')
       .in('league_id', salaryCapLeagueIds)
       .eq('user_id', userId)
       .eq('nfl_week', currentNflWeek)
@@ -1034,7 +1054,9 @@ async function computeFantasyReadiness(leagues, userId, result) {
         set(result, l.id, 'action', `No lineup set for week ${currentNflWeek}`)
         continue
       }
-      const slots = r.dfs_roster_slots || []
+      // Only players whose game hasn't kicked off can still be swapped, so
+      // only they can make this flag actionable.
+      const slots = (r.dfs_roster_slots || []).filter((sl) => isEditable(sl.nfl_players))
       const onBye = slots.filter((sl) => sl.nfl_players?.bye_week === currentNflWeek)
       if (onBye.length > 0) {
         const summary = onBye.length === 1
@@ -1073,9 +1095,13 @@ async function computeFantasyReadiness(leagues, userId, result) {
 
     const myRoster = rosterByLeague[l.id] || []
     if (!myRoster.length) continue // draft not complete or empty roster — null
-    const starters = myRoster.filter((r) => r.slot && r.slot !== 'bench' && r.slot !== 'ir')
-    if (requiredStarterCount > 0 && starters.length < requiredStarterCount) {
-      set(result, l.id, 'action', `${starters.length}/${requiredStarterCount} starting slots filled`)
+    const allStarters = myRoster.filter((r) => r.slot && r.slot !== 'bench' && r.slot !== 'ir')
+    // Slot-count check uses ALL starters -- an unfilled slot is a real
+    // problem whether or not the surrounding players have played. The
+    // injury/bye checks below use only the editable ones.
+    const starters = allStarters.filter((r) => isEditable(r.nfl_players))
+    if (requiredStarterCount > 0 && allStarters.length < requiredStarterCount) {
+      set(result, l.id, 'action', `${allStarters.length}/${requiredStarterCount} starting slots filled`)
       continue
     }
     // Bye-week starters take priority — if any starter is on bye this week,
