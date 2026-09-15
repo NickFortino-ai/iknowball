@@ -114,7 +114,14 @@ function SlotBorder({ status }) {
 /** Salary cap DFS leaderboard with expandable rosters */
 function SalaryCapLive({ league, week, season }) {
   const { profile } = useAuth()
-  const { data: liveData, isLoading } = useNflDfsLive(league.id, week, season)
+  // Week being viewed. null = follow the league's current week, so a rollover
+  // mid-session moves the view along instead of pinning it to a stale number.
+  const [pickedWeek, setPickedWeek] = useState(null)
+  const viewWeek = pickedWeek ?? week
+  const isHistorical = viewWeek < week
+  const canGoBack = viewWeek > 1
+  const canGoForward = viewWeek < week
+  const { data: liveData, isLoading } = useNflDfsLive(league.id, viewWeek, season, isHistorical)
   const [expandedUserId, setExpandedUserId] = useState(null)
   const [profileUserId, setProfileUserId] = useState(null)
   const [detailPlayerId, setDetailPlayerId] = useState(null)
@@ -129,12 +136,46 @@ function SalaryCapLive({ league, week, season }) {
 
   const { members, all_final } = liveData || {}
 
+  const weekNav = (
+    <div className="flex items-center justify-between mb-4">
+      <button
+        onClick={() => { if (canGoBack) setPickedWeek(viewWeek - 1) }}
+        disabled={!canGoBack}
+        aria-label="Previous week"
+        className="p-2 rounded-lg text-text-muted hover:text-text-primary transition-colors disabled:opacity-20"
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+      </button>
+      <span className="text-sm font-semibold text-text-primary">
+        Week {viewWeek}
+        {isHistorical && <span className="ml-2 text-xs font-normal text-text-muted">Final</span>}
+      </span>
+      <button
+        onClick={() => { if (canGoForward) setPickedWeek(viewWeek + 1) }}
+        disabled={!canGoForward}
+        aria-label="Next week"
+        className="p-2 rounded-lg text-text-muted hover:text-text-primary transition-colors disabled:opacity-20"
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+      </button>
+    </div>
+  )
+
   if (!members?.length) {
-    return <div className="text-center py-8 text-sm text-text-secondary">No rosters for this week.</div>
+    // Nav still renders, otherwise landing on an empty week traps you there
+    // with no way back to a week that has rosters.
+    return (
+      <div>
+        {weekNav}
+        <div className="text-center py-8 text-sm text-text-secondary">No rosters for this week.</div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-3">
+    <div>
+      {weekNav}
+      <div className="space-y-3">
       {members.map((m, idx) => {
         const isMe = m.user_id === profile?.id
         const isWinner = all_final && idx === 0
@@ -282,6 +323,7 @@ function SalaryCapLive({ league, week, season }) {
           </div>
         )
       })}
+      </div>
       {detailPlayerId && (
         <PlayerDetailModal leagueId={league.id} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
       )}

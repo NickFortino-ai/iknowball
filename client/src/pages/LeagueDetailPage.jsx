@@ -60,7 +60,7 @@ import ScoringRulesEditor from '../components/leagues/ScoringRulesEditor'
 
 const REPORT_FORMATS = ['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs']
 
-function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true, salaryCapLiveStarted = false, isCommissioner = false) {
+function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true, salaryCapShowLive = false, isCommissioner = false) {
   const isOpen = league.status === 'open'
   const isCompleted = league.status === 'completed'
   const memberOrStandings = isOpen ? 'Members' : 'Standings'
@@ -86,7 +86,7 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true
       // relevant week has kicked off — there's nothing to look at before
       // then. Other tabs unaffected.
       return isSalaryCap
-        ? [...(salaryCapLiveStarted ? ['Live'] : []), memberOrStandings, ...reportTab]
+        ? [...(salaryCapShowLive ? ['Live'] : []), memberOrStandings, ...reportTab]
         : ['Matchups', memberOrStandings, 'Players', ...reportTab]
     }
     if (['nba_dfs', 'wnba_dfs', 'mlb_dfs'].includes(league.format)) {
@@ -110,7 +110,7 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true
     if (isSalaryCap) {
       // Hide Live until at least one game in the league's relevant week
       // has kicked off — nothing to look at before then.
-      tabs = ['Roster', ...(salaryCapLiveStarted ? ['Live'] : []), memberOrStandings, ...reportTab, 'Thread']
+      tabs = ['Roster', ...(salaryCapShowLive ? ['Live'] : []), memberOrStandings, ...reportTab, 'Thread']
     } else {
       // Traditional: Matchups absorbs Live during regular season and
       // becomes the bracket view during playoff weeks. No separate
@@ -1955,6 +1955,11 @@ export default function LeagueDetailPage() {
   })()
   const { data: salaryCapWeekContext } = useFantasyWeekProjections(league?.id, salaryCapRelevantWeek)
   const salaryCapLiveStarted = !!salaryCapWeekContext?.liveStarted
+  // Live is also the history surface for salary cap -- it's where past weeks'
+  // rosters are browsed. Hiding it until this week kicks off would make every
+  // prior week unreachable from Tuesday through Saturday, so once there IS a
+  // past week the tab stays available regardless.
+  const salaryCapShowLive = salaryCapLiveStarted || (salaryCapWeekContext?.week || 1) > 1
   const { data: standings } = useLeagueStandings(id)
   const { data: bracketTournament } = useBracketTournament(league?.format === 'bracket' ? id : null)
   const { data: bracketEntries } = useBracketEntries(league?.format === 'bracket' ? id : null)
@@ -2157,7 +2162,7 @@ export default function LeagueDetailPage() {
   // Join CTA at the top.
   const isMember = league.is_member !== false
   const pendingInvitation = league.my_pending_invitation
-  const tabs = getLeagueTabs(league, isBracketLocked, fantasySettings, isMember, salaryCapLiveStarted, isCommissioner)
+  const tabs = getLeagueTabs(league, isBracketLocked, fantasySettings, isMember, salaryCapShowLive, isCommissioner)
   // Bracket leagues don't auto-fallback to a default arena — they should be black
   // unless the commissioner explicitly picks a backdrop. The bracket centerpiece
   // image lives on the bracket itself, not as a page-wide backdrop.

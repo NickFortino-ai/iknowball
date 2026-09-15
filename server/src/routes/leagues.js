@@ -1947,7 +1947,12 @@ router.get('/:id/fantasy/projections/week/:week', requireAuth, async (req, res) 
             .select('id', { count: 'exact', head: true })
             .eq('sport_id', nflSport.id)
             .gte('starts_at', `${dates[0]}T00:00:00Z`)
-            .lt('starts_at', `${dates[dates.length - 1]}T23:59:59Z`)
+            // +1 day: game_date is an ET calendar date, starts_at a UTC
+            // instant, so a Monday night kickoff (game_date 09-14) lands at
+            // 09-15T00:15Z and fell outside the old bound. The `d < todayET`
+            // loop above doesn't cover it either -- Monday isn't < Monday --
+            // so the Live tab stayed hidden through the Monday night game.
+            .lt('starts_at', `${new Date(new Date(`${dates[dates.length - 1]}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10)}T23:59:59Z`)
             .lte('starts_at', new Date().toISOString())
           if (count && count > 0) liveStarted = true
         }

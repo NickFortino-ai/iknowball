@@ -1282,13 +1282,15 @@ export function usePlayoffBracket(leagueId) {
   })
 }
 
-export function useNflDfsLive(leagueId, week, season) {
+export function useNflDfsLive(leagueId, week, season, isHistorical = false) {
   return useQuery({
     queryKey: ['nfl-dfs', leagueId, 'live', week, season],
     queryFn: () => api.get(`/dfs/live?league_id=${leagueId}&week=${week}&season=${season}`),
     enabled: !!leagueId && !!week,
     // 5s during live games, 10s otherwise. People expect near-instant updates.
+    // A finished week never changes, so browsing history doesn't poll at all.
     refetchInterval: (query) => {
+      if (isHistorical) return false
       const data = query.state.data
       const anyLive = data?.any_live || data?.members?.some((m) => m.slots?.some((s) => s.game_status === 'live'))
       return anyLive ? 5000 : 10000
