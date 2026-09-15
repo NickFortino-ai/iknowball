@@ -6234,6 +6234,51 @@ export async function addToWaiverPool(leagueId, playerIds, reason = 'dropped', a
  * completes — sets each member's starting priority (reverse draft order if
  * available, else random) and FAAB budget.
  */
+/**
+ * Reset waiver priority to REVERSE ORDER OF STANDINGS — worst record gets
+ * first claim. Runs at each weekly rollover.
+ *
+ * Priority was seeded once from reverse DRAFT order and then only moved when
+ * someone won a claim, so it drifted away from the table completely: in the
+ * John Madden Invitational the 3rd-place manager held priority 6 while two
+ * managers who had won claims sat at the back. That is a legitimate waiver
+ * convention (rolling priority), but it is not what this league expects.
+ *
+ * Priority-waiver leagues only. FAAB leagues bid for players and use priority
+ * merely as a tiebreak, so their order is left alone.
+ *
+ * Within a week, winning a claim still drops you to the back — that stops one
+ * manager sweeping every claim in a single processing run. This recompute
+ * wipes that each week, which is the point.
+ */
+export async function recomputeWaiverPriorityFromStandings(leagueId) {
+  const settings = await getFantasySettings(leagueId)
+  if (!settings) return { updated: 0 }
+  if (settings.format === 'salary_cap') return { updated: 0 }
+  if ((settings.waiver_type || 'priority') !== 'priority') return { updated: 0 }
+
+  const standings = await getFantasyStandings(leagueId)
+  if (!standings?.length) return { updated: 0 }
+
+  // getFantasyStandings returns best-first and already applies the league's
+  // tiebreakers, so reversing it gives a deterministic worst-first order.
+  const worstFirst = [...standings].reverse()
+
+  let updated = 0
+  for (let i = 0; i < worstFirst.length; i++) {
+    const userId = worstFirst[i].user_id
+    if (!userId) continue
+    const { error } = await supabase
+      .from('fantasy_waiver_state')
+      .update({ priority: i + 1 })
+      .eq('league_id', leagueId)
+      .eq('user_id', userId)
+    if (!error) updated++
+  }
+  logger.info({ leagueId, updated }, 'Waiver priority reset to reverse standings')
+  return { updated }
+}
+
 export async function initializeWaiverState(leagueId) {
   const settings = await getFantasySettings(leagueId)
   if (!settings) return
@@ -6927,6 +6972,14 @@ export async function rolloverFantasyWeek(sleeperWeek, sleeperSeason) {
         .update({ current_week: sleeperWeek })
         .eq('league_id', league.league_id)
       updated++
+      // Reverse-standings waiver order, recomputed for the new week. Only
+      // fires on an actual week change, so re-running the rollover is a
+      // no-op rather than repeatedly clobbering priority mid-week.
+      try {
+        await recomputeWaiverPriorityFromStandings(league.league_id)
+      } catch (err) {
+        logger.error({ err, leagueId: league.league_id }, 'Waiver priority recompute failed')
+      }
     }
   }
 
