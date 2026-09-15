@@ -27,9 +27,14 @@ const POS_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'DEF', 'OUT']
 // counted — but "Out" never appears in the data at all, and PUP, Sus and DNR
 // were left sitting in the main pool looking pickable. Questionable is
 // deliberately absent: that is a real gamble, and it stays in the list with a
-// badge. NA is absent too — it looks like an unavailable marker and is not
-// (Josh Jacobs carries it).
-const UNAVAILABLE_STATUSES = new Set(['out', 'ir', 'pup', 'sus', 'suspended', 'dnr'])
+// badge.
+//
+// NA was previously excluded here, on the reasoning that it "looks like an
+// unavailable marker and is not (Josh Jacobs carries it)". That was backwards:
+// Jacobs is the ONLY player in the league carrying NA, so he was the entire
+// sample, and he is on the commissioner's exempt list — ineligible to play.
+// Sleeper's NA means not active, which is exactly what this set is for.
+const UNAVAILABLE_STATUSES = new Set(['out', 'ir', 'pup', 'sus', 'suspended', 'dnr', 'na'])
 const isUnavailable = (status) => UNAVAILABLE_STATUSES.has(String(status || '').toLowerCase())
 
 // Copy for an empty player pool.
