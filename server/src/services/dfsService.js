@@ -592,11 +592,45 @@ export async function scoreNflDfsWeek(week, season) {
 const REPLACEMENT_RANK = { QB: 30, RB: 30, WR: 60, TE: 25, K: 20, DEF: 20 }
 const POS_FLOOR = { QB: 5500, RB: 4000, WR: 4000, TE: 3500, K: 4000, DEF: 3500 }
 const POS_CAP = { QB: 10000, RB: 9600, WR: 9900, TE: 8500, K: 5800, DEF: 5500 }
-// Per-position $ added per fantasy point above replacement. QB lower because
-// QB projection spread is tight (8-10 pt VBD for elites) and a flat slope
-// would send every starter to the cap. TEs steepest because the elite tier
-// is thinnest — TE12 vs TE25 is a real chasm.
-const SALARY_PER_VBD = { QB: 400, RB: 650, WR: 650, TE: 700, K: 650, DEF: 650 }
+// How much of each position's price range is reserved for players AT or
+// BELOW replacement level.
+//
+// Pure VBD clamps at zero, so everyone from replacement down collapsed onto
+// the floor: 147 of 184 rostered RBs, 251 of 308 WRs, 171 of 194 TEs all
+// priced identically. D'Andre Swift projected 10.08 and cost the same $4,000
+// as a player projected 1.2 — and with 147 RBs at one price there was no
+// tradeoff left in roster construction.
+//
+// Set so a player exactly AT replacement lands at FLOOR + SUB_SPREAD; the RB
+// value of 2,000 puts a 10-point RB at $6,000, which is the anchor Nick
+// asked for. Roughly 36% of each position's floor-to-cap range.
+const SUB_REPLACEMENT_SPREAD = { QB: 1600, RB: 2000, WR: 2100, TE: 1800, K: 600, DEF: 700 }
+
+// Above replacement the slope is derived per week rather than fixed, so the
+// board always spans floor to cap instead of bunching against whichever
+// static rate was chosen. Anchored on the position's THIRD-best projection,
+// not its best: the top RB projection swung 19.7 -> 24.2 -> 23.3 across weeks
+// 1-3 while the third held at 17.1 -> 17.3 -> 17.7, so anchoring on the max
+// let one outlier reprice everyone. Players above the anchor clamp at the
+// position cap, which is the intent — the true elite are all "max price".
+const PRICE_ANCHOR_RANK = 3
+
+// The two-band curve above changes EVERY algo price, so it must not land on a
+// slate that is already published and already being built against. Week 2 of
+// 2026 was published with 184 hand-set prices and two rosters within $800 of
+// the cap when this shipped; the nightly job regenerates the CURRENT week, so
+// without this guard the new curve would have repriced week 2 overnight.
+//
+// Weeks before this boundary keep the original pure-VBD formula. Once 2026
+// week 3 has generated, this and LEGACY_SALARY_PER_VBD can be deleted.
+const NEW_CURVE_FROM = { season: 2026, week: 3 }
+const LEGACY_SALARY_PER_VBD = { QB: 400, RB: 650, WR: 650, TE: 700, K: 650, DEF: 650 }
+
+function usesNewCurve(season, week) {
+  if (season > NEW_CURVE_FROM.season) return true
+  if (season < NEW_CURVE_FROM.season) return false
+  return week >= NEW_CURVE_FROM.week
+}
 
 export async function generateSalaries(week, season) {
   logger.info({ week, season }, 'Generating DFS salaries')
@@ -677,12 +711,15 @@ export async function generateSalaries(week, season) {
     }
   }
   const replacementByPos = {}
+  const anchorByPos = {}
   for (const pos of Object.keys(REPLACEMENT_RANK)) {
     const sorted = (projByPos[pos] || []).slice().sort((a, b) => b - a)
     const rank = REPLACEMENT_RANK[pos]
     replacementByPos[pos] = sorted.length >= rank ? sorted[rank - 1] : (sorted[sorted.length - 1] || 0)
+    // Top of the curve — see PRICE_ANCHOR_RANK.
+    anchorByPos[pos] = sorted[PRICE_ANCHOR_RANK - 1] ?? sorted[0] ?? 0
   }
-  logger.info({ replacementByPos, week, season }, 'NFL VBD replacement levels')
+  logger.info({ replacementByPos, anchorByPos, week, season }, 'NFL VBD replacement levels')
 
   const salaries = []
   for (const player of players || []) {
@@ -691,9 +728,26 @@ export async function generateSalaries(week, season) {
 
     const proj = projectionMap.get(player.id) || 0
     const replacement = replacementByPos[pos] || 0
+    const anchor = anchorByPos[pos] || 0
     const vbd = Math.max(0, proj - replacement)
 
-    let salary = POS_FLOOR[pos] + vbd * (SALARY_PER_VBD[pos] || 500)
+    // Two bands, continuous at replacement:
+    //   at/below replacement — scale the sub-replacement spread by how close
+    //     the projection gets to replacement, so a 10-point RB and a 2-point
+    //     RB are no longer the same price.
+    //   above replacement — climb toward the cap at a rate derived from this
+    //     week's anchor, so the board spans the full range every week.
+    let salary
+    if (usesNewCurve(season, week)) {
+      const subBand = (SUB_REPLACEMENT_SPREAD[pos] || 0) * (replacement > 0 ? Math.min(1, proj / replacement) : 0)
+      // Guard the divisor: early in a season, or for a thin position, anchor
+      // and replacement can land on top of each other.
+      const span = Math.max(0.5, anchor - replacement)
+      const perVbd = (POS_CAP[pos] - POS_FLOOR[pos] - (SUB_REPLACEMENT_SPREAD[pos] || 0)) / span
+      salary = POS_FLOOR[pos] + subBand + vbd * perVbd
+    } else {
+      salary = POS_FLOOR[pos] + vbd * (LEGACY_SALARY_PER_VBD[pos] || 500)
+    }
     salary = Math.round(salary / 100) * 100
     salary = Math.max(POS_FLOOR[pos], Math.min(POS_CAP[pos], salary))
 
