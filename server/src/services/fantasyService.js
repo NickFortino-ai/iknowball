@@ -3993,13 +3993,19 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
       if (nflSport?.id) {
         const minDate = sortedDates[0]
         const maxDate = sortedDates[sortedDates.length - 1]
+        // ET calendar date vs UTC instant -- see getLockedTeamsForLeague.
+        // Without the pad, a Monday night player stays addable during his
+        // own game.
+        const maxPlusOneA = new Date(`${maxDate}T00:00:00Z`)
+        maxPlusOneA.setUTCDate(maxPlusOneA.getUTCDate() + 1)
+        const upperBoundA = `${maxPlusOneA.toISOString().slice(0, 10)}T23:59:59Z`
         const nowIso = new Date().toISOString()
         const { data: kicked } = await supabase
           .from('games')
           .select('home_team, away_team, starts_at')
           .eq('sport_id', nflSport.id)
           .gte('starts_at', `${minDate}T00:00:00Z`)
-          .lt('starts_at', `${maxDate}T23:59:59Z`)
+          .lt('starts_at', upperBoundA)
           .lte('starts_at', nowIso)
         for (const g of kicked || []) {
           // games table uses full team names; map to Sleeper abbrev
@@ -6057,6 +6063,18 @@ export async function getLockedTeamsForLeague(leagueId) {
   if (!dates.length) return new Set()
   const minDate = dates[0]
   const maxDate = dates[dates.length - 1]
+  // game_date is an ET CALENDAR date; starts_at is a UTC instant. A kickoff
+  // after 8 PM ET lands on the NEXT UTC day, so `${maxDate}T23:59:59Z` cut
+  // off the week's last game -- Monday night carries game_date 2026-09-14
+  // but starts 2026-09-15T00:15Z.
+  //
+  // The `game_date < today ET` fallback below caught these a day later, so
+  // the hole was open only DURING the Monday night game -- exactly when it
+  // mattered: a manager could bench a QB mid-game and drop his points.
+  // Same fix in tdPassService.getLockedTeamSet and searchAvailablePlayers.
+  const maxPlusOne = new Date(`${maxDate}T00:00:00Z`)
+  maxPlusOne.setUTCDate(maxPlusOne.getUTCDate() + 1)
+  const upperBound = `${maxPlusOne.toISOString().slice(0, 10)}T23:59:59Z`
   const { data: nflSport } = await supabase
     .from('sports')
     .select('id')
@@ -6071,7 +6089,7 @@ export async function getLockedTeamsForLeague(leagueId) {
       .select('home_team, away_team, starts_at')
       .eq('sport_id', nflSport.id)
       .gte('starts_at', `${minDate}T00:00:00Z`)
-      .lt('starts_at', `${maxDate}T23:59:59Z`)
+      .lt('starts_at', upperBound)
       .lte('starts_at', nowIso)
     for (const g of kickedOff || []) {
       const homeAbbr = NFL_FULL_TO_ABBR[g.home_team]

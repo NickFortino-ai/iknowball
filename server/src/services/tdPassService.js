@@ -230,6 +230,22 @@ export async function getLockedTeamSet() {
   if (dates.length) {
     const minDate = dates[0]
     const maxDate = dates[dates.length - 1]
+    // nfl_schedule.game_date is an ET CALENDAR date; `games.starts_at` is a
+    // UTC instant. Any kickoff after 8 PM ET lands on the NEXT UTC day, so
+    // bounding the search at `${maxDate}T23:59:59Z` silently dropped the
+    // week's last game: Monday night carries game_date 2026-09-14 but starts
+    // 2026-09-15T00:15Z.
+    //
+    // Consequence was invisible rather than loud -- KC and DEN never entered
+    // the locked set for all of week 1. TD Pass hid a Mahomes pick through
+    // his own game, and the single-stat contests treated Monday-night
+    // players as still editable while they were playing.
+    //
+    // Padding the upper bound by a day can't bleed into the next week: the
+    // following week's earliest kickoff is the next Thursday.
+    const maxPlusOne = new Date(`${maxDate}T00:00:00Z`)
+    maxPlusOne.setUTCDate(maxPlusOne.getUTCDate() + 1)
+    const upperBound = `${maxPlusOne.toISOString().slice(0, 10)}T23:59:59Z`
     const { data: nflSport } = await supabase
       .from('sports')
       .select('id')
@@ -242,7 +258,7 @@ export async function getLockedTeamSet() {
         .select('home_team, away_team, starts_at')
         .eq('sport_id', nflSport.id)
         .gte('starts_at', `${minDate}T00:00:00Z`)
-        .lt('starts_at', `${maxDate}T23:59:59Z`)
+        .lt('starts_at', upperBound)
         .lte('starts_at', nowIso)
       for (const g of kickedOff || []) {
         const homeAbbr = NFL_FULL_TO_ABBR_LOCK[g.home_team]
