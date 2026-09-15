@@ -6901,12 +6901,19 @@ export async function rolloverFantasyWeek(sleeperWeek, sleeperSeason) {
   // Find all fantasy leagues that are in-season (draft completed, not yet finished).
   // fetchAll: past 1000 leagues, tail leagues silently stay stuck on the
   // previous current_week — no rollover, no next-week matchups score.
+  //
+  // The draft_status gate is about NOT rolling a traditional league that
+  // hasn't drafted yet. Salary cap has no draft at all, so its draft_status
+  // sits at 'pending' forever -- and filtering on 'completed' meant every
+  // salary-cap league was silently excluded and pinned to current_week 1 for
+  // the whole season. The Roster tab reads current_week, so the week 2 pool
+  // was unreachable: it kept serving week 1, whose players are all locked.
   const leagues = await fetchAll(
     supabase
       .from('fantasy_settings')
-      .select('league_id, current_week, season')
-      .eq('draft_status', 'completed')
+      .select('league_id, current_week, season, format, draft_status')
       .eq('season', sleeperSeason)
+      .or('draft_status.eq.completed,format.eq.salary_cap')
       .order('league_id')
   )
 

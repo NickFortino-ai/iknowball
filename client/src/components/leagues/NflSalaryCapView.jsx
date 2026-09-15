@@ -386,7 +386,15 @@ export default function NflSalaryCapView({ league }) {
           <div className="px-4 py-6 text-center text-xs text-text-muted">
             {!players?.length
               ? salaryAvailabilityNote(currentWeek)
-              : 'No players match your filters.'}
+              : filledCount >= SLOTS.length
+                // Every slot filled: the pool is empty because the last
+                // filter is `salary <= remaining` and remaining is $0, not
+                // because nothing matched. "No players match your filters"
+                // sent me looking for a filter bug that wasn't there.
+                ? 'Your roster is full. Drop a player to see available replacements.'
+                : remaining <= 0
+                  ? 'No cap space remaining. Drop a player to free up salary.'
+                  : 'No players match your filters.'}
           </div>
         ) : (
           <div className="max-h-[50vh] lg:max-h-none overflow-y-auto">
