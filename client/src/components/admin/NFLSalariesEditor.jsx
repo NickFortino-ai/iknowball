@@ -36,6 +36,12 @@ export default function NFLSalariesEditor() {
   const [search, setSearch] = useState('')
   // Row whose game log is open. Null = closed.
   const [detailRow, setDetailRow] = useState(null)
+  // Unsaved salary edits, keyed by salary-row id. Lifted out of SalaryRow so
+  // the header can count them and save them in one go -- repricing a slate
+  // means touching a dozen players, and saving each individually was a dozen
+  // round trips and a dozen toasts.
+  const [drafts, setDrafts] = useState({})
+  const [savingAll, setSavingAll] = useState(false)
 
   // Snap to the live week once the server answers, unless the admin has
   // already moved the selector themselves.
@@ -81,6 +87,65 @@ export default function NFLSalariesEditor() {
   }
 
   const rows = data?.rows || []
+
+  // An edit counts as pending only if it parses, is non-negative, and
+  // actually differs from the stored price -- typing a value and undoing it
+  // shouldn't leave the row queued.
+  // Derived from `drafts` alone, NOT from the loaded rows. Editing five RBs
+  // and then filtering to WR would otherwise drop the count to zero and hide
+  // the button while those edits sat unsaved and unreachable. Each draft
+  // carries the price and name it was made against, so it stays saveable no
+  // matter what the table is currently showing.
+  const pendingEdits = Object.entries(drafts).reduce((acc, [id, d]) => {
+    const v = parseInt(d?.value, 10)
+    if (!Number.isInteger(v) || v < 0 || v === d.salary) return acc
+    acc.push({ id, salary: v, full_name: d.full_name })
+    return acc
+  }, [])
+
+  function setDraft(id, value, row) {
+    setDrafts((prev) => ({
+      ...prev,
+      [id]: { value, salary: row.salary, full_name: row.full_name },
+    }))
+  }
+
+  function clearDraft(id) {
+    setDrafts((prev) => {
+      if (prev[id] === undefined) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
+
+  async function handleSaveAll() {
+    if (!pendingEdits.length) return
+    setSavingAll(true)
+    // Sequential rather than parallel: these are individual PATCHes and a
+    // burst of them against the same table is how the earlier chunked-upsert
+    // trouble started. A dozen rows is fast enough in series.
+    const saved = []
+    const failed = []
+    for (const e of pendingEdits) {
+      try {
+        await updateSalary.mutateAsync({ id: e.id, salary: e.salary })
+        saved.push(e)
+      } catch {
+        failed.push(e)
+      }
+    }
+    // Only clear drafts that actually saved, so a failure stays visible and
+    // editable instead of silently reverting to the old price.
+    setDrafts((prev) => {
+      const next = { ...prev }
+      for (const e of saved) delete next[e.id]
+      return next
+    })
+    setSavingAll(false)
+    if (saved.length) toast(`Saved ${saved.length} price${saved.length === 1 ? '' : 's'}.`, 'success')
+    if (failed.length) toast(`${failed.length} failed to save: ${failed.map((f) => f.full_name).join(', ')}`, 'error')
+  }
   const totalCount = data?.count || 0
 
   return (
@@ -181,6 +246,19 @@ export default function NFLSalariesEditor() {
               {generateSalaries.isPending ? 'Starting…' : `Generate Week ${week}`}
             </button>
           )}
+          {/* Appears only once something is actually edited. Gated on
+              pendingEdits, NOT on hasDrafts -- hasDrafts is the unpublished
+              row count, a different thing entirely. */}
+          {pendingEdits.length > 0 && (
+            <button
+              onClick={handleSaveAll}
+              disabled={savingAll}
+              className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
+              title="Save every price you've changed but not yet saved."
+            >
+              {savingAll ? 'Saving…' : `Save all (${pendingEdits.length})`}
+            </button>
+          )}
           {hasDrafts && (
             <button
               onClick={handlePublish}
@@ -246,10 +324,13 @@ export default function NFLSalariesEditor() {
                 <SalaryRow
                   key={row.id}
                   row={row}
+                  draft={drafts[row.id]?.value}
+                  onDraftChange={(v) => setDraft(row.id, v, row)}
                   onOpenDetail={() => setDetailRow(row)}
                   onSave={async (newSalary) => {
                     try {
                       await updateSalary.mutateAsync({ id: row.id, salary: newSalary })
+                      clearDraft(row.id)
                       toast(`Saved ${row.full_name}: $${newSalary.toLocaleString()}`, 'success')
                     } catch (err) {
                       toast(err.message || 'Failed to save', 'error')
@@ -258,6 +339,10 @@ export default function NFLSalariesEditor() {
                   onReset={async () => {
                     try {
                       await resetSalary.mutateAsync(row.id)
+                      // Drop any unsaved edit too -- otherwise the old manual
+                      // value stays in the box and the row re-counts as
+                      // pending against the freshly restored algo price.
+                      clearDraft(row.id)
                       toast(`Reset ${row.full_name} to algorithm price`, 'success')
                     } catch (err) {
                       toast(err.message || 'Failed to reset', 'error')
@@ -301,8 +386,11 @@ export default function NFLSalariesEditor() {
   )
 }
 
-function SalaryRow({ row, onSave, onReset, onToggleHidden, onOpenDetail }) {
-  const [draft, setDraft] = useState(String(row.salary))
+function SalaryRow({ row, draft: draftProp, onDraftChange, onSave, onReset, onToggleHidden, onOpenDetail }) {
+  // The draft lives in the parent so the header can count and bulk-save
+  // edits. Undefined means untouched, in which case show the stored price.
+  const draft = draftProp === undefined ? String(row.salary) : draftProp
+  const setDraft = onDraftChange
   const [saving, setSaving] = useState(false)
   const dirty = parseInt(draft, 10) !== row.salary
 
