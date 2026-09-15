@@ -5113,6 +5113,16 @@ export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId)
     throw err
   }
 
+  // League-wide waiver window: from the week's first kickoff to the Wednesday
+  // 3 AM ET clear, NOBODY can be added directly — every unrostered player is
+  // claim-only, not just recently-dropped ones. Outside the window this is a
+  // no-op and free agency works as before.
+  if (await isLeagueWideWaiverWindowOpen()) {
+    const err = new Error('Waivers are running — submit a claim for this player instead')
+    err.status = 400
+    throw err
+  }
+
   // Drop first (if applicable), then add to bench
   if (dropRow) {
     const { error: dropErr, count: droppedCount } = await supabase
@@ -6139,6 +6149,63 @@ export async function getLockedTeamsForLeague(leagueId) {
 // instead of freezing the waiver wire.
 const WAIVER_LOCK_GRACE_MS = 6 * 60 * 60 * 1000
 
+/**
+ * Is the league-wide waiver window open?
+ *
+ * Until now only DROPPED players went on waivers; anyone never rostered was a
+ * free agent and could be added instantly. That meant the pickups that matter
+ * most — the undrafted back who just inherited a starting job on Sunday — had
+ * no gate at all, and waiver priority never touched them. Whoever opened the
+ * app first simply took him, which makes the reverse-standings order we just
+ * built worth nothing for exactly the players it should protect.
+ *
+ * Window runs from the week's first kickoff to the Wednesday 3 AM ET clear.
+ * Inside it, an unrostered player can only be CLAIMED. Outside it — Wednesday
+ * 3 AM until Thursday kickoff — free agency is open as before.
+ *
+ * Computed as "not in the free-agency gap" rather than "after kickoff",
+ * because a plain kicked-off check goes false again the moment the week rolls
+ * on Tuesday, which would reopen free agency a day early.
+ *
+ * Fails OPEN (returns false) if the schedule can't answer — a data gap should
+ * not freeze every add in the league.
+ */
+export async function isLeagueWideWaiverWindowOpen() {
+  try {
+    const now = new Date()
+    // Most recent Wednesday 03:00 ET at or before now: walk back from the
+    // next one, which nextWaiverClearTime already computes correctly.
+    const nextClear = nextWaiverClearTime(now)
+    const lastClear = new Date(nextClear.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+    const { data: sportRow } = await supabase
+      .from('sports')
+      .select('id')
+      .eq('key', 'americanfootball_nfl')
+      .single()
+    if (!sportRow?.id) return false
+
+    // Earliest kickoff after that clear — the start of the next window.
+    const { data: nextGame } = await supabase
+      .from('games')
+      .select('starts_at')
+      .eq('sport_id', sportRow.id)
+      .gt('starts_at', lastClear.toISOString())
+      .order('starts_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    if (!nextGame?.starts_at) return false
+
+    const kickoff = new Date(nextGame.starts_at).getTime()
+    // Free-agency gap: after the clear, before the next kickoff.
+    if (now.getTime() >= lastClear.getTime() && now.getTime() < kickoff) return false
+    return true
+  } catch (err) {
+    logger.warn({ err: err.message }, 'League-wide waiver window check failed — treating free agency as open')
+    return false
+  }
+}
+
 export async function getWaiverLockedPlayerIds(leagueId) {
   const { data: pool } = await supabase
     .from('fantasy_waiver_pool')
@@ -6382,12 +6449,29 @@ export async function submitWaiverClaim(leagueId, userId, addPlayerId, dropPlaye
     throw err
   }
 
-  // The player must currently be on waivers — free agents are added directly
+  // The player must be on waivers — EXCEPT while the league-wide window is
+  // open, when every unrostered player is claim-only.
   const lockedSet = await getWaiverLockedPlayerIds(leagueId)
-  if (!lockedSet.has(addPlayerId)) {
+  const windowOpen = await isLeagueWideWaiverWindowOpen()
+  if (!lockedSet.has(addPlayerId) && !windowOpen) {
     const err = new Error('This player is a free agent — add them directly')
     err.status = 400
     throw err
+  }
+  if (!lockedSet.has(addPlayerId) && windowOpen) {
+    // Give him a pool row so the claim is HELD until the weekly clear. The
+    // resolver treats a claim with no pool row as already-cleared and would
+    // otherwise award him on the next 15-minute run, handing the player to
+    // whoever filed first — the exact race this window exists to stop.
+    await supabase
+      .from('fantasy_waiver_pool')
+      .upsert({
+        league_id: leagueId,
+        player_id: addPlayerId,
+        on_waivers_since: new Date().toISOString(),
+        clears_at: nextWaiverClearTime().toISOString(),
+        reason: 'window',
+      }, { onConflict: 'league_id,player_id' })
   }
 
   // Check drop player belongs to the user (if specified)
