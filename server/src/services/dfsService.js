@@ -114,13 +114,13 @@ export async function getPlayerPool(week, season, position = null) {
     .eq('hidden', false)
     .order('salary', { ascending: false })
 
-  if (position) {
-    if (position === 'FLEX') {
-      query = query.in('nfl_players.position', FLEX_ELIGIBLE)
-    } else {
-      query = query.eq('nfl_players.position', position)
-    }
-  }
+  // NOTE: position filtering is deliberately NOT applied as a database filter
+  // on nfl_players.position. That column is Sleeper's raw classification, so a
+  // player with an override ('WR/DB' Travis Hunter, carried as 'DB') would be
+  // dropped by the query before the override mapping below could correct him.
+  // Filtered in JS after mapping instead — the pool is ~750 rows, so the cost
+  // is nil and the answer is right.
+  const requestedPosition = position || null
 
   // No cap. The old .limit(800) was sized for a "~500-player offensive pool"
   // that has since grown past 1,100, and because rows come back salary DESC
@@ -191,6 +191,11 @@ export async function getPlayerPool(week, season, position = null) {
         is_locked: ko != null && ko <= now,
         kickoff_at: ko != null ? new Date(ko).toISOString() : null,
       }
+    })
+    .filter((p) => {
+      if (!requestedPosition) return true
+      if (requestedPosition === 'FLEX') return FLEX_ELIGIBLE.includes(p.position)
+      return p.position === requestedPosition
     })
 }
 
@@ -306,11 +311,19 @@ export async function saveDFSRoster(leagueId, userId, week, season, slots, salar
   if (flexSlot) {
     const { data: flexPlayer } = await supabase
       .from('nfl_players')
-      .select('position')
+      .select('full_name, position, team')
       .eq('id', flexSlot.player_id)
       .single()
 
-    if (flexPlayer && !FLEX_ELIGIBLE.includes(flexPlayer.position)) {
+    // Read the EFFECTIVE position, not the raw column. Travis Hunter is
+    // carried as 'DB' with a 'WR/DB' override; the pool lists him as a WR and
+    // prices him as one, but this check read nfl_players.position straight
+    // from the table and rejected him with "FLEX slot must be RB, WR, or TE"
+    // — a player the same screen had just offered.
+    const overrides = await loadDfsPositionOverrides()
+    const effective = overrides.lookup(flexPlayer)?.primary || flexPlayer?.position
+
+    if (flexPlayer && !FLEX_ELIGIBLE.includes(effective)) {
       const err = new Error('FLEX slot must be RB, WR, or TE')
       err.status = 400
       throw err
