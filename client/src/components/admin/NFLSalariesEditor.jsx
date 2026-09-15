@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAdminDFSSalaries, useUpdateDFSSalary, useResetDFSSalary, useSyncNFLSalaries, usePublishNFLSalaries, useAdminDFSUnpublishedCount, useToggleDFSHidden, useAdminCurrentNflWeek } from '../../hooks/useAdmin'
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
+import PlayerDetailModal from '../ui/PlayerDetailModal'
 
 const POSITION_FILTERS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'DEF']
 
@@ -33,6 +34,8 @@ export default function NFLSalariesEditor() {
   const [weekPinned, setWeekPinned] = useState(false)
   const [position, setPosition] = useState('ALL')
   const [search, setSearch] = useState('')
+  // Row whose game log is open. Null = closed.
+  const [detailRow, setDetailRow] = useState(null)
 
   // Snap to the live week once the server answers, unless the admin has
   // already moved the selector themselves.
@@ -243,6 +246,7 @@ export default function NFLSalariesEditor() {
                 <SalaryRow
                   key={row.id}
                   row={row}
+                  onOpenDetail={() => setDetailRow(row)}
                   onSave={async (newSalary) => {
                     try {
                       await updateSalary.mutateAsync({ id: row.id, salary: newSalary })
@@ -273,11 +277,31 @@ export default function NFLSalariesEditor() {
           </table>
         </div>
       )}
+
+      {/* Game log for the clicked player. The salary editor rows carry the
+          SLEEPER id (dfs_weekly_salaries.player_id -> nfl_players.id), which
+          is the key PlayerDetailModal already resolves to an ESPN id server
+          side, so the shape below is just a rename of the admin row. */}
+      {detailRow && (
+        <PlayerDetailModal
+          sport="americanfootball_nfl"
+          player={{
+            sleeper_player_id: detailRow.player_id,
+            player_name: detailRow.full_name,
+            name: detailRow.full_name,
+            position: detailRow.position,
+            team: detailRow.team,
+            headshot_url: detailRow.headshot_url,
+            injury_status: detailRow.injury_status,
+          }}
+          onClose={() => setDetailRow(null)}
+        />
+      )}
     </div>
   )
 }
 
-function SalaryRow({ row, onSave, onReset, onToggleHidden }) {
+function SalaryRow({ row, onSave, onReset, onToggleHidden, onOpenDetail }) {
   const [draft, setDraft] = useState(String(row.salary))
   const [saving, setSaving] = useState(false)
   const dirty = parseInt(draft, 10) !== row.salary
@@ -294,15 +318,24 @@ function SalaryRow({ row, onSave, onReset, onToggleHidden }) {
     <tr className={`border-t border-text-primary/10 ${row.hidden ? 'opacity-50' : ''} ${row.manually_set ? 'bg-accent/5' : ''}`}>
       <td className="px-3 py-2">
         <div className="flex items-center gap-2">
-          {row.headshot_url ? (
-            <img
-              src={row.headshot_url}
-              alt=""
-              className="h-9 w-9 flex-shrink-0 rounded-full bg-bg-primary object-cover"
-            />
-          ) : (
-            <div className="h-9 w-9 flex-shrink-0 rounded-full bg-bg-primary" />
-          )}
+          {/* Headshot opens the player's game log, so prices can be judged
+              against recent production without leaving the editor. */}
+          <button
+            type="button"
+            onClick={onOpenDetail}
+            title={`View ${row.full_name}'s game log`}
+            className="h-9 w-9 flex-shrink-0 rounded-full bg-bg-primary overflow-hidden hover:ring-2 hover:ring-accent/60 transition-shadow"
+          >
+            {row.headshot_url ? (
+              <img
+                src={row.headshot_url}
+                alt=""
+                className="h-9 w-9 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-9 w-9 rounded-full bg-bg-primary" />
+            )}
+          </button>
           <div className="min-w-0">
             <div className="font-medium truncate">{row.full_name}</div>
             {row.injury_status && (
