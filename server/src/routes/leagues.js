@@ -19,6 +19,7 @@ import {
   leaveLeague,
   removeMember,
   selectPickemGames,
+  isSalaryCapJoinOpen,
 } from '../services/leagueService.js'
 import {
   sendInvitation,
@@ -264,19 +265,37 @@ router.get('/open', requireAuth, async (req, res) => {
   if (fantasyIds.length) {
     const { data: settings } = await supabase
       .from('fantasy_settings')
-      .select('league_id, draft_status, format')
+      .select('league_id, draft_status, format, single_week')
       .in('league_id', fantasyIds)
     for (const s of settings || []) fantasyStatusForFilter[s.league_id] = s
+  }
+
+  // Salary-cap leagues close when their starting week ends. Resolve that
+  // once here rather than per-league inside the filter.
+  const salaryCapIds = Object.values(fantasyStatusForFilter)
+    .filter((fs) => fs.format === 'salary_cap')
+    .map((fs) => fs.league_id)
+  const salaryCapOpen = {}
+  if (salaryCapIds.length) {
+    for (const id of salaryCapIds) {
+      const fs = fantasyStatusForFilter[id]
+      salaryCapOpen[id] = await isSalaryCapJoinOpen(fs.single_week || 1)
+    }
   }
 
   const leagues = (rawLeagues || []).filter((l) => {
     if (l.format === 'fantasy') {
       // Traditional fantasy: joinable until the draft leaves 'pending'.
-      // Salary cap fantasy has no draft — fall through to the DFS path.
       const fs = fantasyStatusForFilter[l.id]
       if (fs && fs.format !== 'salary_cap') {
         return fs.draft_status === 'pending'
       }
+      // Salary cap: the old code returned true unconditionally -- its comment
+      // claimed it fell through to the DFS path, but the return short-
+      // circuited that. So a salary-cap league was advertised as joinable
+      // forever while assertLeagueJoinable rejected every attempt, which is
+      // how "Salary and Peanut Butter" still showed a Join button in week 2.
+      if (fs) return salaryCapOpen[l.id] !== false
       return true
     }
     if (!DFS_STYLE_FORMATS.has(l.format)) {

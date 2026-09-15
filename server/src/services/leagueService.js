@@ -13,6 +13,37 @@ import { throwIfInfra } from '../utils/dbError.js'
  * For bracket: allow joining until bracket locks.
  * Throws with a 400 error if joining is no longer allowed.
  */
+/**
+ * Is a salary-cap NFL league still accepting members?
+ *
+ * Rule (Nick, 2026-09-15): joining late DURING the starting week is fine -- a
+ * week-1 roster can still be built Sunday morning -- but once that week is
+ * over the league closes. Season standings are cumulative, so a week-2 joiner
+ * starts a full week behind and can never catch up.
+ *
+ * Deliberately uses getCurrentNflWeek() rather than a kickoff timestamp:
+ *   - "after week 1" means after Monday night, not after next Thursday's
+ *     kickoff. Keying off the next week's first game left joins open the
+ *     whole Tue-Thu gap.
+ *   - it's the same clock fantasy_settings.current_week rollover follows, so
+ *     the join window and the league's own week can't disagree.
+ *   - no game_date/starts_at arithmetic, which is where the ET-vs-UTC bugs
+ *     keep coming from.
+ *
+ * Returns true when the schedule can't answer -- a data gap shouldn't lock
+ * people out.
+ */
+export async function isSalaryCapJoinOpen(targetWeek) {
+  try {
+    const { getCurrentNflWeek } = await import('./tdPassService.js')
+    const { week: currentWeek } = await getCurrentNflWeek()
+    if (!currentWeek) return true
+    return currentWeek <= targetWeek
+  } catch {
+    return true
+  }
+}
+
 export async function assertLeagueJoinable(league) {
   if (league.status === 'completed') {
     const err = new Error('This league is no longer accepting members')
@@ -29,64 +60,20 @@ export async function assertLeagueJoinable(league) {
       .maybeSingle()
 
     if (fs?.format === 'salary_cap') {
-      // Salary cap has no draft, and league.starts_at is a creation-
-      // time placeholder (createLeague uses `new Date()`) that's
-      // ~always in the past — so falling through to the generic
-      // starts_at gate would reject every join with "already started."
-      // Join is open until the ACTUAL first kickoff of the target
-      // week (full-season → Week 1, this-week → single_week). We
-      // look up nfl_schedule.game_date to know the date, then query
-      // the games table for the true kickoff timestamp on that date.
-      // Fallback (games not yet ingested for that week): allow joins
-      // through end-of-day UTC so a stalled odds sync doesn't strand
-      // late joiners.
+      // Salary cap has no draft, and league.starts_at is a creation-time
+      // placeholder (createLeague uses `new Date()`) that's ~always in the
+      // past — so falling through to the generic starts_at gate would reject
+      // every join with "already started."
+      //
+      // Joins stay open through the whole of the target week (full-season →
+      // Week 1, this-week → single_week) and close when the NEXT week starts.
+      // This used to close at the target week's FIRST kickoff, which shut the
+      // door Thursday night and made "join late in week 1" impossible.
       const targetWeek = fs.single_week || 1
-      const targetSeason = fs.season
-      if (targetSeason) {
-        const { data: schedRows } = await supabase
-          .from('nfl_schedule')
-          .select('game_date')
-          .eq('season', targetSeason)
-          .eq('week', targetWeek)
-          .order('game_date', { ascending: true })
-          .limit(1)
-        const firstGameDate = schedRows?.[0]?.game_date
-        if (firstGameDate) {
-          const nflFamily = ['americanfootball_nfl', 'americanfootball_nfl_preseason']
-          const { data: nflSports } = await supabase
-            .from('sports')
-            .select('id')
-            .in('key', nflFamily)
-          const nflSportIds = (nflSports || []).map((s) => s.id)
-          let gateTs = null
-          if (nflSportIds.length) {
-            const dayStart = `${firstGameDate}T00:00:00Z`
-            const dayEndD = new Date(`${firstGameDate}T00:00:00Z`)
-            dayEndD.setUTCDate(dayEndD.getUTCDate() + 1)
-            const { data: firstGame } = await supabase
-              .from('games')
-              .select('starts_at')
-              .in('sport_id', nflSportIds)
-              .gte('starts_at', dayStart)
-              .lt('starts_at', dayEndD.toISOString())
-              .order('starts_at', { ascending: true })
-              .limit(1)
-              .maybeSingle()
-            if (firstGame?.starts_at) gateTs = new Date(firstGame.starts_at).getTime()
-          }
-          // Fallback: end of game_date if we can't find the actual
-          // kickoff in games (e.g. odds sync hasn't loaded Week N yet).
-          if (!gateTs) {
-            const endOfDay = new Date(`${firstGameDate}T00:00:00Z`)
-            endOfDay.setUTCDate(endOfDay.getUTCDate() + 1)
-            gateTs = endOfDay.getTime()
-          }
-          if (gateTs <= Date.now()) {
-            const err = new Error('This league has already started')
-            err.status = 400
-            throw err
-          }
-        }
+      if (!(await isSalaryCapJoinOpen(targetWeek))) {
+        const err = new Error(`This league is no longer accepting new members — Week ${targetWeek} is over`)
+        err.status = 400
+        throw err
       }
       return // joinable — first kickoff hasn't passed (or schedule missing → be permissive)
     } else {
@@ -891,6 +878,31 @@ export async function joinLeague(userId, inviteCode) {
   }
 
   await assertLeagueJoinable(league)
+
+  // Traditional fantasy caps at its configured team count. max_members
+  // mirrors fantasy_settings.num_teams on every league that exists today, so
+  // this is a belt-and-braces fallback for a league created without it --
+  // without a cap, a 14th-team league would keep accepting members.
+  // Deliberately NOT applied to salary cap: num_teams is a traditional
+  // concept there (one league has num_teams 10 and 19 members by design).
+  if (!league.max_members && league.format === 'fantasy') {
+    const { data: fsCap } = await supabase
+      .from('fantasy_settings')
+      .select('num_teams, format')
+      .eq('league_id', league.id)
+      .maybeSingle()
+    if (fsCap && fsCap.format !== 'salary_cap' && fsCap.num_teams) {
+      const { count } = await supabase
+        .from('league_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('league_id', league.id)
+      if (count >= fsCap.num_teams) {
+        const err = new Error('This league is full')
+        err.status = 400
+        throw err
+      }
+    }
+  }
 
   // Check max members
   if (league.max_members) {
