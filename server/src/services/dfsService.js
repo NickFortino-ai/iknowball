@@ -614,12 +614,15 @@ export async function generateSalaries(week, season) {
   const existingRows = await fetchAll(
     supabase
       .from('dfs_weekly_salaries')
-      .select('player_id')
+      .select('player_id, hidden')
       .eq('season', season)
       .eq('nfl_week', week)
       .order('player_id')
   )
   const existingPlayerIds = new Set((existingRows || []).map((r) => r.player_id))
+  // Existing hidden state, so a regen can carry it forward explicitly
+  // instead of omitting the key (see the upsert payload below).
+  const existingHidden = new Map((existingRows || []).map((r) => [r.player_id, r.hidden === true]))
 
   // Pull every player we might price. Filter on team IS NOT NULL so retired
   // players (their team is nulled by the Sleeper sync) drop out; keep IR/PUP
@@ -713,14 +716,24 @@ export async function generateSalaries(week, season) {
     const isNew = !existingPlayerIds.has(player.id)
     const onBye = player.bye_week != null && player.bye_week === week
     const isDeepBenchQB = pos === 'QB' && salary <= 5500
+    // `hidden` is written on EVERY row, never conditionally. PostgREST
+    // normalizes the column set across a bulk upsert: if one row in the
+    // chunk carries a key and another omits it, the omission is sent as an
+    // explicit NULL rather than falling back to the column default. hidden
+    // is NOT NULL, so a single auto-hidden player used to fail the entire
+    // 500-row chunk -- week 2 generation wrote 0 of 870 rows and the admin
+    // panel just showed an empty list with no error surfaced.
+    //
+    // New rows get the auto-hide rules; existing rows carry their current
+    // value forward, so an admin un-hide still survives a regen.
     const row = {
       player_id: player.id,
       nfl_week: week,
       season,
       salary,
       algorithm_salary: salary,
+      hidden: isNew ? (onBye || isDeepBenchQB) : (existingHidden.get(player.id) || false),
     }
-    if (isNew && (onBye || isDeepBenchQB)) row.hidden = true
     salaries.push(row)
   }
 
