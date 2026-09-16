@@ -3,6 +3,7 @@ import { NFL_FULL_TO_ABBR, isWeekFinalNow } from './fantasyService.js'
 import { logger } from '../utils/logger.js'
 import { calculateFantasyPoints } from './sleeperService.js'
 import { fetchAll } from '../utils/fetchAll.js'
+import { cached } from '../utils/memoCache.js'
 
 const DFS_SLOTS = ['QB', 'RB1', 'RB2', 'WR1', 'WR2', 'WR3', 'TE', 'FLEX', 'DEF']
 const FLEX_ELIGIBLE = ['RB', 'WR', 'TE']
@@ -24,7 +25,18 @@ const FLEX_ELIGIBLE = ['RB', 'WR', 'TE']
  *     the last ET date found 15 of 16 Week 1 games and left both teams in
  *     the missing one permanently unlockable.
  */
+// 60s TTL. Kickoff times for a week are the same for every league and every
+// user, and this is called on every pool fetch and every roster read — ~220ms
+// each time. Short enough that a schedule change still lands promptly, long
+// enough to collapse the burst of calls a single roster edit triggers.
+const KICKOFF_MAP_TTL_MS = 60 * 1000
+
 export async function getNflKickoffByTeam(week, season) {
+  return cached(`nflKickoffByTeam:${season}:${week}`, KICKOFF_MAP_TTL_MS, () =>
+    computeNflKickoffByTeam(week, season))
+}
+
+async function computeNflKickoffByTeam(week, season) {
   const { data: weekSchedule } = await supabase
     .from('nfl_schedule')
     .select('game_date')
@@ -72,11 +84,19 @@ export async function getNflKickoffByTeam(week, season) {
  *             pricing. 'WR/DB' -> 'WR'.
  *   display — the full override string, for the UI label.
  */
+// 10 min TTL. The table is admin-edited and tiny (3 rows), but this runs on
+// every pool fetch and every roster save — it was costing ~117ms a call for
+// an answer that changes maybe once a season.
+const POSITION_OVERRIDE_TTL_MS = 10 * 60 * 1000
+
 async function loadDfsPositionOverrides() {
-  const { data } = await supabase
-    .from('player_position_overrides')
-    .select('player_name, position, team')
-    .eq('sport_key', 'americanfootball_nfl')
+  const data = await cached('dfsPositionOverrides', POSITION_OVERRIDE_TTL_MS, async () => {
+    const { data: rows } = await supabase
+      .from('player_position_overrides')
+      .select('player_name, position, team')
+      .eq('sport_key', 'americanfootball_nfl')
+    return rows || []
+  })
   const byName = {}
   const byNameTeam = {}
   for (const o of data || []) {
@@ -166,10 +186,14 @@ export async function getPlayerPool(week, season, position = null) {
   // show it — Jaxon Smith-Njigba sat in the list mid-game looking addable,
   // and tapping him just failed. Sent as a flag rather than filtering him
   // out, so the UI can grey him instead of having him silently vanish.
-  const kickoffByTeam = await getNflKickoffByTeam(week, season)
+  // Kickoffs and overrides don't depend on the pool query, and both were
+  // awaited after it — ~340ms of dead time on a ~715ms request. Fire them
+  // together instead.
+  const [kickoffByTeam, overrides] = await Promise.all([
+    getNflKickoffByTeam(week, season),
+    loadDfsPositionOverrides(),
+  ])
   const now = Date.now()
-
-  const overrides = await loadDfsPositionOverrides()
 
   return (data || [])
     .filter((d) => {
@@ -203,6 +227,18 @@ export async function getPlayerPool(week, season, position = null) {
  * Get user's DFS roster for a specific week.
  */
 export async function getDFSRoster(leagueId, userId, week, season) {
+  // Kickoffs and league scoring settings don't depend on the roster query, but
+  // were awaited one after another behind it — four sequential round trips for
+  // a read that fires on every roster edit. Start them now and await where
+  // they're used. Only the per-player stats fetch genuinely has to wait, since
+  // it needs the roster's player ids.
+  const kickoffPromise = getNflKickoffByTeam(week, season)
+  const settingsPromise = supabase
+    .from('fantasy_settings')
+    .select('scoring_format, scoring_rules')
+    .eq('league_id', leagueId)
+    .maybeSingle()
+
   const { data: roster } = await supabase
     .from('dfs_rosters')
     // injury_status: the pool carries it while you're picking, but the saved
@@ -228,7 +264,7 @@ export async function getDFSRoster(leagueId, userId, week, season) {
   // lineup was saved.
   if (roster?.dfs_roster_slots?.length) {
     try {
-      const kickoffByTeam = await getNflKickoffByTeam(week, season)
+      const kickoffByTeam = await kickoffPromise
       const now = Date.now()
       for (const slot of roster.dfs_roster_slots) {
         const team = slot.nfl_players?.team
@@ -250,11 +286,7 @@ export async function getDFSRoster(leagueId, userId, week, season) {
     // exists — a player who has not played keeps his stored value.
     try {
       const { applyScoringRules, buildScoringRulesFromPreset, SCORING_STAT_COLUMNS } = await import('./fantasyService.js')
-      const { data: settings } = await supabase
-        .from('fantasy_settings')
-        .select('scoring_format, scoring_rules')
-        .eq('league_id', leagueId)
-        .maybeSingle()
+      const { data: settings } = await settingsPromise
       const rules = settings?.scoring_rules || buildScoringRulesFromPreset(settings?.scoring_format)
       const playerIds = roster.dfs_roster_slots.map((s) => s.player_id).filter(Boolean)
       if (playerIds.length) {
