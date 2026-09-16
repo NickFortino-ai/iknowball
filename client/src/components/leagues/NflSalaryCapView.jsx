@@ -82,6 +82,9 @@ export default function NflSalaryCapView({ league }) {
   const [posFilter, setPosFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [detailPlayerId, setDetailPlayerId] = useState(null)
+  // Slot key currently being saved, so only THAT row shows a pending state
+  // rather than all nine reacting to a shared mutation flag.
+  const [pendingSlot, setPendingSlot] = useState(null)
   // When user taps "Edit Roster" after submitting, hide the Submitted
   // badge so the Submit Roster button reappears and they can confirm
   // their changes. Resets on successful resubmit (handleSubmit) so the
@@ -182,16 +185,27 @@ export default function NflSalaryCapView({ league }) {
   }
 
   async function removeSlot(slotKey) {
+    // Already saving this slot — ignore the repeat tap rather than firing a
+    // second identical save.
+    if (pendingSlot === slotKey) return
+
     const newLineup = { ...lineup, [slotKey]: null }
     const slots = SLOTS.map((s) => {
       const p = newLineup[s.key]
       return p ? { roster_slot: s.key, player_id: p.player_id || p.id, salary: p.salary || 0 } : null
     }).filter(Boolean)
 
+    // The row is NOT optimistically emptied. A remove can legitimately fail
+    // (kickoff lock, for one), and a player vanishing then reappearing reads
+    // worse than a brief wait. Acknowledge the tap instead, and let the
+    // refetch be the source of truth.
+    setPendingSlot(slotKey)
     try {
       await saveRoster.mutateAsync({ league_id: league.id, week: currentWeek, season, slots })
     } catch (err) {
       toast(err.message || 'Failed to update roster', 'error')
+    } finally {
+      setPendingSlot(null)
     }
   }
 
@@ -289,14 +303,29 @@ export default function NflSalaryCapView({ league }) {
                     <span className="text-sm font-display text-text-primary tabular-nums w-11 text-right shrink-0">
                       {isLocked ? Math.round(pointsEarned * 10) / 10 : '\u2013'}
                     </span>
-                    {!isLocked && isEditing && (
-                      <button
-                        onClick={() => removeSlot(slot.key)}
-                        className="text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
-                      >
-                        &times;
-                      </button>
-                    )}
+                    {!isLocked && isEditing && (() => {
+                      const isRemoving = pendingSlot === slot.key
+                      return (
+                        <button
+                          onClick={() => removeSlot(slot.key)}
+                          disabled={isRemoving}
+                          aria-busy={isRemoving || undefined}
+                          aria-label={isRemoving ? `Removing ${player.full_name}` : `Remove ${player.full_name}`}
+                          className={`transition-colors text-lg leading-none ${
+                            isRemoving
+                              ? 'text-text-muted cursor-wait'
+                              : 'text-text-muted hover:text-incorrect'
+                          }`}
+                        >
+                          {isRemoving ? (
+                            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                            </svg>
+                          ) : '\u00d7'}
+                        </button>
+                      )
+                    })()}
                   </>
                 ) : (
                   <div className="flex-1 text-xs text-text-muted italic">Empty</div>
