@@ -153,6 +153,67 @@ export default function TdPassView({ league, tab = 'picks' }) {
   }
 
   // ── Picks tab (default) ─────────────────────────────────────────
+  // Built once, rendered twice — see the two placements below.
+  const usedPanel = (() => {
+          // eslint-disable-next-line react-hooks/purity
+          const now = Date.now()
+          const startByQb = new Map((qbs || []).map((q) => [q.id, q.matchup?.starts_at]))
+          const finalPicks = (myPicks || []).filter((p) => {
+            // A pick from an earlier week is finished, full stop. This used to
+            // be judged purely by the QB's CURRENT matchup start time, which
+            // asks the wrong question: a week-1 pick who plays again in week 2
+            // was ruled "not final" because his NEXT game hadn't kicked off,
+            // so the panel filtered out every past pick and vanished entirely.
+            if (currentWeek && p.week < currentWeek) return true
+            const startsAt = startByQb.get(p.qb_player_id)
+            if (!startsAt) return true // no matchup on file — treat as final
+            return new Date(startsAt).getTime() + 4 * 60 * 60 * 1000 < now
+          })
+          if (finalPicks.length === 0) return null
+          return (
+          <div className="mb-4">
+            <button
+              onClick={() => setUsedOpen((v) => !v)}
+              className="w-full flex items-center justify-between gap-2 mb-2 hover:opacity-80 transition-opacity"
+            >
+              <span className="text-sm font-semibold text-text-primary uppercase tracking-wider">
+                QBs You've Used <span className="text-text-muted">({finalPicks.length})</span>
+              </span>
+              <svg className={`w-4 h-4 text-text-muted shrink-0 transition-transform ${usedOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+            {usedOpen && (
+              <div className="rounded-xl border border-text-primary/15 overflow-hidden">
+                {[...finalPicks].sort((a, b) => (b.week || 0) - (a.week || 0)).map((p) => {
+                  const usedColor = getTeamColor('americanfootball_nfl', p.team)
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-3 px-3 py-2 border-b border-text-primary/10 last:border-b-0"
+                      style={usedColor ? {
+                        background: `linear-gradient(90deg, ${usedColor}40 0%, ${usedColor}1a 100%)`,
+                      } : undefined}
+                    >
+                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider w-6 shrink-0">W{p.week}</span>
+                      <PlayerHeadshot name={p.qb_name} url={p.headshot_url} size="sm" className="w-9 h-9" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-text-primary truncate">{p.qb_name}</div>
+                        <div className="text-[10px] text-text-muted">{p.team}</div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className={`font-display text-lg ${p.td_count > 0 ? 'text-correct' : 'text-text-muted'}`}>{p.td_count}</span>
+                        <span className="text-[10px] text-text-muted uppercase ml-1">TD</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+          )
+  })()
+
   return (
     <div className="lg:grid lg:grid-cols-2 lg:gap-6 pb-24 lg:pb-0">
       {/* Left: current pick + my history summary */}
@@ -227,69 +288,15 @@ export default function TdPassView({ league, tab = 'picks' }) {
           )}
         </div>
 
-        {/* My used QBs — only shows picks whose game is final. Current
-            week's active pick lives in the hero above until its game
-            wraps, then it drops down here. "Final" is approximated as
-            starts_at + 4h < now (NFL games are ~3-3.5h). */}
-        {(() => {
-          // eslint-disable-next-line react-hooks/purity
-          const now = Date.now()
-          const startByQb = new Map((qbs || []).map((q) => [q.id, q.matchup?.starts_at]))
-          const finalPicks = (myPicks || []).filter((p) => {
-            // A pick from an earlier week is finished, full stop. This used to
-            // be judged purely by the QB's CURRENT matchup start time, which
-            // asks the wrong question: a week-1 pick who plays again in week 2
-            // was ruled "not final" because his NEXT game hadn't kicked off,
-            // so the panel filtered out every past pick and vanished entirely.
-            if (currentWeek && p.week < currentWeek) return true
-            const startsAt = startByQb.get(p.qb_player_id)
-            if (!startsAt) return true // no matchup on file — treat as final
-            return new Date(startsAt).getTime() + 4 * 60 * 60 * 1000 < now
-          })
-          if (finalPicks.length === 0) return null
-          return (
-          <div className="mb-4">
-            <button
-              onClick={() => setUsedOpen((v) => !v)}
-              className="w-full flex items-center justify-between gap-2 mb-2 hover:opacity-80 transition-opacity"
-            >
-              <span className="text-sm font-semibold text-text-primary uppercase tracking-wider">
-                QBs You've Used <span className="text-text-muted">({finalPicks.length})</span>
-              </span>
-              <svg className={`w-4 h-4 text-text-muted shrink-0 transition-transform ${usedOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-            </button>
-            {usedOpen && (
-              <div className="rounded-xl border border-text-primary/15 overflow-hidden">
-                {[...finalPicks].sort((a, b) => (b.week || 0) - (a.week || 0)).map((p) => {
-                  const usedColor = getTeamColor('americanfootball_nfl', p.team)
-                  return (
-                    <div
-                      key={p.id}
-                      className="flex items-center gap-3 px-3 py-2 border-b border-text-primary/10 last:border-b-0"
-                      style={usedColor ? {
-                        background: `linear-gradient(90deg, ${usedColor}40 0%, ${usedColor}1a 100%)`,
-                      } : undefined}
-                    >
-                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider w-6 shrink-0">W{p.week}</span>
-                      <PlayerHeadshot name={p.qb_name} url={p.headshot_url} size="sm" className="w-9 h-9" />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-text-primary truncate">{p.qb_name}</div>
-                        <div className="text-[10px] text-text-muted">{p.team}</div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className={`font-display text-lg ${p.td_count > 0 ? 'text-correct' : 'text-text-muted'}`}>{p.td_count}</span>
-                        <span className="text-[10px] text-text-muted uppercase ml-1">TD</span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-          )
-        })()}
+        {/* My used QBs. On desktop this sits under the current-pick card in
+            the left column. On MOBILE the columns stack, which put a growing
+            history list between the pick card and the QB pool — directly in
+            the way of the one thing a mobile visitor came to do. The mobile
+            copy is rendered after the pool instead.
+
+            Only shows picks whose game is final. The current pick lives in
+            the hero above until its game wraps, then drops down here. */}
+        <div className="hidden lg:block">{usedPanel}</div>
       </div>
 
       {/* Right: QB pool */}
@@ -375,6 +382,11 @@ export default function TdPassView({ league, tab = 'picks' }) {
         )}
       </div>
 
+      {/* Mobile placement: after the QB pool, not before it. The columns stack
+          below lg, so the desktop position would push the pool further down
+          the page every week as the history grows. Nick: "it should be below
+          the available QBs to pick for the week on mobile." */}
+      <div className="lg:hidden mt-4">{usedPanel}</div>
     </div>
   )
 }
