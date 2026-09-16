@@ -261,7 +261,11 @@ export default function LeagueThread({ league }) {
 
           return (
             <div key={msg.id}>
-              <div className={`flex gap-2.5 ${sameAuthor ? 'mt-0.5' : 'mt-3'}`}>
+              {/* Same-author follow-ups sat 2px apart, which read fine as bare
+                  text but cramps once every message has its own outline —
+                  adjacent borders nearly touch. Nudged to 6px; the gap between
+                  authors is unchanged. */}
+              <div className={`flex gap-2.5 ${sameAuthor ? 'mt-1.5' : 'mt-3'}`}>
                 {sameAuthor ? (
                   <div className="w-7 shrink-0" />
                 ) : (
@@ -279,9 +283,23 @@ export default function LeagueThread({ league }) {
                     </div>
                   )}
                   <div className="flex items-baseline gap-2">
-                    <div className="text-sm text-text-primary leading-relaxed flex-1 min-w-0 whitespace-pre-wrap">
-                      {msg.content && renderContent(msg.content, msg.tagged_users)}
-                    </div>
+                    {/* Message bubble. Hugs its content rather than filling the
+                        row — a full-width outline round a three-word reply
+                        reads as a container, not a message.
+
+                        Rendered only when there IS text: an image-only message
+                        would otherwise draw an empty outlined box above it, and
+                        images already carry their own border below.
+
+                        border-text-primary/15 rather than /20: this repeats
+                        down the whole thread, so the weight that reads as
+                        "subtle" on one card reads as noise stacked twenty
+                        times. */}
+                    {msg.content && (
+                      <div className="text-sm text-text-primary leading-relaxed min-w-0 max-w-full whitespace-pre-wrap rounded-2xl border border-text-primary/15 px-3 py-2">
+                        {renderContent(msg.content, msg.tagged_users)}
+                      </div>
+                    )}
                     {crossesDay && (
                       <span className="text-[10px] text-text-muted/70 shrink-0">
                         {timeAgo(msg.created_at)}
