@@ -295,10 +295,27 @@ function extractFootballStarters(data) {
   // both a nickel package's WR row and a base package's WR row. Sort at
   // the end into offense → defense → special so the UI can group them
   // visually in that order without any client-side arranging.
-  const seenPositions = new Set()
+  // Which formation a label was first taken from. ESPN returns several
+  // formations ("3WR 1TE", "Base 4-3 D", "Special Teams") and a label can
+  // appear in more than one, so the first formation to supply a label wins —
+  // that keeps a nickel package's WR row from stacking on the base package's.
+  //
+  // But WITHIN one formation, ESPN splits receivers into separate numbered
+  // slots that all carry abbreviation "WR":
+  //   wr1: Amon-Ra St. Brown > Tom Kennedy
+  //   wr2: Jameson Williams  > Tay Martin
+  //   wr3: Isaac TeSlaa      > Kendrick Law
+  // Deduping on the abbreviation alone read wr1 only and then synthesised a
+  // second row from ITS depth[1] — so "WR2" was St. Brown's backup, and the
+  // actual WR2 and WR3 were never read at all. Allowing repeats inside the
+  // same formation fixes that, and yields a true 11-personnel card (QB, RB,
+  // 3 WR, TE, 5 OL) instead of the ten-man one it produced before.
+  const labelFirstChart = new Map()
   const starters = []
 
-  for (const chart of data.depthchart || []) {
+  const charts = data.depthchart || []
+  for (let chartIndex = 0; chartIndex < charts.length; chartIndex++) {
+    const chart = charts[chartIndex]
     if (!chart?.positions) continue
     for (const [, pos] of Object.entries(chart.positions)) {
       const posLabel = (pos.position?.abbreviation || '').toUpperCase()
@@ -308,14 +325,15 @@ function extractFootballStarters(data) {
         if (athlete.displayName) activeNames.add(athlete.displayName)
       }
       if (!posLabel) continue
-      if (seenPositions.has(posLabel)) continue
+      const firstChart = labelFirstChart.get(posLabel)
+      if (firstChart !== undefined && firstChart !== chartIndex) continue
 
       const depth = (pos.athletes || [])
         .filter((a) => a?.displayName)
         .map((a) => ({ name: a.displayName, shortName: a.shortName }))
       if (!depth.length) continue
 
-      seenPositions.add(posLabel)
+      labelFirstChart.set(posLabel, chartIndex)
       starters.push({
         position: posLabel,
         name: depth[0].name,
@@ -324,21 +342,6 @@ function extractFootballStarters(data) {
         depth,
       })
 
-      // Offenses line up with two receivers far more often than one, so a
-      // lineup card that lists a single WR reads wrong. Emit WR2 as its own
-      // row carrying the SAME full depth array — the client walks depth and
-      // skips anyone it has already placed, so WR1 resolves to depth[0] and
-      // WR2 falls through to depth[1], with injury promotion still running
-      // down the chart independently for each row.
-      if (posLabel === 'WR' && depth.length > 1) {
-        starters.push({
-          position: posLabel,
-          name: depth[1].name,
-          shortName: depth[1].shortName,
-          side: sideForFootballPosition(posLabel),
-          depth,
-        })
-      }
     }
   }
 
