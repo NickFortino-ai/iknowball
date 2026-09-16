@@ -236,8 +236,14 @@ export default function TdPassView({ league, tab = 'picks' }) {
           const now = Date.now()
           const startByQb = new Map((qbs || []).map((q) => [q.id, q.matchup?.starts_at]))
           const finalPicks = (myPicks || []).filter((p) => {
+            // A pick from an earlier week is finished, full stop. This used to
+            // be judged purely by the QB's CURRENT matchup start time, which
+            // asks the wrong question: a week-1 pick who plays again in week 2
+            // was ruled "not final" because his NEXT game hadn't kicked off,
+            // so the panel filtered out every past pick and vanished entirely.
+            if (currentWeek && p.week < currentWeek) return true
             const startsAt = startByQb.get(p.qb_player_id)
-            if (!startsAt) return true // past-week pick without a current matchup — treat as final
+            if (!startsAt) return true // no matchup on file — treat as final
             return new Date(startsAt).getTime() + 4 * 60 * 60 * 1000 < now
           })
           if (finalPicks.length === 0) return null
