@@ -1030,6 +1030,16 @@ export default function FantasyMyTeam({ league }) {
                         isDropTarget={isDropTarget}
                         onTap={() => handlePlayerTap(occupant.player_id)}
                         onViewDetail={openPlayerDetail}
+                        // Starters get the IR action too. It used to be passed
+                        // only to the bench list, so moving an injured starter
+                        // to IR meant benching him first and then moving him
+                        // again — two saves for one intent. handleMoveToIR is
+                        // slot-agnostic and the server only gates IR on
+                        // isIrEligible, so the starter slot simply empties.
+                        // PlayerRow still hides the button for a LOCKED
+                        // starter: starter -> IR is a scoring-slot move and
+                        // the server refuses it once his game has kicked off.
+                        onMoveToIR={handleMoveToIR}
                         editMode={editMode}
                         blurbIds={blurbIds}
                         showSeasonStats={isCurrentWeek || isFutureWeek}
