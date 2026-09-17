@@ -4,6 +4,7 @@ import { supabase } from '../config/supabase.js'
 import { getCurrentNflWeek, getLockedTeamSet, getCurrentWeekMatchups } from '../services/tdPassService.js'
 import { logger } from '../utils/logger.js'
 import { fetchAll } from '../utils/fetchAll.js'
+import { isUnavailable } from '../utils/injuryStatus.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -87,6 +88,11 @@ router.get('/players', async (req, res) => {
   // update.
   const includeLocked = req.query.locked === '1'
   const pool = (defenders || [])
+    // Drop players who cannot take the field. These contests are a pick for
+    // ONE week, so an IR / PUP / suspended player is not a gamble — he is a
+    // guaranteed zero, and listing him among 1,270 names is just a trap.
+    // Questionable and Doubtful stay: those are real calls to make.
+    .filter((d) => !isUnavailable(d.injury_status))
     .filter((d) => includeLocked || !lockedTeams.has(d.team))
     .map((d) => {
       const m = matchupByTeam[d.team] || null

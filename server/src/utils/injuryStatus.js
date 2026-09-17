@@ -9,10 +9,15 @@
 // Deliberately NOT here:
 //   Questionable — expected to play. Holds his roster slot, carries a badge,
 //                  and keeps his projection.
-//   NA           — Sleeper's "no designation" placeholder, not an injury.
-//                  Josh Jacobs carries it while starting.
+//
+// 'na' WAS excluded here, on the reasoning that it's "Sleeper's no-designation
+// placeholder, not an injury — Josh Jacobs carries it while starting". That
+// was backwards, corrected 2026-09-16: Jacobs is the only player in the league
+// carrying NA (1 of 999 active), so he was the entire sample the conclusion
+// came from, and he is on the commissioner's exempt list — ineligible to play.
+// Sleeper's NA means not active.
 export const UNAVAILABLE_INJURY_STATUSES = new Set([
-  'out', 'doubtful', 'ir', 'pup', 'sus', 'suspended', 'dnr',
+  'out', 'doubtful', 'ir', 'pup', 'sus', 'suspended', 'dnr', 'na',
 ])
 
 /** True when this injury_status means the player cannot play. */

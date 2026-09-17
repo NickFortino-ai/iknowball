@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { isUnavailable } from '../utils/injuryStatus.js'
 
 // Preseason QB ranking — used before Week 1 stats exist.
 // Once any pass_td data is recorded, sorting switches to actual TDs.
@@ -325,6 +326,9 @@ export async function getAvailableQBs(leagueId, userId) {
   // searching "lock" for Drew Lock returned "No QBs match your search"
   // while Seattle was playing. The client greys them instead.
   const pool = (qbs || [])
+    // Same rule as the other single-stat pools: a QB who cannot take the
+    // field is a guaranteed zero for the week, not a gamble worth listing.
+    .filter((q) => !isUnavailable(q.injury_status))
     .map((q) => {
       const m = matchupByTeam[q.team] || null
       return {
