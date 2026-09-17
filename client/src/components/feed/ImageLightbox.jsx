@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 // Resize via Supabase's render endpoint — way faster than loading the
 // original full-resolution upload (often 3-5 MB straight from a phone
@@ -53,9 +54,16 @@ export default function ImageLightbox({ src, images, initialIndex = 0, onClose }
 
   if (!list.length) return null
 
-  return (
+  // Portalled to <body>. Rendered in place, the overlay inherits whatever
+  // stacking context its host sits in — the league thread mounts inside a
+  // `relative z-10` wrapper, so this z-50 was scoped to z-10 and the navbar
+  // (sticky top-0 z-50 at page root) painted straight over the top strip.
+  // The image filled the screen and the close button sat behind the navbar;
+  // only a swipe got you out. Same rule as every other modal here.
+  return createPortal(
+    (
     <div
-      className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+      className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center"
       onClick={onClose}
     >
       <button
@@ -142,5 +150,7 @@ export default function ImageLightbox({ src, images, initialIndex = 0, onClose }
         </>
       )}
     </div>
+    ),
+    document.body,
   )
 }
