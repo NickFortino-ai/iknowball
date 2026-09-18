@@ -75,7 +75,12 @@ export default function SurvivorPickChip({
       ) : (
         // Keeps the column occupied so a row of mixed pick types doesn't
         // reflow around the ones that have no face to show.
-        <div className={`w-12 h-12 lg:w-16 lg:h-16 rounded-full bg-white/5 ring-2 ${ringClass} flex items-center justify-center text-[10px] font-bold text-text-muted`}>
+        <div className={`w-12 h-12 lg:w-16 lg:h-16 rounded-full bg-white/5 ring-2 ${ringClass} flex items-center justify-center font-bold text-text-muted ${
+          // A single glyph in a 48-64px circle wants to fill it; a team name
+          // has to stay small enough to read. Sizing them the same left the
+          // '?' on a hidden pick looking like a speck.
+          missed || isLocked ? 'text-2xl lg:text-3xl leading-none' : 'text-[10px]'
+        }`}>
           {missed ? '✕' : isLocked ? '?' : shortTeamLabel(pick?.team_name) || '—'}
         </div>
       )}
