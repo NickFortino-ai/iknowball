@@ -123,11 +123,11 @@ export default function TouchdownPicker({ league, pickWeek, onPick }) {
                         <img
                           src={player.headshot_url}
                           alt=""
-                          className="w-12 h-12 rounded-full object-cover bg-bg-secondary"
+                          className="w-12 h-12 lg:w-16 lg:h-16 rounded-full object-cover bg-bg-secondary"
                           onError={(e) => { e.target.style.display = 'none' }}
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-full bg-bg-secondary flex items-center justify-center text-xs text-text-muted font-bold">
+                        <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-full bg-bg-secondary flex items-center justify-center text-xs text-text-muted font-bold">
                           {player.position}
                         </div>
                       )}
