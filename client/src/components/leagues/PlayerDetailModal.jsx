@@ -186,7 +186,7 @@ function idpNarrativeParts(week) {
   return parts
 }
 
-function CurrentWeekNarrative({ position, week }) {
+function CurrentWeekNarrative({ position, week, hideFantasyPoints = false }) {
   if (!week) {
     return <p className="text-sm text-text-muted text-center">No stats yet this week.</p>
   }
@@ -264,7 +264,11 @@ function CurrentWeekNarrative({ position, week }) {
 
   return (
     <div>
-      {pts && <div className="font-display text-lg text-white mb-1">{pts} pts</div>}
+      {/* The narrative stat line stays in a non-fantasy contest — it's just a
+          readable summary of what he did. The points figure does not: with no
+          fantasy_settings row the server computes it from a default preset,
+          so it would be a number this contest never used. */}
+      {!hideFantasyPoints && pts && <div className="font-display text-lg text-white mb-1">{pts} pts</div>}
       <p className="text-sm text-text-primary leading-relaxed">
         {parts.length > 0 ? parts.join('. ') + '.' : 'No significant stats recorded.'}
       </p>
@@ -550,7 +554,7 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
                   <h3 className="text-xs uppercase text-text-muted tracking-wider mb-2">
                     Week {data.current_week.week}
                   </h3>
-                  <CurrentWeekNarrative position={data.player.position} week={data.current_week} />
+                  <CurrentWeekNarrative position={data.player.position} week={data.current_week} hideFantasyPoints={hideFantasyPoints} />
                 </div>
                 <div className="border-t border-text-primary/10" />
               </>
