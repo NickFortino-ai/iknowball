@@ -4,7 +4,7 @@ import { useAuthStore } from '../../stores/authStore'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import SurvivorPickChip from './SurvivorPickChip'
-import PlayerDetailModal from '../ui/PlayerDetailModal'
+import PlayerDetailModal from './PlayerDetailModal'
 
 const FOOTBALL_SPORTS = ['americanfootball_nfl', 'americanfootball_ncaaf']
 const BASEBALL_SPORTS = ['baseball_mlb']
@@ -243,8 +243,12 @@ export default function SurvivorStandings({ league, onUserTap }) {
 
       {detailPlayer && (
         <PlayerDetailModal
-          player={detailPlayer}
-          sport="americanfootball_nfl"
+          leagueId={league.id}
+          playerId={detailPlayer}
+          // Survivor has no fantasy scoring, so the Pts column and season
+          // total are hidden — they'd be computed from a default preset
+          // unrelated to how this contest actually scores.
+          hideFantasyPoints
           onClose={() => setDetailPlayer(null)}
         />
       )}

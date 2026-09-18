@@ -62,14 +62,11 @@ export default function SurvivorPickChip({
     <Tag
       {...(canOpen ? {
         type: 'button',
-        onClick: () => onOpenPlayer({
-          sleeper_player_id: pick.player_id,
-          player_name: pick.player_name || pick.team_name,
-          name: pick.player_name || pick.team_name,
-          // Without this the modal drew its '?' placeholder even though the
-          // chip you tapped was showing the face.
-          headshot_url: pick.headshot_url,
-        }),
+        // Hands back the player id. The league PlayerDetailModal fetches the
+        // full card from it — team colour header, bio, notes, week-by-week
+        // table — rather than the trimmed ui/ modal that only had what the
+        // caller happened to pass in.
+        onClick: () => onOpenPlayer(pick.player_id),
       } : {})}
       title={title}
       className={`shrink-0 flex flex-col items-center gap-0.5 w-14 lg:w-20 ${canOpen ? 'hover:opacity-80 transition-opacity' : ''}`}

@@ -272,7 +272,7 @@ function CurrentWeekNarrative({ position, week }) {
   )
 }
 
-function PreviousGamesTable({ position, weeks, currentWeek }) {
+function PreviousGamesTable({ position, weeks, currentWeek, hideFantasyPoints = false }) {
   // Combined played + upcoming weeks. Server emits an `opponent` and
   // `is_home` on every row + a `played` boolean — upcoming weeks have
   // null stats and muted styling so users see the full season's
@@ -282,7 +282,11 @@ function PreviousGamesTable({ position, weeks, currentWeek }) {
     return <p className="text-xs text-text-muted text-center py-3">No games scheduled.</p>
   }
   const playedRows = allWeeks.filter((w) => w.played !== false)
+  // Contests without fantasy scoring (survivor, single-stat) show the same
+  // card minus the Pts column — the number would be computed from a default
+  // preset that has nothing to do with how the contest actually scores.
   const columns = columnsFor(position, [...(playedRows || []), ...(currentWeek ? [currentWeek] : [])])
+    .filter((c) => !(hideFantasyPoints && c.key === 'pts'))
   // Sum each column across played weeks for the season totals footer.
   // def_pts_allowed reads as a sum of all per-game points allowed, which
   // is informative enough for a season view; not worth special-casing.
@@ -444,7 +448,7 @@ function PlayerNotesSection({ blurbs, blurb, injuryDetail }) {
   )
 }
 
-export default function PlayerDetailModal({ leagueId, playerId, onClose, playerContext, onDrop, onTrade, onClaim, onAdd }) {
+export default function PlayerDetailModal({ leagueId, playerId, onClose, playerContext, onDrop, onTrade, onClaim, onAdd, hideFantasyPoints = false }) {
   const { data, isLoading } = usePlayerDetail(leagueId, playerId)
   const contentRef = useRef(null)
 
@@ -506,7 +510,7 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
                 <span className="text-xs text-text-muted">{data.player.position} · {nflTeamNickname(data.player.team) || data.player.team || 'FA'}</span>
                 <InjuryBadge status={data.player.injury_status} />
               </div>
-              {data.season_summary && data.season_summary.games_played > 0 && (
+              {!hideFantasyPoints && data.season_summary && data.season_summary.games_played > 0 && (
                 <div className="mt-2 text-xs md:text-sm text-text-muted">
                   Season: <span className="text-text-primary font-semibold">{data.season_summary.total_pts} pts</span>
                   {' · '}
@@ -558,6 +562,7 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
                 muted blanks). */}
             <div>
               <PreviousGamesTable
+                hideFantasyPoints={hideFantasyPoints}
                 position={data.player.position}
                 weeks={data.weekly_stats}
                 currentWeek={data.current_week}

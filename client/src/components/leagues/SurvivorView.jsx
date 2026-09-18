@@ -9,7 +9,7 @@ import { formatOdds } from '../../lib/scoring'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import Avatar from '../ui/Avatar'
 import TouchdownPicker from './TouchdownPicker'
-import PlayerDetailModal from '../ui/PlayerDetailModal'
+import PlayerDetailModal from './PlayerDetailModal'
 import SurvivorPickChip from './SurvivorPickChip'
 
 // Sport labels for the All-Sports survivor sub-grouping. Falls back to the
@@ -617,8 +617,12 @@ export default function SurvivorView({ league }) {
 
       {detailPlayer && (
         <PlayerDetailModal
-          player={detailPlayer}
-          sport="americanfootball_nfl"
+          leagueId={league.id}
+          playerId={detailPlayer}
+          // Survivor has no fantasy scoring, so the Pts column and season
+          // total are hidden — they'd be computed from a default preset
+          // unrelated to how this contest actually scores.
+          hideFantasyPoints
           onClose={() => setDetailPlayer(null)}
         />
       )}
