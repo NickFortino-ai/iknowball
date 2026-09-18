@@ -1371,6 +1371,7 @@ import {
   setFantasyLineupAsCommissioner,
   addDropPlayer,
   addDropPlayerAsCommissioner,
+  resolveIneligibleIr,
   dropRosterPlayer,
   proposeTrade,
   acceptTrade,
@@ -1884,6 +1885,26 @@ router.post('/:id/fantasy/rosters/:userId/lineup', requireAuth, async (req, res)
 })
 
 // Commissioner override: execute an add/drop on another manager's roster.
+// Clear healed players off IR, dropping one roster player if the manager is
+// at the active-roster cap. One call so the roster never sits in an illegal
+// state, and so the manager isn't caught between "move him off IR" (needs
+// room) and "drop someone" (blocked while he's on IR).
+//
+// Omit drop_player_id to ask: a 400 with needs_drop = true comes back, naming
+// who must come off IR, and the client prompts for the drop.
+router.post('/:id/fantasy/resolve-ir', requireAuth, async (req, res) => {
+  try {
+    const result = await resolveIneligibleIr(req.params.id, req.user.id, req.body?.drop_player_id || null)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({
+      error: err.message,
+      needs_drop: err.needs_drop || undefined,
+      ineligible_ir_players: err.ineligible_ir_players || undefined,
+    })
+  }
+})
+
 router.post('/:id/fantasy/rosters/:userId/add-drop', requireAuth, async (req, res) => {
   try {
     const { add_player_id, drop_player_id } = req.body

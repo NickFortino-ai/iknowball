@@ -5088,6 +5088,121 @@ async function assertNoIneligibleIR(leagueId, userId) {
   }
 }
 
+/**
+ * Clear ineligible players off IR, dropping one roster player if that would
+ * put the manager over the active-roster cap.
+ *
+ * Exists because the obvious two-step is a deadlock: moving a healed player
+ * off IR needs roster room, freeing roster room needs a drop, and drops are
+ * blocked while an ineligible player sits on IR. Doing both in one call means
+ * the roster is never in an illegal state and the manager never has to work
+ * out the ordering.
+ *
+ * `dropPlayerId` may be one of the healed players themselves — a manager who
+ * doesn't rate the returning player should be able to cut him rather than
+ * somebody better.
+ *
+ * Deliberately does NOT call assertNoIneligibleIR: this is the operation that
+ * resolves that state.
+ */
+export async function resolveIneligibleIr(leagueId, userId, dropPlayerId = null) {
+  const settings = await getFantasySettings(leagueId)
+  if (!settings) {
+    const err = new Error('League settings not found')
+    err.status = 404
+    throw err
+  }
+
+  const { data: roster } = await supabase
+    .from('fantasy_rosters')
+    .select('id, player_id, slot, acquired_at, nfl_players(full_name, injury_status)')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+
+  const ineligible = (roster || []).filter(
+    (r) => r.slot === 'ir' && !isIrEligible(r.nfl_players?.injury_status),
+  )
+  if (!ineligible.length) return { moved: [], dropped: null }
+
+  // Active-roster cap excludes IR, which is the whole point of the slot — so
+  // every player coming off IR adds one to the active count.
+  const rosterSlots = settings.roster_slots || {}
+  const cap = Object.entries(rosterSlots)
+    .filter(([k]) => k !== 'ir')
+    .reduce((sum, [, v]) => sum + (Number(v) || 0), 0)
+  const activeNow = (roster || []).filter((r) => r.slot !== 'ir').length
+  const activeAfter = activeNow + ineligible.length
+
+  if (activeAfter > cap && !dropPlayerId) {
+    const names = ineligible.map((r) => r.nfl_players?.full_name || 'A player')
+    const err = new Error(
+      `${names.join(' and ')} must come off IR, but your roster is full. Choose a player to drop.`,
+    )
+    err.status = 400
+    err.needs_drop = true
+    err.ineligible_ir_players = names
+    throw err
+  }
+
+  let droppedName = null
+  if (dropPlayerId) {
+    const dropRow = (roster || []).find((r) => r.player_id === dropPlayerId)
+    if (!dropRow) {
+      const err = new Error('That player is not on your roster')
+      err.status = 400
+      throw err
+    }
+    // A player whose game has kicked off can't be dropped — same rule the
+    // ordinary drop path enforces.
+    const lockedTeams = await getLockedTeamsForLeague(leagueId)
+    const { data: dropPlayer } = await supabase
+      .from('nfl_players')
+      .select('full_name, team')
+      .eq('id', dropPlayerId)
+      .maybeSingle()
+    if (lockedTeams.has(dropPlayer?.team)) {
+      const err = new Error(`${dropPlayer?.full_name || 'That player'}'s game has already started — pick someone else`)
+      err.status = 400
+      throw err
+    }
+
+    const { error: dropErr, count: droppedCount } = await supabase
+      .from('fantasy_rosters')
+      .delete({ count: 'exact' })
+      .eq('id', dropRow.id)
+    if (dropErr) throw dropErr
+    if ((droppedCount ?? 0) !== 1) {
+      const err = new Error('Failed to drop the selected player — refresh and try again')
+      err.status = 500
+      throw err
+    }
+    await addToWaiverPool(leagueId, [dropPlayerId], 'dropped', { [dropPlayerId]: dropRow.acquired_at })
+    droppedName = dropPlayer?.full_name || null
+  }
+
+  // Everything still on IR and ineligible moves to the bench. The dropped
+  // player is already gone, so he's skipped.
+  const toMove = ineligible.filter((r) => r.player_id !== dropPlayerId)
+  for (const row of toMove) {
+    await supabase.from('fantasy_rosters').update({ slot: 'bench' }).eq('id', row.id)
+  }
+
+  if (dropPlayerId) {
+    await supabase.from('fantasy_transactions').insert([
+      { league_id: leagueId, user_id: userId, type: 'drop', player_id: dropPlayerId },
+    ])
+  }
+
+  logger.info(
+    { leagueId, userId, moved: toMove.length, dropped: dropPlayerId || null },
+    'Resolved ineligible IR players',
+  )
+  return {
+    moved: toMove.map((r) => r.nfl_players?.full_name || 'A player'),
+    dropped: droppedName,
+  }
+}
+
 export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId) {
   if (!addPlayerId) {
     const err = new Error('add_player_id required')
