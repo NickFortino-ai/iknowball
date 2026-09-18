@@ -65,6 +65,11 @@ const NFL_COLORS = {
   "Tampa Bay Buccaneers": "#bd1c36",
   "Tennessee Titans": "#4495d2",
   "WSH": "#5a1414",
+  // ESPN says WSH, Sleeper says WAS — and nfl_players.team is populated from
+  // Sleeper, so the fantasy/salary-cap player modal asks for "WAS". Without
+  // this alias every Washington player lost the team-colour hero backdrop
+  // while the other 31 teams had one.
+  "WAS": "#5a1414",
   "Washington Commanders": "#5a1414",
 }
 
