@@ -1,5 +1,6 @@
 import PlayerHeadshot from '../ui/PlayerHeadshot'
 import { shortTeamLabel } from '../../lib/teamShort'
+import { playerLastName } from '../../lib/playerName'
 
 // One pick in a survivor history row: headshot, last name, period label.
 //
@@ -45,7 +46,11 @@ export default function SurvivorPickChip({
     ? 'Missed'
     : isLocked
       ? '\u00A0'
-      : shortTeamLabel(pick?.player_name || pick?.team_name) || '—'
+      // Player picks get the surname helper: shortTeamLabel takes the last
+      // word, which turned "Amon-Ra St. Brown" into "Brown". Team-survivor
+      // picks still use shortTeamLabel below, where last-word IS correct
+      // (Portland Trail Blazers -> Blazers).
+      : playerLastName(pick?.player_name || pick?.team_name) || '—'
 
   const title = missed
     ? `${periodLabel} ${weekNumber}: Missed pick — lost a life`
