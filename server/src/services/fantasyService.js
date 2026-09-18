@@ -4638,6 +4638,24 @@ export async function setFantasyLineup(leagueId, userId, slotAssignments) {
     }
   }
 
+  // IR capacity. Starter slots were count-checked above and `ir` was not,
+  // so a league with one IR slot happily took a second and third player —
+  // the slot had an eligibility gate but no limit at all.
+  // Validated against the RESULTING roster, not just this request, so it
+  // holds however the player got there — locked players preserved above
+  // are already in newSlotByPlayer and therefore counted.
+  const irLimit = Number(lineupSettings?.roster_slots?.ir ?? 0)
+  const irCount = Object.values(newSlotByPlayer).filter((slot) => slot === 'ir').length
+  if (irCount > irLimit) {
+    const err = new Error(
+      irLimit === 0
+        ? 'This league has no IR slots'
+        : `Only ${irLimit} player${irLimit === 1 ? '' : 's'} can be on IR — you have ${irCount}`,
+    )
+    err.status = 400
+    throw err
+  }
+
   // 6. Persist — one update per row that changed
   let updated = 0
   for (const r of roster) {
@@ -4863,6 +4881,21 @@ export async function setFantasyWeeklyLineup(leagueId, userId, week, season, slo
       err.status = 400
       throw err
     }
+  }
+
+  // IR capacity. Starter slots were count-checked above and `ir` was not,
+  // so a league with one IR slot happily took a second and third player —
+  // the slot had an eligibility gate but no limit at all.
+  const irLimit = Number(weeklySettings?.roster_slots?.ir ?? 0)
+  const irCount = slotAssignments.filter((a) => a.slot === 'ir').length
+  if (irCount > irLimit) {
+    const err = new Error(
+      irLimit === 0
+        ? 'This league has no IR slots'
+        : `Only ${irLimit} player${irLimit === 1 ? '' : 's'} can be on IR — you have ${irCount}`,
+    )
+    err.status = 400
+    throw err
   }
 
   // Delete existing weekly lineup for this week, then insert new set
