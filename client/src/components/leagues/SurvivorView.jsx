@@ -10,6 +10,7 @@ import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import { shortTeamLabel } from '../../lib/teamShort'
 import Avatar from '../ui/Avatar'
 import TouchdownPicker from './TouchdownPicker'
+import PlayerDetailModal from '../ui/PlayerDetailModal'
 
 // Sport labels for the All-Sports survivor sub-grouping. Falls back to the
 // raw sport_key if a sport isn't in the map.
@@ -95,6 +96,10 @@ export default function SurvivorView({ league }) {
   }, [board?.members, currentUserId, actualCurrentWeek?.id])
 
   const usedTeamSet = useMemo(() => new Set(usedTeams || []), [usedTeams])
+  // Player whose detail card is open, from tapping one of your own pick
+  // chips. Touchdown-survivor picks carry a player_id; team-survivor picks
+  // don't, and those chips stay inert.
+  const [detailPlayer, setDetailPlayer] = useState(null)
 
   // Build a map of game_id -> { team_name, league_week_id } for ALL of the
   // current user's pending picks across upcoming days. This lets multi-day
@@ -603,13 +608,36 @@ export default function SurvivorView({ league }) {
                         : p.status === 'eliminated'
                           ? 'bg-incorrect/20 text-incorrect border border-incorrect/30'
                           : 'bg-white/10 text-text-primary border border-white/20'
+                  // Touchdown survivor picks name a player, so the chip opens
+                  // his card. Locked chips stay inert — they read '???' on
+                  // purpose and tapping one would reveal the hidden pick.
+                  const canOpen = !isLocked && !!p.player_id
+                  const label = isLocked ? '???' : shortTeamLabel(p.team_name) || 'No pick'
+                  const chipTitle = `${periodLabel} ${p.league_weeks?.week_number}: ${isLocked ? 'Hidden' : p.team_name || 'No pick'}`
+                  if (canOpen) {
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setDetailPlayer({
+                          sleeper_player_id: p.player_id,
+                          player_name: p.player_name || p.team_name,
+                          name: p.player_name || p.team_name,
+                        })}
+                        className={`text-xs font-semibold px-2 py-1 rounded-lg shrink-0 hover:brightness-125 transition-[filter] ${chipStyle}`}
+                        title={chipTitle}
+                      >
+                        {label}
+                      </button>
+                    )
+                  }
                   return (
                     <span
                       key={p.id}
                       className={`text-xs font-semibold px-2 py-1 rounded-lg shrink-0 ${chipStyle}`}
-                      title={`${periodLabel} ${p.league_weeks?.week_number}: ${isLocked ? 'Hidden' : p.team_name || 'No pick'}`}
+                      title={chipTitle}
                     >
-                      {isLocked ? '???' : shortTeamLabel(p.team_name) || 'No pick'}
+                      {label}
                     </span>
                   )
                 })}
@@ -618,6 +646,14 @@ export default function SurvivorView({ league }) {
           </div>
         )
       })()}
+
+      {detailPlayer && (
+        <PlayerDetailModal
+          player={detailPlayer}
+          sport="americanfootball_nfl"
+          onClose={() => setDetailPlayer(null)}
+        />
+      )}
     </div>
   )
 }
