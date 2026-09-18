@@ -632,7 +632,7 @@ export default function SurvivorView({ league }) {
                         }),
                       } : {})}
                       title={chipTitle}
-                      className={`shrink-0 flex flex-col items-center gap-0.5 w-14 lg:w-[4.5rem] ${canOpen ? 'hover:opacity-80 transition-opacity' : ''}`}
+                      className={`shrink-0 flex flex-col items-center gap-0.5 w-14 lg:w-20 ${canOpen ? 'hover:opacity-80 transition-opacity' : ''}`}
                     >
                       {p.headshot_url || p.player_id ? (
                         <PlayerHeadshot
@@ -651,7 +651,15 @@ export default function SurvivorView({ league }) {
                           {isLocked ? '?' : shortTeamLabel(p.team_name) || '—'}
                         </div>
                       )}
-                      <span className="text-[10px] text-text-muted leading-none">
+                      {/* Last name under the face. shortTeamLabel takes the
+                          last word, which is what the old chips rendered —
+                          "Saquon Barkley" -> "Barkley". Truncates on phones
+                          where the column is 56px; desktop's 80px fits most
+                          names outright. */}
+                      <span className="w-full text-center text-[10px] leading-tight text-text-primary truncate">
+                        {isLocked ? 'Hidden' : shortTeamLabel(p.player_name || p.team_name) || '—'}
+                      </span>
+                      <span className="text-[9px] text-text-muted leading-none">
                         {weekNo != null ? `${isDaily ? 'D' : 'W'}${weekNo}` : ''}
                       </span>
                     </Tag>
