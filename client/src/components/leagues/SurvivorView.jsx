@@ -632,19 +632,19 @@ export default function SurvivorView({ league }) {
                         }),
                       } : {})}
                       title={chipTitle}
-                      className={`shrink-0 flex flex-col items-center gap-0.5 w-11 ${canOpen ? 'hover:opacity-80 transition-opacity' : ''}`}
+                      className={`shrink-0 flex flex-col items-center gap-0.5 w-14 ${canOpen ? 'hover:opacity-80 transition-opacity' : ''}`}
                     >
                       {p.headshot_url || p.player_id ? (
                         <PlayerHeadshot
                           name={p.player_name || p.team_name}
                           url={p.headshot_url}
-                          size="md"
+                          size="lg"
                           className={`ring-2 ${ringClass}`}
                         />
                       ) : (
                         // Locked pick, or a team-survivor pick with no player:
                         // keep the slot occupied so the row doesn't reflow.
-                        <div className={`w-10 h-10 rounded-full bg-white/5 ring-2 ${ringClass} flex items-center justify-center text-[10px] font-bold text-text-muted`}>
+                        <div className={`w-12 h-12 rounded-full bg-white/5 ring-2 ${ringClass} flex items-center justify-center text-[10px] font-bold text-text-muted`}>
                           {isLocked ? '?' : shortTeamLabel(p.team_name) || '—'}
                         </div>
                       )}
