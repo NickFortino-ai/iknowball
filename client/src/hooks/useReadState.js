@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 
@@ -67,8 +68,27 @@ function readLocal() {
   }
 }
 
+// Local mirror changes have to wake every mounted useReadState, because that
+// hook reads localStorage DURING RENDER — nothing about a localStorage write
+// re-renders React on its own.
+//
+// Without this, clearing a dot depended entirely on the caller remembering to
+// pass a queryClient so the cache nudge forced a render. All four call sites
+// omitted it, so reading a blurb wrote the mark, fired the POST, and left the
+// orange dot on screen until something else happened to re-render the page or
+// the 5-minute staleTime expired.
+let localVersion = 0
+const localListeners = new Set()
+
+function subscribeLocal(cb) {
+  localListeners.add(cb)
+  return () => localListeners.delete(cb)
+}
+
 function writeLocal(map) {
   try { localStorage.setItem(LOCAL_KEY, JSON.stringify(map)) } catch { /* private mode / quota */ }
+  localVersion += 1
+  for (const cb of localListeners) cb()
 }
 
 // Server map wins on conflict — it's the newer write in every case where
@@ -88,6 +108,9 @@ export function useReadState() {
     queryFn: () => api.get('/read-state'),
     staleTime: 5 * 60_000,
   })
+  // Re-render when the local mirror changes, so a mark clears its dot
+  // immediately whether or not the caller threaded a queryClient through.
+  useSyncExternalStore(subscribeLocal, () => localVersion, () => localVersion)
   return merge(readLocal(), data)
 }
 
