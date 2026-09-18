@@ -94,6 +94,9 @@ const NBA_COLORS = {
   "IND": "#0c2340",
   "Indiana Pacers": "#0c2340",
   "LA Clippers": "#12173f",
+  // ESPN and our own survivor picks both write the long form; the map only
+  // had the short one, so Clippers picks came back colourless.
+  "Los Angeles Clippers": "#12173f",
   "LAC": "#12173f",
   "LAL": "#552583",
   "Los Angeles Lakers": "#552583",
