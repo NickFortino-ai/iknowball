@@ -4246,6 +4246,19 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   // Players currently on waivers in this league
   const waiverLockedSet = await getWaiverLockedPlayerIds(leagueId)
 
+  // While the league-wide window is open, EVERY unrostered player is
+  // claim-only — that is the whole point of the window. The pool payload was
+  // reporting on_waivers purely from pool membership, so a player nobody had
+  // dropped still showed the green "add now" plus. Tapping it opened the
+  // add-drop modal, the user picked someone to drop, and only then did the
+  // server refuse with "Waivers are running". The affordance promised
+  // something the rule had already taken away.
+  //
+  // submitWaiverClaim already accepts a free agent while the window is open
+  // (it writes the pool row itself), so flipping the flag routes the client
+  // into a flow that works rather than one that dead-ends.
+  const windowOpen = await isLeagueWideWaiverWindowOpen()
+
   // Current-week opponent map, same as getRoster. Empty if pre-season or
   // out of season.
   let oppMap = new Map()
@@ -4482,7 +4495,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
           def_pts_allowed: s.def_pts_allowed || 0,
         }),
       },
-      on_waivers: waiverLockedSet.has(p.id),
+      on_waivers: waiverLockedSet.has(p.id) || windowOpen,
       // Opponent / home-away for the current NFL week. Undefined when
       // the opponent map is empty (offseason) so the client doesn't
       // mark every player as BYE. Inside the map, missing team = bye.
