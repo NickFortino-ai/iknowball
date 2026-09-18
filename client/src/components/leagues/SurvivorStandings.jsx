@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useSurvivorBoard } from '../../hooks/useLeagues'
 import { useAuthStore } from '../../stores/authStore'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
-import { shortTeamLabel } from '../../lib/teamShort'
+import SurvivorPickChip from './SurvivorPickChip'
+import PlayerDetailModal from '../ui/PlayerDetailModal'
 
 const FOOTBALL_SPORTS = ['americanfootball_nfl', 'americanfootball_ncaaf']
 const BASEBALL_SPORTS = ['baseball_mlb']
@@ -41,6 +42,12 @@ export default function SurvivorStandings({ league, onUserTap }) {
   const { data: board, isLoading } = useSurvivorBoard(league.id)
   const session = useAuthStore((s) => s.session)
   const currentUserId = session?.user?.id
+  // Tapping a pick opens that player's card, matching the picks row on the
+  // Picks tab. Only touchdown-survivor picks carry a player_id; team picks,
+  // locked picks and missed periods render inert.
+  const [detailPlayer, setDetailPlayer] = useState(null)
+  const onOpenPlayer = setDetailPlayer
+
   const isDaily = league.settings?.pick_frequency === 'daily'
   const periodLabel = isDaily ? 'Day' : 'Wk'
 
@@ -127,34 +134,29 @@ export default function SurvivorStandings({ league, onUserTap }) {
     if (!chain.length) return null
 
     return (
-      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide mt-2" ref={(el) => { if (el) el.scrollLeft = el.scrollWidth }}>
-        {chain.map((item, i) => {
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide mt-2 pt-0.5" ref={(el) => { if (el) el.scrollLeft = el.scrollWidth }}>
+        {chain.map((item) => {
           if (item.kind === 'missed') {
             return (
-              <span
+              <SurvivorPickChip
                 key={`missed-${item.week.id}`}
-                className={`text-xs font-semibold px-2 py-1 rounded-lg shrink-0 ${PICK_STYLES.missed}`}
-                title={`${periodLabel} ${item.week.week_number}: Missed pick — lost a life`}
-              >
-                Missed
-              </span>
+                missed
+                weekNumber={item.week.week_number}
+                periodLabel={periodLabel}
+                isDaily={isDaily}
+              />
             )
           }
-
           const p = item.pick
-          const isLocked = p.team_name === 'Locked'
-          const chipStyle = isLocked
-            ? 'bg-white/5 text-text-muted italic border border-white/10'
-            : PICK_STYLES[p.status] || 'bg-white/5 text-text-muted border border-white/10'
-
           return (
-            <span
+            <SurvivorPickChip
               key={p.id}
-              className={`text-xs font-semibold px-2 py-1 rounded-lg shrink-0 ${chipStyle}`}
-              title={`${periodLabel} ${p.league_weeks?.week_number || item.week?.week_number}: ${isLocked ? 'Hidden' : p.team_name || 'No pick'}`}
-            >
-              {isLocked ? '???' : shortTeamLabel(p.team_name) || 'No pick'}
-            </span>
+              pick={p}
+              weekNumber={p.league_weeks?.week_number || item.week?.week_number}
+              periodLabel={periodLabel}
+              isDaily={isDaily}
+              onOpenPlayer={onOpenPlayer}
+            />
           )
         })}
       </div>
@@ -237,6 +239,14 @@ export default function SurvivorStandings({ league, onUserTap }) {
             ))}
           </div>
         </>
+      )}
+
+      {detailPlayer && (
+        <PlayerDetailModal
+          player={detailPlayer}
+          sport="americanfootball_nfl"
+          onClose={() => setDetailPlayer(null)}
+        />
       )}
     </div>
   )

@@ -7,11 +7,10 @@ import EmptyState from '../ui/EmptyState'
 import { toast } from '../ui/Toast'
 import { formatOdds } from '../../lib/scoring'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
-import { shortTeamLabel } from '../../lib/teamShort'
 import Avatar from '../ui/Avatar'
 import TouchdownPicker from './TouchdownPicker'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
-import PlayerHeadshot from '../ui/PlayerHeadshot'
+import SurvivorPickChip from './SurvivorPickChip'
 
 // Sport labels for the All-Sports survivor sub-grouping. Falls back to the
 // raw sport_key if a sport isn't in the map.
@@ -599,70 +598,15 @@ export default function SurvivorView({ league }) {
             {myPicks.length > 0 && (
               <div className="flex gap-2 overflow-x-auto scrollbar-hide pt-0.5" ref={(el) => { if (el) el.scrollLeft = el.scrollWidth }}>
                 {myPicks.map((p) => {
-                  const isLocked = p.team_name === 'Locked'
-                  // Headshot instead of a last-name chip. Narrower than the
-                  // text pill it replaces (40px vs ~70px for "Barkley"), so
-                  // more picks fit per row on a phone, not fewer.
-                  //
-                  // Status moves to the ring colour and the week number moves
-                  // under the face — it previously lived only in a title
-                  // attribute, which a phone can never show.
-                  const canOpen = !isLocked && !!p.player_id
-                  const weekNo = p.league_weeks?.week_number
-                  const ringClass = isLocked
-                    ? 'ring-white/15'
-                    : p.status === 'survived'
-                      ? 'ring-correct/70'
-                      : p.status === 'survived_wrong'
-                        ? 'ring-yellow-500/70'
-                        : p.status === 'eliminated'
-                          ? 'ring-incorrect/70'
-                          : 'ring-white/30'
-                  const chipTitle = `${periodLabel} ${weekNo}: ${isLocked ? 'Hidden' : p.team_name || 'No pick'}`
-                  const Tag = canOpen ? 'button' : 'div'
                   return (
-                    <Tag
+                    <SurvivorPickChip
                       key={p.id}
-                      {...(canOpen ? {
-                        type: 'button',
-                        onClick: () => setDetailPlayer({
-                          sleeper_player_id: p.player_id,
-                          player_name: p.player_name || p.team_name,
-                          name: p.player_name || p.team_name,
-                        }),
-                      } : {})}
-                      title={chipTitle}
-                      className={`shrink-0 flex flex-col items-center gap-0.5 w-14 lg:w-20 ${canOpen ? 'hover:opacity-80 transition-opacity' : ''}`}
-                    >
-                      {p.headshot_url || p.player_id ? (
-                        <PlayerHeadshot
-                          name={p.player_name || p.team_name}
-                          url={p.headshot_url}
-                          size="lg"
-                          // 48px on phones, 64px on desktop. className lands
-                          // after sizeClass in the component, so the lg:
-                          // variant wins at that breakpoint.
-                          className={`ring-2 lg:w-16 lg:h-16 ${ringClass}`}
-                        />
-                      ) : (
-                        // Locked pick, or a team-survivor pick with no player:
-                        // keep the slot occupied so the row doesn't reflow.
-                        <div className={`w-12 h-12 lg:w-16 lg:h-16 rounded-full bg-white/5 ring-2 ${ringClass} flex items-center justify-center text-[10px] font-bold text-text-muted`}>
-                          {isLocked ? '?' : shortTeamLabel(p.team_name) || '—'}
-                        </div>
-                      )}
-                      {/* Last name under the face. shortTeamLabel takes the
-                          last word, which is what the old chips rendered —
-                          "Saquon Barkley" -> "Barkley". Truncates on phones
-                          where the column is 56px; desktop's 80px fits most
-                          names outright. */}
-                      <span className="w-full text-center text-[10px] leading-tight text-text-primary truncate">
-                        {isLocked ? 'Hidden' : shortTeamLabel(p.player_name || p.team_name) || '—'}
-                      </span>
-                      <span className="text-[9px] text-text-muted leading-none">
-                        {weekNo != null ? `${isDaily ? 'D' : 'W'}${weekNo}` : ''}
-                      </span>
-                    </Tag>
+                      pick={p}
+                      weekNumber={p.league_weeks?.week_number}
+                      periodLabel={periodLabel}
+                      isDaily={isDaily}
+                      onOpenPlayer={setDetailPlayer}
+                    />
                   )
                 })}
               </div>
