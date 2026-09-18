@@ -38,10 +38,13 @@ export default function SurvivorPickChip({
             ? 'ring-incorrect/70'
             : 'ring-white/30'
 
+  // Locked picks show nothing under the circle — the '?' already says it,
+  // and "Hidden" underneath was repeating itself. A non-breaking space keeps
+  // the row height so a mixed row doesn't sit at two different baselines.
   const label = missed
     ? 'Missed'
     : isLocked
-      ? 'Hidden'
+      ? '\u00A0'
       : shortTeamLabel(pick?.player_name || pick?.team_name) || '—'
 
   const title = missed
