@@ -477,9 +477,37 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
     const gameStarted = pick.games?.starts_at && new Date(pick.games.starts_at) <= new Date()
     const isSettled = pick.status === 'won' || pick.status === 'lost'
     if (isOtherUser && !gameStarted && !isSettled) {
-      picksByUser[pick.user_id].push({ ...pick, team_name: 'Locked', game_id: null })
+      // Masking team_name alone wasn't enough: touchdown-survivor picks also
+      // carry player_id and player_name, so a hidden pick was fully readable
+      // in the payload even though the UI rendered '???'. Strip both.
+      picksByUser[pick.user_id].push({
+        ...pick,
+        team_name: 'Locked',
+        game_id: null,
+        player_id: null,
+        player_name: null,
+      })
     } else {
       picksByUser[pick.user_id].push(pick)
+    }
+  }
+
+  // Headshots for touchdown-survivor picks, so the board can show a face
+  // rather than a last name. Only for picks that are actually visible —
+  // the masked ones above have no player_id left to look up.
+  const pickPlayerIds = [...new Set(
+    Object.values(picksByUser).flat().map((p) => p.player_id).filter(Boolean),
+  )]
+  if (pickPlayerIds.length) {
+    const { data: headshotRows } = await supabase
+      .from('nfl_players')
+      .select('id, headshot_url')
+      .in('id', pickPlayerIds)
+    const headshotById = Object.fromEntries((headshotRows || []).map((r) => [r.id, r.headshot_url]))
+    for (const list of Object.values(picksByUser)) {
+      for (const pick of list) {
+        if (pick.player_id) pick.headshot_url = headshotById[pick.player_id] || null
+      }
     }
   }
 

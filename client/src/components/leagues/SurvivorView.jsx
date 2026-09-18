@@ -11,6 +11,7 @@ import { shortTeamLabel } from '../../lib/teamShort'
 import Avatar from '../ui/Avatar'
 import TouchdownPicker from './TouchdownPicker'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
+import PlayerHeadshot from '../ui/PlayerHeadshot'
 
 // Sport labels for the All-Sports survivor sub-grouping. Falls back to the
 // raw sport_key if a sport isn't in the map.
@@ -596,49 +597,61 @@ export default function SurvivorView({ league }) {
               </span>
             </div>
             {myPicks.length > 0 && (
-              <div className="flex gap-1.5 overflow-x-auto scrollbar-hide" ref={(el) => { if (el) el.scrollLeft = el.scrollWidth }}>
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pt-0.5" ref={(el) => { if (el) el.scrollLeft = el.scrollWidth }}>
                 {myPicks.map((p) => {
                   const isLocked = p.team_name === 'Locked'
-                  const chipStyle = isLocked
-                    ? 'bg-white/5 text-text-muted italic border border-white/10'
-                    : p.status === 'survived'
-                      ? 'bg-correct/20 text-correct border border-correct/30'
-                      : p.status === 'survived_wrong'
-                        ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30'
-                        : p.status === 'eliminated'
-                          ? 'bg-incorrect/20 text-incorrect border border-incorrect/30'
-                          : 'bg-white/10 text-text-primary border border-white/20'
-                  // Touchdown survivor picks name a player, so the chip opens
-                  // his card. Locked chips stay inert — they read '???' on
-                  // purpose and tapping one would reveal the hidden pick.
+                  // Headshot instead of a last-name chip. Narrower than the
+                  // text pill it replaces (40px vs ~70px for "Barkley"), so
+                  // more picks fit per row on a phone, not fewer.
+                  //
+                  // Status moves to the ring colour and the week number moves
+                  // under the face — it previously lived only in a title
+                  // attribute, which a phone can never show.
                   const canOpen = !isLocked && !!p.player_id
-                  const label = isLocked ? '???' : shortTeamLabel(p.team_name) || 'No pick'
-                  const chipTitle = `${periodLabel} ${p.league_weeks?.week_number}: ${isLocked ? 'Hidden' : p.team_name || 'No pick'}`
-                  if (canOpen) {
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setDetailPlayer({
+                  const weekNo = p.league_weeks?.week_number
+                  const ringClass = isLocked
+                    ? 'ring-white/15'
+                    : p.status === 'survived'
+                      ? 'ring-correct/70'
+                      : p.status === 'survived_wrong'
+                        ? 'ring-yellow-500/70'
+                        : p.status === 'eliminated'
+                          ? 'ring-incorrect/70'
+                          : 'ring-white/30'
+                  const chipTitle = `${periodLabel} ${weekNo}: ${isLocked ? 'Hidden' : p.team_name || 'No pick'}`
+                  const Tag = canOpen ? 'button' : 'div'
+                  return (
+                    <Tag
+                      key={p.id}
+                      {...(canOpen ? {
+                        type: 'button',
+                        onClick: () => setDetailPlayer({
                           sleeper_player_id: p.player_id,
                           player_name: p.player_name || p.team_name,
                           name: p.player_name || p.team_name,
-                        })}
-                        className={`text-xs font-semibold px-2 py-1 rounded-lg shrink-0 hover:brightness-125 transition-[filter] ${chipStyle}`}
-                        title={chipTitle}
-                      >
-                        {label}
-                      </button>
-                    )
-                  }
-                  return (
-                    <span
-                      key={p.id}
-                      className={`text-xs font-semibold px-2 py-1 rounded-lg shrink-0 ${chipStyle}`}
+                        }),
+                      } : {})}
                       title={chipTitle}
+                      className={`shrink-0 flex flex-col items-center gap-0.5 w-11 ${canOpen ? 'hover:opacity-80 transition-opacity' : ''}`}
                     >
-                      {label}
-                    </span>
+                      {p.headshot_url || p.player_id ? (
+                        <PlayerHeadshot
+                          name={p.player_name || p.team_name}
+                          url={p.headshot_url}
+                          size="md"
+                          className={`ring-2 ${ringClass}`}
+                        />
+                      ) : (
+                        // Locked pick, or a team-survivor pick with no player:
+                        // keep the slot occupied so the row doesn't reflow.
+                        <div className={`w-10 h-10 rounded-full bg-white/5 ring-2 ${ringClass} flex items-center justify-center text-[10px] font-bold text-text-muted`}>
+                          {isLocked ? '?' : shortTeamLabel(p.team_name) || '—'}
+                        </div>
+                      )}
+                      <span className="text-[10px] text-text-muted leading-none">
+                        {weekNo != null ? `${isDaily ? 'D' : 'W'}${weekNo}` : ''}
+                      </span>
+                    </Tag>
                   )
                 })}
               </div>
