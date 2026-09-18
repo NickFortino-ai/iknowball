@@ -751,14 +751,18 @@ const MLB_PITCHER_GAME_COLS = (statMap) => ({
 // NFL stat columns for game log
 const NFL_GAME_COLS = (statMap) => ({
   // Offense
-  pass_yds: parseInt(statMap['PYDS'] || statMap['Pass YDS']) || 0,
-  pass_td: parseInt(statMap['PTD'] || statMap['Pass TD']) || 0,
+  // Section-qualified keys first (see the statMap builder) — ESPN sends bare
+  // YDS/TD inside each group, so `rush.YDS` and `rec.YDS` are the only way to
+  // tell 41 rushing yards from 24 receiving yards. The RYDS / Rec YDS spellings
+  // are kept as fallbacks; they appear in some older payload shapes.
+  pass_yds: parseInt(statMap['pass.YDS'] ?? statMap['PYDS'] ?? statMap['Pass YDS']) || 0,
+  pass_td: parseInt(statMap['pass.TD'] ?? statMap['PTD'] ?? statMap['Pass TD']) || 0,
   int: parseInt(statMap['INT']) || 0,
-  rush_yds: parseInt(statMap['RYDS'] || statMap['Rush YDS']) || 0,
-  rush_td: parseInt(statMap['RTD'] || statMap['Rush TD']) || 0,
+  rush_yds: parseInt(statMap['rush.YDS'] ?? statMap['RYDS'] ?? statMap['Rush YDS']) || 0,
+  rush_td: parseInt(statMap['rush.TD'] ?? statMap['RTD'] ?? statMap['Rush TD']) || 0,
   rec: parseInt(statMap['REC']) || 0,
-  rec_yds: parseInt(statMap['RECYDS'] || statMap['Rec YDS']) || 0,
-  rec_td: parseInt(statMap['RECTD'] || statMap['Rec TD']) || 0,
+  rec_yds: parseInt(statMap['rec.YDS'] ?? statMap['RECYDS'] ?? statMap['Rec YDS']) || 0,
+  rec_td: parseInt(statMap['rec.TD'] ?? statMap['RECTD'] ?? statMap['Rec TD']) || 0,
   // Defense (IDP). ESPN's gamelog labels use TOT/SOLO/AST for tackles, SACK
   // for sacks, and INT/PD/FF/FR for turnovers. Reuse the offense `int`
   // column (interceptions thrown for QBs, picked for DBs — separate stat
@@ -1028,8 +1032,26 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
 
     const games = allGames.slice(0, gameCap).map((ev) => {
       const detail = eventsMap[ev.eventId] || {}
+      // ESPN's NFL gamelog repeats labels across stat groups — a running
+      // back's row is CAR,YDS,AVG,TD,LNG then REC,TGTS,YDS,AVG,TD,LNG. Writing
+      // them into a flat map let receiving YDS overwrite rushing YDS and
+      // receiving TD overwrite rushing TD, so every RB and WR reported 0
+      // rushing yards and 0 touchdowns.
+      //
+      // Duplicates are therefore ALSO written under a section-qualified key
+      // (`rush.YDS`, `rec.YDS`), with the section tracked from the anchor
+      // label that opens each group. The flat keys stay for everything that
+      // is unambiguous — SOLO, SACK, REC, CAR and the MLB/NBA parsers, none
+      // of which repeat.
       const statMap = {}
-      labels.forEach((l, i) => { statMap[l] = ev.stats?.[i] })
+      let section = null
+      const SECTION_ANCHORS = { CMP: 'pass', 'C/ATT': 'pass', ATT: 'pass', CAR: 'rush', REC: 'rec', FUM: 'misc' }
+      labels.forEach((l, i) => {
+        const v = ev.stats?.[i]
+        if (SECTION_ANCHORS[l]) section = SECTION_ANCHORS[l]
+        if (!(l in statMap)) statMap[l] = v
+        if (section) statMap[`${section}.${l}`] = v
+      })
       const parsed = colParser(statMap)
       const fpts = fptsFn ? fptsFn(sport === 'baseball_mlb' ? statMap : parsed) : null
       let week = null

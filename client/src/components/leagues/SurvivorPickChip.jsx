@@ -66,6 +66,9 @@ export default function SurvivorPickChip({
           sleeper_player_id: pick.player_id,
           player_name: pick.player_name || pick.team_name,
           name: pick.player_name || pick.team_name,
+          // Without this the modal drew its '?' placeholder even though the
+          // chip you tapped was showing the face.
+          headshot_url: pick.headshot_url,
         }),
       } : {})}
       title={title}
