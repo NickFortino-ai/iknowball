@@ -582,7 +582,11 @@ export async function getStandings(leagueId, viewerUserId) {
     user: m.users || { id: m.user_id },
     totalTds: totals[m.user_id]?.totalTds || 0,
     picks: totals[m.user_id]?.picks || 0,
-    history: userPicks[m.user_id] || [],
+    // Most recent week first. The picks query runs week-ascending (the
+    // running totals above depend on nothing but the set), so this is a
+    // presentation choice made once here rather than in the client — and it
+    // matches the "QBs You've Used" panel, which already sorts newest-first.
+    history: [...(userPicks[m.user_id] || [])].sort((a, b) => (b.week || 0) - (a.week || 0)),
   }))
     .sort((a, b) => b.totalTds - a.totalTds || b.picks - a.picks)
     .map((r, i) => ({ ...r, rank: i + 1 }))
