@@ -690,6 +690,24 @@ export function useSetFantasyWeeklyLineup(leagueId) {
   })
 }
 
+/**
+ * Clear healed players off IR, dropping one roster player when the manager is
+ * at the cap. Called with no argument to ASK — the server answers 400 with
+ * needs_drop so the caller can open the drop picker — then again with the
+ * chosen player id to commit.
+ */
+export function useResolveIneligibleIr(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (dropPlayerId = null) =>
+      api.post(`/leagues/${leagueId}/fantasy/resolve-ir`, { drop_player_id: dropPlayerId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'roster'] })
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'transactions'] })
+    },
+  })
+}
+
 export function useDropRosterPlayer(leagueId) {
   const queryClient = useQueryClient()
   const rosterKey = ['leagues', leagueId, 'fantasy', 'roster']

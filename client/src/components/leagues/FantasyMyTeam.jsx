@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { buildStarterSlots as buildSlots, SLOT_LABELS, SLOT_LABELS_SHORT } from '../../lib/rosterSlots'
-import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds, useFantasySettings, useGlobalRank, useFantasyLineupHistory, useFantasyWeeklyLineup, useSetFantasyWeeklyLineup, useFantasyWeekProjections } from '../../hooks/useLeagues'
+import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useResolveIneligibleIr, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds, useFantasySettings, useGlobalRank, useFantasyLineupHistory, useFantasyWeeklyLineup, useSetFantasyWeeklyLineup, useFantasyWeekProjections } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { SkeletonRows, SkeletonBlock } from '../ui/Skeleton'
 import { toast } from '../ui/Toast'
@@ -374,6 +374,10 @@ export default function FantasyMyTeam({ league }) {
   // { tradeId, trade, dropsNeeded } — opens the drop picker when the server
   // says accepting this trade would put the receiver over the roster cap.
   const [tradeDropModal, setTradeDropModal] = useState(null)
+  // Ineligible-IR resolution. Holds the names the server said must come off
+  // IR, so the drop picker can explain WHY it's asking.
+  const [irDropModal, setIrDropModal] = useState(null)
+  const resolveIr = useResolveIneligibleIr(league.id)
 
   // Reset edit state when navigating weeks
   useEffect(() => {
@@ -422,6 +426,15 @@ export default function FantasyMyTeam({ league }) {
     })
   }
   const roster = useMemo(() => applyWeekOverlay(rawRoster), [rawRoster, weekContextData])
+
+  // Players sitting on IR who have healed. They block every roster move, so
+  // this is surfaced up front rather than waiting for the manager to hit the
+  // wall on an add, drop or trade and have to work out what it meant.
+  const ineligibleIrPlayers = useMemo(
+    () => (roster || []).filter((r) => r.slot === 'ir' && !isIrEligible(r.nfl_players?.injury_status)),
+    [roster],
+  )
+
 
   const weeklyRoster = weeklyLineupData?.roster
   const hasWeeklyLineup = isFutureWeek && weeklyRoster && weeklyRoster.length > 0
@@ -750,6 +763,30 @@ export default function FantasyMyTeam({ league }) {
     setSelected(null)
   }
 
+  // A healed player on IR blocks every roster move, and clearing him needs
+  // roster room — which needs a drop, which is itself blocked. The server
+  // resolves both in one call; this asks first so the manager chooses who goes.
+  async function handleResolveIr(dropPlayerId = null) {
+    try {
+      const res = await resolveIr.mutateAsync(dropPlayerId)
+      setIrDropModal(null)
+      const moved = (res?.moved || []).join(' and ')
+      toast(
+        res?.dropped
+          ? `${moved} moved to your bench. Dropped ${res.dropped}.`
+          : `${moved} moved to your bench.`,
+        'success',
+      )
+    } catch (err) {
+      const body = err.body || err.response || {}
+      if (body.needs_drop) {
+        setIrDropModal({ names: body.ineligible_ir_players || [] })
+        return
+      }
+      toast(err.message || 'Could not clear IR', 'error')
+    }
+  }
+
   function handleMoveToIR(playerId) {
     const next = { ...ensureDraft() }
     next[playerId] = 'ir'
@@ -767,6 +804,27 @@ export default function FantasyMyTeam({ league }) {
 
   return (
     <div className={`space-y-4 ${editMode && (isCurrentWeek || isFutureWeek) ? 'pb-32 md:pb-0' : ''}`}>
+      {ineligibleIrPlayers.length > 0 && (
+        <div className="rounded-xl border border-incorrect/40 bg-incorrect/10 px-4 py-3 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold text-text-primary">
+              {ineligibleIrPlayers.map((r) => r.nfl_players?.full_name).join(' and ')}
+              {ineligibleIrPlayers.length === 1 ? ' is' : ' are'} no longer eligible for IR
+            </div>
+            <div className="text-xs text-text-secondary mt-0.5">
+              Roster moves are blocked until {ineligibleIrPlayers.length === 1 ? 'he' : 'they'} move to your bench.
+            </div>
+          </div>
+          <button
+            onClick={() => handleResolveIr(null)}
+            disabled={resolveIr.isPending}
+            className="shrink-0 rounded-lg border-2 border-accent text-accent bg-accent/5 hover:bg-accent/10 px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50"
+          >
+            {resolveIr.isPending ? 'Clearing…' : 'Clear IR'}
+          </button>
+        </div>
+      )}
+
       {/* Week navigator */}
       <div className="flex items-center justify-center gap-4">
         <button
@@ -953,6 +1011,22 @@ export default function FantasyMyTeam({ league }) {
             </button>
           </div>
         </div>
+      )}
+
+      {irDropModal && (
+        <TradeDropModal
+          roster={roster}
+          trade={null}
+          dropsNeeded={1}
+          includeIr
+          title="Roster is full"
+          description={`${irDropModal.names.join(' and ')} ${irDropModal.names.length === 1 ? 'is' : 'are'} no longer eligible for IR and must move to your bench. Choose a player to drop.`}
+          confirmLabel="Drop and clear IR"
+          pendingLabel="Clearing…"
+          isPending={resolveIr.isPending}
+          onCancel={() => setIrDropModal(null)}
+          onConfirm={(dropIds) => handleResolveIr(dropIds?.[0] || null)}
+        />
       )}
 
       {tradeDropModal && (

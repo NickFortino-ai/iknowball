@@ -481,15 +481,21 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
 // Drop Player Modal (shown when accepting a trade that would overflow roster)
 // =====================================================================
 
-export function TradeDropModal({ roster, trade, dropsNeeded, onConfirm, onCancel, isPending, title, description, confirmLabel, pendingLabel }) {
+export function TradeDropModal({ roster, trade, dropsNeeded, onConfirm, onCancel, isPending, title, description, confirmLabel, pendingLabel, includeIr = false }) {
   const [selected, setSelected] = useState([])
 
   // Players eligible to drop: user's roster minus players involved in the trade,
   // ordered the same way as the My Team tab (starter slot order → bench) so the
   // list feels like their own roster instead of a random alphabet.
-  const tradePlayerIds = new Set((trade.fantasy_trade_items || []).map((i) => i.player_id))
+  const tradePlayerIds = new Set((trade?.fantasy_trade_items || []).map((i) => i.player_id))
+  // IR players are excluded for trades — they aren't part of the incoming
+  // package and dropping one doesn't create the room a trade needs.
+  //
+  // includeIr flips that for the ineligible-IR flow, where the healed player
+  // IS a legitimate choice: a manager who doesn't rate him should be able to
+  // cut him rather than someone better.
   const droppable = sortRosterByLineup(
-    (roster || []).filter((r) => !tradePlayerIds.has(r.player_id) && r.slot !== 'ir')
+    (roster || []).filter((r) => !tradePlayerIds.has(r.player_id) && (includeIr || r.slot !== 'ir'))
   )
 
   function toggle(pid) {
