@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { isUnavailable } from '../utils/injuryStatus.js'
 import { z } from 'zod'
 import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
@@ -845,7 +846,9 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
     .not('team', 'is', null)
     .in('position', ['RB', 'WR', 'TE'])
     .order('search_rank', { ascending: true })
-    .limit(100)
+    // Over-fetch so the unavailable filter below can't shrink the list. The
+    // response is sliced back to 100 after filtering.
+    .limit(160)
 
   if (position && position !== 'All') {
     query = query.eq('position', position)
@@ -854,8 +857,19 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
     query = query.ilike('full_name', `%${q}%`)
   }
 
-  const { data, error } = await query
+  const { data: rawPlayers, error } = await query
   if (error) throw error
+
+  // Drop players who cannot take the field. `status = 'Active'` above is
+  // roster status, not availability — Josh Jacobs is Active while carrying
+  // injury_status 'NA' on the commissioner's exempt list, so he was offered
+  // as a pick. A survivor pick is one player for one week; an IR / PUP /
+  // suspended player is a guaranteed elimination, not a gamble.
+  //
+  // Filtered here rather than in the query: `not.in` on a nullable column
+  // drops NULL rows in PostgREST, which would remove every healthy player.
+  // isUnavailable is also case-insensitive, which the raw feed needs.
+  const data = (rawPlayers || []).filter((p) => !isUnavailable(p.injury_status)).slice(0, 100)
 
   // Get used player IDs for this user in this league
   const { data: usedPicks } = await supabase
