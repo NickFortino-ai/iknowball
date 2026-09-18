@@ -3875,6 +3875,21 @@ async function loadNflPositionOverrides() {
   return map
 }
 
+// Look up a player's position override. Team-scoped wins; the name-only form
+// is the fallback so pre-existing rows (which carry no team) keep working.
+// Returns null when there's no override.
+//
+// Extracted so callers can't reach into the map's internals and get the
+// shape wrong — which is exactly how lineup validation ended up ignoring
+// every override in the table.
+function resolvePositionOverride(fullName, team, overrideMap) {
+  if (!fullName || !overrideMap) return null
+  const key = fullName.toLowerCase()
+  return (team ? overrideMap.byNameTeam?.[`${key}|${team.toLowerCase()}`] : null)
+    ?? overrideMap.byName?.[key]
+    ?? null
+}
+
 // Overlay one player's override onto their position field. Safe to
 // call with a row that lacks full_name (no-op).
 function applyNflPositionOverride(row, overrideMap) {
@@ -3882,11 +3897,7 @@ function applyNflPositionOverride(row, overrideMap) {
   const name = row.full_name || row.nfl_players?.full_name
   if (!name) return row
   const team = row.team || row.nfl_players?.team
-  const key = name.toLowerCase()
-  // Team-scoped override wins; fall back to the name-only form so the
-  // pre-existing rows (which carry no team) keep working unchanged.
-  const override = (team ? overrideMap.byNameTeam?.[`${key}|${team.toLowerCase()}`] : null)
-    ?? overrideMap.byName?.[key]
+  const override = resolvePositionOverride(name, team, overrideMap)
   if (!override) return row
   if (row.position !== undefined) row.position = override
   if (row.nfl_players?.position !== undefined) row.nfl_players.position = override
@@ -4560,8 +4571,16 @@ export async function setFantasyLineup(leagueId, userId, slotAssignments) {
       err.status = 400
       throw err
     }
-    const overridePos = overrides[(r.nfl_players?.full_name || '').toLowerCase()]
-    const effectivePosition = overridePos || r.nfl_players?.position
+    // loadNflPositionOverrides returns { byNameTeam, byName, names } — indexing
+    // the container itself by name is always undefined, which is what this did
+    // until 2026-09-18. Every dual-position player silently failed slot
+    // validation with his RAW position in the error ("Player LB cannot fill
+    // slot dl1"), even though the pool advertised him as LB/DL.
+    const effectivePosition = resolvePositionOverride(
+      r.nfl_players?.full_name,
+      r.nfl_players?.team,
+      overrides,
+    ) || r.nfl_players?.position
     if (!isPositionEligibleForSlot(effectivePosition, allowed)) {
       const err = new Error(`Player ${effectivePosition} cannot fill slot ${a.slot}`)
       err.status = 400
@@ -4868,8 +4887,16 @@ export async function setFantasyWeeklyLineup(leagueId, userId, week, season, slo
       err.status = 400
       throw err
     }
-    const overridePos = overrides[(r.nfl_players?.full_name || '').toLowerCase()]
-    const effectivePosition = overridePos || r.nfl_players?.position
+    // loadNflPositionOverrides returns { byNameTeam, byName, names } — indexing
+    // the container itself by name is always undefined, which is what this did
+    // until 2026-09-18. Every dual-position player silently failed slot
+    // validation with his RAW position in the error ("Player LB cannot fill
+    // slot dl1"), even though the pool advertised him as LB/DL.
+    const effectivePosition = resolvePositionOverride(
+      r.nfl_players?.full_name,
+      r.nfl_players?.team,
+      overrides,
+    ) || r.nfl_players?.position
     if (!isPositionEligibleForSlot(effectivePosition, allowed)) {
       const err = new Error(`Player ${effectivePosition} cannot fill slot ${a.slot}`)
       err.status = 400
