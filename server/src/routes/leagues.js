@@ -845,10 +845,10 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
     .eq('status', 'Active')
     .not('team', 'is', null)
     .in('position', ['RB', 'WR', 'TE'])
+    // search_rank first (it's how the list reads as "most relevant"), then id
+    // as a deterministic tiebreaker so pagination can't skip or repeat rows.
     .order('search_rank', { ascending: true })
-    // Over-fetch so the unavailable filter below can't shrink the list. The
-    // response is sliced back to 100 after filtering.
-    .limit(160)
+    .order('id', { ascending: true })
 
   if (position && position !== 'All') {
     query = query.eq('position', position)
@@ -857,8 +857,11 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
     query = query.ilike('full_name', `%${q}%`)
   }
 
-  const { data: rawPlayers, error } = await query
-  if (error) throw error
+  // Paged, not capped. This carried a hard .limit(100) against a pool of 618
+  // eligible RB/WR/TE — so 84% of the league was unreachable by browsing, and
+  // only the name search could find anyone outside the top 100 by search_rank.
+  // fetchAll also clears Supabase's silent 1000-row ceiling.
+  const rawPlayers = await fetchAll(query)
 
   // Drop players who cannot take the field. `status = 'Active'` above is
   // roster status, not availability — Josh Jacobs is Active while carrying
@@ -869,7 +872,7 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
   // Filtered here rather than in the query: `not.in` on a nullable column
   // drops NULL rows in PostgREST, which would remove every healthy player.
   // isUnavailable is also case-insensitive, which the raw feed needs.
-  const data = (rawPlayers || []).filter((p) => !isUnavailable(p.injury_status)).slice(0, 100)
+  const data = (rawPlayers || []).filter((p) => !isUnavailable(p.injury_status))
 
   // Get used player IDs for this user in this league
   const { data: usedPicks } = await supabase
