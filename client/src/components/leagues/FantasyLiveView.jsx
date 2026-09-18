@@ -8,6 +8,12 @@ import UserProfileModal from '../profile/UserProfileModal'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { SkeletonCard } from '../ui/Skeleton'
 import PlayerDetailModal from './PlayerDetailModal'
+import InjuryBadge from '../ui/InjuryBadge'
+// Three hand-rolled injury pills lived in this file. They painted a filled
+// yellow/red background (the shared badge is colored text, no pill), matched
+// statuses case-sensitively, and — worse — fell through to 'O' for anything
+// unrecognised, so PUP, SUS and NA all rendered as "Out". Replaced with the
+// shared component, which is case-insensitive and labels each status.
 
 // Salary-cap NFL DFS lineup slots — fixed shape, not driven by roster_slots.
 const SLOT_LABELS = { QB: 'QB', RB1: 'RB', RB2: 'RB', WR1: 'WR', WR2: 'WR', WR3: 'WR', TE: 'TE', FLEX: 'FLX', DEF: 'DEF' }
@@ -273,15 +279,7 @@ function SalaryCapLive({ league, week, season }) {
                               onClick={() => slot.player_id && setDetailPlayerId(slot.player_id)}
                             >
                               <span className="text-base font-bold text-text-primary truncate hover:text-accent transition-colors">{slot.player_name}</span>
-                              {slot.injury_status && (
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                                  slot.injury_status === 'Out' || slot.injury_status === 'IR'
-                                    ? 'bg-incorrect/20 text-incorrect'
-                                    : 'bg-yellow-500/20 text-yellow-500'
-                                }`}>
-                                  {slot.injury_status === 'Questionable' ? 'Q' : slot.injury_status === 'Doubtful' ? 'D' : slot.injury_status === 'IR' ? 'IR' : 'O'}
-                                </span>
-                              )}
+                              <InjuryBadge status={slot.injury_status} />
                             </div>
                             {statLine && (
                               <span className="text-xs text-text-muted block lg:hidden">{statLine}</span>
@@ -512,15 +510,7 @@ function MatchupLive({ league, week, season, fantasySettings }) {
                           >
                             <div className="text-sm font-bold text-text-primary truncate flex items-center gap-1">
                               <span className="truncate hover:text-accent transition-colors">{slot.player_name}</span>
-                              {slot.injury_status && (
-                                <span className={`text-[10px] font-bold px-1 py-0.5 rounded shrink-0 ${
-                                  slot.injury_status === 'Out' || slot.injury_status === 'IR'
-                                    ? 'bg-incorrect/20 text-incorrect'
-                                    : 'bg-yellow-500/20 text-yellow-500'
-                                }`}>
-                                  {slot.injury_status === 'Questionable' ? 'Q' : slot.injury_status === 'Doubtful' ? 'D' : slot.injury_status === 'IR' ? 'IR' : 'O'}
-                                </span>
-                              )}
+                              <InjuryBadge status={slot.injury_status} />
                             </div>
                             <div className="flex items-center gap-1.5 text-xs text-text-primary truncate">
                               {statLine && <span className="truncate">{statLine}</span>}
@@ -566,15 +556,7 @@ function MatchupLive({ league, week, season, fantasySettings }) {
                           >
                             <div className="text-sm font-bold text-text-primary truncate flex items-center gap-1">
                               <span className="truncate hover:text-accent transition-colors">{slot.player_name}</span>
-                              {slot.injury_status && (
-                                <span className={`text-[10px] font-bold px-1 py-0.5 rounded shrink-0 ${
-                                  slot.injury_status === 'Out' || slot.injury_status === 'IR'
-                                    ? 'bg-incorrect/20 text-incorrect'
-                                    : 'bg-yellow-500/20 text-yellow-500'
-                                }`}>
-                                  {slot.injury_status === 'Questionable' ? 'Q' : slot.injury_status === 'Doubtful' ? 'D' : slot.injury_status === 'IR' ? 'IR' : 'O'}
-                                </span>
-                              )}
+                              <InjuryBadge status={slot.injury_status} />
                             </div>
                             <div className="flex items-center gap-1.5 text-xs text-text-primary truncate">
                               {statLine && <span className="truncate">{statLine}</span>}
