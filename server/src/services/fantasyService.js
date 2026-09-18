@@ -4545,6 +4545,7 @@ export async function setFantasyLineup(leagueId, userId, slotAssignments) {
   for (const r of roster) rosterByPlayerId[r.player_id] = r
 
   // 2. Validate each assignment
+  const ineligibleIr = []
   for (const a of slotAssignments) {
     const r = rosterByPlayerId[a.player_id]
     if (!r) {
@@ -4567,11 +4568,23 @@ export async function setFantasyLineup(leagueId, userId, slotAssignments) {
     }
     if (a.slot === 'ir') {
       if (!isIrEligible(r.nfl_players?.injury_status)) {
-        const err = new Error(`${r.nfl_players?.full_name || 'Player'} isn't Out, IR or PUP and can't be placed on IR`)
-        err.status = 400
-        throw err
+        ineligibleIr.push(r.nfl_players?.full_name || 'Player')
       }
     }
+  }
+
+  // Reported together rather than one at a time. Throwing on the first meant
+  // a manager with two healed players on IR moved one, hit the identical
+  // error about the other, and had no way to learn that BOTH had to move in
+  // the same save — the validator re-checks the whole slot map, not just the
+  // rows being changed.
+  if (ineligibleIr.length) {
+    const one = ineligibleIr.length === 1
+    const err = new Error(
+      `${ineligibleIr.join(' and ')} ${one ? "isn't" : "aren't"} Out, IR or PUP and can't be on IR`,
+    )
+    err.status = 400
+    throw err
   }
 
   // 3. Per-player lock check. Source the locked-team set from the shared
@@ -4838,6 +4851,7 @@ export async function setFantasyWeeklyLineup(leagueId, userId, week, season, slo
 
   const rosterByPlayerId = {}
   for (const r of roster) rosterByPlayerId[r.player_id] = r
+  const ineligibleIr = []
 
   // Validate each assignment
   for (const a of slotAssignments) {
@@ -4862,11 +4876,23 @@ export async function setFantasyWeeklyLineup(leagueId, userId, week, season, slo
     }
     if (a.slot === 'ir') {
       if (!isIrEligible(r.nfl_players?.injury_status)) {
-        const err = new Error(`${r.nfl_players?.full_name || 'Player'} isn't Out, IR or PUP and can't be placed on IR`)
-        err.status = 400
-        throw err
+        ineligibleIr.push(r.nfl_players?.full_name || 'Player')
       }
     }
+  }
+
+  // Reported together rather than one at a time. Throwing on the first meant
+  // a manager with two healed players on IR moved one, hit the identical
+  // error about the other, and had no way to learn that BOTH had to move in
+  // the same save — the validator re-checks the whole slot map, not just the
+  // rows being changed.
+  if (ineligibleIr.length) {
+    const one = ineligibleIr.length === 1
+    const err = new Error(
+      `${ineligibleIr.join(' and ')} ${one ? "isn't" : "aren't"} Out, IR or PUP and can't be on IR`,
+    )
+    err.status = 400
+    throw err
   }
 
   // Validate no duplicate starter slots
@@ -5037,15 +5063,28 @@ async function assertNoIneligibleIR(leagueId, userId) {
     .eq('user_id', userId)
     .eq('slot', 'ir')
 
-  for (const row of irRows || []) {
-    const status = (row.nfl_players?.injury_status || '').toLowerCase()
-    if (status !== 'out' && status !== 'ir' && status !== 'injured reserve') {
-      const name = row.nfl_players?.full_name || 'A player'
-      const err = new Error(`${name} is on IR but no longer injured. Move them off IR before making any roster moves.`)
-      err.status = 400
-      err.ineligible_ir = true
-      throw err
-    }
+  // Uses the SAME predicate as placement (isIrEligible). These were two
+  // different lists: placement allowed PUP, this guard did not — so putting a
+  // PUP player on IR was permitted and then immediately blocked every
+  // transaction, with nothing explaining why.
+  //
+  // Names EVERY offender. Reporting one at a time sent managers round a loop:
+  // move that player, hit the identical error about the next, with no way to
+  // learn that they all had to move in a single save.
+  const ineligible = (irRows || [])
+    .filter((row) => !isIrEligible(row.nfl_players?.injury_status))
+    .map((row) => row.nfl_players?.full_name || 'A player')
+
+  if (ineligible.length) {
+    const one = ineligible.length === 1
+    const err = new Error(
+      `${ineligible.join(' and ')} ${one ? 'is' : 'are'} on IR but no longer eligible. `
+      + `Move ${one ? 'them' : 'all of them, in one save,'} off IR before making any roster moves.`,
+    )
+    err.status = 400
+    err.ineligible_ir = true
+    err.ineligible_ir_players = ineligible
+    throw err
   }
 }
 
