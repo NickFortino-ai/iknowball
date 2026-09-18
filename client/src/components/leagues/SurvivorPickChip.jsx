@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import PlayerHeadshot from '../ui/PlayerHeadshot'
 import { shortTeamLabel } from '../../lib/teamShort'
+import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import { playerLastName } from '../../lib/playerName'
 
 // One pick in a survivor history row: headshot, last name, period label.
@@ -21,7 +23,14 @@ export default function SurvivorPickChip({
   isDaily = false,
   missed = false,
   onOpenPlayer,
+  sportKey,
 }) {
+  // An all-sports survivor row mixes leagues, so the pick's own game wins over
+  // whatever the league is nominally set to.
+  const logoSport = pick?.games?.sports?.key || (sportKey && sportKey !== 'all' ? sportKey : null)
+  // ESPN serves a -dark variant for some crests and not others; fall back once
+  // rather than leaving a broken image in the circle.
+  const [logoFailed, setLogoFailed] = useState(false)
   const isLocked = !missed && pick?.team_name === 'Locked'
   const canOpen = !missed && !isLocked && !!pick?.player_id && !!onOpenPlayer
 
@@ -50,7 +59,11 @@ export default function SurvivorPickChip({
       // word, which turned "Amon-Ra St. Brown" into "Brown". Team-survivor
       // picks still use shortTeamLabel below, where last-word IS correct
       // (Portland Trail Blazers -> Blazers).
-      : playerLastName(pick?.player_name || pick?.team_name) || '—'
+      // Player picks get the surname helper; team picks keep shortTeamLabel,
+      // where last-word IS the right answer (Portland Trail Blazers -> Blazers).
+      : pick?.player_id
+        ? playerLastName(pick?.player_name) || '—'
+        : shortTeamLabel(pick?.team_name) || '—'
 
   const title = missed
     ? `${periodLabel} ${weekNumber}: Missed pick — lost a life`
@@ -80,6 +93,22 @@ export default function SurvivorPickChip({
           // sizeClass inside the component, so the lg: variants win there.
           className={`ring-2 lg:w-16 lg:h-16 ${ringClass}`}
         />
+      ) : !missed && !isLocked && pick?.team_name && getTeamLogoUrl(pick.team_name, logoSport) && !logoFailed ? (
+        // Team-survivor pick: the crest plays the part the headshot plays for
+        // a player pick, with the same status ring around it.
+        <div className={`w-12 h-12 lg:w-16 lg:h-16 rounded-full bg-white/5 ring-2 ${ringClass} flex items-center justify-center overflow-hidden`}>
+          <img
+            src={getTeamLogoUrl(pick.team_name, logoSport)}
+            alt=""
+            loading="lazy"
+            className="w-9 h-9 lg:w-12 lg:h-12 object-contain"
+            onError={(e) => {
+              const fb = getTeamLogoFallbackUrl(pick.team_name, logoSport)
+              if (fb && e.currentTarget.src !== fb) e.currentTarget.src = fb
+              else setLogoFailed(true)
+            }}
+          />
+        </div>
       ) : (
         // Keeps the column occupied so a row of mixed pick types doesn't
         // reflow around the ones that have no face to show.

@@ -427,7 +427,10 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
   const picks = await fetchAll(
     supabase
       .from('survivor_picks')
-      .select('*, league_weeks(week_number), games(starts_at)')
+      // sports(key) rides along so the client can resolve the right crest for
+      // a team pick. An all-sports survivor league mixes leagues inside one
+      // history row, so league.sport ('all') can't answer it there.
+      .select('*, league_weeks(week_number), games(starts_at, sports(key))')
       .eq('league_id', leagueId)
       .order('league_weeks(week_number)', { ascending: true })
   )

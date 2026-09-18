@@ -155,6 +155,7 @@ export default function SurvivorStandings({ league, onUserTap }) {
               weekNumber={p.league_weeks?.week_number || item.week?.week_number}
               periodLabel={periodLabel}
               isDaily={isDaily}
+              sportKey={league.sport}
               onOpenPlayer={onOpenPlayer}
             />
           )

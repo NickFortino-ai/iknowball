@@ -605,6 +605,7 @@ export default function SurvivorView({ league }) {
                       weekNumber={p.league_weeks?.week_number}
                       periodLabel={periodLabel}
                       isDaily={isDaily}
+                      sportKey={league.sport}
                       onOpenPlayer={setDetailPlayer}
                     />
                   )
