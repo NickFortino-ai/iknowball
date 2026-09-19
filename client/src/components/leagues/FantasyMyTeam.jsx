@@ -1,5 +1,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { buildStarterSlots as buildSlots, SLOT_LABELS, SLOT_LABELS_SHORT } from '../../lib/rosterSlots'
+import { applyMove, toSlotAssignments } from '../../lib/lineupMoves'
+import MovePlayerSheet from './MovePlayerSheet'
+import PositionBadge from './PositionBadge'
 import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useResolveIneligibleIr, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds, useFantasySettings, useGlobalRank, useFantasyLineupHistory, useFantasyWeeklyLineup, useSetFantasyWeeklyLineup, useFantasyWeekProjections } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { SkeletonRows, SkeletonBlock } from '../ui/Skeleton'
@@ -36,15 +39,6 @@ function pastTense(action) {
 // the server's starterPlan; see that module's header for the bugs it caused.
 function buildStarterSlots(rosterSlots) {
   return buildSlots(rosterSlots).map((s) => ({ key: s.key, label: s.label, positions: s.positions }))
-}
-
-// Split-aware slot eligibility so admin overrides like "LB/DL" let a
-// hybrid edge player slot at either LB or DL. Mirrors the NBA DFS
-// isPlayerEligibleForSlot pattern.
-function isPositionEligibleForSlot(playerPosition, slotPositions) {
-  if (!playerPosition || !slotPositions) return false
-  const parts = playerPosition.split('/').map((p) => p.trim()).filter(Boolean)
-  return parts.some((p) => slotPositions.includes(p))
 }
 
 const POSITION_STAT_CONFIG = {
@@ -176,54 +170,34 @@ function kickoffLabel(row) {
   return `${day} ${time} `
 }
 
-function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail, blurbIds, editMode, showSeasonStats = true, isDropTarget = false }) {
-  const canIR = isIrEligible(row?.nfl_players?.injury_status)
-  const isInIR = row?.slot === 'ir'
-
-  // Kickoff lock (server stamps is_locked on the roster payload). Once a
-  // player's game has started, setFantasyLineup refuses to move him in or
-  // out of the lineup — so in Edit Roster he is untappable rather than
-  // tappable-then-rejected-on-save.
+function PlayerRow({ row, slotLabel, onMove, onViewDetail, blurbIds, showSeasonStats = true }) {
+  // The badge carries the kickoff lock: once a player's game has started the
+  // server refuses to move him, so his badge loses its ring and stops being a
+  // button rather than staying tappable and failing on save.
   //
-  // Exception mirrors the server's: a move between two NON-scoring slots
-  // (bench <-> IR) can't change what the lineup scored, so it stays allowed.
-  // That's the IR buttons below, not the row tap — the row tap is the
-  // lineup swap, which is always refused for a locked player.
-  const inNonScoringSlot = row?.slot === 'bench' || isInIR
-  const lockedForEdit = editMode && row?.is_locked === true
-  const irAllowedWhileLocked = !row?.is_locked || inNonScoringSlot
+  // Exception mirrors the server's — a move between two NON-scoring slots
+  // (bench <-> IR) can't change what the lineup scored, so a locked bench
+  // player keeps his ring. buildMoveOptions then offers only IR.
+  const inNonScoringSlot = row?.slot === 'bench' || row?.slot === 'ir'
+  const lockedForMoves = row?.is_locked === true && !inNonScoringSlot
 
-  function handleRowClick() {
-    if (editMode) {
-      if (lockedForEdit) return
-      onTap?.()
-    } else {
-      // Outside edit mode the row still opens the player detail card —
-      // a locked player is only frozen for lineup changes, not unreadable.
-      onViewDetail?.(row?.player_id)
-    }
-  }
-
-  // Deliberately NOT the `disabled` attribute on the row button below: the
-  // IR controls are nested inside it, and a disabled button makes its
-  // descendants non-interactive too — which would kill the bench -> IR move
-  // that stays legal while locked. handleRowClick guards the tap instead.
+  // The badge sits OUTSIDE the row button rather than inside it: nested
+  // buttons are invalid, and the badge has to stay tappable on a locked row
+  // where the rest of the row still opens the player card.
   return (
     <div className="relative">
-      <button
-        type="button"
-        onClick={handleRowClick}
-        aria-disabled={lockedForEdit || undefined}
-        className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg border transition-colors text-left ${
-          isSelected
-            ? 'border-accent bg-accent/10'
-            : isDropTarget
-              ? 'border-accent/60 bg-accent/5 ring-1 ring-accent/40'
-              : lockedForEdit
-                ? 'border-text-primary/10 bg-bg-primary/40'
-                : 'border-text-primary/10 bg-bg-primary/40 hover:bg-bg-card-hover'
-        } ${dimmed ? 'opacity-40' : ''} ${lockedForEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
-      >
+      <div className="w-full flex items-center gap-2 px-2 py-3 rounded-lg border border-text-primary/10 bg-bg-primary/40 transition-colors">
+        <PositionBadge
+          label={slotLabel}
+          locked={lockedForMoves}
+          onTap={lockedForMoves || !onMove ? undefined : onMove}
+          title={lockedForMoves ? 'Game has started — this player is locked' : undefined}
+        />
+        <button
+          type="button"
+          onClick={() => onViewDetail?.(row?.player_id)}
+          className="flex-1 min-w-0 flex items-center gap-3 text-left rounded-lg hover:bg-bg-card-hover transition-colors px-1 py-1"
+        >
         {row?.nfl_players?.headshot_url && (
           <img
             src={row.nfl_players.headshot_url}
@@ -265,7 +239,7 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
             close to the player name (not jammed against the points
             column on the right). Header above the table mirrors this
             with a "Season Total" label aligned to the same column. */}
-        {row?.nfl_players?.position && !editMode && (() => {
+        {row?.nfl_players?.position && (() => {
           const source = showSeasonStats ? row.week_stats : row.season_stats
           if (!source) return null
           const statLine = formatSeasonStats(row.nfl_players.position, source)
@@ -304,56 +278,36 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
             </div>
           )
         })()}
-        {/* irAllowedWhileLocked: a locked player sitting on the bench may
-            still go to IR (bench -> IR scores nothing either way), but a
-            locked STARTER cannot — that's a scoring-slot move and the
-            server refuses it. */}
-        {editMode && (canIR && !isInIR && onMoveToIR) && irAllowedWhileLocked && (
-          <span
-            role="button"
-            onClick={(e) => { e.stopPropagation(); onMoveToIR(row.player_id) }}
-            className="text-xs font-bold px-2 py-1 rounded bg-incorrect/20 text-incorrect hover:bg-incorrect/30 transition-colors shrink-0 cursor-pointer"
-          >
-            → IR
-          </span>
-        )}
-        {editMode && isInIR && onMoveOutOfIR && (
-          <span
-            role="button"
-            onClick={(e) => { e.stopPropagation(); onMoveOutOfIR(row.player_id) }}
-            className="text-xs font-bold px-2 py-1 rounded bg-bg-card text-text-secondary hover:bg-bg-card-hover transition-colors shrink-0 cursor-pointer"
-          >
-            ← Bench
-          </span>
-        )}
-      </button>
+        </button>
+      </div>
     </div>
   )
 }
 
-function EmptySlot({ slotLabel, onTap, isSelected, editMode, isDropTarget }) {
-  // `isDropTarget` — set when a player is selected and this empty slot is
-  // a valid place to move them (bench slot always; starter slot only when
-  // position matches, handled by caller). Distinct from `isSelected`
-  // (which means "this slot is the cursor"). Visual: faint accent ring
-  // + nudge in the label so the user sees a place to drop the picked
-  // player without first picking a replacement.
+function EmptySlot({ slotLabel, onTap, canFill = true, emptyHint }) {
+  // An empty spot is a tap target in its own right: tapping it lists the
+  // players eligible to fill it, which is the same move as tapping one of
+  // those players and choosing this spot. Either route, one write.
+  //
+  // The badge carries a ring here for the same reason it does on a filled
+  // row — it marks the thing you can act on.
+  const label = emptyHint || `Empty ${slotLabel}`
+  if (!canFill) {
+    return (
+      <div className="w-full flex items-center gap-2 px-2 py-2.5 rounded-lg border border-dashed border-text-primary/20 bg-bg-primary/40">
+        <PositionBadge label={slotLabel} locked />
+        <div className="flex-1 text-xs text-text-muted">{label}</div>
+      </div>
+    )
+  }
   return (
     <button
       type="button"
       onClick={onTap}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-dashed transition-colors text-left ${
-        isSelected
-          ? 'border-accent bg-accent/10'
-          : isDropTarget
-            ? 'border-accent/50 bg-accent/5 hover:bg-accent/10'
-            : 'border-text-primary/20 bg-bg-primary/40 hover:bg-bg-card-hover'
-      }`}
+      className="w-full flex items-center gap-2 px-2 py-2.5 rounded-lg border border-dashed border-text-primary/20 bg-bg-primary/40 hover:bg-bg-card-hover hover:border-accent/40 transition-colors text-left"
     >
-      <div className="w-9 h-9 rounded-full bg-bg-secondary/40 shrink-0" />
-      <div className={`flex-1 text-xs ${isDropTarget ? 'text-accent' : 'text-text-muted'}`}>
-        Empty {slotLabel}{editMode ? (isDropTarget ? ' — tap to move here' : ' — tap to assign') : ''}
-      </div>
+      <PositionBadge label={slotLabel} />
+      <div className="flex-1 text-xs text-text-muted">{label} — tap to fill</div>
     </button>
   )
 }
@@ -385,9 +339,14 @@ export default function FantasyMyTeam({ league }) {
   const setLineup = useSetFantasyLineup(league.id)
   const dropPlayer = useDropRosterPlayer(league.id)
   const [confirmDrop, setConfirmDrop] = useState(null) // roster row being dropped
-  const [draftSlots, setDraftSlots] = useState(null) // { [player_id]: slot }
-  const [selected, setSelected] = useState(null) // { type: 'slot'|'player', key: string }
-  const [editMode, setEditMode] = useState(false)
+  // Tap-to-move. The anchor is whichever side was tapped — a player, or an
+  // empty spot — and the sheet lists everything legal on the other side.
+  // There is no draft state: a pick saves immediately.
+  const [moveAnchor, setMoveAnchor] = useState(null)
+  // Optimistic slots applied while a save is in flight, so the row moves the
+  // instant you tap. Cleared when the refetch lands or the save fails.
+  const [pendingSlots, setPendingSlots] = useState(null)
+  const [savingMove, setSavingMove] = useState(false)
   const [showCounterTrade, setShowCounterTrade] = useState(null)
   const [detailPlayerId, setDetailPlayerId] = useState(null)
   const [showGlobalRank, setShowGlobalRank] = useState(false)
@@ -403,11 +362,10 @@ export default function FantasyMyTeam({ league }) {
   const [irDropModal, setIrDropModal] = useState(null)
   const resolveIr = useResolveIneligibleIr(league.id)
 
-  // Reset edit state when navigating weeks
+  // Reset move state when navigating weeks
   useEffect(() => {
-    setEditMode(false)
-    setDraftSlots(null)
-    setSelected(null)
+    setMoveAnchor(null)
+    setPendingSlots(null)
   }, [activeWeek])
 
   // For past weeks, use lineup history; for future weeks with saved lineup, use that; otherwise current roster
@@ -455,7 +413,26 @@ export default function FantasyMyTeam({ league }) {
       return Object.keys(overlay).length > 0 ? { ...r, ...overlay } : r
     })
   }
-  const roster = useMemo(() => applyWeekOverlay(rawRoster), [rawRoster, weekContextData])
+  const serverRoster = useMemo(() => applyWeekOverlay(rawRoster), [rawRoster, weekContextData])
+  // While a move is in flight the tapped rows sit where the user put them.
+  // Dropped as soon as the refetch returns — comparing against the server's
+  // own answer rather than a timer, so a rejected move snaps back rather than
+  // lingering as a lie.
+  const roster = useMemo(() => {
+    if (!pendingSlots) return serverRoster
+    return serverRoster.map((r) => (
+      pendingSlots[r.player_id] && pendingSlots[r.player_id] !== r.slot
+        ? { ...r, slot: pendingSlots[r.player_id] }
+        : r
+    ))
+  }, [serverRoster, pendingSlots])
+
+  // The server has caught up — stop overriding it.
+  useEffect(() => {
+    if (!pendingSlots) return
+    const settled = serverRoster.every((r) => pendingSlots[r.player_id] === r.slot)
+    if (settled) setPendingSlots(null)
+  }, [serverRoster, pendingSlots])
 
   // Players sitting on IR who have healed. They block every roster move, so
   // this is surfaced up front rather than waiting for the manager to hit the
@@ -468,13 +445,6 @@ export default function FantasyMyTeam({ league }) {
 
   const weeklyRoster = weeklyLineupData?.roster
   const hasWeeklyLineup = isFutureWeek && weeklyRoster && weeklyRoster.length > 0
-  const baseDisplayRoster = isPastWeek && historyData?.roster?.length
-    ? historyData.roster
-    : hasWeeklyLineup
-      ? weeklyRoster
-      : roster
-  const displayRoster = applyWeekOverlay(baseDisplayRoster)
-
   function openPlayerDetail(playerId) {
     if (playerId) markBlurbSeen(playerId, blurbIds.get(playerId))
     setDetailPlayerId(playerId)
@@ -501,27 +471,9 @@ export default function FantasyMyTeam({ league }) {
     } else {
       for (const r of roster) map[r.player_id] = r.slot
     }
-    // Apply draft overrides on top
-    if (draftSlots) {
-      for (const pid of Object.keys(draftSlots)) {
-        if (map[pid] !== undefined) map[pid] = draftSlots[pid]
-      }
-    }
     return map
-  }, [roster, draftSlots, hasWeeklyLineup, weeklyRoster])
+  }, [roster, hasWeeklyLineup, weeklyRoster])
 
-  const isDirty = useMemo(() => {
-    if (!draftSlots || !roster) return false
-    if (hasWeeklyLineup) {
-      const weeklyMap = {}
-      for (const r of roster) weeklyMap[r.player_id] = 'bench'
-      for (const w of weeklyRoster) {
-        if (weeklyMap[w.player_id] !== undefined) weeklyMap[w.player_id] = w.slot
-      }
-      return Object.keys(draftSlots).some((pid) => draftSlots[pid] !== weeklyMap[pid])
-    }
-    return roster.some((r) => draftSlots[r.player_id] !== r.slot)
-  }, [draftSlots, roster, hasWeeklyLineup, weeklyRoster])
 
   if (isLoading) return (
     <div className="space-y-4">
@@ -650,148 +602,13 @@ export default function FantasyMyTeam({ league }) {
   }
   const benchPlayers = playersBySlot.bench || []
   const benchSlots = fantasySettings?.roster_slots?.bench || 6
+  // Past weeks are a record, not a lineup — their rows render without any
+  // move affordance at all.
+  const canEditLineup = isCurrentWeek || isFutureWeek
   const emptyBenchCount = Math.max(0, benchSlots - benchPlayers.length)
   const irPlayers = playersBySlot.ir || []
   const irSlotCount = fantasySettings?.roster_slots?.ir || 0
   const emptyIrCount = Math.max(0, irSlotCount - irPlayers.length)
-
-  function ensureDraft() {
-    if (draftSlots) return draftSlots
-    const initial = {}
-    if (hasWeeklyLineup) {
-      // Start from weekly lineup: bench everyone, then overlay saved slots
-      for (const r of roster) initial[r.player_id] = 'bench'
-      for (const w of weeklyRoster) {
-        if (initial[w.player_id] !== undefined) initial[w.player_id] = w.slot
-      }
-    } else {
-      for (const r of roster) initial[r.player_id] = r.slot
-    }
-    setDraftSlots(initial)
-    return initial
-  }
-
-  function swapSelectionWith(target) {
-    // target = { type: 'slot', key } or { type: 'player', key: player_id }
-    const next = { ...ensureDraft() }
-    if (selected?.type === 'player' && target.type === 'slot') {
-      const playerId = selected.key
-      const slotKey = target.key
-      // Benching: just move to bench, no position check
-      if (slotKey === 'bench') {
-        next[playerId] = 'bench'
-      } else {
-        const player = roster.find((r) => r.player_id === playerId)
-        const slotDef = STARTER_SLOTS.find((s) => s.key === slotKey)
-        if (!isPositionEligibleForSlot(player?.nfl_players?.position, slotDef?.positions)) {
-          toast(`${player?.nfl_players?.position || 'Player'} can't fill ${slotDef?.label || slotKey}`, 'error')
-          return
-        }
-        for (const r of roster) {
-          if (r.player_id !== playerId && next[r.player_id] === slotKey) {
-            next[r.player_id] = 'bench'
-          }
-        }
-        next[playerId] = slotKey
-      }
-    } else if (selected?.type === 'slot' && target.type === 'player') {
-      const slotKey = selected.key
-      const playerId = target.key
-      if (slotKey === 'bench') {
-        next[playerId] = 'bench'
-      } else {
-        const player = roster.find((r) => r.player_id === playerId)
-        const slotDef = STARTER_SLOTS.find((s) => s.key === slotKey)
-        if (!isPositionEligibleForSlot(player?.nfl_players?.position, slotDef?.positions)) {
-          toast(`${player?.nfl_players?.position || 'Player'} can't fill ${slotDef?.label || slotKey}`, 'error')
-          return
-        }
-        for (const r of roster) {
-          if (r.player_id !== playerId && next[r.player_id] === slotKey) {
-            next[r.player_id] = 'bench'
-          }
-        }
-        next[playerId] = slotKey
-      }
-    } else if (selected?.type === 'player' && target.type === 'player') {
-      // Swap two players' slots
-      const a = selected.key, b = target.key
-      const slotA = next[a], slotB = next[b]
-      const playerA = roster.find((r) => r.player_id === a)
-      const playerB = roster.find((r) => r.player_id === b)
-      const slotADef = STARTER_SLOTS.find((s) => s.key === slotB)
-      const slotBDef = STARTER_SLOTS.find((s) => s.key === slotA)
-      if (slotADef && !isPositionEligibleForSlot(playerA?.nfl_players?.position, slotADef.positions)) {
-        toast(`${playerA?.nfl_players?.position} can't fill ${slotADef.label}`, 'error')
-        return
-      }
-      if (slotBDef && !isPositionEligibleForSlot(playerB?.nfl_players?.position, slotBDef.positions)) {
-        toast(`${playerB?.nfl_players?.position} can't fill ${slotBDef.label}`, 'error')
-        return
-      }
-      next[a] = slotB
-      next[b] = slotA
-    }
-    setDraftSlots(next)
-    setSelected(null)
-  }
-
-  function handleSlotTap(slotKey) {
-    if (selected?.type === 'slot' && selected.key === slotKey) {
-      setSelected(null)
-      return
-    }
-    if (selected) {
-      swapSelectionWith({ type: 'slot', key: slotKey })
-    } else {
-      setSelected({ type: 'slot', key: slotKey })
-    }
-  }
-
-  function handlePlayerTap(playerId) {
-    if (selected?.type === 'player' && selected.key === playerId) {
-      setSelected(null)
-      return
-    }
-    if (selected) {
-      swapSelectionWith({ type: 'player', key: playerId })
-    } else {
-      setSelected({ type: 'player', key: playerId })
-    }
-  }
-
-  async function handleSave() {
-    if (!draftSlots) return
-    const slots = Object.entries(draftSlots).map(([player_id, slot]) => ({ player_id, slot }))
-    try {
-      let res
-      if (isFutureWeek) {
-        res = await setWeeklyLineup.mutateAsync({ week: activeWeek, slots })
-      } else {
-        res = await setLineup.mutateAsync(slots)
-      }
-      // The server refuses moves for players whose game has kicked off. That
-      // used to be invisible: save two changes, one of them on a locked
-      // player, and you got a clean "Lineup saved" with only the other one
-      // applied. Name whoever was refused instead.
-      const refused = res?.skipped_locked || []
-      if (refused.length) {
-        const names = refused.map((s) => s.full_name).join(', ')
-        toast(`Saved, but ${names} ${refused.length > 1 ? 'have' : 'has'} already played and can't be moved`, 'error')
-      } else {
-        toast('Lineup saved', 'success')
-      }
-      setDraftSlots(null)
-      setSelected(null)
-    } catch (err) {
-      toast(err.message || 'Failed to save lineup', 'error')
-    }
-  }
-
-  function handleReset() {
-    setDraftSlots(null)
-    setSelected(null)
-  }
 
   // A healed player on IR blocks every roster move, and clearing him needs
   // roster room — which needs a drop, which is itself blocked. The server
@@ -817,23 +634,54 @@ export default function FantasyMyTeam({ league }) {
     }
   }
 
-  function handleMoveToIR(playerId) {
-    const next = { ...ensureDraft() }
-    next[playerId] = 'ir'
-    setDraftSlots(next)
-    setSelected(null)
+  // One tap = one committed transaction.
+  //
+  // The full slot map goes every time, not a delta: both setters validate the
+  // whole lineup, so a swap can never land half-written with two players in
+  // one slot. Optimistic state moves the row immediately and is rolled back
+  // if the server disagrees.
+  async function handleMovePick(option) {
+    const anchor = moveAnchor
+    if (!anchor || savingMove) return
+    const nextSlots = applyMove({ anchor, option, roster })
+
+    setSavingMove(true)
+    setPendingSlots(nextSlots)
+    setMoveAnchor(null)
+    try {
+      const assignments = toSlotAssignments(nextSlots)
+      const res = isFutureWeek
+        ? await setWeeklyLineup.mutateAsync({ week: activeWeek, slots: assignments })
+        : await setLineup.mutateAsync(assignments)
+
+      // The server refuses moves for players whose game has kicked off. The
+      // sheet shouldn't have offered one, but say so plainly if it did rather
+      // than leaving a row that appears to have moved.
+      const refused = res?.skipped_locked || []
+      if (refused.length) {
+        setPendingSlots(null)
+        const names = refused.map((r) => r.full_name).join(', ')
+        toast(`${names} ${refused.length > 1 ? 'have' : 'has'} already played and can't be moved`, 'error')
+      } else {
+        const moved = roster.find((r) => r.player_id === (anchor.type === 'player' ? anchor.playerId : option.player?.player_id))
+        const name = moved?.nfl_players?.full_name || 'Player'
+        const dest = option.kind === 'fill'
+          ? (STARTER_SLOTS.find((x) => x.key === option.slotKey)?.label || option.label)
+          : option.label
+        toast(`${name} moved to ${dest}`, 'success')
+      }
+    } catch (err) {
+      setPendingSlots(null)
+      toast(err.message || 'Could not move that player', 'error')
+    } finally {
+      setSavingMove(false)
+    }
   }
 
-  function handleMoveOutOfIR(playerId) {
-    const next = { ...ensureDraft() }
-    next[playerId] = 'bench'
-    setDraftSlots(next)
-    setSelected(null)
-  }
 
 
   return (
-    <div className={`space-y-4 ${editMode && (isCurrentWeek || isFutureWeek) ? 'pb-32 md:pb-0' : ''}`}>
+    <div className="space-y-4">
       {ineligibleIrPlayers.length > 0 && (
         <div className="rounded-xl border border-incorrect/40 bg-incorrect/10 px-4 py-3 flex items-center gap-3">
           <div className="flex-1 min-w-0">
@@ -1088,81 +936,32 @@ export default function FantasyMyTeam({ league }) {
               stats, never a season total. Hidden in edit mode (the stat
               line is hidden then too). Sits to the left of the Edit
               button so it anchors above where the stats column begins. */}
-          {!editMode && (
-            <span className="hidden md:inline-block text-xs uppercase tracking-wider text-text-muted ml-auto mr-auto">Week {activeWeek}</span>
-          )}
-          {(isCurrentWeek || isFutureWeek) && !editMode && (
-            <button
-              onClick={() => setEditMode(true)}
-              className="text-xs font-semibold text-accent hover:text-accent-hover transition-colors px-3 py-1 rounded-lg border border-accent/30 hover:border-accent ml-auto md:ml-0"
-            >
-              Edit
-            </button>
-          )}
-          {editMode && (
-            <span className="text-[10px] text-text-muted ml-3">Tap a slot or player to swap</span>
+          <span className="hidden md:inline-block text-xs uppercase tracking-wider text-text-muted ml-auto mr-auto">Week {activeWeek}</span>
+          {canEditLineup && (
+            <span className="text-[10px] text-text-muted ml-auto md:ml-0">Tap a position to move a player</span>
           )}
         </div>
         <div className="p-3 space-y-2">
           {STARTER_SLOTS.map((slotDef) => {
             const occupant = playersBySlot[slotDef.key]?.[0]
-            const isSlotSelected = selected?.type === 'slot' && selected.key === slotDef.key
             return (
-              <div key={slotDef.key} className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-text-muted w-8 shrink-0">{slotDef.label}</span>
-                <div className="flex-1">
-                  {occupant ? (() => {
-                    // Highlight occupied starter rows as drop targets when a
-                    // position-compatible bench (or IR) player is selected so
-                    // the user sees which slots a bench player can swap into.
-                    const isOccupantSelected = editMode && selected?.type === 'player' && selected.key === occupant.player_id
-                    const selPlayer = !isOccupantSelected && selected?.type === 'player'
-                      ? roster.find((r) => r.player_id === selected.key) : null
-                    const selPlayerIsBench = selPlayer && slotByPlayer[selPlayer.player_id] !== slotDef.key &&
-                      slotByPlayer[selPlayer.player_id] !== 'ir' === false ? false : true
-                    // Simpler: a non-self position-compatible player counts as a
-                    // potential swap target regardless of where they're coming
-                    // from — bench-to-starter, starter-to-starter (cross-slot),
-                    // or IR-to-starter. The position eligibility check carries
-                    // the meaning.
-                    const isDropTarget = editMode && !!selPlayer &&
-                      isPositionEligibleForSlot(selPlayer?.nfl_players?.position, slotDef.positions)
-                    return (
-                      <PlayerRow
-                        row={occupant}
-                        isSelected={isOccupantSelected}
-                        isDropTarget={isDropTarget}
-                        onTap={() => handlePlayerTap(occupant.player_id)}
-                        onViewDetail={openPlayerDetail}
-                        // Starters get the IR action too. It used to be passed
-                        // only to the bench list, so moving an injured starter
-                        // to IR meant benching him first and then moving him
-                        // again — two saves for one intent. handleMoveToIR is
-                        // slot-agnostic and the server only gates IR on
-                        // isIrEligible, so the starter slot simply empties.
-                        // PlayerRow still hides the button for a LOCKED
-                        // starter: starter -> IR is a scoring-slot move and
-                        // the server refuses it once his game has kicked off.
-                        onMoveToIR={handleMoveToIR}
-                        editMode={editMode}
-                        blurbIds={blurbIds}
-                        showSeasonStats={isCurrentWeek || isFutureWeek}
-                      />
-                    )
-                  })() : (
-                    editMode ? (
-                      (() => {
-                        // Highlight as drop target when a position-compatible
-                        // bench player is currently selected — gives the user
-                        // a clear "tap here to start" affordance.
-                        const selPlayer = selected?.type === 'player'
-                          ? roster.find((r) => r.player_id === selected.key) : null
-                        const isDropTarget = !!selPlayer && isPositionEligibleForSlot(selPlayer?.nfl_players?.position, slotDef.positions)
-                        return <EmptySlot slotLabel={slotDef.label} isSelected={isSlotSelected} onTap={() => handleSlotTap(slotDef.key)} editMode isDropTarget={isDropTarget} />
-                      })()
-                    ) : <EmptySlot slotLabel={slotDef.label} onTap={() => {}} isSelected={false} />
-                  )}
-                </div>
+              <div key={slotDef.key}>
+                {occupant ? (
+                  <PlayerRow
+                    row={occupant}
+                    slotLabel={slotDef.label}
+                    onMove={canEditLineup ? () => setMoveAnchor({ type: 'player', playerId: occupant.player_id }) : undefined}
+                    onViewDetail={openPlayerDetail}
+                    blurbIds={blurbIds}
+                    showSeasonStats={isCurrentWeek || isFutureWeek}
+                  />
+                ) : (
+                  <EmptySlot
+                    slotLabel={slotDef.label}
+                    canFill={canEditLineup}
+                    onTap={() => setMoveAnchor({ type: 'spot', spotId: slotDef.key })}
+                  />
+                )}
               </div>
             )
           })}
@@ -1172,80 +971,29 @@ export default function FantasyMyTeam({ league }) {
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-baseline gap-3">
           <h3 className="text-base font-semibold text-text-primary">Bench</h3>
-          {!editMode && (
-            <span className="hidden md:inline-block text-xs uppercase tracking-wider text-text-muted ml-auto mr-auto">Week {activeWeek}</span>
-          )}
+          <span className="hidden md:inline-block text-xs uppercase tracking-wider text-text-muted ml-auto mr-auto">Week {activeWeek}</span>
           <span className="text-xs text-text-muted font-mono ml-auto md:ml-0">{benchPlayers.length}/{benchSlots}</span>
         </div>
         <div className="p-3 space-y-2">
-          {(() => {
-            // When a STARTER is selected, compute the eligible positions for
-            // that starter's slot so bench players who could fill it light up
-            // as swap targets. Mirrors the existing starter-side affordance.
-            let benchDropPositions = null
-            if (editMode && selected?.type === 'player') {
-              const selPlayer = roster.find((r) => r.player_id === selected.key)
-              const selSlot = selPlayer ? slotByPlayer[selPlayer.player_id] : null
-              if (selSlot && selSlot !== 'bench' && selSlot !== 'ir') {
-                const slotDef = STARTER_SLOTS.find((s) => s.key === selSlot)
-                if (slotDef) benchDropPositions = slotDef.positions
-              }
-            }
-            return benchPlayers.map((r) => {
-              const isRowSelected = editMode && selected?.type === 'player' && selected.key === r.player_id
-              const isDropTarget = !isRowSelected && benchDropPositions != null &&
-                benchDropPositions.includes(r?.nfl_players?.position)
-              return (
-                <PlayerRow
-                  key={r.id}
-                  row={r}
-                  isSelected={isRowSelected}
-                  isDropTarget={isDropTarget}
-                  onTap={() => handlePlayerTap(r.player_id)}
-                  onViewDetail={openPlayerDetail}
-                  onMoveToIR={handleMoveToIR}
-                  editMode={editMode}
-                  blurbIds={blurbIds}
-                  showSeasonStats={isCurrentWeek || isFutureWeek}
-                />
-              )
-            })
-          })()}
+          {benchPlayers.map((r) => (
+            <PlayerRow
+              key={r.id}
+              row={r}
+              slotLabel="BN"
+              onMove={canEditLineup ? () => setMoveAnchor({ type: 'player', playerId: r.player_id }) : undefined}
+              onViewDetail={openPlayerDetail}
+              blurbIds={blurbIds}
+              showSeasonStats={isCurrentWeek || isFutureWeek}
+            />
+          ))}
           {Array.from({ length: emptyBenchCount }, (_, i) => (
             <EmptySlot
               key={`bench-empty-${i}`}
               slotLabel="BN"
-              onTap={editMode ? () => handleSlotTap('bench') : () => {}}
-              isSelected={editMode && selected?.type === 'slot' && selected.key === 'bench'}
-              editMode={editMode}
-              // Intentionally not setting isDropTarget — empty bench slots
-              // sit there as fallback drop targets but don't need to glow
-              // when a starter is selected. The typical flow is bench⇄
-              // starter swap; benching-without-replacement is the
-              // edge case.
+              canFill={canEditLineup}
+              onTap={() => setMoveAnchor({ type: 'spot', spotId: `bench#${benchPlayers.length + i}` })}
             />
           ))}
-          {editMode && emptyBenchCount === 0 && selected?.type === 'player' && (() => {
-            // Transient "bench without filling" slot: when the bench is full
-            // and the user has a starter selected, show a virtual empty bench
-            // row so they can bench the starter without filling the starter
-            // slot. Total roster size is preserved — the starter's slot just
-            // becomes empty until another bench player is moved up.
-            const selPlayer = roster.find((r) => r.player_id === selected.key)
-            const currentSlot = selPlayer ? slotByPlayer[selPlayer.player_id] : null
-            const isStarter = !!selPlayer && currentSlot && currentSlot !== 'bench' && currentSlot !== 'ir'
-            if (!isStarter) return null
-            return (
-              <EmptySlot
-                key="bench-empty-transient"
-                slotLabel="BN"
-                onTap={() => handleSlotTap('bench')}
-                isSelected={false}
-                editMode
-                isDropTarget
-              />
-            )
-          })()}
         </div>
       </div>
 
@@ -1259,55 +1007,38 @@ export default function FantasyMyTeam({ league }) {
               <PlayerRow
                 key={r.id}
                 row={r}
-                isSelected={editMode && selected?.type === 'player' && selected.key === r.player_id}
-                onTap={() => handlePlayerTap(r.player_id)}
+                slotLabel="IR"
+                onMove={canEditLineup ? () => setMoveAnchor({ type: 'player', playerId: r.player_id }) : undefined}
                 onViewDetail={openPlayerDetail}
-                onMoveOutOfIR={handleMoveOutOfIR}
-                editMode={editMode}
                 blurbIds={blurbIds}
                 showSeasonStats={isCurrentWeek || isFutureWeek}
               />
             ))}
-            {Array.from({ length: emptyIrCount }).map((_, i) => (
-              <div key={`ir-empty-${i}`} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-text-primary/10 bg-bg-primary/40">
-                <div className="w-9 h-9 rounded-full bg-bg-secondary/40 shrink-0" />
-                <div className="flex-1 text-xs text-text-muted italic">Empty — move an Out or IR player here from your bench</div>
-              </div>
+            {Array.from({ length: emptyIrCount }, (_, i) => (
+              <EmptySlot
+                key={`ir-empty-${i}`}
+                slotLabel="IR"
+                canFill={canEditLineup}
+                emptyHint="Move an Out or IR player here"
+                onTap={() => setMoveAnchor({ type: 'spot', spotId: `ir#${irPlayers.length + i}` })}
+              />
             ))}
           </div>
         </div>
       )}
 
-      {editMode && (isCurrentWeek || isFutureWeek) && (
-        // Mobile: fixed above the BottomTabBar (h-14 + safe-area). sticky
-        // bottom-0 silently fails inside this layout — an ancestor overflow
-        // ate the stickiness, so the button rendered at the natural bottom
-        // of the content and the user had to scroll to reach it. Desktop
-        // keeps sticky-bottom-4 inside the page layout.
-        // bottom offset must clear the tab bar's FULL height, which is
-        // h-14 PLUS pb-[env(safe-area-inset-bottom)]. bottom-14 only cleared
-        // the 56px, so on any device with a home indicator the tab bar
-        // overlapped these buttons by the inset (~34px on iPhone) and Save
-        // Lineup looked clipped. Own padding drops to a plain pb-3 — the
-        // safe area is handled by the offset now, and keeping both
-        // double-counted it.
-        <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 flex gap-2 px-4 pt-3 pb-3 bg-bg-primary/90 backdrop-blur-xl border-t border-text-primary/15 md:sticky md:left-auto md:right-auto md:bottom-4 md:px-2 md:pt-0 md:pb-0 md:border-0 md:bg-transparent md:backdrop-blur-none">
-          <button
-            type="button"
-            onClick={() => { handleReset(); setSelected(null); setEditMode(false) }}
-            className="flex-1 py-3 rounded-xl text-sm font-semibold bg-bg-card text-text-secondary border border-border hover:bg-bg-card-hover transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={async () => { await handleSave(); setSelected(null); setEditMode(false) }}
-            disabled={(isFutureWeek ? setWeeklyLineup.isPending : setLineup.isPending) || !isDirty}
-            className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 ${isDirty ? 'bg-accent text-white hover:bg-accent-hover' : 'bg-text-muted/30 text-text-muted'}`}
-          >
-            {(isFutureWeek ? setWeeklyLineup.isPending : setLineup.isPending) ? 'Saving…' : 'Save Lineup'}
-          </button>
-        </div>
+
+      {moveAnchor && (
+        <MovePlayerSheet
+          anchor={moveAnchor}
+          roster={roster}
+          starterSlots={STARTER_SLOTS}
+          benchLimit={benchSlots}
+          irLimit={irSlotCount}
+          isPending={savingMove}
+          onPick={handleMovePick}
+          onClose={() => setMoveAnchor(null)}
+        />
       )}
 
       {detailPlayerId && (

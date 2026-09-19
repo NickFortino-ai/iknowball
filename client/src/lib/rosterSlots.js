@@ -90,6 +90,21 @@ export function buildStarterSlots(rosterSlots) {
   return out
 }
 
+/**
+ * Split-aware slot eligibility: an admin override like "LB/DL" lets a hybrid
+ * edge player slot at either family. Takes the slot's positions array (as
+ * carried on the objects buildStarterSlots returns).
+ *
+ * Lives here rather than in a component because tap-to-move needs the exact
+ * same answer the roster row does — two copies is how the server and client
+ * ended up disagreeing about overrides in the first place.
+ */
+export function isPositionEligibleForSlot(playerPosition, slotPositions) {
+  if (!playerPosition || !slotPositions) return false
+  const parts = String(playerPosition).split('/').map((p) => p.trim()).filter(Boolean)
+  return parts.some((p) => slotPositions.includes(p))
+}
+
 /** Anything that is not bench or IR. Mirrors the server's isStarterSlot. */
 export function isStarterSlot(slot) {
   const s = String(slot || '').toLowerCase()
