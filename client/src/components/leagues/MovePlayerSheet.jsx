@@ -65,13 +65,14 @@ export default function MovePlayerSheet({
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose, isPending])
 
-  const { anchorPlayer, anchorSlot, options } = buildMoveOptions({ anchor, roster, starterSlots, irLimit })
+  const { anchorPlayer, anchorSpot, options } = buildMoveOptions({ anchor, roster, starterSlots, benchLimit, irLimit })
   const slotLabel = (key) => starterSlots.find((s) => s.key === key)?.label
     || (key === 'bench' ? 'BN' : key === 'ir' ? 'IR' : String(key || '').toUpperCase())
 
+  const anchorLabel = anchorSpot?.label || slotLabel(anchorSpot?.slotKey)
   const title = anchorPlayer
-    ? `Select a new position for ${anchorPlayer.nfl_players?.full_name || 'this player'}, or keep them in ${slotLabel(anchorSlot)}.`
-    : `Select a player for your ${slotLabel(anchorSlot)} slot.`
+    ? `Select a new position for ${anchorPlayer.nfl_players?.full_name || 'this player'}, or keep them at ${anchorLabel}.`
+    : `Select a player for your ${anchorLabel} slot.`
 
   return createPortal(
     <div
@@ -83,13 +84,9 @@ export default function MovePlayerSheet({
         onClick={(e) => e.stopPropagation()}
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        {/* Grab handle — the sheet rises from the bottom on a phone, and this
-            is the affordance that says so before anyone tries to drag it. */}
-        <div className="pt-2 pb-1 flex justify-center shrink-0 sm:hidden">
-          <div className="w-10 h-1 rounded-full bg-text-primary/25" />
-        </div>
-
-        <div className="px-4 pb-4 pt-1 border-b border-text-primary/10 shrink-0 relative">
+        {/* No grab handle: it reads as drag-to-dismiss, and this sheet doesn't
+            implement that gesture. The close button is the way out. */}
+        <div className="px-4 pb-4 pt-4 border-b border-text-primary/10 shrink-0 relative">
           {/* Title centred and the close button floated over it, rather than
               sharing a flex row: a row makes the title's centre depend on the
               button's width, so it sits visibly off-centre. */}
@@ -102,7 +99,7 @@ export default function MovePlayerSheet({
             aria-label="Close"
             // 44px, the minimum comfortable touch target — this is the only
             // way out of an auto-saving sheet, so it should never need aiming.
-            className="absolute right-3 top-0 w-11 h-11 rounded-full bg-bg-card text-text-primary text-xl hover:bg-bg-card-hover active:bg-bg-card-hover flex items-center justify-center shrink-0 disabled:opacity-40"
+            className="absolute right-3 top-3 w-11 h-11 rounded-full bg-bg-card text-text-primary text-xl hover:bg-bg-card-hover active:bg-bg-card-hover flex items-center justify-center shrink-0 disabled:opacity-40"
           >
             ✕
           </button>
@@ -113,7 +110,7 @@ export default function MovePlayerSheet({
               would be a no-op move, and Yahoo's sheet reads the same way. */}
           {anchorPlayer && (
             <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-bg-primary/40 border border-text-primary/10 opacity-70">
-              <PositionBadge label={slotLabel(anchorSlot)} locked />
+              <PositionBadge label={anchorLabel} locked />
               <Line
                 name={anchorPlayer.nfl_players?.full_name}
                 sub={playerSub(anchorPlayer)}
