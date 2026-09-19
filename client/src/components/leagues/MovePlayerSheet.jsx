@@ -54,6 +54,7 @@ export default function MovePlayerSheet({
   anchor,
   roster,
   starterSlots,
+  benchLimit,
   irLimit,
   onPick,
   onClose,
