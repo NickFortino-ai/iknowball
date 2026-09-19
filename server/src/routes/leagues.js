@@ -1388,6 +1388,7 @@ import {
   getWaiverStateForLeague,
   processLeagueWaivers,
   getPlayerDetail,
+  getCurrentWeekMatchupMap,
   resizeFantasyLeague,
   cancelFantasyLeague,
   computeFantasyUnderfillState,
@@ -1975,10 +1976,16 @@ router.get('/:id/fantasy/projections/week/:week', requireAuth, async (req, res) 
     for (const r of projRows) {
       if (r[projCol] != null) projections[r.player_id] = Math.round(Number(r[projCol]) * 10) / 10
     }
+    // Same builder the current-week roster uses, so the opponent and the
+    // kickoff time on a row always describe the same game.
     const opponents = {}
-    for (const r of schedRes.data || []) {
-      if (r.home_team) opponents[r.home_team] = { opponent: r.away_team, is_home: true }
-      if (r.away_team) opponents[r.away_team] = { opponent: r.home_team, is_home: false }
+    for (const [team, m] of await getCurrentWeekMatchupMap(season, week)) {
+      opponents[team] = {
+        opponent: m.opponent,
+        is_home: m.is_home,
+        starts_at: m.starts_at || null,
+        game_status: m.game_status || null,
+      }
     }
     // Has any game in this week kicked off yet? Drives Live tab visibility
     // on salary-cap leagues — Live only appears once there's actual live

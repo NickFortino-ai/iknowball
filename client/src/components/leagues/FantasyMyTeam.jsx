@@ -154,6 +154,28 @@ function formatSeasonStats(position, stats) {
 
 // InjuryBadge imported at top of file (see ui/InjuryBadge.jsx).
 
+// Kickoff prefix for a roster row's game line: "Sun 1PM ", or "" once the
+// game is under way (the time has stopped being useful then, and Live view is
+// where you go for a score).
+//
+// Formatted from the UTC instant in the VIEWER's timezone — the server sends
+// UTC precisely because it can't know where the reader is. Mirrors the format
+// FantasyMatchup already uses, including dropping ":00" on the hour so
+// "Sun 1PM @ CHI" fits a phone row where "Sun 1:00PM @ CHI" ellipsised.
+function kickoffLabel(row) {
+  const iso = row?.current_week_starts_at
+  if (!iso) return ''
+  if (row?.current_week_game_status === 'live' || row?.current_week_game_status === 'final') return ''
+  const d = new Date(iso)
+  if (isNaN(d)) return ''
+  const day = d.toLocaleDateString(undefined, { weekday: 'short' })
+  const onTheHour = d.getMinutes() === 0
+  const time = d
+    .toLocaleTimeString(undefined, onTheHour ? { hour: 'numeric' } : { hour: 'numeric', minute: '2-digit' })
+    .replace(' ', '')
+  return `${day} ${time} `
+}
+
 function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail, blurbIds, editMode, showSeasonStats = true, isDropTarget = false }) {
   const canIR = isIrEligible(row?.nfl_players?.injury_status)
   const isInIR = row?.slot === 'ir'
@@ -219,7 +241,9 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           <div className="text-xs text-text-primary">
             {row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}
             {row?.current_week_opponent ? (
-              <span className="text-text-muted ml-2">{row.current_week_is_home ? 'vs' : '@'} {row.current_week_opponent}</span>
+              <span className="text-text-muted ml-2">
+                {kickoffLabel(row)}{row.current_week_is_home ? 'vs' : '@'} {row.current_week_opponent}
+              </span>
             ) : ('current_week_opponent' in (row || {}) && row?.nfl_players?.team) ? (
               <span className="text-yellow-400 ml-2 font-semibold">BYE</span>
             ) : null}
@@ -415,11 +439,17 @@ export default function FantasyMyTeam({ league }) {
         if (op) {
           overlay.current_week_opponent = op.opponent
           overlay.current_week_is_home = op.is_home
+          // Carried through with the opponent, never separately — a row must
+          // not pair one week's opponent with another week's kickoff.
+          overlay.current_week_starts_at = op.starts_at || null
+          overlay.current_week_game_status = op.game_status || null
         } else {
           // Null opponent + the present-but-null current_week_opponent
           // field triggers BYE label in PlayerRow.
           overlay.current_week_opponent = null
           overlay.current_week_is_home = null
+          overlay.current_week_starts_at = null
+          overlay.current_week_game_status = null
         }
       }
       return Object.keys(overlay).length > 0 ? { ...r, ...overlay } : r

@@ -3739,6 +3739,8 @@ export async function getRoster(leagueId, userId) {
         const matchup = team ? oppMap.get(team) : null
         r.current_week_opponent = matchup?.opponent || null
         r.current_week_is_home = matchup?.is_home ?? null
+        r.current_week_starts_at = matchup?.starts_at || null
+        r.current_week_game_status = matchup?.game_status || null
       }
     }
   } catch (err) {
@@ -3781,17 +3783,65 @@ export async function getRoster(leagueId, userId) {
  * row, and the matchup view all surface the same opponent info pre-
  * kickoff — without needing the live-scoreboard call.
  */
-async function getCurrentWeekMatchupMap(season, week) {
+// Exported so the weekly-nav endpoint builds its opponents map from the SAME
+// source. It used to assemble its own from nfl_schedule, which carries no
+// kickoff time — so viewing another week would have shown that week's opponent
+// beside the CURRENT week's kickoff.
+export async function getCurrentWeekMatchupMap(season, week) {
   if (!season || !week) return new Map()
   const { data: rows } = await supabase
     .from('nfl_schedule')
-    .select('home_team, away_team')
+    .select('home_team, away_team, game_date')
     .eq('season', season)
     .eq('week', week)
   const map = new Map()
   for (const row of rows || []) {
     if (row.home_team) map.set(row.home_team, { opponent: row.away_team, is_home: true })
     if (row.away_team) map.set(row.away_team, { opponent: row.home_team, is_home: false })
+  }
+  if (map.size === 0) return map
+
+  // Kickoff times, so a roster row can say "Sun 1PM @ IND" rather than just
+  // "@ IND". nfl_schedule carries only game_date (an ET CALENDAR date, no
+  // time), so the instant has to come from games.starts_at.
+  //
+  // The date window is widened a day on each side deliberately: game_date is
+  // ET while starts_at is UTC, so a Sunday-night kickoff (8:20 PM ET) lands on
+  // the FOLLOWING UTC date. Querying the bare date range drops every SNF and
+  // MNF game — the same trap that once broke the kickoff-lock query.
+  try {
+    const dates = (rows || []).map((r) => r.game_date).filter(Boolean).sort()
+    if (!dates.length) return map
+    const shift = (d, days) => {
+      const t = new Date(`${d}T00:00:00Z`)
+      t.setUTCDate(t.getUTCDate() + days)
+      return t.toISOString().slice(0, 10)
+    }
+    const { data: nflSport } = await supabase
+      .from('sports').select('id').eq('key', 'americanfootball_nfl').single()
+    if (!nflSport?.id) return map
+
+    const { data: games } = await supabase
+      .from('games')
+      .select('home_team, away_team, starts_at, status')
+      .eq('sport_id', nflSport.id)
+      .gte('starts_at', `${shift(dates[0], -1)}T00:00:00Z`)
+      .lte('starts_at', `${shift(dates[dates.length - 1], 1)}T23:59:59Z`)
+
+    for (const g of games || []) {
+      // games stores full team names; the map is keyed by Sleeper abbreviation.
+      for (const abbr of [NFL_FULL_TO_ABBR[g.home_team], NFL_FULL_TO_ABBR[g.away_team]]) {
+        const entry = abbr ? map.get(abbr) : null
+        if (entry) {
+          entry.starts_at = g.starts_at
+          entry.game_status = g.status
+        }
+      }
+    }
+  } catch (err) {
+    // A missing kickoff costs the time on the row, nothing more — the
+    // opponent is already resolved and must not be lost to this.
+    logger.warn({ err: err.message, season, week }, 'Failed to attach kickoff times to matchup map')
   }
   return map
 }
@@ -4501,6 +4551,8 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
       ...(oppMap.size > 0 ? {
         current_week_opponent: p.team ? (oppMap.get(p.team)?.opponent || null) : null,
         current_week_is_home: p.team ? (oppMap.get(p.team)?.is_home ?? null) : null,
+        current_week_starts_at: p.team ? (oppMap.get(p.team)?.starts_at || null) : null,
+        current_week_game_status: p.team ? (oppMap.get(p.team)?.game_status || null) : null,
       } : {}),
     }
   })
