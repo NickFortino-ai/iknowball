@@ -132,7 +132,21 @@ export function buildMoveOptions({ anchor, roster, starterSlots, benchLimit, irL
         occupant,
       })
     }
-    return { anchorPlayer: player, anchorSpot, options }
+    // Collapse interchangeable empty spots. Seven open bench slots produced
+    // seven identical "Empty BN" rows, and picking any of them wrote exactly
+    // the same thing — the choice was noise, not a choice. Same for two empty
+    // WR slots: whichever you tap, the player ends up starting at WR.
+    //
+    // Occupied spots are never collapsed; each one is a different player and
+    // therefore a genuinely different move.
+    const seenEmpty = new Set()
+    const deduped = options.filter((o) => {
+      if (o.occupant) return true
+      if (seenEmpty.has(o.label)) return false
+      seenEmpty.add(o.label)
+      return true
+    })
+    return { anchorPlayer: player, anchorSpot, options: deduped }
   }
 
   if (anchor?.type === 'spot') {
