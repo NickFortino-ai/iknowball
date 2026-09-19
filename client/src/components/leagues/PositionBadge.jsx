@@ -48,15 +48,11 @@ export default function PositionBadge({ label, locked = false, onTap, title }) {
     )
   }
 
-  const inner = (
-    <>
-      {/* The swap glyph reads as "this can move" faster than the ring does,
-          and fits in height the badge already occupied. */}
-      <span className="text-[9px] opacity-80 -mb-0.5">⇅</span>
-      <span className="text-xs font-bold">{label}</span>
-    </>
-  )
-  const shell = `w-11 h-11 shrink-0 flex flex-col items-center justify-center rounded-full border bg-transparent leading-none ${color}`
+  // Just the letters inside the ring. A swap glyph was tried above them and
+  // read as clutter at this size — the ring alone is enough to say "tappable"
+  // once every movable row has one and every locked row doesn't.
+  const inner = <span className="text-xs font-bold">{label}</span>
+  const shell = `w-11 h-11 shrink-0 flex items-center justify-center rounded-full border bg-transparent leading-none ${color}`
 
   if (!onTap) return <span className={shell} title={title}>{inner}</span>
 

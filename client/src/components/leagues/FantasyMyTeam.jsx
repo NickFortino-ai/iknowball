@@ -941,7 +941,7 @@ export default function FantasyMyTeam({ league }) {
             <span className="text-[10px] text-text-muted ml-auto md:ml-0">Tap a position to move a player</span>
           )}
         </div>
-        <div className="p-3 space-y-2">
+        <div className="p-3 space-y-1">
           {STARTER_SLOTS.map((slotDef) => {
             const occupant = playersBySlot[slotDef.key]?.[0]
             return (
@@ -974,7 +974,7 @@ export default function FantasyMyTeam({ league }) {
           <span className="hidden md:inline-block text-xs uppercase tracking-wider text-text-muted ml-auto mr-auto">Week {activeWeek}</span>
           <span className="text-xs text-text-muted font-mono ml-auto md:ml-0">{benchPlayers.length}/{benchSlots}</span>
         </div>
-        <div className="p-3 space-y-2">
+        <div className="p-3 space-y-1">
           {benchPlayers.map((r) => (
             <PlayerRow
               key={r.id}
@@ -1002,7 +1002,7 @@ export default function FantasyMyTeam({ league }) {
           <div className="px-4 py-3 border-b border-border">
             <h3 className="text-base font-semibold text-text-primary">IR</h3>
           </div>
-          <div className="p-3 space-y-2">
+          <div className="p-3 space-y-1">
             {irPlayers.map((r) => (
               <PlayerRow
                 key={r.id}
