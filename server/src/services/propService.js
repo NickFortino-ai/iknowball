@@ -83,7 +83,12 @@ const PROPS_UNSUPPORTED_SPORT_KEYS = new Set([
  */
 export async function attachNflHeadshots(rows, sportKey) {
   if (sportKey !== 'americanfootball_nfl') return
-  const needing = rows.filter((r) => !r.player_headshot_url && r.player_name)
+  // Every row, not just the blank ones. Rows written before the
+  // name-collision fix carry the WRONG face — the two Lamar Jackson prop
+  // lines showed different players — and a fill-only pass leaves those
+  // permanently wrong. Both callers attach before upserting, so re-resolving
+  // repairs the stored value on the next sync instead of needing a migration.
+  const needing = rows.filter((r) => r.player_name)
   if (!needing.length) return
   try {
     const { NFL_FULL_TO_ABBR } = await import('./fantasyService.js')
@@ -143,6 +148,68 @@ export async function attachNflHeadshots(rows, sportKey) {
   }
 }
 
+/**
+ * Pick which bookmaker to price a game from.
+ *
+ * Preference is one carrying BOTH sides, so a card can offer Over and Under
+ * from a single book rather than mixing prices. A Yes/No market (anytime
+ * touchdown) has neither, so that search finds nothing — hence the fallback
+ * to the first book that priced anything at all, instead of bookmakers[0],
+ * which may have returned an empty markets array.
+ */
+function pickPrimaryBookmaker(bookmakers) {
+  for (const bm of bookmakers) {
+    const sides = new Set()
+    for (const mkt of bm.markets || []) {
+      for (const o of mkt.outcomes || []) sides.add(o.name?.toLowerCase())
+    }
+    if (sides.has('over') && sides.has('under')) return bm
+  }
+  const hasOutcomes = (bm) => (bm.markets || []).some((m) => (m.outcomes || []).length)
+  return bookmakers.find(hasOutcomes) || bookmakers[0]
+}
+
+/**
+ * One Odds API outcome -> { playerName, line, side }, or null to skip it.
+ *
+ * Handles the two shapes the API returns:
+ *
+ *   Over/Under  { name: 'Over', description: 'Joe Burrow', point: 269.5 }
+ *   Yes/No      { name: 'Yes',  description: 'Ja\'Marr Chase' }   <- no point
+ *
+ * The Yes/No form is anytime touchdown. It was previously discarded whole —
+ * the parser required a `point` and only recognised over/under — which is why
+ * the Anytime TD category never rendered a single card despite 14 bookmakers
+ * pricing it.
+ *
+ * Yes/No is stored at line 0.5 with Yes as the over: "scored a touchdown" is
+ * then literally over the line, and settleNFLProps / gradeProp already
+ * compute rush_td + rec_td + return_td and compare against the line, so they
+ * grade it correctly without changes.
+ *
+ * Shared by both row builders. They were separate near-identical copies, and
+ * teaching only one about Yes/No would have meant a market that synced but
+ * never loaded (or the reverse).
+ */
+function normalizeOutcome(outcome) {
+  const rawSide = outcome.name?.toLowerCase()
+  const isYesNo = rawSide === 'yes' || rawSide === 'no'
+  if (!isYesNo && outcome.point == null) return null
+
+  // On a Yes/No outcome the player is in `description` and `name` is the side,
+  // so falling back to `name` would invent a player called "Yes".
+  const playerName = isYesNo ? outcome.description : (outcome.description || outcome.name)
+  if (!playerName) return null
+
+  return {
+    playerName,
+    line: isYesNo ? 0.5 : outcome.point,
+    // Yes -> over, No -> under, so every downstream reader (pick buttons,
+    // scoring, settlement) keeps working on the two fields it already knows.
+    side: isYesNo ? (rawSide === 'yes' ? 'over' : 'under') : rawSide,
+  }
+}
+
 export async function syncPropsForGame(gameId, markets) {
   // Get game details
   const { data: game, error: gameError } = await supabase
@@ -182,28 +249,14 @@ export async function syncPropsForGame(gameId, markets) {
 
   // Prefer bookmaker with both Over and Under; fall back to merging across bookmakers
   const rows = []
-
-  // First pass: find a bookmaker with both sides
-  let primaryBookmaker = apiData.bookmakers[0]
-  for (const bm of apiData.bookmakers) {
-    const sides = new Set()
-    for (const mkt of bm.markets || []) {
-      for (const o of mkt.outcomes || []) sides.add(o.name?.toLowerCase())
-    }
-    if (sides.has('over') && sides.has('under')) {
-      primaryBookmaker = bm
-      break
-    }
-  }
+  const primaryBookmaker = pickPrimaryBookmaker(apiData.bookmakers)
 
   // Parse primary bookmaker
   for (const market of primaryBookmaker.markets || []) {
     for (const outcome of market.outcomes || []) {
-      if (!outcome.point && outcome.point !== 0) continue
-
-      const playerName = outcome.description || outcome.name
-      const line = outcome.point
-      const side = outcome.name?.toLowerCase()
+      const norm = normalizeOutcome(outcome)
+      if (!norm) continue
+      const { playerName, line, side } = norm
 
       let row = rows.find(
         (r) => r.player_name === playerName && r.market_key === market.key && r.line === line
@@ -357,23 +410,14 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey) {
       return
     }
 
-    // Prefer a bookmaker with both sides; matches syncPropsForGame's rule.
-    let primary = apiData.bookmakers[0]
-    for (const bm of apiData.bookmakers) {
-      const sides = new Set()
-      for (const mkt of bm.markets || []) {
-        for (const o of mkt.outcomes || []) sides.add(o.name?.toLowerCase())
-      }
-      if (sides.has('over') && sides.has('under')) { primary = bm; break }
-    }
+    const primary = pickPrimaryBookmaker(apiData.bookmakers)
 
     const rows = []
     for (const mkt of primary.markets || []) {
       for (const outcome of mkt.outcomes || []) {
-        if (!outcome.point && outcome.point !== 0) continue
-        const playerName = outcome.description || outcome.name
-        const line = outcome.point
-        const side = outcome.name?.toLowerCase()
+        const norm = normalizeOutcome(outcome)
+        if (!norm) continue
+        const { playerName, line, side } = norm
 
         let row = rows.find((r) => r.player_name === playerName && r.market_key === mkt.key && r.line === line)
         if (!row) {
