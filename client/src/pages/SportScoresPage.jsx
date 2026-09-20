@@ -327,16 +327,18 @@ export default function SportScoresPage() {
   )
 }
 
-function formatPct(v) {
-  if (v == null || isNaN(v)) return '—'
-  return v.toFixed(3).replace(/^0\./, '.')
-}
-
 // Bare rows renderer — used by both NFL (per-division sections) and
 // the non-NFL sports (single flat table). `showRank` numbers rows;
 // off for divisional splits where the ranks aren't meaningful.
 function StandingsTable({ rows, showRank = true }) {
-  const gridCols = showRank ? 'grid-cols-[28px_1fr_38px_38px_54px]' : 'grid-cols-[1fr_38px_38px_54px]'
+  // No PCT column: the 54px it held goes to the team name, which was
+  // truncating "Mississippi State" and "South Carolina" on a phone. Win
+  // percentage is also derivable from the two columns beside it, so it was
+  // paying for itself twice over — and ESPN's college-football standings
+  // carry no winPercent stat at all, so every NCAAF row read ".000".
+  //
+  // win_pct stays in the payload; it's still a sort key below.
+  const gridCols = showRank ? 'grid-cols-[28px_1fr_38px_38px]' : 'grid-cols-[1fr_38px_38px]'
   return (
     <div className="rounded-xl border border-text-primary/15 bg-bg-primary/20 backdrop-blur-md overflow-hidden">
       <div className={`grid ${gridCols} gap-2 px-3 py-2 border-b border-text-primary/10 text-[10px] font-semibold uppercase tracking-wider text-text-muted`}>
@@ -344,7 +346,6 @@ function StandingsTable({ rows, showRank = true }) {
         <span>Team</span>
         <span className="text-right">W</span>
         <span className="text-right">L</span>
-        <span className="text-right">PCT</span>
       </div>
       <div className="divide-y divide-text-primary/5">
         {rows.map((row, i) => (
@@ -374,7 +375,6 @@ function StandingsTable({ rows, showRank = true }) {
             </div>
             <span className="text-right text-sm text-text-primary tabular-nums">{row.wins}</span>
             <span className="text-right text-sm text-text-primary tabular-nums">{row.losses}</span>
-            <span className="text-right text-sm text-text-muted tabular-nums">{formatPct(row.win_pct)}</span>
           </div>
         ))}
       </div>
