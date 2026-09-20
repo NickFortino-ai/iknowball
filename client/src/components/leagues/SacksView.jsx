@@ -62,13 +62,12 @@ export default function SacksView({ league, tab = 'picks' }) {
 
   if (!initialized && myPicks?.length && players?.length && !selected.length) {
     const loaded = myPicks.map((pick) =>
-      players.find((p) => p.sleeper_player_id === pick.sleeper_player_id) || {
-        sleeper_player_id: pick.sleeper_player_id,
-        player_name: pick.player_name,
-        position: pick.position,
-        team: pick.team,
-        headshot_url: pick.headshot_url,
-      }
+      // Spread the pick itself rather than naming fields: /my-picks now
+      // serves injury_status, opponent and kickoff, and a hand-listed
+      // fallback silently dropped them. A player picked while healthy and
+      // later ruled Out is no longer in the pool, so this branch is exactly
+      // the case that most needs its injury badge.
+      players.find((p) => p.sleeper_player_id === pick.sleeper_player_id) || { ...pick }
     ).filter(Boolean)
     if (loaded.length) {
       setSelected(loaded)

@@ -167,8 +167,31 @@ router.get('/picks', async (req, res) => {
     getCurrentWeekMatchups(),
   ])
 
+  // Injury + opponent are stamped here rather than left to the client.
+  //
+  // The client hydrates a saved pick by finding it in the PLAYER POOL, and
+  // the pool now drops anyone who can't take the field. So a player picked
+  // while healthy who is later ruled Out falls out of the pool, the lookup
+  // misses, and his row rendered from a bare fallback: no injury badge, no
+  // opponent, no kickoff — the one pick most worth flagging was the only one
+  // shown without a flag. (Readiness still caught it; this was display only.)
+  //
+  // Serving the enrichment with the pick removes the dependency entirely.
+  const pickedIds = [...new Set((data || []).map((p) => p.sleeper_player_id).filter(Boolean))]
+  const injuryById = {}
+  if (pickedIds.length) {
+    const { data: rows } = await supabase
+      .from('nfl_players')
+      .select('id, injury_status')
+      .in('id', pickedIds)
+    for (const r of rows || []) injuryById[r.id] = r.injury_status
+  }
+
   res.json((data || []).map((p) => ({
     ...p,
+    injury_status: injuryById[p.sleeper_player_id] ?? null,
+    opponent: matchupByTeam[p.team]?.opponent || null,
+    home_away: matchupByTeam[p.team]?.home_away || null,
     game_starts_at: matchupByTeam[p.team]?.starts_at || null,
     is_locked: lockedTeams.has(p.team),
   })))
