@@ -343,9 +343,21 @@ function normalize(sportKey, summary) {
         || c.team?.logo
         || c.team?.logos?.[0]?.href
         || null,
-      record: c.records?.find((r) => r.name === 'overall' || r.type === 'total')?.summary
-        || c.records?.[0]?.summary
-        || null,
+      // ESPN spells this `record` (singular) on a summary header competitor
+      // and `records` (plural) on a SCOREBOARD competitor. This maps over the
+      // header, so the plural form was always undefined and every Game Center
+      // header rendered without a record.
+      //
+      // Entries are {type, summary}: 'total' is the overall W-L, and the rest
+      // are splits (vsconf, homerecord, awayrecord) — taking [0] blindly would
+      // show a conference record as if it were the season one.
+      record: (() => {
+        const rows = c.record || c.records || []
+        const list = Array.isArray(rows) ? rows : []
+        return list.find((r) => r.type === 'total' || r.name === 'overall')?.summary
+          || list[0]?.summary
+          || null
+      })(),
       score: c.score != null ? Number(c.score) : null,
       home_away: c.homeAway || null,
       linescore,
