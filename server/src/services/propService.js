@@ -210,6 +210,34 @@ function normalizeOutcome(outcome) {
   }
 }
 
+/**
+ * Fill in the missing No side on Yes/No props.
+ *
+ * Anytime touchdown is priced one-sided by all 14 books we see — every one
+ * returns Yes and nothing else — so without this the card offers a single
+ * button and there is no decision to make.
+ *
+ * The No price is the straight complement of the Yes implied probability.
+ * That is slightly generous to the picker (the Yes price carries the book's
+ * margin, so its complement is a touch longer than a book would quote), which
+ * is the right way to err on a points game rather than a cash one.
+ *
+ * Same shape the MLB home-run market already ships: a 0.5 line with both
+ * sides, where the under on a longshot is heavily odds-on.
+ */
+function addSyntheticNoSide(rows) {
+  for (const row of rows) {
+    if (row.market_key !== 'player_anytime_td') continue
+    if (row.under_odds != null || row.over_odds == null) continue
+    const pYes = impliedProbability(row.over_odds)
+    if (!(pYes > 0 && pYes < 1)) continue
+    const pNo = 1 - pYes
+    row.under_odds = pNo >= 0.5
+      ? -Math.round((100 * pNo) / (1 - pNo))
+      : Math.round((100 * (1 - pNo)) / pNo)
+  }
+}
+
 export async function syncPropsForGame(gameId, markets) {
   // Get game details
   const { data: game, error: gameError } = await supabase
@@ -285,6 +313,8 @@ export async function syncPropsForGame(gameId, markets) {
       }
     }
   }
+
+  addSyntheticNoSide(rows)
 
   if (!rows.length) {
     return { synced: 0 }
@@ -443,6 +473,8 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey) {
         else if (side === 'under') row.under_odds = outcome.price
       }
     }
+
+    addSyntheticNoSide(rows)
 
     if (!rows.length) {
       PROPS_LOAD_CACHE.set(cacheKey, { expiresAt: now + PROPS_LOAD_TTL_MS })
