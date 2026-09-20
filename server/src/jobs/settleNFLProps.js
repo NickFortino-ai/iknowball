@@ -106,13 +106,18 @@ export async function settleNFLProps() {
   for (const row of schedule || []) {
     if (row.game_date) weekByEtDate[row.game_date] = row.week
   }
+  // Returns null when the prop's week can't be established. Deliberately NOT
+  // falling back to the current week: guessing is how a prop would grade
+  // against a week it has nothing to do with, which is worse than waiting.
+  // A null here simply skips the prop this tick.
   const weekForProp = (prop) => {
     const startsAt = prop.games?.starts_at
-    if (!startsAt) return week
+    if (!startsAt) return null
     const etDay = new Date(startsAt).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-    return weekByEtDate[etDay] ?? week
+    return weekByEtDate[etDay] ?? null
   }
-  const weeksNeeded = [...new Set((props || []).map(weekForProp))]
+  const weeksNeeded = [...new Set((props || []).map(weekForProp).filter((w) => w != null))]
+  if (!weeksNeeded.length) return
 
   // Pull this week's stats joined to player names so we can match props
   // (which only carry player_name) without a separate id map.
@@ -156,6 +161,7 @@ export async function settleNFLProps() {
     if (!statFn) continue // unsupported market
 
     const propWeek = weekForProp(prop)
+    if (propWeek == null) continue // week unknown — never guess
     const s = statsByName[`${propWeek}|${normalizePlayerName(prop.player_name)}`]
       || statsBySuffixless[`${propWeek}|${normalizeWithoutSuffix(prop.player_name)}`]
 
