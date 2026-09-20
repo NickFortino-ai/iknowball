@@ -1055,10 +1055,21 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
       const parsed = colParser(statMap)
       const fpts = fptsFn ? fptsFn(sport === 'baseball_mlb' ? statMap : parsed) : null
       let week = null
-      if (nflDateToWeek && detail.gameDate) {
-        // gameDate can be a full ISO string or "YYYY-MM-DD"; both work
-        // for a substring match against the schedule's date column.
-        const day = detail.gameDate.slice(0, 10)
+      if (detail.week != null && Number.isFinite(Number(detail.week))) {
+        // ESPN states the week outright. Prefer it: it needs no date math and
+        // therefore cannot fall into the trap below.
+        week = Number(detail.week)
+      } else if (nflDateToWeek && detail.gameDate) {
+        // gameDate is a UTC instant; nfl_schedule.game_date is an ET CALENDAR
+        // date. Slicing the ISO string took the UTC day, so every kickoff
+        // after 8 PM ET — the whole Thursday / Sunday / Monday night slate —
+        // looked like the NEXT day and matched no week at all. The row then
+        // carried week null and never merged into the table, so a player
+        // whose only game was the Thursday opener showed an empty line for
+        // every week while a 1 PM Sunday player looked fine.
+        const day = detail.gameDate.length <= 10
+          ? detail.gameDate
+          : new Date(detail.gameDate).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
         week = nflDateToWeek.get(day) || null
       }
 
