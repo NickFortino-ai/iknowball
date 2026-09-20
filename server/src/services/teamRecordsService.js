@@ -62,10 +62,28 @@ async function fetchOne(sportKey) {
         for (const e of entries) {
           const team = e?.team
           if (!team) continue
-          const w = statNum(e, 'wins')
-          const l = statNum(e, 'losses')
-          const t = statNum(e, 'ties')
+          let w = statNum(e, 'wins')
+          let l = statNum(e, 'losses')
+          let t = statNum(e, 'ties')
           const winPct = statNum(e, 'winPercent')
+
+          // ESPN's college-football standings carry NO `losses` stat — only
+          // a repeated `wins` (once per split: overall, home, away, vs conf)
+          // and one type:'total' row whose summary is the W-L string. So
+          // statNum('losses') returned 0 and every NCAAF team on the scores
+          // strip rendered "3-0", "2-0", "0-0" — never a single loss.
+          //
+          // The type:'total' summary is present in every sport, so parse it
+          // first and keep the stat lookups as the fallback. It also carries
+          // the NHL's three-part W-L-OTL correctly.
+          const totalSummary = (e.stats || []).find((x) => x.type === 'total')?.summary
+          const parts = String(totalSummary || '').split('-').map((n) => Number(n))
+          if (parts.length >= 2 && parts.every((n) => Number.isFinite(n))) {
+            w = parts[0]
+            l = parts[1]
+            t = parts.length > 2 ? parts[2] : t
+          }
+
           const info = {
             w, l, t,
             short: team.shortDisplayName || team.name || team.displayName,

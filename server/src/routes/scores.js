@@ -12,6 +12,7 @@ import { supabase } from '../config/supabase.js'
 import { expandSportFamily } from '../utils/nflFamily.js'
 import { sportsDayBoundsUtc, toSportsDay } from '../utils/sportsDay.js'
 import { getTeamRecords, lookupRecord, lookupShortName } from '../services/teamRecordsService.js'
+import { warmScoreboardRecords, lookupScoreboardRecord } from '../services/scoreboardRecordsService.js'
 import { warmMlbLinescores, getMlbLinescoreForGame } from '../services/mlbLinescoresService.js'
 import { attachNcaafRanks } from '../utils/attachNcaafRanks.js'
 
@@ -270,6 +271,15 @@ router.get('/strip', async (req, res) => {
     } catch { /* rank attachment is best-effort */ }
   }
 
+  // Teams absent from /standings (every FCS side in a college game) take
+  // their record from the scoreboard instead. Per sport column, since the
+  // filler is keyed by sport + date.
+  await Promise.all(Object.entries(shortToFullForRecords).map(([short, full]) => {
+    const col = out[short]
+    if (!col) return null
+    return fillMissingRecords([...col.live, ...col.upcoming, ...col.recent], full)
+  }))
+
   // Short cache header — clients also poll but this dampens repeat
   // landing-page hits from the same session/CDN.
   res.set('Cache-Control', 'public, max-age=15')
@@ -360,6 +370,7 @@ router.get('/nfl-week', async (req, res) => {
   const out = []
   for (const g of liveRes.data || []) { seen.add(g.id); out.push(shape(g, 'americanfootball_nfl')) }
   for (const g of weekRes.data || []) { if (!seen.has(g.id)) out.push(shape(g, 'americanfootball_nfl')) }
+  await fillMissingRecords(out, 'americanfootball_nfl')
   out.sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
 
   res.set('Cache-Control', 'public, max-age=15')
@@ -429,6 +440,7 @@ router.get('/ncaaf-week', async (req, res) => {
   const out = []
   for (const g of liveRes.data || []) { seen.add(g.id); out.push(shape(g, 'americanfootball_ncaaf')) }
   for (const g of weekRes.data || []) { if (!seen.has(g.id)) out.push(shape(g, 'americanfootball_ncaaf')) }
+  await fillMissingRecords(out, 'americanfootball_ncaaf')
   out.sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
 
   // Attach AP Top 25 ranks. Standings table already has team_id
@@ -515,6 +527,7 @@ router.get('/day', async (req, res) => {
   const out = []
   for (const g of liveRes.data || []) { seen.add(g.id); out.push(shape(g, full)) }
   for (const g of dayRes.data || []) { if (!seen.has(g.id)) out.push(shape(g, full)) }
+  await fillMissingRecords(out, full)
   out.sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
 
   await attachMlbLinescores(out, full)
@@ -599,6 +612,7 @@ router.get('/finals', async (req, res) => {
   await getTeamRecords(full)
   const shaped = (games || []).map((g) => shape(g, full))
   await attachMlbLinescores(shaped, full)
+  await fillMissingRecords(shaped, full)
   res.set('Cache-Control', 'public, max-age=300')
   res.json(shaped)
 })
@@ -667,6 +681,28 @@ async function attachMlbLinescores(games, sportFullKey) {
     const d = toSportsDay(g.starts_at)
     const ls = await getMlbLinescoreForGame(d, g.away_team, g.home_team)
     if (ls) g.linescore = ls
+  }
+}
+
+// Teams the standings endpoint doesn't list get their record from the
+// scoreboard instead. This is structural for college football — /standings
+// is FBS-only, so an FCS visitor like Montana is never in it and their row
+// rendered with a blank record beside an opponent that had one.
+//
+// Only fills gaps: a team already resolved from standings is left alone, so
+// the league table stays the single source for everyone it covers.
+async function fillMissingRecords(games, sportFullKey) {
+  if (!sportFullKey) return
+  const needed = games.filter((g) => !g.home_record || !g.away_record)
+  if (!needed.length) return
+
+  const dates = new Set(needed.map((g) => toSportsDay(g.starts_at)).filter(Boolean))
+  await Promise.all([...dates].map((d) => warmScoreboardRecords(sportFullKey, d)))
+
+  for (const g of needed) {
+    const d = toSportsDay(g.starts_at)
+    if (!g.home_record) g.home_record = lookupScoreboardRecord(sportFullKey, d, g.home_team)
+    if (!g.away_record) g.away_record = lookupScoreboardRecord(sportFullKey, d, g.away_team)
   }
 }
 
