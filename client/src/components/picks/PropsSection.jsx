@@ -138,6 +138,24 @@ function sortProps(props, sportKey) {
     }
     const lineDelta = (b.line || 0) - (a.line || 0)
     if (lineDelta !== 0) return lineDelta
+
+    // Anytime TD ranks by likelihood to score, straight off the Yes price.
+    //
+    // The imbalance tiebreaker below can't do it: it ranks by "closest to a
+    // coin flip", which coincides with likelihood only while no player is a
+    // FAVOURITE. That holds for home runs — nobody is odds-on to homer — but
+    // not here, where a goal-line back at -150 is the likeliest scorer on the
+    // board and imbalance buried him beneath two +110 receivers.
+    //
+    // This surfaced the moment the No side was synthesized: before that,
+    // under_odds was null, oddsImbalance returned 999 for every row, and the
+    // server's ranking survived untouched.
+    if (a.market_key === 'player_anytime_td' && b.market_key === 'player_anytime_td') {
+      const pa = impliedProb(a.over_odds) ?? -1
+      const pb = impliedProb(b.over_odds) ?? -1
+      if (pa !== pb) return pb - pa
+    }
+
     return oddsImbalance(a.over_odds, a.under_odds) - oddsImbalance(b.over_odds, b.under_odds)
   })
 }
