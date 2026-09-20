@@ -506,7 +506,33 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey) {
     .eq('market_key', marketKey)
     .in('status', ['published', 'locked', 'settled'])
 
+  // Anytime touchdown is a single-sided Yes market across dozens of players,
+  // so the list only makes sense ranked: the likeliest scorer first. Every
+  // other market is one line per player, where the odds hover around even and
+  // ranking them says nothing — those keep the database's order.
+  //
+  // The book's own price is the ranking. A shorter price means likelier, and
+  // American odds are not monotonic as numbers (-150 is likelier than +110
+  // but sorts lower), so they convert to implied probability first.
+  if (marketKey === 'player_anytime_td') {
+    return (allProps || []).slice().sort(
+      (a, b) => impliedProbability(b.over_odds) - impliedProbability(a.over_odds),
+    )
+  }
+
   return allProps || []
+}
+
+/**
+ * American odds -> implied probability (0-1). Null odds sort last.
+ *
+ * Includes the book's margin, which is fine here: it's a consistent ranking
+ * key, not a published number.
+ */
+function impliedProbability(odds) {
+  const o = Number(odds)
+  if (!Number.isFinite(o) || o === 0) return -1
+  return o < 0 ? Math.abs(o) / (Math.abs(o) + 100) : 100 / (o + 100)
 }
 
 export async function getAllPropsForGame(gameId) {
