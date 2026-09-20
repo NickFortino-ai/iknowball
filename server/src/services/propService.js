@@ -86,17 +86,56 @@ export async function attachNflHeadshots(rows, sportKey) {
   const needing = rows.filter((r) => !r.player_headshot_url && r.player_name)
   if (!needing.length) return
   try {
+    const { NFL_FULL_TO_ABBR } = await import('./fantasyService.js')
+
     const players = await fetchAll(
       supabase
         .from('nfl_players')
-        .select('full_name, headshot_url')
+        .select('full_name, team, headshot_url')
         .not('headshot_url', 'is', null)
         .order('id'),
     )
+
+    // Names are NOT unique. There are two Lamar Jacksons — the Ravens QB and
+    // a cornerback — and a flat name->url map is last-write-wins, so the
+    // higher sleeper id won and every "Lamar Jackson passing yards" card
+    // carried the cornerback's face.
+    //
+    // Resolution order: the player on a team playing in THIS game, then any
+    // rostered player of that name, then whatever we have. The first rule is
+    // the only one that can distinguish two active players who share a name.
+    const byNameTeam = {}
+    const byNameRostered = {}
     const byName = {}
-    for (const pl of players || []) byName[normalizePropPlayerName(pl.full_name)] = pl.headshot_url
+    for (const pl of players || []) {
+      const key = normalizePropPlayerName(pl.full_name)
+      if (pl.team) {
+        byNameTeam[`${key}|${pl.team}`] = pl.headshot_url
+        if (!(key in byNameRostered)) byNameRostered[key] = pl.headshot_url
+      }
+      if (!(key in byName)) byName[key] = pl.headshot_url
+    }
+
+    // game_id -> the two team abbreviations in that game.
+    const gameIds = [...new Set(needing.map((r) => r.game_id).filter(Boolean))]
+    const teamsByGame = {}
+    if (gameIds.length) {
+      const { data: games } = await supabase
+        .from('games')
+        .select('id, home_team, away_team')
+        .in('id', gameIds)
+      for (const g of games || []) {
+        teamsByGame[g.id] = [NFL_FULL_TO_ABBR[g.home_team], NFL_FULL_TO_ABBR[g.away_team]].filter(Boolean)
+      }
+    }
+
     for (const r of needing) {
-      const url = byName[normalizePropPlayerName(r.player_name)]
+      const key = normalizePropPlayerName(r.player_name)
+      let url = null
+      for (const abbr of teamsByGame[r.game_id] || []) {
+        if (byNameTeam[`${key}|${abbr}`]) { url = byNameTeam[`${key}|${abbr}`]; break }
+      }
+      url = url || byNameRostered[key] || byName[key]
       if (url) r.player_headshot_url = url
     }
   } catch (err) {
