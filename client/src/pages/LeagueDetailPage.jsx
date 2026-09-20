@@ -2392,7 +2392,16 @@ export default function LeagueDetailPage() {
               creates server-side invitations. */}
           {(isCommissioner || league.visibility === 'open') && (
             league.status === 'open'
-            || (league.format === 'fantasy' && fantasySettings?.draft_status === 'pending')
+            // Draft-based fantasy only. A league that hasn't drafted can still
+            // take members, which is what this clause is for — but SALARY CAP
+            // never drafts, so its draft_status sits at 'pending' forever and
+            // the clause stayed true for the life of the league. That left a
+            // live "copy invite link" on a contest nobody could join; the link
+            // opens a join page that refuses. Those leagues use
+            // joins_locked_at below, like every other non-drafting format.
+            || (league.format === 'fantasy'
+                && fantasySettings?.format !== 'salary_cap'
+                && fantasySettings?.draft_status === 'pending')
             || (league.status === 'active' && league.joins_locked_at && new Date(league.joins_locked_at) > new Date())
           ) && league.format !== 'bracket' && (
             <div className="flex items-center gap-5">
