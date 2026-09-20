@@ -86,6 +86,34 @@ export async function settleNFLProps() {
 
   const { season, week } = await getCurrentNflWeek()
 
+  // Settle each prop against ITS OWN week, not the current one.
+  //
+  // The stats read was pinned to getCurrentNflWeek(), so a prop had exactly
+  // one week in which it could ever settle. Anything missed in that window —
+  // a stats sync that landed late, a name that did not match — was stranded
+  // permanently: the prop query above is not week-scoped, so it kept being
+  // selected, kept finding no stats, and kept being skipped. All 60 stuck
+  // props are week 1 while the current week is 2.
+  //
+  // game_date is an ET calendar date and starts_at is a UTC instant, so the
+  // conversion goes through ET; slicing the UTC string would push every night
+  // game a day late and into the wrong week.
+  const { data: schedule } = await supabase
+    .from('nfl_schedule')
+    .select('week, game_date')
+    .eq('season', season)
+  const weekByEtDate = {}
+  for (const row of schedule || []) {
+    if (row.game_date) weekByEtDate[row.game_date] = row.week
+  }
+  const weekForProp = (prop) => {
+    const startsAt = prop.games?.starts_at
+    if (!startsAt) return week
+    const etDay = new Date(startsAt).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    return weekByEtDate[etDay] ?? week
+  }
+  const weeksNeeded = [...new Set((props || []).map(weekForProp))]
+
   // Pull this week's stats joined to player names so we can match props
   // (which only carry player_name) without a separate id map.
   // fetchAll: a full NFL week passed 1,600 stat rows on the first real
@@ -98,21 +126,27 @@ export async function settleNFLProps() {
   const stats = await fetchAll(
     supabase
       .from('nfl_player_stats')
-      .select('player_id, pass_yd, pass_td, pass_cmp, pass_att, pass_int, rush_yd, rush_att, rec, rec_yd, rec_td, rush_td, return_td, nfl_players!inner(full_name)')
+      .select('player_id, week, pass_yd, pass_td, pass_cmp, pass_att, pass_int, rush_yd, rush_att, rec, rec_yd, rec_td, rush_td, return_td, nfl_players!inner(full_name)')
       .eq('season', season)
-      .eq('week', week)
+      .in('week', weeksNeeded)
       .order('player_id', { ascending: true }),
   )
 
   if (!stats?.length) return
 
+  // Which weeks we actually hold stats for — distinguishes "sync hasn't run"
+  // from "this player didn't play" below.
+  const weeksWithStats = new Set(stats.map((s) => s.week))
+
+  // Keyed by week as well as name: more than one week of stats is in play now,
+  // and a week-1 prop must never grade against a week-2 line.
   const statsByName = {}
   const statsBySuffixless = {}
   for (const s of stats) {
     const name = s.nfl_players?.full_name
     if (!name) continue
-    statsByName[normalizePlayerName(name)] = s
-    const bare = normalizeWithoutSuffix(name)
+    statsByName[`${s.week}|${normalizePlayerName(name)}`] = s
+    const bare = `${s.week}|${normalizeWithoutSuffix(name)}`
     if (!(bare in statsBySuffixless)) statsBySuffixless[bare] = s
   }
 
@@ -121,12 +155,28 @@ export async function settleNFLProps() {
     const statFn = MARKET_STAT_MAP[prop.market_key]
     if (!statFn) continue // unsupported market
 
-    const s = statsByName[normalizePlayerName(prop.player_name)]
-      || statsBySuffixless[normalizeWithoutSuffix(prop.player_name)]
-    // Still nothing: either the stats sync hasn't landed yet, or the player
-    // never took the field. Skipping is right for the first and leaves the
-    // second stuck — see the note on inactive players above.
-    if (!s) continue
+    const propWeek = weekForProp(prop)
+    const s = statsByName[`${propWeek}|${normalizePlayerName(prop.player_name)}`]
+      || statsBySuffixless[`${propWeek}|${normalizeWithoutSuffix(prop.player_name)}`]
+
+    if (!s) {
+      // No stats row means one of two very different things, and the old code
+      // treated both as "wait": either the sync for that week hasn't landed,
+      // or the player was inactive and never will have a row. The second case
+      // left the prop locked forever with the pick neither won nor lost.
+      //
+      // weeksWithStats tells them apart. If we hold stats for OTHER players
+      // that week, the sync has run and this player simply didn't play.
+      //
+      // Settled as a push with a null actualValue, which is the exact signal
+      // settleProps already looks for: it returns the risked points and sends
+      // the "didn't play — your pick was pushed" notification. That path was
+      // built and wired for the other sports; NFL just never reached it.
+      if (weeksWithStats.has(propWeek)) {
+        settlements.push({ propId: prop.id, outcome: 'push', actualValue: null })
+      }
+      continue
+    }
 
     const actualValue = statFn(s) || 0
     let outcome
