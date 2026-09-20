@@ -49,6 +49,15 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
   const [showPlayerModal, setShowPlayerModal] = useState(false)
   const sportKey = prop.games?.sports?.key || prop.sport_key || 'basketball_nba'
 
+  // Anytime touchdown is a Yes/No market stored at line 0.5 (see
+  // propService.normalizeOutcome). "Will X go over or under 0.5 Anytime TD?"
+  // is a clumsy way to ask a question the sportsbook asks plainly, and the
+  // buttons are Yes/No rather than Over/Under — so the card says so.
+  //
+  // Books commonly price only the Yes side, which is fine: the No button
+  // already renders conditionally on under_odds.
+  const isYesNo = prop.market_key === 'player_anytime_td'
+
   // "Thu 9/3" when the game is on a later day, otherwise null.
   const kickoffLabel = (() => {
     const iso = prop.games?.starts_at
@@ -79,7 +88,9 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
       <div className="flex items-center justify-between mb-3">
         <div className="flex-1 min-w-0">
           <span className="font-semibold text-sm text-text-primary">
-            Will {prop.player_name} go over or under {prop.line} {prop.market_label}?
+            {isYesNo
+              ? `Will ${prop.player_name} score a touchdown?`
+              : `Will ${prop.player_name} go over or under ${prop.line} ${prop.market_label}?`}
           </span>
         </div>
         {prop.games && (
@@ -143,7 +154,7 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
             className={`flex-1 p-2.5 rounded-xl border transition-all ${sideStyles[overState]} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <div className={`font-semibold text-xs mb-0.5 ${overState === 'correct' ? 'text-correct' : overState === 'incorrect' ? 'text-incorrect' : 'text-text-primary'}`}>
-              Over
+              {isYesNo ? 'Yes' : 'Over'}
             </div>
             {prop.over_odds && (
               <div className="text-center">
@@ -166,7 +177,7 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
               className={`flex-1 p-2.5 rounded-xl border transition-all ${sideStyles[underState]} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <div className={`font-semibold text-xs mb-0.5 ${underState === 'correct' ? 'text-correct' : underState === 'incorrect' ? 'text-incorrect' : 'text-text-primary'}`}>
-                Under
+                {isYesNo ? 'No' : 'Under'}
               </div>
               <div className="text-center">
                 <div className={`font-semibold text-xs ${underState === 'selected' ? 'text-white' : ''}`}>
