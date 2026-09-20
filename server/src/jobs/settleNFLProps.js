@@ -40,6 +40,21 @@ function normalizePlayerName(name) {
 }
 
 /**
+ * Same normalization with any generational suffix removed.
+ *
+ * The odds feed writes "Kenneth Walker III" and "Brian Robinson Jr." where
+ * nfl_players has the bare surname. The lookup below then found no stats row
+ * and skipped the prop — so it stayed locked with a null actual_value
+ * FOREVER, and whoever picked it had points neither won nor lost. 16 props on
+ * already-final games were stuck this way.
+ *
+ * Tried only after the exact form, since some stored names do keep a suffix.
+ */
+function normalizeWithoutSuffix(name) {
+  return normalizePlayerName(String(name || '').replace(/\s+(?:jr|sr|ii|iii|iv|v)\.?$/i, ''))
+}
+
+/**
  * Auto-settle NFL player props from Sleeper weekly stats (nfl_player_stats).
  * Unlike the daily NBA/MLB/WNBA jobs, NFL stats are weekly — keyed by
  * (player_id, season, week), not game_date — so we look up the current NFL
@@ -92,9 +107,13 @@ export async function settleNFLProps() {
   if (!stats?.length) return
 
   const statsByName = {}
+  const statsBySuffixless = {}
   for (const s of stats) {
     const name = s.nfl_players?.full_name
-    if (name) statsByName[normalizePlayerName(name)] = s
+    if (!name) continue
+    statsByName[normalizePlayerName(name)] = s
+    const bare = normalizeWithoutSuffix(name)
+    if (!(bare in statsBySuffixless)) statsBySuffixless[bare] = s
   }
 
   const settlements = []
@@ -103,7 +122,11 @@ export async function settleNFLProps() {
     if (!statFn) continue // unsupported market
 
     const s = statsByName[normalizePlayerName(prop.player_name)]
-    if (!s) continue // no weekly stats yet — wait (mid-sync) or settle manually
+      || statsBySuffixless[normalizeWithoutSuffix(prop.player_name)]
+    // Still nothing: either the stats sync hasn't landed yet, or the player
+    // never took the field. Skipping is right for the first and leaves the
+    // second stuck — see the note on inactive players above.
+    if (!s) continue
 
     const actualValue = statFn(s) || 0
     let outcome
