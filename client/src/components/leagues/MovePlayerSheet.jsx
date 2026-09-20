@@ -72,7 +72,10 @@ export default function MovePlayerSheet({
 
   const anchorLabel = anchorSpot?.label || slotLabel(anchorSpot?.slotKey)
   const title = anchorPlayer
-    ? `Select a new position for ${anchorPlayer.nfl_players?.full_name || 'this player'}, or keep them at ${anchorLabel}.`
+    // "him", not "them": this sheet is NFL traditional fantasy only, where
+    // every player is a man. Anything shared with the WNBA contests keeps the
+    // neutral form.
+    ? `Select a new position for ${anchorPlayer.nfl_players?.full_name || 'this player'}, or keep him at ${anchorLabel}.`
     : `Select a player for your ${anchorLabel} slot.`
 
   return createPortal(
