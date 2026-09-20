@@ -57,6 +57,11 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
   // Books commonly price only the Yes side, which is fine: the No button
   // already renders conditionally on under_odds.
   const isYesNo = prop.market_key === 'player_anytime_td'
+  // Team defenses ("Cleveland Browns D/ST") have no player row and never
+  // will, so their headshot isn't a button — better an honest non-target than
+  // a tap that silently does nothing, which is how a missing player lookup
+  // fails here.
+  const isTeamDefense = / D\/ST$/.test(prop.player_name || '')
 
   // "Thu 9/3" when the game is on a later day, otherwise null.
   const kickoffLabel = (() => {
@@ -125,7 +130,11 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
 
       <div className="flex items-center gap-3">
         {prop.player_headshot_url ? (
-          <button onClick={() => setShowPlayerModal(true)} className="shrink-0 cursor-pointer">
+          <button
+            onClick={() => setShowPlayerModal(true)}
+            disabled={isTeamDefense}
+            className={`shrink-0 ${isTeamDefense ? '' : 'cursor-pointer'}`}
+          >
             <img
               src={prop.player_headshot_url}
               alt={prop.player_name}

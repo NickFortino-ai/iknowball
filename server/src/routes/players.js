@@ -623,7 +623,18 @@ router.get('/player/lookup', async (req, res) => {
   const dotified = name.replace(/^([A-Z]{2,4})(\s)/, (_, caps, ws) =>
     caps.split('').join('.') + '.' + ws
   )
-  const nameVariants = [...new Set([name, normalized, dotified])]
+  // Generational suffixes. The odds feed writes "Kenneth Walker III" and
+  // "Travis Etienne Jr." where nfl_players has the bare surname, so the ilike
+  // matched nothing, the lookup returned no player, and tapping the headshot
+  // on those prop cards did nothing at all — the modal renders only when a
+  // lookup resolves, so the failure was completely silent.
+  //
+  // 21 of the 467 NFL prop names differ from our roster by a suffix alone.
+  // Stripped LAST in the variant list so an exact match still wins: there are
+  // real players whose stored name keeps the suffix.
+  const SUFFIX_RE = /\s+(?:jr|sr|ii|iii|iv|v)\.?$/i
+  const desuffixed = name.replace(SUFFIX_RE, '').trim()
+  const nameVariants = [...new Set([name, normalized, dotified, desuffixed].filter(Boolean))]
 
   // NFL players live in nfl_players, not a DFS salaries table. When the
   // request is for NFL, look there first so the prop modal gets a real
