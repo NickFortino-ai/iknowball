@@ -109,7 +109,7 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
 
   return (
     <div>
-      <StandingsRosterBanner />
+      <StandingsRosterBanner canExpandRows={canExpand} />
 
       {/* Desktop: full-width table */}
       <div className="hidden md:block">

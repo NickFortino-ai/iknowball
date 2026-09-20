@@ -5,10 +5,19 @@ import { api } from '../../lib/api'
 // Explainer banner for the inline-roster expansion in fantasy standings.
 // Dismissal persists on the user row (users.has_dismissed_standings_roster_banner)
 // so "Understood" clicked on one device hides the banner on every other device too.
-export default function StandingsRosterBanner() {
+//
+// `canExpandRows` mirrors the standings table's own canExpand. Salary-cap
+// leagues don't expand a row into a roster — rosters live on the Live tab
+// there — so the banner taught a gesture that does nothing. It renders
+// nothing at all in that format rather than explaining a tap that no longer
+// exists.
+export default function StandingsRosterBanner({ canExpandRows = true }) {
   const { data: profile } = useProfile()
   const queryClient = useQueryClient()
 
+  // Both bails sit below the hooks — returning before them would change the
+  // hook order between a traditional and a salary-cap league.
+  if (!canExpandRows) return null
   if (!profile) return null
   if (profile.has_dismissed_standings_roster_banner) return null
 
