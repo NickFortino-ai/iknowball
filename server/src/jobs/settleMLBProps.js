@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { buildPlayerIndex, resolvePlayer } from '../utils/playerResolver.js'
 import { settleProps } from '../services/propService.js'
 
 // Maps market_key → fn pulling actual value from an mlb_dfs_player_stats row.
@@ -20,9 +21,14 @@ const MARKET_STAT_MAP = {
   pitcher_earned_runs: (s) => s.earned_runs ?? 0,
 }
 
-function normalizePlayerName(name) {
-  return (name || '').toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim()
-}
+// Name matching moved to the shared resolver. The local normalizer lowercased
+// BEFORE stripping non-letters, so an accent was treated as punctuation and
+// deleted: "Jasson Domínguez" became "jasson domnguez". The stats feed writes
+// plain ASCII ("Jasson Dominguez"), so the two sides could never meet — and
+// this job pushes on a miss, so 110 props for accented players were returned
+// as pushes instead of being graded.
+//
+// The resolver folds accents FIRST, which is the whole point of it.
 
 // Auto-settle MLB player props using mlb_dfs_player_stats. Mirrors
 // settleNBAProps. Stats are populated daily by scoreMLBDFS.js (MLB
@@ -73,21 +79,26 @@ export async function settleMLBProps() {
   // pitcher_strikeouts prop needs the pitcher row while batter_strikeouts
   // needs the batter row. The `strikeouts` column means different things
   // depending on role, so we can't just merge.
-  const statsByNameRole = {}
-  for (const s of allStats) {
-    const key = `${normalizePlayerName(s.player_name)}|${s.is_pitcher ? 'P' : 'B'}`
-    statsByNameRole[key] = s
-  }
+  // Role plays the part `team` plays elsewhere: it's the disambiguator for
+  // two rows that share a name. Ohtani produces a batter row and a pitcher
+  // row, and `strikeouts` means opposite things across them.
+  const statsIndex = buildPlayerIndex(allStats, {
+    getName: (s) => s.player_name,
+    getTeam: (s) => (s.is_pitcher ? 'P' : 'B'),
+  })
 
   const settlements = []
   for (const prop of props) {
     const wantsPitcher = prop.market_key?.startsWith('pitcher_')
     const role = wantsPitcher ? 'P' : 'B'
-    const nameKey = normalizePlayerName(prop.player_name)
-    let stats = statsByNameRole[`${nameKey}|${role}`]
+    let stats = resolvePlayer(statsIndex, { name: prop.player_name, team: role })
     // Fall back to the opposite role only if no exact-role row exists —
-    // covers legacy stat rows from before the two-way split.
-    if (!stats) stats = statsByNameRole[`${nameKey}|${wantsPitcher ? 'B' : 'P'}`]
+    // covers legacy stat rows from before the two-way split. Asked
+    // explicitly rather than by name alone, because a two-way player has two
+    // rows and the resolver correctly refuses an ambiguous name-only lookup.
+    if (!stats) {
+      stats = resolvePlayer(statsIndex, { name: prop.player_name, team: wantsPitcher ? 'B' : 'P' })
+    }
     if (!stats) {
       logger.info({ propId: prop.id, player: prop.player_name }, 'MLB player not in stats — settling as push')
       settlements.push({ propId: prop.id, outcome: 'push', actualValue: null })

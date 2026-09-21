@@ -33,6 +33,16 @@ function stripAccents(s) {
 
 const SUFFIX_RE = /\s+(?:jr|sr|ii|iii|iv|v)\.?\s*$/i
 
+// MLB appends a birth year to disambiguate two players with the same name:
+// "Max Muncy (2002)" is the Athletics shortstop, not the Dodgers infielder.
+// Our stats feed carries the bare name, so the parenthetical has to come off
+// to match anything at all.
+//
+// Stripped in the LOOSE key only, never the canonical one — so an exact
+// "Max Muncy (2002)" still wins where the feed does carry it, and the bare
+// form is reached only as a fallback.
+const PAREN_QUALIFIER_RE = /\s*\([^)]*\)\s*$/
+
 /**
  * Canonical form. Accents folded, punctuation dropped, whitespace collapsed.
  * Suffixes are KEPT — they're a real part of the name and some sources store
@@ -61,7 +71,9 @@ export function canonicalName(name) {
  * hypothetical.
  */
 export function looseName(name) {
-  return canonicalName(String(name || '').replace(SUFFIX_RE, ''))
+  return canonicalName(
+    String(name || '').replace(PAREN_QUALIFIER_RE, '').replace(SUFFIX_RE, ''),
+  )
 }
 
 /**
