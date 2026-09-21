@@ -23,7 +23,26 @@ const MARKET_STAT_MAP = {
   // only on a punt return still cashes an OVER on anytime_td 0.5.
   // return_td is Sleeper's aggregate of kick/punt/INT/fumble return TDs
   // (see syncWeeklyStats).
-  player_anytime_td: (s) => (s.rush_td || 0) + (s.rec_td || 0) + (s.return_td || 0),
+  // def_td is included so a TEAM DEFENSE prop ("Cleveland Browns D/ST") can
+  // be graded at all — its whole scoring path is defensive and special teams.
+  // It also correctly covers a defender's own pick-six, which the books count.
+  player_anytime_td: (s) => (s.rush_td || 0) + (s.rec_td || 0) + (s.return_td || 0) + (s.def_td || 0),
+}
+
+/**
+ * Team-defense props name the franchise ("Cleveland Browns D/ST") while our
+ * stats row is keyed by the Sleeper team id ('CLE'). Returns that id, or null
+ * for an ordinary player prop.
+ *
+ * Without this the name lookup found nothing, and once inactive players
+ * started pushing, EVERY D/ST prop resolved to "didn't play" — a confident
+ * wrong answer on a unit that plays every snap. Three defenses had already
+ * scored on the season when this was found.
+ */
+function teamDefenseIdFromPropName(name, fullToAbbr) {
+  const m = /^(.*?)\s+D\/ST$/.exec(String(name || '').trim())
+  if (!m) return null
+  return fullToAbbr[m[1]] || null
 }
 
 function normalizePlayerName(name) {
@@ -131,7 +150,7 @@ export async function settleNFLProps() {
   const stats = await fetchAll(
     supabase
       .from('nfl_player_stats')
-      .select('player_id, week, pass_yd, pass_td, pass_cmp, pass_att, pass_int, rush_yd, rush_att, rec, rec_yd, rec_td, rush_td, return_td, nfl_players!inner(full_name)')
+      .select('player_id, week, pass_yd, pass_td, pass_cmp, pass_att, pass_int, rush_yd, rush_att, rec, rec_yd, rec_td, rush_td, return_td, def_td, nfl_players!inner(full_name)')
       .eq('season', season)
       .in('week', weeksNeeded)
       .order('player_id', { ascending: true }),
@@ -147,13 +166,18 @@ export async function settleNFLProps() {
   // and a week-1 prop must never grade against a week-2 line.
   const statsByName = {}
   const statsBySuffixless = {}
+  const statsByTeamId = {}
   for (const s of stats) {
     const name = s.nfl_players?.full_name
     if (!name) continue
     statsByName[`${s.week}|${normalizePlayerName(name)}`] = s
     const bare = `${s.week}|${normalizeWithoutSuffix(name)}`
     if (!(bare in statsBySuffixless)) statsBySuffixless[bare] = s
+    // Team defenses are stored with the team abbreviation as the player id.
+    statsByTeamId[`${s.week}|${s.player_id}`] = s
   }
+
+  const { NFL_FULL_TO_ABBR } = await import('../services/fantasyService.js')
 
   const settlements = []
   for (const prop of props) {
@@ -162,8 +186,12 @@ export async function settleNFLProps() {
 
     const propWeek = weekForProp(prop)
     if (propWeek == null) continue // week unknown — never guess
-    const s = statsByName[`${propWeek}|${normalizePlayerName(prop.player_name)}`]
-      || statsBySuffixless[`${propWeek}|${normalizeWithoutSuffix(prop.player_name)}`]
+
+    const teamId = teamDefenseIdFromPropName(prop.player_name, NFL_FULL_TO_ABBR)
+    const s = teamId
+      ? statsByTeamId[`${propWeek}|${teamId}`]
+      : statsByName[`${propWeek}|${normalizePlayerName(prop.player_name)}`]
+        || statsBySuffixless[`${propWeek}|${normalizeWithoutSuffix(prop.player_name)}`]
 
     if (!s) {
       // No stats row means one of two very different things, and the old code
