@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getTeamLogoUrl } from '../../lib/teamLogos'
 import { formatOdds, calculateRiskPoints, calculateRewardPoints } from '../../lib/scoring'
 import { useNbaDfsPlayerLookup } from '../../hooks/useLeagues'
 import { getTeamAbbr } from '../../lib/teamLogos'
@@ -62,6 +63,11 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
   // a tap that silently does nothing, which is how a missing player lookup
   // fails here.
   const isTeamDefense = / D\/ST$/.test(prop.player_name || '')
+  // "Cleveland Browns D/ST" -> the Browns crest. The resolver keys on the
+  // franchise name, so the suffix has to come off first or it returns null.
+  const teamLogoUrl = isTeamDefense
+    ? getTeamLogoUrl(String(prop.player_name).replace(/ D\/ST$/, ''), sportKey)
+    : null
 
   // "Thu 9/3" when the game is on a later day, otherwise null.
   const kickoffLabel = (() => {
@@ -129,7 +135,23 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
       </div>
 
       <div className="flex items-center gap-3">
-        {prop.player_headshot_url ? (
+        {teamLogoUrl ? (
+          // A team defense has no headshot, and the initials fallback gave
+          // "CBD" — meaningless. The crest is what identifies the unit being
+          // picked, and it's the same artwork the scores strip uses.
+          <div className="shrink-0 w-20 h-20 rounded-full bg-bg-secondary flex items-center justify-center">
+            <img
+              src={teamLogoUrl}
+              alt={prop.player_name}
+              className="w-14 h-14 object-contain"
+              onError={(e) => {
+                const std = teamLogoUrl.replace('/500-dark/', '/500/')
+                if (e.currentTarget.src !== std) e.currentTarget.src = std
+                else e.currentTarget.style.visibility = 'hidden'
+              }}
+            />
+          </div>
+        ) : prop.player_headshot_url ? (
           <button
             onClick={() => setShowPlayerModal(true)}
             disabled={isTeamDefense}
