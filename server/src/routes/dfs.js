@@ -825,11 +825,45 @@ router.get('/matchup-live', async (req, res) => {
     const homePregameProjected = homeStarters.reduce((sum, s) => sum + (s.pregame_projection || 0), 0)
     const awayPregameProjected = awayStarters.reduce((sum, s) => sum + (s.pregame_projection || 0), 0)
 
-    // Win probability using projected point differential
-    // Sigma ~20 pts represents typical fantasy score variance for a full roster
+    // Win probability using projected point differential.
+    //
+    // Sigma has to SHRINK as football gets played. It used to be a flat 20 —
+    // "typical variance for a full roster" — which stayed 20 even when every
+    // starter on both sides had finished. A decided 2.5-point loss then came
+    // back as normalCDF(-0.125) = 45%, so a matchup that could not change
+    // still showed a near-even bar.
+    //
+    // Scale it by how much projected scoring is still to come. With nothing
+    // left, sigma is 0 and the result is 0 or 100 — which is the truth.
+    const unplayedShare = (starters) => {
+      let remaining = 0
+      for (const st of starters) {
+        const proj = st.pregame_projection || 0
+        if (!proj) continue
+        if (st.game_status === 'final') continue
+        if (st.game_status === 'live') {
+          // Rough, and deliberately so: period is the only progress signal
+          // on a starter row here.
+          remaining += proj * (1 - gameProgressFraction('in', st.game_period))
+        } else {
+          remaining += proj
+        }
+      }
+      return remaining
+    }
+
+    const totalPregame = homePregameProjected + awayPregameProjected
+    const remainingProj = unplayedShare(homeStarters) + unplayedShare(awayStarters)
+    const liveFraction = totalPregame > 0
+      ? Math.max(0, Math.min(1, remainingProj / totalPregame))
+      : 0
+
     const diff = homeProjected - awayProjected
-    const sigma = 20
-    const homeWinProb = Math.round(normalCDF(diff / sigma) * 100)
+    const sigma = 20 * liveFraction
+    const homeWinProb = sigma > 0.5
+      ? Math.round(normalCDF(diff / sigma) * 100)
+      // Nothing meaningful left to play: the scoreboard IS the answer.
+      : (diff > 0 ? 100 : diff < 0 ? 0 : 50)
 
     return {
       id: m.id,
