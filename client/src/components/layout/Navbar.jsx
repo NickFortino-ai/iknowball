@@ -90,14 +90,27 @@ function getNotificationIcon(n) {
     case 'poll_response_milestone': return '\uD83D\uDCCA' // 📊
 
     // Survivor
-    case 'survivor_result':
+    case 'survivor_result': {
       // Correction / 'ignore the earlier notice' messages get an edit icon
       // so they don't look like another elimination on visual scan. Set
       // metadata.isCorrection=true on the server when sending one of these.
       if (n.metadata?.isCorrection) return '\u270F\uFE0F' // ✏️
+
+      // metadata.outcome is authoritative. The icon used to be chosen by
+      // scanning the message, and the lost-a-life copy said neither
+      // "eliminated" nor "lost a life" — so a pick that DIDN'T score fell
+      // through to the survived branch and showed a green tick.
+      const outcome = n.metadata?.outcome
+      if (outcome === 'survived') return '\u2705' // ✅
+      if (outcome === 'eliminated' || outcome === 'lost_life') return '\u274C' // ❌
+
+      // Older notifications carry no outcome, so keep reading the text —
+      // now including the case that was missed.
       if (n.message?.includes('eliminated')) return '\u274C' // ❌
-      if (n.message?.includes('lost a life')) return '\u26A0\uFE0F' // ⚠️
+      if (n.message?.includes('lost a life')) return '\u274C' // ❌
+      if (n.message?.includes("didn't score")) return '\u274C' // ❌
       return '\u2705' // ✅ survived
+    }
     case 'survivor_pick_reminder': return '\u23F0' // ⏰
     case 'roster_reminder': return '\u23F0' // ⏰
     case 'og_welcome': return '\u2B50' // ⭐

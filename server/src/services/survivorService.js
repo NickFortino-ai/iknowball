@@ -811,7 +811,7 @@ export async function scoreTouchdownSurvivorPicks(gameId) {
     if (survived) {
       await createNotification(pick.user_id, 'survivor_result',
         `${pick.player_name} scored a TD! You survived ${periodLabel} ${periodNum} in ${leagueName}!`,
-        { leagueId: pick.league_id })
+        { leagueId: pick.league_id, outcome: 'survived' })
     } else {
       const { data: member } = await supabase
         .from('league_members')
@@ -831,13 +831,17 @@ export async function scoreTouchdownSurvivorPicks(gameId) {
         .eq('user_id', pick.user_id)
 
       if (newLives > 0) {
+        // "lost a life" is in the copy deliberately: the CURRENT client picks
+        // its icon by scanning this message, and without that phrase a losing
+        // pick fell through to the survived branch and rendered a green tick.
+        // Newer clients read metadata.outcome and ignore the prose.
         await createNotification(pick.user_id, 'survivor_result',
-          `${pick.player_name} didn't score a TD in ${periodLabel} ${periodNum} of ${leagueName} (${newLives} lives remaining)`,
-          { leagueId: pick.league_id })
+          `${pick.player_name} didn't score a TD in ${periodLabel} ${periodNum} of ${leagueName} — lost a life (${newLives} remaining)`,
+          { leagueId: pick.league_id, outcome: 'lost_life' })
       } else {
         await createNotification(pick.user_id, 'survivor_result',
           `${pick.player_name} didn't score a TD — you've been eliminated from ${leagueName}`,
-          { leagueId: pick.league_id, streakEnded: true })
+          { leagueId: pick.league_id, streakEnded: true, outcome: 'eliminated' })
       }
     }
   }
