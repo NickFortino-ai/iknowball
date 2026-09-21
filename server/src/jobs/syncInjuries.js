@@ -45,7 +45,16 @@ async function fetchNflInjuriesByTeamId() {
         detail: i.details?.type || i.shortComment || i.longComment || '',
       }))
     list.sort((a, b) => (SEVERITY_ORDER[a.status] ?? 99) - (SEVERITY_ORDER[b.status] ?? 99))
-    if (teamEntry.team?.id) byTeamId.set(String(teamEntry.team.id), list)
+    // ESPN's league-wide NFL injuries payload carries the team id at the TOP
+    // level — these entries have no nested `team` object, unlike the per-team
+    // endpoints this was presumably modelled on. teamEntry.team.id was
+    // undefined for all 32 teams, so this map came back EMPTY on every run
+    // and the NFL injury sync silently did nothing.
+    //
+    // The WNBA function directly below already reads teamEntry.id, which is
+    // how the same payload shape is meant to be read.
+    const teamId = teamEntry.id ?? teamEntry.team?.id
+    if (teamId) byTeamId.set(String(teamId), list)
   }
   return byTeamId
 }
@@ -654,12 +663,32 @@ export async function syncInjuries() {
         .toLowerCase()
     }
 
+    // ESPN and Sleeper describe the same states with different words, and
+    // nfl_players.injury_status is written by BOTH (Sleeper nightly via
+    // syncPlayers, ESPN here). Mixing vocabularies breaks the readers:
+    // isUnavailable() knows 'ir' but not 'injured reserve', so an ESPN-written
+    // "Injured Reserve" would silently read as available.
+    //
+    // Sleeper's vocabulary wins because it is the older and more widely
+    // consumed of the two. 'Active' collapses to null — Sleeper writes no
+    // designation for a healthy player, and a literal "Active" string would
+    // otherwise sit in a column every caller treats as nullable.
+    const ESPN_TO_SLEEPER_STATUS = {
+      'injured reserve': 'IR',
+      'active': null,
+      'day-to-day': 'Questionable',
+    }
+    const normalizeStatus = (raw) => {
+      const key = String(raw || '').trim().toLowerCase()
+      return key in ESPN_TO_SLEEPER_STATUS ? ESPN_TO_SLEEPER_STATUS[key] : raw
+    }
+
     const espnByName = {}
     for (const row of nflIntel || []) {
       for (const inj of row.injuries || []) {
         if (inj.name && inj.status) {
           espnByName[normalizeName(inj.name)] = {
-            status: inj.status,
+            status: normalizeStatus(inj.status),
             body_part: inj.detail || null,
             detail: inj.detail || null,
           }
