@@ -384,6 +384,10 @@ function extractFootballStarters(data) {
 // would otherwise cost from ~768 ESPN calls an hour to a few dozen a day.
 const NFL_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000
 
+// Designations ESPN's weekly injury report does not carry, so its silence
+// says nothing about them. Only Sleeper's roster feed can clear these.
+const LONG_TERM_STATUSES = new Set(['ir', 'injured reserve', 'pup', 'sus', 'suspended', 'dnr', 'na'])
+
 async function getUpcomingTeams(sportKey, windowOverrideMs = null) {
   // NFL preseason games have their own sport_id ('americanfootball_nfl_preseason')
   // so a filter on the regular NFL sport row would miss them entirely and
@@ -770,9 +774,20 @@ export async function syncInjuries() {
             })
             if (res.action === 'inserted') blurbsWritten++
           }
-        } else if (p.injury_status && activeNamesNorm.has(norm)) {
+        } else if (p.injury_status && activeNamesNorm.has(norm) && !LONG_TERM_STATUSES.has(String(p.injury_status).toLowerCase())) {
           // Cleared-to-play: was injured, no longer in ESPN injuries,
           // still on the depth chart. Safe to clear and announce.
+          //
+          // EXCEPT for long-term designations. ESPN's injury report covers
+          // week-to-week availability; a player on IR or PUP simply falls off
+          // it, because there is no weekly call to make. Absence there is not
+          // evidence of recovery.
+          //
+          // Sleeper does track those, and it is the source for them. Treating
+          // an ESPN omission as "cleared" wiped 63 real designations — 50 IR,
+          // 6 PUP — the first time this branch ran against real data, putting
+          // Jayden Higgins and Ricky Pearsall back in the player pool with a
+          // full projection and no badge while both were out for the season.
           await supabase
             .from('nfl_players')
             .update({ injury_status: null, injury_body_part: null })
