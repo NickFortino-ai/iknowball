@@ -649,7 +649,7 @@ export async function syncInjuries() {
   try {
     const { data: nflIntel } = await supabase
       .from('team_intel')
-      .select('injuries')
+      .select('team_name, injuries')
       .eq('sport_key', 'americanfootball_nfl')
 
     // Build normalized-name → { status, body_part, detail } map
@@ -683,15 +683,45 @@ export async function syncInjuries() {
       return key in ESPN_TO_SLEEPER_STATUS ? ESPN_TO_SLEEPER_STATUS[key] : raw
     }
 
+    // Keyed by name AND team, because names are not unique. There are two
+    // Justin Jeffersons — the Vikings receiver and a Browns linebacker — and
+    // a name-only map is last-write-wins: the linebacker's "Out (Coach's
+    // Decision)" landed on the receiver, who had just caught 3 for 55.
+    //
+    // Six such pairs are currently rostered: Justin Jefferson, DeVonta Smith,
+    // Byron Young, Byron Murphy, Marcus Harris and Michael Carter.
+    const { NFL_FULL_TO_ABBR } = await import('../services/fantasyService.js')
+    const espnByNameTeam = {}
+    const nameCounts = {}
+    for (const row of nflIntel || []) {
+      const abbr = NFL_FULL_TO_ABBR[row.team_name]
+      for (const inj of row.injuries || []) {
+        if (!inj.name || !inj.status) continue
+        const norm = normalizeName(inj.name)
+        const entry = {
+          status: normalizeStatus(inj.status),
+          body_part: inj.detail || null,
+          detail: inj.detail || null,
+        }
+        nameCounts[norm] = (nameCounts[norm] || 0) + 1
+        if (abbr) espnByNameTeam[`${norm}|${abbr}`] = entry
+      }
+    }
+
+    // Name-only lookups are allowed ONLY where the name is unique league-wide.
+    // Anything shared has to match on team or be skipped — a wrong designation
+    // is worse than a missing one.
     const espnByName = {}
     for (const row of nflIntel || []) {
+      const abbr = NFL_FULL_TO_ABBR[row.team_name]
       for (const inj of row.injuries || []) {
-        if (inj.name && inj.status) {
-          espnByName[normalizeName(inj.name)] = {
-            status: normalizeStatus(inj.status),
-            body_part: inj.detail || null,
-            detail: inj.detail || null,
-          }
+        if (!inj.name || !inj.status) continue
+        const norm = normalizeName(inj.name)
+        if (nameCounts[norm] > 1) continue
+        espnByName[norm] = espnByNameTeam[`${norm}|${abbr}`] || {
+          status: normalizeStatus(inj.status),
+          body_part: inj.detail || null,
+          detail: inj.detail || null,
         }
       }
     }
@@ -706,7 +736,7 @@ export async function syncInjuries() {
       const nflPlayers = await fetchAll(
         supabase
           .from('nfl_players')
-          .select('id, full_name, injury_status, injury_body_part')
+          .select('id, full_name, team, injury_status, injury_body_part')
           .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
           .not('team', 'is', null)
           .order('id')
@@ -718,7 +748,10 @@ export async function syncInjuries() {
       let clearedBlurbs = 0
       for (const p of nflPlayers || []) {
         const norm = normalizeName(p.full_name)
-        const espn = espnByName[norm]
+        // Team-scoped first; the name-only map holds league-unique names only,
+        // so a shared name with no team match resolves to nothing and is left
+        // alone rather than taking another player's designation.
+        const espn = (p.team ? espnByNameTeam[`${norm}|${p.team}`] : null) || espnByName[norm]
         if (espn) {
           // ESPN reports an active injury — patch status/body_part if different
           if (espn.status !== p.injury_status || espn.body_part !== p.injury_body_part) {
