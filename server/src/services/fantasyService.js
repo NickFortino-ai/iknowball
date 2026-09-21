@@ -5362,10 +5362,19 @@ export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId)
     }
     dropRow = dropRoster
 
-    // Lock check: if dropped player's team has already started this week, block
+    // A player whose game has started can still be dropped FROM THE BENCH.
+    // Bench and IR don't score, so removing him can't change what the lineup
+    // already earned — the same reasoning that lets a locked player move
+    // between those two slots in setFantasyLineup.
+    //
+    // A STARTER is a hard no until the week is finalized. That is exactly the
+    // path that cost a manager his matchup: dropping a started player after
+    // his game retroactively removes points the lineup had already scored.
+    //
+    // Yahoo permits the bench case, and managers arrive expecting it.
     const lockedTeams = await getLockedTeamsForLeague(leagueId)
-    if (lockedTeams.has(dropRow.nfl_players?.team)) {
-      const err = new Error("Can't drop a player whose game has already started")
+    if (lockedTeams.has(dropRow.nfl_players?.team) && isStarterSlot(dropRow.slot)) {
+      const err = new Error("Can't drop a starter whose game has already been played — bench him first, or wait for the week to finalize")
       err.status = 400
       throw err
     }
@@ -5536,7 +5545,7 @@ export async function dropRosterPlayer(leagueId, userId, playerId) {
   await assertNoIneligibleIR(leagueId, userId)
   const { data: row } = await supabase
     .from('fantasy_rosters')
-    .select('id, user_id, acquired_at, nfl_players(full_name, team)')
+    .select('id, user_id, slot, acquired_at, nfl_players(full_name, team)')
     .eq('league_id', leagueId)
     .eq('player_id', playerId)
     .maybeSingle()
@@ -5545,9 +5554,19 @@ export async function dropRosterPlayer(leagueId, userId, playerId) {
     err.status = 403
     throw err
   }
+  // A player whose game has started can still be dropped FROM THE BENCH.
+  // Bench and IR don't score, so removing him can't change what the lineup
+  // already earned — the same reasoning that lets a locked player move
+  // between those two slots in setFantasyLineup.
+  //
+  // A STARTER is a hard no until the week is finalized. That is exactly the
+  // path that cost a manager his matchup: dropping a started player after
+  // his game retroactively removes points the lineup had already scored.
+  //
+  // Yahoo permits the bench case, and managers arrive expecting it.
   const lockedTeams = await getLockedTeamsForLeague(leagueId)
-  if (lockedTeams.has(row.nfl_players?.team)) {
-    const err = new Error("Can't drop a player whose game has already started")
+  if (lockedTeams.has(row.nfl_players?.team) && isStarterSlot(row.slot)) {
+    const err = new Error("Can't drop a starter whose game has already been played — bench him first, or wait for the week to finalize")
     err.status = 400
     throw err
   }
