@@ -496,9 +496,19 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey) {
       }
     }
 
+    // A prop for a game that has ALREADY KICKED OFF must not be pickable.
+    //
+    // The odds feed keeps quoting new lines after a game starts, and this
+    // path upserts whatever it returns. lockPicks can't clean up after it —
+    // that job only selects games still marked 'upcoming', so once a game is
+    // live it never revisits them. The result was 11 live-game props sitting
+    // on the board as 'published' at kickoff + 3 minutes, fully pickable.
+    const hasStarted = game.status !== 'upcoming'
+      || (game.starts_at && new Date(game.starts_at) <= new Date())
+
     for (const row of rows) {
       const preserved = preserve.get(`${row.player_name}|${row.line}`)
-      row.status = preserved || 'published'
+      row.status = preserved || (hasStarted ? 'locked' : 'published')
     }
     await attachNflHeadshots(rows, fullSportKey)
 

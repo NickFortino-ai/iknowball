@@ -16,17 +16,20 @@ export async function lockPicks() {
     return
   }
 
-  if (!games?.length) return
-
-  // Update games to live status
-  const gameIds = games.map((g) => g.id)
-  await supabase
-    .from('games')
-    .update({ status: 'live', updated_at: now })
-    .in('id', gameIds)
+  // NOT an early return on an empty set. The prop sweep further down covers
+  // games that are ALREADY live — which is the common case, since the score
+  // sync usually flips a game to live before this job sees it. Returning here
+  // is what let post-kickoff props stay pickable indefinitely.
+  const gameIds = (games || []).map((g) => g.id)
+  if (gameIds.length) {
+    await supabase
+      .from('games')
+      .update({ status: 'live', updated_at: now })
+      .in('id', gameIds)
+  }
 
   let locked = 0
-  for (const game of games) {
+  for (const game of games || []) {
     const { data: picks } = await supabase
       .from('picks')
       .select('id, picked_team, multiplier, odds_at_submission, risk_at_submission, reward_at_submission')
@@ -131,10 +134,31 @@ export async function lockPicks() {
     }
   }
 
+  // Sweep props on games that are ALREADY under way.
+  //
+  // `games` above holds only games still marked 'upcoming', because that is
+  // what this job flips to live. But the props load path keeps upserting new
+  // lines from the odds feed after kickoff, and those land as 'published' on
+  // a game this job will never look at again — leaving them pickable mid-game.
+  //
+  // So the prop sweep runs over the started set too, not just the ones being
+  // transitioned this tick. Cheap: it only matches rows still 'published'.
+  const { data: startedGames } = await supabase
+    .from('games')
+    .select('id')
+    .in('status', ['live', 'final'])
+    .lte('starts_at', now)
+    .gte('starts_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+
+  const gamesNeedingPropLock = [
+    ...games,
+    ...(startedGames || []).filter((g) => !games.some((x) => x.id === g.id)),
+  ]
+
   // Lock published player props and their pending picks for these games
   let propsLocked = 0
   let propPicksLocked = 0
-  for (const game of games) {
+  for (const game of gamesNeedingPropLock) {
     // Lock published props for this game
     const { data: props } = await supabase
       .from('player_props')
