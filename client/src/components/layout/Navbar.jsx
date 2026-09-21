@@ -100,15 +100,21 @@ function getNotificationIcon(n) {
       // scanning the message, and the lost-a-life copy said neither
       // "eliminated" nor "lost a life" — so a pick that DIDN'T score fell
       // through to the survived branch and showed a green tick.
+      // Three tiers, because losing a life is not the same as being out:
+      //   survived   ✅
+      //   lost_life  ⚠️  the pick missed, but you're still in it
+      //   eliminated ❌  you're done
       const outcome = n.metadata?.outcome
       if (outcome === 'survived') return '\u2705' // ✅
-      if (outcome === 'eliminated' || outcome === 'lost_life') return '\u274C' // ❌
+      if (outcome === 'lost_life') return '\u26A0\uFE0F' // ⚠️
+      if (outcome === 'eliminated') return '\u274C' // ❌
 
       // Older notifications carry no outcome, so keep reading the text —
-      // now including the case that was missed.
+      // including the "didn't score" case that used to fall through to ✅.
+      // Order matters: an elimination message also contains "didn't score".
       if (n.message?.includes('eliminated')) return '\u274C' // ❌
-      if (n.message?.includes('lost a life')) return '\u274C' // ❌
-      if (n.message?.includes("didn't score")) return '\u274C' // ❌
+      if (n.message?.includes('lost a life')) return '\u26A0\uFE0F' // ⚠️
+      if (n.message?.includes("didn't score")) return '\u26A0\uFE0F' // ⚠️
       return '\u2705' // ✅ survived
     }
     case 'survivor_pick_reminder': return '\u23F0' // ⏰
