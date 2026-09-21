@@ -12,6 +12,9 @@ const sideStyles = {
   locked: 'bg-bg-primary border-border opacity-60 cursor-not-allowed',
   correct: 'bg-correct-muted border-correct',
   incorrect: 'bg-incorrect-muted border-incorrect',
+  // A push is neither. Yellow is already the app's "no result" colour —
+  // survivor uses it for survived-but-wrong and for a missed pick.
+  push: 'bg-yellow-500/10 border-yellow-500/60',
 }
 
 function getSideState(prop, pick, side) {
@@ -26,6 +29,9 @@ function getSideState(prop, pick, side) {
   }
   // This side is picked
   if (pick.status === 'settled') {
+    // is_correct is NULL on a push (the player didn't take the field), and
+    // null is falsy — so a returned stake was styled identically to a loss.
+    if (pick.is_correct == null) return 'push'
     return pick.is_correct ? 'correct' : 'incorrect'
   }
   if (pick.status === 'locked') return 'locked-selected'
@@ -181,10 +187,10 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
         <div className="flex gap-2 flex-1">
           <button
             onClick={() => handleClick('over')}
-            disabled={isLocked || isSubmitting || overState === 'locked' || overState === 'correct' || overState === 'incorrect'}
+            disabled={isLocked || isSubmitting || overState === 'locked' || overState === 'correct' || overState === 'incorrect' || overState === 'push'}
             className={`flex-1 p-2.5 rounded-xl border transition-all ${sideStyles[overState]} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <div className={`font-semibold text-xs mb-0.5 ${overState === 'correct' ? 'text-correct' : overState === 'incorrect' ? 'text-incorrect' : 'text-text-primary'}`}>
+            <div className={`font-semibold text-xs mb-0.5 ${overState === 'correct' ? 'text-correct' : overState === 'incorrect' ? 'text-incorrect' : overState === 'push' ? 'text-yellow-500' : 'text-text-primary'}`}>
               {isYesNo ? 'Yes' : 'Over'}
             </div>
             {prop.over_odds && (
@@ -204,10 +210,10 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
           {prop.under_odds && (
             <button
               onClick={() => handleClick('under')}
-              disabled={isLocked || isSubmitting || underState === 'locked' || underState === 'correct' || underState === 'incorrect'}
+              disabled={isLocked || isSubmitting || underState === 'locked' || underState === 'correct' || underState === 'incorrect' || underState === 'push'}
               className={`flex-1 p-2.5 rounded-xl border transition-all ${sideStyles[underState]} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <div className={`font-semibold text-xs mb-0.5 ${underState === 'correct' ? 'text-correct' : underState === 'incorrect' ? 'text-incorrect' : 'text-text-primary'}`}>
+              <div className={`font-semibold text-xs mb-0.5 ${underState === 'correct' ? 'text-correct' : underState === 'incorrect' ? 'text-incorrect' : underState === 'push' ? 'text-yellow-500' : 'text-text-primary'}`}>
                 {isYesNo ? 'No' : 'Under'}
               </div>
               <div className="text-center">
@@ -225,7 +231,13 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
         </div>
       </div>
 
-      {pick?.status === 'settled' && pick.points_earned !== null && (
+      {pick?.status === 'settled' && pick.is_correct == null ? (
+        // "0 pts" alone read as a loss. Name the outcome and the reason —
+        // the stake came back, nothing was lost.
+        <div className="mt-3 text-center text-sm font-semibold text-yellow-500">
+          Push — {prop.player_name} didn't play · stake returned
+        </div>
+      ) : pick?.status === 'settled' && pick.points_earned !== null && (
         <div className={`mt-3 text-center text-sm font-semibold ${pick.points_earned > 0 ? 'text-correct' : pick.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
           {pick.points_earned > 0 ? '+' : ''}{pick.points_earned} pts
         </div>
