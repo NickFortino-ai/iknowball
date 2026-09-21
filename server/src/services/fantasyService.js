@@ -5371,10 +5371,14 @@ export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId)
     // path that cost a manager his matchup: dropping a started player after
     // his game retroactively removes points the lineup had already scored.
     //
+    // And there is no way around it by benching him first — setFantasyLineup
+    // refuses a locked starter's move to the bench for the same reason, so
+    // the message must not suggest it.
+    //
     // Yahoo permits the bench case, and managers arrive expecting it.
     const lockedTeams = await getLockedTeamsForLeague(leagueId)
     if (lockedTeams.has(dropRow.nfl_players?.team) && isStarterSlot(dropRow.slot)) {
-      const err = new Error("Can't drop a starter whose game has already been played — bench him first, or wait for the week to finalize")
+      const err = new Error("Can't drop a starter whose game has already been played — his points are already in this week's score. You can drop him once the week finalizes.")
       err.status = 400
       throw err
     }
@@ -5563,10 +5567,14 @@ export async function dropRosterPlayer(leagueId, userId, playerId) {
   // path that cost a manager his matchup: dropping a started player after
   // his game retroactively removes points the lineup had already scored.
   //
+  // And there is no way around it by benching him first — setFantasyLineup
+  // refuses a locked starter's move to the bench for the same reason, so
+  // the message must not suggest it.
+  //
   // Yahoo permits the bench case, and managers arrive expecting it.
   const lockedTeams = await getLockedTeamsForLeague(leagueId)
   if (lockedTeams.has(row.nfl_players?.team) && isStarterSlot(row.slot)) {
-    const err = new Error("Can't drop a starter whose game has already been played — bench him first, or wait for the week to finalize")
+    const err = new Error("Can't drop a starter whose game has already been played — his points are already in this week's score. You can drop him once the week finalizes.")
     err.status = 400
     throw err
   }
