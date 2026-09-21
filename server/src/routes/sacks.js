@@ -115,6 +115,11 @@ router.get('/players', async (req, res) => {
         opponent: m?.opponent || null,
         home_away: m?.home_away || null,
         game_starts_at: m?.starts_at || null,
+        // Status + score so a finished game reads "Final 24-17" rather than
+        // a kickoff time that passed hours ago.
+        game_status: m?.game_status || null,
+        team_score: m?.team_score ?? null,
+        opp_score: m?.opp_score ?? null,
       }
     })
 
@@ -197,6 +202,9 @@ router.get('/picks', async (req, res) => {
     injury_status: injuryById[p.sleeper_player_id] ?? null,
     opponent: matchupByTeam[p.team]?.opponent || null,
     home_away: matchupByTeam[p.team]?.home_away || null,
+    game_status: matchupByTeam[p.team]?.game_status || null,
+    team_score: matchupByTeam[p.team]?.team_score ?? null,
+    opp_score: matchupByTeam[p.team]?.opp_score ?? null,
     game_starts_at: matchupByTeam[p.team]?.starts_at || null,
     is_locked: lockedTeams.has(p.team),
   })))

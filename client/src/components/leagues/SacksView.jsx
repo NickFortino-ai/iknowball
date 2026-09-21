@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import GameStatusBadge from './GameStatusBadge'
 import { useSacksPlayers, useSacksPicks, useSacksUsed, useSubmitSacksPicks, useSacksStandings } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
@@ -15,27 +16,6 @@ import PlayerHeadshot from '../ui/PlayerHeadshot'
 // Singular only when exactly 1 — "1 sack", but "0 sacks", "1.5 sacks", "2 sacks".
 function sackLabel(n) {
   return Number(n) === 1 ? 'sack' : 'sacks'
-}
-
-function GameStatusBadge({ gameStartsAt, locked }) {
-  if (locked) {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-text-primary/10 text-text-muted border border-text-primary/15 shrink-0">
-        Locked
-      </span>
-    )
-  }
-  if (gameStartsAt) {
-    const t = new Date(gameStartsAt)
-    const day = t.toLocaleDateString('en-US', { weekday: 'short' })
-    const time = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-    return (
-      <span className="text-[10px] font-bold uppercase tracking-wider text-accent shrink-0">
-        {day} {time}
-      </span>
-    )
-  }
-  return null
 }
 
 export default function SacksView({ league, tab = 'picks' }) {
@@ -302,7 +282,12 @@ export default function SacksView({ league, tab = 'picks' }) {
                         <span className="text-xs text-text-muted truncate">
                           {player.position} · <span className="text-white">{player.team}</span>{player.opponent ? ` ${player.home_away === 'home' ? 'vs' : '@'} ${player.opponent}` : ''}
                         </span>
-                        <GameStatusBadge gameStartsAt={player.game_starts_at} />
+                        <GameStatusBadge
+                          gameStartsAt={player.game_starts_at}
+                          gameStatus={player.game_status}
+                          teamScore={player.team_score}
+                          oppScore={player.opp_score}
+                        />
                       </div>
                     </div>
                     {hasSavedPicks && !editing && (

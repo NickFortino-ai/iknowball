@@ -391,11 +391,69 @@ export async function getCurrentWeekMatchups() {
     .select('home_team, away_team, game_date')
     .eq('season', season)
     .eq('week', week)
+
+  // Enrich with the games table where a row exists: real kickoff, live
+  // status and score. nfl_schedule stays the BASE (that's the preseason fix
+  // above — it must keep working when games has nothing), so a missing game
+  // row costs the status and the score, never the opponent.
+  //
+  // The T17:00:00Z fallback is a placeholder 1pm ET, not a real kickoff, so
+  // the contests were showing "1:00 PM" for every Thursday and Sunday night
+  // game as well as never saying Final.
+  const gamesByPair = {}
+  try {
+    const dates = (rows || []).map((r) => r.game_date).filter(Boolean).sort()
+    if (dates.length) {
+      const shift = (d, n) => {
+        const t = new Date(`${d}T00:00:00Z`)
+        t.setUTCDate(t.getUTCDate() + n)
+        return t.toISOString().slice(0, 10)
+      }
+      const { NFL_FULL_TO_ABBR } = await import('./fantasyService.js')
+      const { data: nflSport } = await supabase
+        .from('sports').select('id').eq('key', 'americanfootball_nfl').single()
+      if (nflSport?.id) {
+        // Window widened a day each side: game_date is an ET calendar date
+        // while starts_at is UTC, so a night game lands on the next UTC day.
+        const { data: games } = await supabase
+          .from('games')
+          .select('home_team, away_team, starts_at, status, home_score, away_score, live_home_score, live_away_score')
+          .eq('sport_id', nflSport.id)
+          .gte('starts_at', `${shift(dates[0], -1)}T00:00:00Z`)
+          .lte('starts_at', `${shift(dates[dates.length - 1], 1)}T23:59:59Z`)
+        for (const g of games || []) {
+          const home = NFL_FULL_TO_ABBR[g.home_team]
+          const away = NFL_FULL_TO_ABBR[g.away_team]
+          if (home && away) gamesByPair[`${away}|${home}`] = g
+        }
+      }
+    }
+  } catch {
+    // Enrichment only. The opponent map below still works without it.
+  }
+
   const byTeam = {}
   for (const r of rows || []) {
-    const starts_at = r.game_date ? `${r.game_date}T17:00:00Z` : null
-    if (r.home_team) byTeam[r.home_team] = { opponent: r.away_team, home_away: 'home', starts_at }
-    if (r.away_team) byTeam[r.away_team] = { opponent: r.home_team, home_away: 'away', starts_at }
+    const g = gamesByPair[`${r.away_team}|${r.home_team}`]
+    const isLive = g?.status === 'live'
+    // Live scores live in a shadow column until the game finalizes.
+    const homeScore = isLive ? (g.live_home_score ?? g.home_score) : (g?.home_score ?? g?.live_home_score)
+    const awayScore = isLive ? (g.live_away_score ?? g.away_score) : (g?.away_score ?? g?.live_away_score)
+    const starts_at = g?.starts_at || (r.game_date ? `${r.game_date}T17:00:00Z` : null)
+    const status = g?.status || null
+
+    if (r.home_team) {
+      byTeam[r.home_team] = {
+        opponent: r.away_team, home_away: 'home', starts_at, game_status: status,
+        team_score: homeScore ?? null, opp_score: awayScore ?? null,
+      }
+    }
+    if (r.away_team) {
+      byTeam[r.away_team] = {
+        opponent: r.home_team, home_away: 'away', starts_at, game_status: status,
+        team_score: awayScore ?? null, opp_score: homeScore ?? null,
+      }
+    }
   }
   return byTeam
 }
