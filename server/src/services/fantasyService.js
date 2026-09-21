@@ -6659,6 +6659,38 @@ export async function submitWaiverClaim(leagueId, userId, addPlayerId, dropPlaye
     throw err
   }
 
+  // A kickoff-locked player is on waivers but has NO pool row — the pool is
+  // written on a DROP, and nobody dropped him. The resolver reads "no pool
+  // row" as "already cleared", so a claim filed on Sunday night was awarded
+  // on the next 15-minute tick instead of holding until Wednesday 3 AM.
+  //
+  // That cost a manager his matchup: the conditional drop took a STARTER
+  // whose game had already been played, and those points left the lineup
+  // retroactively. The old reasoning — that an awarded player lands on the
+  // bench so the timing is harmless — only considered the ADD side.
+  //
+  // So give him a pool row on submission, clearing at the same Wednesday as
+  // every dropped player. The waiting period is then one mechanism rather
+  // than two, and the resolver needs no special case.
+  const { data: existingPool } = await supabase
+    .from('fantasy_waiver_pool')
+    .select('player_id')
+    .eq('league_id', leagueId)
+    .eq('player_id', addPlayerId)
+    .maybeSingle()
+
+  if (!existingPool) {
+    await supabase
+      .from('fantasy_waiver_pool')
+      .upsert({
+        league_id: leagueId,
+        player_id: addPlayerId,
+        on_waivers_since: new Date().toISOString(),
+        clears_at: nextWaiverClearTime().toISOString(),
+        reason: 'kickoff',
+      }, { onConflict: 'league_id,player_id' })
+  }
+
   // Check drop player belongs to the user (if specified)
   if (dropPlayerId) {
     const { data: dropRoster } = await supabase
