@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { NFL_FULL_TO_ABBR, computeIdpAwareProjection, SCORING_STAT_COLUMNS } from '../services/fantasyService.js'
 import { buildStarterSlots, SLOT_LABELS } from '../utils/rosterSlots.js'
+import { isUnavailable } from '../utils/injuryStatus.js'
 import { supabase } from '../config/supabase.js'
 import { requireAuth } from '../middleware/auth.js'
 import {
@@ -557,7 +558,7 @@ router.get('/matchup-live', async (req, res) => {
 
   const { data: rosters } = await supabase
     .from('fantasy_rosters')
-    .select('user_id, player_id, slot, nfl_players(id, full_name, position, team, headshot_url, injury_status, bye_week)')
+    .select('user_id, player_id, slot, nfl_players(id, full_name, position, team, headshot_url, injury_status, bye_week, depth_chart_order)')
     .eq('league_id', league_id)
     .in('user_id', userIds)
 
@@ -703,8 +704,43 @@ router.get('/matchup-live', async (req, res) => {
     const pts = applyRulesH2H(stat, leagueRules)
     // Zero projection for bye-week players
     const onBye = player.bye_week === w
+
+    // ...and for anyone who isn't going to play. Sleeper writes projections
+    // before kickoff and never revises them when a player is ruled out, so a
+    // QB3 like Fernando Mendoza carried 13.3 PROJ beside his 0.0, and 21
+    // skill players with FINISHED games were still advertising 5+ projected
+    // points having never taken a snap.
+    //
+    // Two signals, both conclusive:
+    //   - the game is over and he has no stat line at all (didn't dress)
+    //   - he carries an unavailable designation (Out / IR / PUP / NA)
+    //
+    // This matters beyond the column: weeklyProj feeds the team projection
+    // and therefore the win-probability bar, so an inactive starter was
+    // inflating his side's expected total.
+    const hasStatLine = !!stat
+    const didNotPlay = status === 'final' && !hasStatLine
+    const ruledOut = isUnavailable(player.injury_status)
+
+    // Sleeper writes a zero-filled stat row for a rostered player who never
+    // dressed, so "no stat row" misses them. For a QB the ambiguity is
+    // resolvable: a backup with ZERO pass attempts in a finished game did not
+    // take a meaningful snap, whichever way it happened.
+    //
+    // Kept to backup QBs deliberately. A WR with no targets genuinely played
+    // and busted — that IS what the PROJ column is for — so the same rule
+    // must not be generalised to skill positions.
+    const benchedQb = status === 'final'
+      && player.position === 'QB'
+      && (player.depth_chart_order ?? 1) > 1
+      && hasStatLine
+      && !(stat.pass_att > 0)
+      && !(stat.rush_att > 0)
+
+    const wontPlay = onBye || didNotPlay || ruledOut || benchedQb
+
     const projected_ = computeIdpAwareProjection(weeklyProjRowMap[r.player_id], player.position, projColH2H, leagueRules)
-    const weeklyProj = onBye ? 0 : (projected_ != null ? Number(projected_) : (seasonAvgMap[r.player_id] || 0))
+    const weeklyProj = wontPlay ? 0 : (projected_ != null ? Number(projected_) : (seasonAvgMap[r.player_id] || 0))
 
     // TWO different numbers, deliberately:
     //
@@ -719,8 +755,8 @@ router.get('/matchup-live', async (req, res) => {
     // that column is what was EXPECTED of him, so you can see who beat or
     // missed it.
     const progress = gameProgressFraction(teamState, gameScores[team]?.period)
-    const projected = onBye ? 0 : (status === 'final' ? pts : pts + weeklyProj * (1 - progress))
-    const projectedPregame = onBye ? 0 : weeklyProj
+    const projected = wontPlay ? pts : (status === 'final' ? pts : pts + weeklyProj * (1 - progress))
+    const projectedPregame = wontPlay ? 0 : weeklyProj
 
     const gs = gameScores[team] || {}
     userRosters[r.user_id].push({
