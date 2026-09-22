@@ -28,6 +28,40 @@ async function fetchDepthChart(sportPath, espnTeamId) {
 // populates athlete.injuries[]. The only working path is the league-wide
 // /injuries endpoint (identical shape to the WNBA one). Pull once per
 // sync, return a Map<teamId, injuries[]>.
+// ESPN carries the body part and the prose in DIFFERENT fields, and squashing
+// them into one `detail` was the root of two visible bugs:
+//
+//   - `body_part` and `detail` were both assigned that one value, and the
+//     player modal joins them with " — " when no blurb exists. Identical
+//     inputs rendered the same sentence twice ("Washington caught one of his
+//     two targets... — Washington caught one of his two targets...").
+//   - writeEspnBlurb was handed the same value, so a player WITH a body part
+//     would have had a one-word "blurb" of "Hamstring" published under his
+//     name. 174 of 800 current entries have one.
+//
+// details.type is the body part ("Groin"). shortComment / longComment are the
+// written note. They are now kept apart: `bodyPart` for the designation,
+// `detail` for prose only. Prefer longComment — it is the fuller write-up, and
+// shortComment is frequently just the status word repeated.
+function espnInjuryText(i) {
+  const bodyPart = i.details?.type || ''
+  const prose = i.longComment || i.shortComment || ''
+  // ESPN sometimes sets the comment to the bare status ("questionable"),
+  // which is not a note and reads as noise wherever it surfaces.
+  const isStatusEcho = prose && prose.trim().toLowerCase() === String(i.status || '').trim().toLowerCase()
+  return { bodyPart, detail: isStatusEcho ? '' : prose }
+}
+
+// Reading an intel row back out. Rows stored BEFORE the bodyPart/detail split
+// carry only `detail`, holding the conflated value — which for the entries
+// that had one WAS the body part. Key presence, not truthiness, distinguishes
+// them: a fresh row legitimately has bodyPart: '' when ESPN gives no
+// designation, and that must not be mistaken for an old row.
+function intelInjuryFields(inj) {
+  if (!('bodyPart' in inj)) return { body_part: inj.detail || null, detail: null }
+  return { body_part: inj.bodyPart || null, detail: inj.detail || null }
+}
+
 async function fetchNflInjuriesByTeamId() {
   const url = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/injuries'
   const res = await fetch(url)
@@ -42,7 +76,7 @@ async function fetchNflInjuriesByTeamId() {
         shortName: i.athlete.shortName,
         position: i.athlete.position?.abbreviation?.toUpperCase() || '',
         status: i.status || 'Unknown',
-        detail: i.details?.type || i.shortComment || i.longComment || '',
+        ...espnInjuryText(i),
       }))
     list.sort((a, b) => (SEVERITY_ORDER[a.status] ?? 99) - (SEVERITY_ORDER[b.status] ?? 99))
     // ESPN's league-wide NFL injuries payload carries the team id at the TOP
@@ -205,7 +239,7 @@ function extractNhlInjuries(data) {
       shortName: ath.shortName,
       position: posAbbr.toUpperCase(),
       status: inj.status || 'Unknown',
-      detail: inj.details?.type || inj.shortComment || inj.longComment || '',
+      ...espnInjuryText(inj),
     })
   }
   const injuries = [...injuredMap.values()].sort(
@@ -704,8 +738,7 @@ export async function syncInjuries() {
         const norm = normalizeName(inj.name)
         const entry = {
           status: normalizeStatus(inj.status),
-          body_part: inj.detail || null,
-          detail: inj.detail || null,
+          ...intelInjuryFields(inj),
         }
         nameCounts[norm] = (nameCounts[norm] || 0) + 1
         if (abbr) espnByNameTeam[`${norm}|${abbr}`] = entry
@@ -724,8 +757,7 @@ export async function syncInjuries() {
         if (nameCounts[norm] > 1) continue
         espnByName[norm] = espnByNameTeam[`${norm}|${abbr}`] || {
           status: normalizeStatus(inj.status),
-          body_part: inj.detail || null,
-          detail: inj.detail || null,
+          ...intelInjuryFields(inj),
         }
       }
     }
