@@ -503,6 +503,57 @@ router.get('/live', async (req, res) => {
 })
 
 // Live matchup view — traditional fantasy H2H with live stats
+// The per-player stat line the matchup views render.
+//
+// Defined once because it is needed in two places that used to disagree:
+// the LIVE matchup built this object, and the PAST-week matchup built none
+// at all -- so looking back at a finished week gave you a points column and
+// nothing explaining it. Any stat added to one view has to appear in the
+// other or the same gap reopens.
+function buildStatLine(stat) {
+  if (!stat) return null
+  return {
+pass_yds: Number(stat.pass_yd) || 0,
+pass_td: stat.pass_td || 0,
+int: stat.pass_int || 0,
+rush_yds: Number(stat.rush_yd) || 0,
+rush_td: stat.rush_td || 0,
+rec: stat.rec || 0,
+rec_yds: Number(stat.rec_yd) || 0,
+rec_td: stat.rec_td || 0,
+fum: stat.fum_lost || 0,
+fgm: stat.fgm || ((stat.fgm_0_39 || 0) + (stat.fgm_40_49 || 0) + (stat.fgm_50_plus || 0)),
+fgm_50_plus: stat.fgm_50_plus || 0,
+// Missed kicks. They cost points (-3 / -2 / -1 by range) and appeared
+// nowhere on the player card, so a kicker's total read lower than his
+// visible line explained.
+fgmiss: (stat.fgmiss_0_39 || 0) + (stat.fgmiss_40_49 || 0) + (stat.fgmiss_50_plus || 0),
+xpm: stat.xpm || 0,
+xpa: stat.xpa || 0,
+// Return yardage, now that it scores.
+ret_yds: (Number(stat.kr_yd) || 0) + (Number(stat.pr_yd) || 0),
+idp_int_ret_yd: Number(stat.idp_int_ret_yd) || 0,
+def_td: stat.def_td || 0,
+def_int: stat.def_int || 0,
+def_sack: Number(stat.def_sack) || 0,
+def_fum_rec: stat.def_fum_rec || 0,
+def_safety: stat.def_safety || 0,
+  def_pts_allowed: stat.def_pts_allowed,
+// IDP. These score in every preset, so a defender who had points and
+// no stat line looked like the points came from nowhere — the client
+// had no defensive numbers to render.
+idp_tkl_solo: stat.idp_tkl_solo || 0,
+idp_tkl_ast: stat.idp_tkl_ast || 0,
+idp_tkl_loss: stat.idp_tkl_loss || 0,
+idp_sack: Number(stat.idp_sack) || 0,
+idp_int: stat.idp_int || 0,
+idp_pass_def: stat.idp_pass_def || 0,
+idp_qb_hit: stat.idp_qb_hit || 0,
+idp_ff: stat.idp_ff || 0,
+idp_fum_rec: stat.idp_fum_rec || 0,
+  }
+}
+
 router.get('/matchup-live', async (req, res) => {
   const { league_id, week, season } = req.query
   if (!league_id || !week) return res.status(400).json({ error: 'league_id and week required' })
@@ -779,46 +830,7 @@ router.get('/matchup-live', async (req, res) => {
       points: pts,
       projected: Math.round(projected * 100) / 100,
       pregame_projection: Math.round((onBye ? 0 : weeklyProj) * 100) / 100,
-      stats: stat ? {
-        pass_yds: Number(stat.pass_yd) || 0,
-        pass_td: stat.pass_td || 0,
-        int: stat.pass_int || 0,
-        rush_yds: Number(stat.rush_yd) || 0,
-        rush_td: stat.rush_td || 0,
-        rec: stat.rec || 0,
-        rec_yds: Number(stat.rec_yd) || 0,
-        rec_td: stat.rec_td || 0,
-        fum: stat.fum_lost || 0,
-        fgm: stat.fgm || ((stat.fgm_0_39 || 0) + (stat.fgm_40_49 || 0) + (stat.fgm_50_plus || 0)),
-        fgm_50_plus: stat.fgm_50_plus || 0,
-        // Missed kicks. They cost points (-3 / -2 / -1 by range) and appeared
-        // nowhere on the player card, so a kicker's total read lower than his
-        // visible line explained.
-        fgmiss: (stat.fgmiss_0_39 || 0) + (stat.fgmiss_40_49 || 0) + (stat.fgmiss_50_plus || 0),
-        xpm: stat.xpm || 0,
-        xpa: stat.xpa || 0,
-        // Return yardage, now that it scores.
-        ret_yds: (Number(stat.kr_yd) || 0) + (Number(stat.pr_yd) || 0),
-        idp_int_ret_yd: Number(stat.idp_int_ret_yd) || 0,
-        def_td: stat.def_td || 0,
-        def_int: stat.def_int || 0,
-        def_sack: Number(stat.def_sack) || 0,
-        def_fum_rec: stat.def_fum_rec || 0,
-        def_safety: stat.def_safety || 0,
-          def_pts_allowed: stat.def_pts_allowed,
-        // IDP. These score in every preset, so a defender who had points and
-        // no stat line looked like the points came from nowhere — the client
-        // had no defensive numbers to render.
-        idp_tkl_solo: stat.idp_tkl_solo || 0,
-        idp_tkl_ast: stat.idp_tkl_ast || 0,
-        idp_tkl_loss: stat.idp_tkl_loss || 0,
-        idp_sack: Number(stat.idp_sack) || 0,
-        idp_int: stat.idp_int || 0,
-        idp_pass_def: stat.idp_pass_def || 0,
-        idp_qb_hit: stat.idp_qb_hit || 0,
-        idp_ff: stat.idp_ff || 0,
-        idp_fum_rec: stat.idp_fum_rec || 0,
-      } : null,
+      stats: buildStatLine(stat),
     })
   }
 
@@ -1086,11 +1098,17 @@ router.get('/matchup-week', async (req, res) => {
               team: p.team || '', headshot_url: p.headshot_url || null,
               points: Math.round(pts * 100) / 100, projected: Math.round(pts * 100) / 100,
               game_status: 'final',
+              // Same stat line the live matchup renders. statsMap was already
+              // being fetched with the full SCORING_STAT_COLUMNS set purely to
+              // compute `points`, then thrown away — so a finished week showed
+              // a points column with nothing behind it, while the current week
+              // showed the full line.
+              stats: buildStatLine(stat),
             }
           })
         const bySlot = {}
         for (const r of filled) bySlot[r.slot] = r
-        const starters = SLOT_ORDER.map((slot) => bySlot[slot] || { slot, player_id: null, player_name: null, position: SLOT_LABELS_P[slot], points: 0, projected: 0, game_status: 'final', empty: true })
+        const starters = SLOT_ORDER.map((slot) => bySlot[slot] || { slot, player_id: null, player_name: null, position: SLOT_LABELS_P[slot], points: 0, projected: 0, game_status: 'final', stats: null, empty: true })
         const bench = filled.filter((r) => !SLOT_ORDER.includes(r.slot))
         return [...starters, ...bench]
       }
