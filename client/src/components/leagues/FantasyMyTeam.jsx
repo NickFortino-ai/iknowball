@@ -593,10 +593,26 @@ export default function FantasyMyTeam({ league }) {
     }
   }
 
+  // A past week renders from its lineup SNAPSHOT, not from today's roster.
+  //
+  // historyData was already being fetched for past weeks but only fed the
+  // win/loss banner — the player rows always came off the live roster. That
+  // roster carries `season_stats`, a full-season aggregate, so every past
+  // week showed the identical stat line. It also carries TODAY's slots, so a
+  // player benched since would appear benched in a week he started.
+  //
+  // The history rows are already shaped for PlayerRow (see the comment on
+  // /dfs/lineup-history) and their `season_stats` is that week's line.
+  const usingHistory = isPastWeek && historyData?.roster?.length > 0
+  const displayRoster = usingHistory ? applyWeekOverlay(historyData.roster) : roster
+
   // Group roster by current (working) slot
   const playersBySlot = {}
-  for (const r of roster) {
-    const slot = slotByPlayer[r.player_id]
+  for (const r of displayRoster) {
+    // Snapshot rows carry the slot the player actually held that week.
+    // slotByPlayer is built from the live roster and wouldn't know about a
+    // player who has since been dropped.
+    const slot = usingHistory ? r.slot : slotByPlayer[r.player_id]
     if (!playersBySlot[slot]) playersBySlot[slot] = []
     playersBySlot[slot].push(r)
   }

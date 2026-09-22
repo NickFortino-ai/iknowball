@@ -1211,7 +1211,18 @@ router.get('/lineup-history', async (req, res) => {
       // — we reuse the field for the formatter; the label ("pts" vs "season")
       // is set client-side based on whether the user is viewing the live week.
       live_points: pts,
-      season_stats: stat || null,
+      // Derived columns the stat formatter reads but the table doesn't
+      // store: fgm and fgmiss are kept split by range because they SCORE
+      // differently, and return yards live in two columns. getRoster's
+      // live-week path already computes these; without them here a kicker's
+      // past week renders blank FGM/MISS and a returner loses his yardage,
+      // while the points already reflect both.
+      season_stats: stat ? {
+        ...stat,
+        fgm: (stat.fgm_0_39 || 0) + (stat.fgm_40_49 || 0) + (stat.fgm_50_plus || 0),
+        fgmiss: (stat.fgmiss_0_39 || 0) + (stat.fgmiss_40_49 || 0) + (stat.fgmiss_50_plus || 0),
+        ret_yds: (Number(stat.kr_yd) || 0) + (Number(stat.pr_yd) || 0),
+      } : null,
     }
   })
 
