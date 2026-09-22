@@ -9373,8 +9373,41 @@ export async function scoreFantasyMatchupsWeek(week, season) {
     logger.info({ week, season, weeklyUsers: usersWithWeekly.size }, 'Applied weekly lineup overrides for scoring')
   }
 
-  // 3b. Snapshot rosters to lineup history (idempotent — ON CONFLICT DO NOTHING)
+  // 3b. Snapshot rosters to lineup history.
+  //
+  // This used to pass ignoreDuplicates: true unconditionally, so the FIRST
+  // snapshot of a (league, user, week, player) won forever. The first one
+  // happens on the first scoring run after the week rolls over — around
+  // midnight ET Tuesday, days before anyone sets that week's lineup. Every
+  // lineup change a manager then made was dropped on the floor.
+  //
+  // Scores were never affected: section 4 below reads rosterRows, the live
+  // lineup. Only the recorded history was wrong, which is what the past-week
+  // matchup view renders — so the matchup screen showed players who were
+  // never started, next to a team total computed from the ones who were. In
+  // week 2 that was 11 of 14 managers in the John Madden Invitational, one of
+  // them off by 48 points.
+  //
+  // Correct behaviour is to TRACK the lineup while the week is live and
+  // FREEZE it once the games are over. A player whose game has kicked off
+  // can't be moved anyway (getLockedTeamsForLeague), so tracking during the
+  // week can never rewrite a slot that already counted.
   if (rosterRows?.length) {
+    // Once the week's games are done, nothing about that lineup can legally
+    // change again — and a manual re-score months later must not overwrite
+    // history with today's roster.
+    //
+    // Cached for two minutes: this function is called from the NFL stats tick
+    // loop, which runs every 15 seconds during live games, and the check is
+    // three queries. A week that just finished is treated as live for at most
+    // one more cycle, which is harmless — every team is already kickoff-locked
+    // by then, so there is nothing left to record differently.
+    const weekIsDone = await cached(
+      `nflWeekComplete:${season}:${week}`,
+      2 * 60 * 1000,
+      () => isNflWeekComplete(season, week),
+    )
+
     const historyRows = rosterRows.map((r) => ({
       league_id: r.league_id,
       user_id: r.user_id,
@@ -9388,7 +9421,13 @@ export async function scoreFantasyMatchupsWeek(week, season) {
     for (let i = 0; i < historyRows.length; i += CHUNK) {
       await supabase
         .from('fantasy_lineup_history')
-        .upsert(historyRows.slice(i, i + CHUNK), { onConflict: 'league_id,user_id,week,player_id', ignoreDuplicates: true })
+        // While the week is live the slot is refreshed on every scoring run;
+        // afterwards only genuinely missing rows are added, so a week that
+        // was never snapshotted still gets one.
+        .upsert(historyRows.slice(i, i + CHUNK), {
+          onConflict: 'league_id,user_id,week,player_id',
+          ignoreDuplicates: weekIsDone,
+        })
     }
   }
 
