@@ -469,13 +469,20 @@ function SalaryRow({ row, draft: draftProp, onDraftChange, onSave, onReset, onTo
         )}
       </td>
       <td className="px-3 py-2 text-center">
-        {/* Only render the toggle for the players who actually need it:
-            low-salary QBs (deep-bench / practice-squad types users
-            shouldn't be tempted to draft) OR any row already hidden
-            (bye-week auto-hides, etc.) so admin can un-hide edge cases.
-            Everyone else (starting QBs, all skill/DEF rows) shows
-            nothing — no visual noise on players who'll never be hidden. */}
-        {(row.hidden || (row.position === 'QB' && row.salary <= 5500)) ? (
+        {/* Only render the toggle for the rows that actually need it: BACKUP
+            quarterbacks (users shouldn't be tempted to draft them) OR any row
+            already hidden (bye-week auto-hides, etc.) so edge cases can be
+            un-hidden. Starters and all skill/DEF rows show nothing — no
+            visual noise on players who'll never be hidden.
+
+            `is_backup_qb` comes from the server, which compares each QB
+            against his own team's top-priced QB. The old test was
+            `salary <= 5500`, the same threshold that auto-hides deep-bench
+            QBs at generation. Backups stopped pricing that low: week 3 had
+            eight teams carrying two visible QBs with no way to hide either
+            of the backups. A price threshold drifts; "isn't the starter"
+            doesn't. */}
+        {(row.hidden || row.is_backup_qb) ? (
           <button
             onClick={onToggleHidden}
             className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${

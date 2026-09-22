@@ -1690,23 +1690,65 @@ router.get('/dfs/salaries', async (req, res) => {
     if (!page || page.length < PAGE) break
   }
 
+  // Top QB salary per team, so the editor can offer a hide toggle on BACKUP
+  // quarterbacks.
+  //
+  // The panel used to decide that with `position === 'QB' && salary <= 5500`,
+  // the same threshold generateNflDfsSalaries uses to auto-hide deep-bench
+  // QBs. Backups no longer price that low: in week 3 EIGHT teams carried two
+  // visible QBs and not one of the backups was hideable — Joe Milton and Nick
+  // Mullens missed the cut by $100, and Fernando Mendoza sat at $7,100 behind
+  // a starting Kirk Cousins with no way to take him out of the pool.
+  //
+  // Computed in its own query rather than from `rows`, deliberately: `rows` is
+  // already narrowed by the position and search filters, so a search for one
+  // backup would make him his own team's top QB and the toggle would disappear
+  // exactly when the admin went looking for it.
+  const topQbSalaryByTeam = new Map()
+  {
+    const { data: qbRows, error: qbErr } = await supabase
+      .from('dfs_weekly_salaries')
+      .select('salary, nfl_players!inner(team, position)')
+      .eq('nfl_week', week)
+      .eq('season', season)
+      .eq('nfl_players.position', 'QB')
+    // Non-fatal: without this map every QB simply falls back to "not a
+    // backup", which is the old behaviour minus the salary rule. The salary
+    // list itself is far more important than the toggle.
+    if (qbErr) logger.error({ qbErr, week, season }, 'Failed to fetch QB salaries for backup detection')
+    for (const q of qbRows || []) {
+      const team = q.nfl_players?.team
+      if (!team || q.salary == null) continue
+      const best = topQbSalaryByTeam.get(team)
+      if (best == null || q.salary > best) topQbSalaryByTeam.set(team, q.salary)
+    }
+  }
+
   // Flatten the player join for easier client consumption
-  const rows = (data || []).map((r) => ({
-    id: r.id,
-    player_id: r.player_id,
-    salary: r.salary,
-    algorithm_salary: r.algorithm_salary,
-    manually_set: r.manually_set,
-    hidden: r.hidden,
-    published: r.published,
-    updated_at: r.updated_at,
-    full_name: r.nfl_players?.full_name,
-    position: r.nfl_players?.position,
-    team: r.nfl_players?.team,
-    headshot_url: r.nfl_players?.headshot_url,
-    injury_status: r.nfl_players?.injury_status,
-    bye_week: r.nfl_players?.bye_week,
-  }))
+  const rows = (data || []).map((r) => {
+    const team = r.nfl_players?.team
+    const isQb = r.nfl_players?.position === 'QB'
+    const topQb = team ? topQbSalaryByTeam.get(team) : null
+    return {
+      id: r.id,
+      player_id: r.player_id,
+      salary: r.salary,
+      algorithm_salary: r.algorithm_salary,
+      manually_set: r.manually_set,
+      hidden: r.hidden,
+      published: r.published,
+      updated_at: r.updated_at,
+      full_name: r.nfl_players?.full_name,
+      position: r.nfl_players?.position,
+      team: r.nfl_players?.team,
+      headshot_url: r.nfl_players?.headshot_url,
+      injury_status: r.nfl_players?.injury_status,
+      bye_week: r.nfl_players?.bye_week,
+      // Strictly below his team's best-paid QB. Ties leave BOTH unflagged,
+      // which errs toward not offering to hide a starter.
+      is_backup_qb: !!(isQb && topQb != null && r.salary != null && r.salary < topQb),
+    }
+  })
   res.json({ rows, count: rows.length })
 })
 
