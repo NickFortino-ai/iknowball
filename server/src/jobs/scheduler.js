@@ -314,20 +314,31 @@ export function startScheduler() {
           }
         }
       } catch (err) { logger.error({ err }, 'NFL DFS salary scheduler failed') }
-      // Auto-rollover current_week for all active fantasy leagues
+    }, { timezone: 'America/New_York' })
+
+    // Fantasy week rollover — HOURLY, not once at 3 AM.
+    //
+    // The rollover also recomputes waiver priority from standings, and that
+    // has to be settled well before the Wednesday 3:00 AM waiver batch. On a
+    // nightly-only schedule the ordering was a race it would usually lose:
+    // the waiver cron is */15 so it fires exactly at 3:00, while the rollover
+    // sat at the END of the 3 AM block behind syncPlayers, syncProjections,
+    // syncByeWeeks and the DFS salary pass. Wednesday's claims would then be
+    // awarded on LAST week's priority.
+    //
+    // Sleeper advances the week on Tuesday. Checking hourly catches it within
+    // the hour, a full day before claims resolve. Cheap: rolloverFantasyWeek
+    // only acts when a league's current_week is actually behind, so every
+    // other call is a no-op.
+    cron.schedule('5 * * * *', async () => {
       try {
-        // Was `state || await getNFLState()`, and `state` was never declared
-        // in any enclosing scope — the nearby variable is state2, and that
-        // one lives inside a different try block. So this threw
-        // ReferenceError on every run, the catch below swallowed it as
-        // "Fantasy week rollover failed", and current_week never advanced
-        // for any league. There is no local state to reuse here; just fetch.
         const nflState = await getNFLState()
         if (nflState?.week && nflState?.season) {
           await rolloverFantasyWeek(nflState.week, nflState.season)
         }
       } catch (err) { logger.error({ err }, 'Fantasy week rollover failed') }
     }, { timezone: 'America/New_York' })
+    logger.info('Fantasy week rollover scheduled: hourly at :05')
     logger.info('NFL player + projection sync scheduled: nightly 3:00 AM ET')
 
     // Fantasy draft autopick — checks every 10s for expired pick clocks
