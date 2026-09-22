@@ -273,7 +273,28 @@ router.post('/picks', async (req, res) => {
     : reuseMode === 'season' ? 1 : (parseInt(reuseMode, 10) || 1)
   const lockedTeams = await getLockedTeamSet()
 
+  const { data: existingPicks } = await supabase
+    .from('tackles_picks')
+    .select('id, sleeper_player_id, player_name, team')
+    .eq('league_id', league_id)
+    .eq('user_id', req.user.id)
+    .eq('season', season)
+    .eq('week', week)
+
+  // A locked player can't be ADDED. He CAN stay. These are different things,
+  // and conflating them froze the whole lineup: this loop ran over every
+  // submitted player, so a pick whose game had already kicked off rejected
+  // the submission even when he was unchanged and the user was editing
+  // someone else entirely.
+  //
+  // DiamondVision hit it in the receptions contest on 2026-09-20 — DJ Moore
+  // (BUF) had played Thursday night, so from then on he could not swap
+  // anyone, and Puka Nacua stayed in his lineup and went inactive.
+  //
+  // Removing a locked player is rejected separately, further down.
+  const alreadyPicked = new Set((existingPicks || []).map((p) => p.sleeper_player_id))
   for (const p of players) {
+    if (alreadyPicked.has(p.sleeper_player_id)) continue
     if (lockedTeams.has(p.team)) {
       return res.status(400).json({ error: `${p.player_name}'s game has already started` })
     }
@@ -305,13 +326,6 @@ router.post('/picks', async (req, res) => {
     }
   }
 
-  const { data: existingPicks } = await supabase
-    .from('tackles_picks')
-    .select('id, sleeper_player_id, player_name, team')
-    .eq('league_id', league_id)
-    .eq('user_id', req.user.id)
-    .eq('season', season)
-    .eq('week', week)
 
   const newIds = new Set(players.map((p) => p.sleeper_player_id))
   const existingIds = new Set((existingPicks || []).map((p) => p.sleeper_player_id))
