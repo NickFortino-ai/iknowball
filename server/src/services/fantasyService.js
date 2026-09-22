@@ -6434,6 +6434,87 @@ export async function getLockedTeamsForLeague(leagueId) {
 const WAIVER_LOCK_GRACE_MS = 6 * 60 * 60 * 1000
 
 
+/**
+ * Teams whose game in the week that JUST FINISHED has been played, while that
+ * week's players are still waiting on the waiver batch.
+ *
+ * Deliberately NOT folded into getLockedTeamsForLeague. That helper is the
+ * LINEUP lock and it is scoped to current_week for a good reason: on Tuesday a
+ * manager has to be able to set his week-3 lineup using players who played in
+ * week 2. Widening it would freeze every roster in the league for two days.
+ *
+ * The waiver lock has the opposite requirement. A player who has played is on
+ * waivers until the batch clears him — 3 AM ET Wednesday — which is a day and
+ * a half AFTER current_week advances. Scoping the waiver lock to current_week
+ * meant that the instant the rollover ran, every player from the completed
+ * week flipped to an instantly-addable free agent. Three adds in the John
+ * Madden Invitational went through that hole on the night of 2026-09-21
+ * before anyone noticed.
+ */
+async function getPostWeekWaiverTeams(leagueId) {
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('season, current_week')
+    .eq('league_id', leagueId)
+    .single()
+  const season = settings?.season || new Date().getUTCFullYear()
+  const prevWeek = (settings?.current_week || 1) - 1
+  if (prevWeek < 1) return new Set()
+
+  const { data: weekRows } = await supabase
+    .from('nfl_schedule')
+    .select('home_team, away_team, game_date')
+    .eq('season', season)
+    .eq('week', prevWeek)
+  if (!weekRows?.length) return new Set()
+
+  const dates = [...new Set(weekRows.map((r) => r.game_date).filter(Boolean))].sort()
+  if (!dates.length) return new Set()
+  // +2 days on the upper bound: game_date is an ET calendar date but
+  // starts_at is a UTC instant, so a Monday 8:15 PM ET kickoff carries a
+  // TUESDAY timestamp. Same correction as getLockedTeamsForLeague.
+  const upper = new Date(`${dates[dates.length - 1]}T00:00:00Z`)
+  upper.setUTCDate(upper.getUTCDate() + 2)
+
+  const { data: nflSport } = await supabase
+    .from('sports')
+    .select('id')
+    .eq('key', 'americanfootball_nfl')
+    .single()
+  if (!nflSport?.id) return new Set()
+
+  const nowMs = Date.now()
+  const { data: games } = await supabase
+    .from('games')
+    .select('home_team, away_team, starts_at')
+    .eq('sport_id', nflSport.id)
+    .gte('starts_at', `${dates[0]}T00:00:00Z`)
+    .lt('starts_at', `${upper.toISOString().slice(0, 10)}T00:00:00Z`)
+    .lte('starts_at', new Date(nowMs).toISOString())
+
+  const weekPairs = new Set(weekRows.map((r) => `${r.away_team}|${r.home_team}`))
+  const teams = new Set()
+  let lastKickoff = 0
+  for (const g of games || []) {
+    const home = NFL_FULL_TO_ABBR[g.home_team]
+    const away = NFL_FULL_TO_ABBR[g.away_team]
+    // The widened date window can reach the NEXT week's Thursday game, so
+    // only count matchups that are actually on this week's schedule.
+    if (!home || !away || !weekPairs.has(`${away}|${home}`)) continue
+    teams.add(home)
+    teams.add(away)
+    lastKickoff = Math.max(lastKickoff, new Date(g.starts_at).getTime())
+  }
+  if (!teams.size) return new Set()
+
+  // The whole week clears together, at the first Wednesday 3 AM ET after its
+  // last kickoff. Once that has passed the batch has run and these players are
+  // ordinary free agents again.
+  if (nowMs >= nextWaiverClearTime(new Date(lastKickoff)).getTime()) return new Set()
+
+  return teams
+}
+
 export async function getWaiverLockedPlayerIds(leagueId) {
   const { data: pool } = await supabase
     .from('fantasy_waiver_pool')
@@ -6447,6 +6528,24 @@ export async function getWaiverLockedPlayerIds(leagueId) {
   )
 
   for (const pid of await getKickedOffPlayerIds(leagueId)) locked.add(pid)
+
+  // Players from the week that just ended stay on waivers until the Wednesday
+  // batch, which is well after current_week has already moved on.
+  const postWeekTeams = await getPostWeekWaiverTeams(leagueId)
+  if (postWeekTeams.size > 0) {
+    // fetchAll for the same reason getKickedOffPlayerIds needs it: a full
+    // slate is ~2,600 players, far past PostgREST's silent 1000-row cap, and
+    // truncating here would leave most of the league addable.
+    const teamPlayers = await fetchAll(
+      supabase
+        .from('nfl_players')
+        .select('id')
+        .in('team', Array.from(postWeekTeams))
+        .order('id', { ascending: true })
+    )
+    for (const p of teamPlayers || []) locked.add(p.id)
+  }
+
   return locked
 }
 
