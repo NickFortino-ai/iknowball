@@ -3679,48 +3679,13 @@ export async function getRoster(leagueId, userId) {
     logger.warn({ err, leagueId, userId }, 'Failed to enrich roster with live points')
   }
 
-  // Enrich with cumulative season stats + total season fantasy points
-  try {
-    const { data: settings } = await supabase
-      .from('fantasy_settings')
-      .select('scoring_format, scoring_rules, season')
-      .eq('league_id', leagueId)
-      .single()
-    const season = settings?.season || new Date().getFullYear()
-    const rules = settings?.scoring_rules || buildScoringRulesFromPreset(settings?.scoring_format)
-    const playerIds = rows.map((r) => r.player_id).filter(Boolean)
-    if (playerIds.length) {
-      const { data: allStats } = await supabase
-        .from('nfl_player_stats')
-        .select(`player_id, ${SCORING_STAT_COLUMNS}`)
-        .eq('season', season)
-        .in('player_id', playerIds)
-      const agg = {}
-      const seasonPts = {}
-      for (const st of allStats || []) {
-        if (!agg[st.player_id]) agg[st.player_id] = {}
-        const a = agg[st.player_id]
-        for (const key of Object.keys(st)) {
-          if (key === 'player_id') continue
-          a[key] = (a[key] || 0) + (Number(st[key]) || 0)
-        }
-        // Accumulate per-week fantasy points using league scoring rules
-        seasonPts[st.player_id] = (seasonPts[st.player_id] || 0) + applyScoringRules(st, rules)
-      }
-      // Compute fgm from component fields
-      for (const pid of Object.keys(agg)) {
-        agg[pid].fgm = (agg[pid].fgm_0_39 || 0) + (agg[pid].fgm_40_49 || 0) + (agg[pid].fgm_50_plus || 0)
-        agg[pid].fgmiss = (agg[pid].fgmiss_0_39 || 0) + (agg[pid].fgmiss_40_49 || 0) + (agg[pid].fgmiss_50_plus || 0)
-        agg[pid].ret_yds = (agg[pid].kr_yd || 0) + (agg[pid].pr_yd || 0)
-      }
-      for (const r of rows) {
-        r.season_stats = agg[r.player_id] || null
-        r.season_points = seasonPts[r.player_id] != null ? Math.round(seasonPts[r.player_id] * 100) / 100 : null
-      }
-    }
-  } catch (err) {
-    logger.warn({ err, leagueId, userId }, 'Failed to enrich roster with season stats')
-  }
+  // NOTE: the cumulative season-stats enrichment that used to sit here is
+  // gone. It fetched EVERY week of nfl_player_stats for every rostered
+  // player and aggregated it on each roster load, to populate season_stats
+  // and season_points -- and nothing read either one. My Team's stat column
+  // shows the week being viewed, not a season total, and the player detail
+  // modal sums its own totals across played weeks. Removing it drops a
+  // full-season query from every My Team load.
 
   // Current-week opponent for each player. Drives the "vs MIA" / "@ MIA"
   // marker on the My Team row so users can see who their starters face

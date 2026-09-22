@@ -1206,10 +1206,11 @@ router.get('/lineup-history', async (req, res) => {
       slot: r.slot,
       locked_at: r.locked_at,
       nfl_players: r.nfl_players,
-      // Field names matching the live-roster shape so PlayerRow can read
-      // both consistently. season_stats here is actually that-week's stats
-      // — we reuse the field for the formatter; the label ("pts" vs "season")
-      // is set client-side based on whether the user is viewing the live week.
+      // Field names match the live-roster shape so PlayerRow reads both
+      // without branching. This used to be sent as `season_stats`, which it
+      // never was — it is that week's line, and the misnomer is what let My
+      // Team fall back to a real season aggregate and show every past week
+      // identically.
       live_points: pts,
       // Derived columns the stat formatter reads but the table doesn't
       // store: fgm and fgmiss are kept split by range because they SCORE
@@ -1217,7 +1218,7 @@ router.get('/lineup-history', async (req, res) => {
       // live-week path already computes these; without them here a kicker's
       // past week renders blank FGM/MISS and a returner loses his yardage,
       // while the points already reflect both.
-      season_stats: stat ? {
+      week_stats: stat ? {
         ...stat,
         fgm: (stat.fgm_0_39 || 0) + (stat.fgm_40_49 || 0) + (stat.fgm_50_plus || 0),
         fgmiss: (stat.fgmiss_0_39 || 0) + (stat.fgmiss_40_49 || 0) + (stat.fgmiss_50_plus || 0),

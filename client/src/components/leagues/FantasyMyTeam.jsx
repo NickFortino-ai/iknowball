@@ -170,7 +170,7 @@ function kickoffLabel(row) {
   return `${day} ${time} `
 }
 
-function PlayerRow({ row, slotLabel, onMove, onViewDetail, blurbIds, showSeasonStats = true }) {
+function PlayerRow({ row, slotLabel, onMove, onViewDetail, blurbIds }) {
   // The badge carries the kickoff lock: once a player's game has started the
   // server refuses to move him, so his badge loses its ring and stops being a
   // button rather than staying tappable and failing on save.
@@ -223,10 +223,14 @@ function PlayerRow({ row, slotLabel, onMove, onViewDetail, blurbIds, showSeasonS
             ) : null}
           </div>
         </div>
-        {/* Stat line — desktop only. Always the week being viewed:
-            week_stats on the current/live week, season_stats on past
-            weeks (server overloads season_stats with that-week's stats
-            in the lineup-history path).
+        {/* Stat line — desktop only. Always the week being viewed.
+            Both sources now agree on the field name: the live roster sends
+            week_stats for the current week, and the lineup-history snapshot
+            sends week_stats for a past one. It used to call the past-week
+            version `season_stats`, and the live roster ALSO had a
+            season_stats holding a real full-season aggregate — so past weeks
+            silently read the aggregate and every one of them looked
+            identical.
 
             The header above used to read "Season Total", which this
             column has never shown — on the current week it renders
@@ -240,7 +244,7 @@ function PlayerRow({ row, slotLabel, onMove, onViewDetail, blurbIds, showSeasonS
             column on the right). Header above the table mirrors this
             with a "Season Total" label aligned to the same column. */}
         {row?.nfl_players?.position && (() => {
-          const source = showSeasonStats ? row.week_stats : row.season_stats
+          const source = row.week_stats
           if (!source) return null
           const statLine = formatSeasonStats(row.nfl_players.position, source)
           if (!statLine) return null
@@ -258,10 +262,8 @@ function PlayerRow({ row, slotLabel, onMove, onViewDetail, blurbIds, showSeasonS
           // score never reads as a Monday projection at a glance.
           // hasPlayed = the player has a stats row for this week, even
           // if their actual score is 0 (real DEF/K zeros stay distinct
-          // from "game hasn't kicked off yet"). For past-week views the
-          // server overloads season_stats with that-week's data, so we
-          // check both sources.
-          const hasPlayed = showSeasonStats ? row.week_stats != null : row.season_stats != null
+          // from "game hasn't kicked off yet").
+          const hasPlayed = row.week_stats != null
           const showProj = row.weekly_projection != null
           return (
             <div className="text-right shrink-0 mr-1 ml-auto">
@@ -597,12 +599,12 @@ export default function FantasyMyTeam({ league }) {
   //
   // historyData was already being fetched for past weeks but only fed the
   // win/loss banner — the player rows always came off the live roster. That
-  // roster carries `season_stats`, a full-season aggregate, so every past
+  // roster carried a full-season aggregate, so every past
   // week showed the identical stat line. It also carries TODAY's slots, so a
   // player benched since would appear benched in a week he started.
   //
   // The history rows are already shaped for PlayerRow (see the comment on
-  // /dfs/lineup-history) and their `season_stats` is that week's line.
+  // /dfs/lineup-history) and their `week_stats` is that week's line.
   const usingHistory = isPastWeek && historyData?.roster?.length > 0
   const displayRoster = usingHistory ? applyWeekOverlay(historyData.roster) : roster
 
@@ -969,7 +971,6 @@ export default function FantasyMyTeam({ league }) {
                     onMove={canEditLineup ? () => setMoveAnchor({ type: 'player', playerId: occupant.player_id }) : undefined}
                     onViewDetail={openPlayerDetail}
                     blurbIds={blurbIds}
-                    showSeasonStats={isCurrentWeek || isFutureWeek}
                   />
                 ) : (
                   <EmptySlot
@@ -999,7 +1000,6 @@ export default function FantasyMyTeam({ league }) {
               onMove={canEditLineup ? () => setMoveAnchor({ type: 'player', playerId: r.player_id }) : undefined}
               onViewDetail={openPlayerDetail}
               blurbIds={blurbIds}
-              showSeasonStats={isCurrentWeek || isFutureWeek}
             />
           ))}
           {Array.from({ length: emptyBenchCount }, (_, i) => (
@@ -1027,7 +1027,6 @@ export default function FantasyMyTeam({ league }) {
                 onMove={canEditLineup ? () => setMoveAnchor({ type: 'player', playerId: r.player_id }) : undefined}
                 onViewDetail={openPlayerDetail}
                 blurbIds={blurbIds}
-                showSeasonStats={isCurrentWeek || isFutureWeek}
               />
             ))}
             {Array.from({ length: emptyIrCount }, (_, i) => (
