@@ -35,7 +35,7 @@ import { sendScheduledEmails } from './sendScheduledEmails.js'
 import { syncNflStatsCurrentWeek, startNflStatsTickLoop } from './syncNflStats.js'
 import { syncPlayers, syncProjections, syncWeeklyProjections, syncByeWeeks, getNFLState, enrichEspnIds } from '../services/sleeperService.js'
 import { generateSalaries as generateNflDfsSalaries, publishSalaries as publishNflDfsSalaries } from '../services/dfsService.js'
-import { rolloverFantasyWeek } from '../services/fantasyService.js'
+import { rolloverFantasyWeek, refreshWaiverPriorityForCompletedWeek } from '../services/fantasyService.js'
 import { sendNflInjuryWarnings } from './nflInjuryWarnings.js'
 import { sendPickInjuryWarnings } from './pickInjuryWarnings.js'
 import { computeFantasyGlobalRankings } from './computeFantasyGlobalRankings.js'
@@ -334,6 +334,14 @@ export function startScheduler() {
       try {
         const nflState = await getNFLState()
         if (nflState?.week && nflState?.season) {
+          // Priority BEFORE rollover. Standings stop moving when the last
+          // game goes final — Monday around midnight — and that is when the
+          // number should catch up, not Tuesday whenever Sleeper flips. The
+          // rollover keeps its own recompute as a backstop and skips when
+          // this has already run for the same week.
+          try {
+            await refreshWaiverPriorityForCompletedWeek(nflState.week, nflState.season)
+          } catch (err) { logger.error({ err }, 'Waiver priority refresh failed') }
           await rolloverFantasyWeek(nflState.week, nflState.season)
         }
       } catch (err) { logger.error({ err }, 'Fantasy week rollover failed') }

@@ -6574,6 +6574,143 @@ export async function recomputeWaiverPriorityFromStandings(leagueId) {
   return { updated }
 }
 
+// How long after the week's LAST kickoff before we'll call the week done.
+// Not padding for its own sake: scoreFantasyMatchupsWeek writes the matchup
+// totals that getFantasyStandings reads, and it runs off the stats sync a few
+// minutes behind the final whistle. Recomputing priority in that gap would
+// order the league by a half-scored week.
+const WEEK_SETTLE_MS = 4 * 60 * 60 * 1000
+
+/**
+ * True once every game on the NFL week's schedule is final and the dust has
+ * settled. Monday ~midnight ET in a normal week.
+ *
+ * nfl_schedule.status is NOT usable for this — nothing ever updates it, so
+ * all 272 rows still read 'scheduled'. The live status lives on `games`,
+ * which has no week column for the NFL, so the two are matched on the team
+ * pair instead.
+ */
+export async function isNflWeekComplete(season, week) {
+  const { data: weekRows } = await supabase
+    .from('nfl_schedule')
+    .select('home_team, away_team, game_date')
+    .eq('season', season)
+    .eq('week', week)
+  if (!weekRows?.length) return false
+
+  const dates = [...new Set(weekRows.map((r) => r.game_date).filter(Boolean))].sort()
+  if (!dates.length) return false
+
+  // game_date is an ET calendar date, starts_at a UTC instant: a Monday
+  // 8:15 PM ET kickoff carries Monday's game_date but a TUESDAY timestamp.
+  // Bounding on the raw max date drops the Monday night game and the week
+  // would never read complete. Widening by two days can reach into the next
+  // week's Thursday, but the team-pair match below ignores anything not on
+  // this week's schedule.
+  const upper = new Date(`${dates[dates.length - 1]}T00:00:00Z`)
+  upper.setUTCDate(upper.getUTCDate() + 2)
+
+  const { data: nflSport } = await supabase
+    .from('sports')
+    .select('id')
+    .eq('key', 'americanfootball_nfl')
+    .single()
+  if (!nflSport?.id) return false
+
+  const { data: games } = await supabase
+    .from('games')
+    .select('home_team, away_team, starts_at, status')
+    .eq('sport_id', nflSport.id)
+    .gte('starts_at', `${dates[0]}T00:00:00Z`)
+    .lt('starts_at', `${upper.toISOString().slice(0, 10)}T00:00:00Z`)
+
+  const byPair = new Map()
+  for (const g of games || []) {
+    const home = NFL_FULL_TO_ABBR[g.home_team]
+    const away = NFL_FULL_TO_ABBR[g.away_team]
+    if (home && away) byPair.set(`${away}@${home}`, g)
+  }
+
+  let lastKickoff = 0
+  for (const r of weekRows) {
+    const g = byPair.get(`${r.away_team}@${r.home_team}`)
+    // A schedule row with no games row is a sync gap, and it reads as
+    // incomplete on purpose — the cost is falling back to the Tuesday
+    // rollover, versus resetting the whole league off a week we can't see.
+    // Week 3 currently has two such rows (LAR@DEN, TEN@NYG), so this is not
+    // a hypothetical branch.
+    if (!g || g.status !== 'final') return false
+    lastKickoff = Math.max(lastKickoff, new Date(g.starts_at).getTime())
+  }
+
+  return Date.now() - lastKickoff >= WEEK_SETTLE_MS
+}
+
+/**
+ * Reset waiver priority the moment the week's scoring is done, rather than
+ * waiting for Sleeper to advance the week on Tuesday.
+ *
+ * Standings here are a live reflection of record and points-for, so they move
+ * all weekend while the priority column sat frozen on the previous week's
+ * order. A manager sitting 4th on Monday night was still being shown the
+ * priority his week-1 record earned him.
+ *
+ * fantasy_settings.waiver_priority_week makes this fire once. It has to:
+ * the caller is hourly, and Wednesday's waiver batch drops each winner to the
+ * back of the order — a second recompute would quietly undo that.
+ *
+ * Running before the batch rather than after is also the correct order.
+ * The old Tuesday-morning rollover could land AFTER a Tuesday claim had
+ * already rolled its winner back, and wipe it.
+ */
+export async function refreshWaiverPriorityForCompletedWeek(sleeperWeek, sleeperSeason) {
+  // Sleeper doesn't advance until Tuesday, so on Monday night the week that
+  // just finished is still the current one. Check it first, then the previous
+  // — which covers the window after the flip if the finalize check was missed
+  // (server down over the weekend, games rows late).
+  let target = null
+  for (const w of [sleeperWeek, sleeperWeek - 1]) {
+    if (w >= 1 && (await isNflWeekComplete(sleeperSeason, w))) { target = w; break }
+  }
+  if (!target) return { updated: 0 }
+
+  const leagues = await fetchAll(
+    supabase
+      .from('fantasy_settings')
+      .select('league_id, waiver_priority_week')
+      .eq('season', sleeperSeason)
+      .or('draft_status.eq.completed,format.eq.salary_cap')
+      .order('league_id')
+  )
+
+  let updated = 0
+  for (const league of leagues) {
+    // Filtered here rather than in the query: two .or() calls on one
+    // PostgREST request are not reliably ANDed, and a league list this small
+    // isn't worth the risk of a filter that silently matches everything.
+    if ((league.waiver_priority_week ?? 0) >= target) continue
+    try {
+      await recomputeWaiverPriorityFromStandings(league.league_id)
+    } catch (err) {
+      logger.error({ err, leagueId: league.league_id }, 'Waiver priority recompute failed')
+      // Deliberately NOT marked — an unmarked league retries next hour.
+      continue
+    }
+    // Stamped even for FAAB and salary-cap leagues, where the recompute is a
+    // no-op, so they stop being re-examined every hour for the rest of the week.
+    await supabase
+      .from('fantasy_settings')
+      .update({ waiver_priority_week: target })
+      .eq('league_id', league.league_id)
+    updated++
+  }
+
+  if (updated > 0) {
+    logger.info({ season: sleeperSeason, week: target, updated }, 'Waiver priority refreshed for completed week')
+  }
+  return { updated, week: target }
+}
+
 export async function initializeWaiverState(leagueId) {
   const settings = await getFantasySettings(leagueId)
   if (!settings) return
@@ -7284,7 +7421,7 @@ export async function rolloverFantasyWeek(sleeperWeek, sleeperSeason) {
   const leagues = await fetchAll(
     supabase
       .from('fantasy_settings')
-      .select('league_id, current_week, season, format, draft_status')
+      .select('league_id, current_week, season, format, draft_status, waiver_priority_week')
       .eq('season', sleeperSeason)
       .or('draft_status.eq.completed,format.eq.salary_cap')
       .order('league_id')
@@ -7300,13 +7437,26 @@ export async function rolloverFantasyWeek(sleeperWeek, sleeperSeason) {
         .update({ current_week: sleeperWeek })
         .eq('league_id', league.league_id)
       updated++
-      // Reverse-standings waiver order, recomputed for the new week. Only
-      // fires on an actual week change, so re-running the rollover is a
-      // no-op rather than repeatedly clobbering priority mid-week.
-      try {
-        await recomputeWaiverPriorityFromStandings(league.league_id)
-      } catch (err) {
-        logger.error({ err, leagueId: league.league_id }, 'Waiver priority recompute failed')
+      // Reverse-standings waiver order for the new week. This is now the
+      // BACKSTOP, not the primary path: refreshWaiverPriorityForCompletedWeek
+      // normally does it hours earlier, when the last game goes final.
+      //
+      // Rolling to week N means standings through N-1, which is exactly the
+      // number the finalize path stamps — so if it already ran, this skips
+      // rather than recomputing on top of it. That matters because a claim
+      // awarded Tuesday morning has already rolled its winner to the back,
+      // and recomputing here would wipe that roll.
+      const priorityWeek = sleeperWeek - 1
+      if ((league.waiver_priority_week ?? 0) < priorityWeek) {
+        try {
+          await recomputeWaiverPriorityFromStandings(league.league_id)
+          await supabase
+            .from('fantasy_settings')
+            .update({ waiver_priority_week: priorityWeek })
+            .eq('league_id', league.league_id)
+        } catch (err) {
+          logger.error({ err, leagueId: league.league_id }, 'Waiver priority recompute failed')
+        }
       }
     }
   }
