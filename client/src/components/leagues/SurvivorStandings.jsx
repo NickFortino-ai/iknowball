@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSurvivorBoard } from '../../hooks/useLeagues'
 import { useAuthStore } from '../../stores/authStore'
 import Avatar from '../ui/Avatar'
@@ -38,6 +38,164 @@ const PICK_STYLES = {
   missed: 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30',
 }
 
+// PickChain and MemberRow live at module scope on purpose.
+//
+// They used to be declared inside SurvivorStandings' body, which makes their
+// function identity new on every render. React compares component types by
+// identity, so it doesn't re-render those subtrees — it UNMOUNTS and remounts
+// them. Every row's headshots were torn down and rebuilt on any state change
+// in the parent, which is both the flicker and the reason the pick row kept
+// snapping back to its right edge.
+function PickChain({ member, weeks, nowMs, periodLabel, isDaily, sportKey, onOpenPlayer }) {
+  const scrollRef = useRef(null)
+  const picks = member.picks || []
+
+  // Build a chain: for every week that has been processed (missed_picks_processed
+  // or past ends_at), include either the user's pick for that week, or a
+  // "missed" placeholder if they have no pick. Weeks with no pick before
+  // elimination = life lost.
+  // `nowMs` is read once by the parent and passed down rather than sampled
+  // here. Reading the clock during render gives every row a slightly
+  // different "now", and React's purity rule rightly objects to it.
+  const chain = (() => {
+    const pickByWeekId = new Map(picks.map((p) => [p.league_week_id, p]))
+
+    const out = []
+    for (const week of weeks) {
+      const weekEndedMs = new Date(week.ends_at).getTime()
+      const isPast = week.missed_picks_processed || weekEndedMs < nowMs
+      if (!isPast) continue
+
+      const isPostElimination = !member.is_alive && member.eliminated_week != null && week.week_number > member.eliminated_week
+      if (isPostElimination) continue
+
+      const pick = pickByWeekId.get(week.id)
+      if (pick) {
+        out.push({ kind: 'pick', week, pick })
+      } else if (week.missed_picks_processed) {
+        // Week has been processed by missed-pick job and user has no pick → life lost
+        out.push({ kind: 'missed', week })
+      }
+    }
+
+    // Also include any picks for weeks that aren't yet past (e.g. current pending/locked)
+    for (const p of picks) {
+      if (!out.some((c) => c.kind === 'pick' && c.pick.id === p.id)) {
+        out.push({ kind: 'pick', week: { week_number: p.league_weeks?.week_number }, pick: p })
+      }
+    }
+    return out
+  })()
+
+  // Keep the newest pick in view. Only when the chain actually grows, and only
+  // when there's something to scroll — the old inline `ref` callback ran this
+  // on every attach, so it also yanked the row back whenever a manager had
+  // deliberately scrolled left to look at an earlier week.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el && el.scrollWidth > el.clientWidth) el.scrollLeft = el.scrollWidth
+  }, [chain.length])
+
+  if (!chain.length) return null
+
+  return (
+    <div
+      ref={scrollRef}
+      // overscroll-x-contain stops a trackpad gesture with any sideways
+      // component from being swallowed by this row once the chain is long
+      // enough to overflow.
+      className="flex gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide mt-2 pt-0.5"
+    >
+      {chain.map((item) => {
+        if (item.kind === 'missed') {
+          return (
+            <SurvivorPickChip
+              key={`missed-${item.week.id}`}
+              missed
+              weekNumber={item.week.week_number}
+              periodLabel={periodLabel}
+              isDaily={isDaily}
+            />
+          )
+        }
+        const p = item.pick
+        return (
+          <SurvivorPickChip
+            key={p.id}
+            pick={p}
+            weekNumber={p.league_weeks?.week_number || item.week?.week_number}
+            periodLabel={periodLabel}
+            isDaily={isDaily}
+            sportKey={sportKey}
+            onOpenPlayer={onOpenPlayer}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+function MemberRow({
+  member, variant, scaleClass, periodLabel, onUserTap,
+  weeks, nowMs, isDaily, sportKey, onOpenPlayer,
+}) {
+  const isAlive = variant === 'alive'
+  const isWinner = variant === 'winner'
+
+  const borderClass = isWinner || isAlive
+    ? 'border border-correct/50'
+    : 'border border-incorrect/40'
+
+  // No backdrop-blur here. These rows also carry a scale transform, and a
+  // blurred backdrop stacked on a transformed layer is what made the row's
+  // contents smear against their own border while the page scrolled. The tint
+  // is 5% over an opaque page, so the blur was buying nothing to begin with.
+  const bgClass = isWinner || isAlive ? 'bg-correct/5' : 'bg-incorrect/5'
+
+  const rowSize = isAlive || isWinner ? 'px-4 py-4' : 'px-4 py-3'
+  const avatarSize = isAlive || isWinner ? 'lg' : 'md'
+  const nameSize = isAlive || isWinner ? 'text-base font-bold' : 'text-sm font-semibold'
+
+  return (
+    <div
+      onClick={() => onUserTap?.(member.user_id)}
+      className={`rounded-xl ${borderClass} ${bgClass} ${rowSize} ${(isAlive || isWinner) ? scaleClass : ''} cursor-pointer hover:brightness-110 transition-[filter] origin-center`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3 min-w-0">
+          <Avatar user={member.users} size={avatarSize} />
+          <div className="min-w-0">
+            <span className={`${nameSize} text-text-primary truncate block`}>
+              {member.users?.display_name || member.users?.username}
+            </span>
+            {isAlive && member.lives_remaining > 0 && (
+              <span className="text-xs text-text-muted">
+                {member.lives_remaining} {member.lives_remaining === 1 ? 'life' : 'lives'}
+              </span>
+            )}
+          </div>
+        </div>
+        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
+          isWinner || isAlive
+            ? 'bg-correct/20 text-correct'
+            : 'bg-incorrect/20 text-incorrect'
+        }`}>
+          {isWinner ? 'Champion' : isAlive ? 'Alive' : `Out ${periodLabel} ${member.eliminated_week}`}
+        </span>
+      </div>
+      <PickChain
+        member={member}
+        weeks={weeks}
+        nowMs={nowMs}
+        periodLabel={periodLabel}
+        isDaily={isDaily}
+        sportKey={sportKey}
+        onOpenPlayer={onOpenPlayer}
+      />
+    </div>
+  )
+}
+
 export default function SurvivorStandings({ league, onUserTap }) {
   const { data: board, isLoading } = useSurvivorBoard(league.id)
   const session = useAuthStore((s) => s.session)
@@ -46,6 +204,9 @@ export default function SurvivorStandings({ league, onUserTap }) {
   // Picks tab. Only touchdown-survivor picks carry a player_id; team picks,
   // locked picks and missed periods render inert.
   const [detailPlayer, setDetailPlayer] = useState(null)
+  // Sampled once per mount, not per render: every row then agrees on which
+  // periods are "past", and render stays pure.
+  const [nowMs] = useState(() => Date.now())
   const onOpenPlayer = setDetailPlayer
 
   const isDaily = league.settings?.pick_frequency === 'daily'
@@ -88,129 +249,22 @@ export default function SurvivorStandings({ league, onUserTap }) {
   if (!board) return null
 
   // Scale factor for alive rows when competition narrows
-  function getAliveScale() {
-    if (aliveCount <= 2) return 'scale-[1.04]'
-    if (aliveCount <= 3) return 'scale-[1.02]'
-    if (aliveCount <= 4) return 'scale-[1.01]'
-    return ''
-  }
+  const aliveScale =
+    aliveCount <= 2 ? 'scale-[1.04]'
+    : aliveCount <= 3 ? 'scale-[1.02]'
+    : aliveCount <= 4 ? 'scale-[1.01]'
+    : ''
 
-  function PickChain({ member }) {
-    const picks = member.picks || []
-    const weeks = board?.weeks || []
-
-    // Build a chain: for every week that has been processed (missed_picks_processed
-    // or past ends_at), include either the user's pick for that week, or a
-    // "missed" placeholder if they have no pick. Weeks with no pick before
-    // elimination = life lost.
-    const pickByWeekId = new Map(picks.map((p) => [p.league_week_id, p]))
-    const nowMs = Date.now()
-
-    const chain = []
-    for (const week of weeks) {
-      const weekEndedMs = new Date(week.ends_at).getTime()
-      const isPast = week.missed_picks_processed || weekEndedMs < nowMs
-      if (!isPast) continue
-
-      const isPostElimination = !member.is_alive && member.eliminated_week != null && week.week_number > member.eliminated_week
-      if (isPostElimination) continue
-
-      const pick = pickByWeekId.get(week.id)
-      if (pick) {
-        chain.push({ kind: 'pick', week, pick })
-      } else if (week.missed_picks_processed) {
-        // Week has been processed by missed-pick job and user has no pick → life lost
-        chain.push({ kind: 'missed', week })
-      }
-    }
-
-    // Also include any picks for weeks that aren't yet past (e.g. current pending/locked)
-    for (const p of picks) {
-      if (!chain.some((c) => c.kind === 'pick' && c.pick.id === p.id)) {
-        chain.push({ kind: 'pick', week: { week_number: p.league_weeks?.week_number }, pick: p })
-      }
-    }
-
-    if (!chain.length) return null
-
-    return (
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide mt-2 pt-0.5" ref={(el) => { if (el) el.scrollLeft = el.scrollWidth }}>
-        {chain.map((item) => {
-          if (item.kind === 'missed') {
-            return (
-              <SurvivorPickChip
-                key={`missed-${item.week.id}`}
-                missed
-                weekNumber={item.week.week_number}
-                periodLabel={periodLabel}
-                isDaily={isDaily}
-              />
-            )
-          }
-          const p = item.pick
-          return (
-            <SurvivorPickChip
-              key={p.id}
-              pick={p}
-              weekNumber={p.league_weeks?.week_number || item.week?.week_number}
-              periodLabel={periodLabel}
-              isDaily={isDaily}
-              sportKey={league.sport}
-              onOpenPlayer={onOpenPlayer}
-            />
-          )
-        })}
-      </div>
-    )
-  }
-
-  function MemberRow({ member, variant }) {
-    const isAlive = variant === 'alive'
-    const isWinner = variant === 'winner'
-    const scaleClass = (isAlive || isWinner) ? getAliveScale() : ''
-
-    const borderClass = isWinner || isAlive
-      ? 'border border-correct/50'
-      : 'border border-incorrect/40'
-
-    const bgClass = isWinner || isAlive
-      ? 'bg-correct/5 backdrop-blur-sm'
-      : 'bg-incorrect/5 backdrop-blur-sm'
-
-    const rowSize = isAlive || isWinner ? 'px-4 py-4' : 'px-4 py-3'
-    const avatarSize = isAlive || isWinner ? 'lg' : 'md'
-    const nameSize = isAlive || isWinner ? 'text-base font-bold' : 'text-sm font-semibold'
-
-    return (
-      <div
-        onClick={() => onUserTap?.(member.user_id)}
-        className={`rounded-xl ${borderClass} ${bgClass} ${rowSize} ${scaleClass} cursor-pointer hover:brightness-110 transition-all origin-center`}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
-            <Avatar user={member.users} size={avatarSize} />
-            <div className="min-w-0">
-              <span className={`${nameSize} text-text-primary truncate block`}>
-                {member.users?.display_name || member.users?.username}
-              </span>
-              {isAlive && member.lives_remaining > 0 && (
-                <span className="text-xs text-text-muted">
-                  {member.lives_remaining} {member.lives_remaining === 1 ? 'life' : 'lives'}
-                </span>
-              )}
-            </div>
-          </div>
-          <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
-            isWinner || isAlive
-              ? 'bg-correct/20 text-correct'
-              : 'bg-incorrect/20 text-incorrect'
-          }`}>
-            {isWinner ? 'Champion' : isAlive ? 'Alive' : `Out ${periodLabel} ${member.eliminated_week}`}
-          </span>
-        </div>
-        <PickChain member={member} />
-      </div>
-    )
+  const weeks = board.weeks || []
+  const rowProps = {
+    scaleClass: aliveScale,
+    periodLabel,
+    onUserTap,
+    weeks,
+    nowMs,
+    isDaily,
+    sportKey: league.sport,
+    onOpenPlayer,
   }
 
   return (
@@ -222,6 +276,7 @@ export default function SurvivorStandings({ league, onUserTap }) {
             key={m.id}
             member={m}
             variant={winner?.user_id === m.user_id ? 'winner' : 'alive'}
+            {...rowProps}
           />
         ))}
       </div>
@@ -236,7 +291,7 @@ export default function SurvivorStandings({ league, onUserTap }) {
           </div>
           <div className="space-y-2">
             {eliminated.map((m) => (
-              <MemberRow key={m.id} member={m} variant="eliminated" />
+              <MemberRow key={m.id} member={m} variant="eliminated" {...rowProps} />
             ))}
           </div>
         </>
