@@ -1383,6 +1383,7 @@ import {
   getTradesForLeague,
   submitWaiverClaim,
   cancelWaiverClaim,
+  reorderWaiverClaims,
   getMyWaiverClaims,
   getWaiverState,
   getWaiverStateForLeague,
@@ -2179,6 +2180,18 @@ router.post('/:id/fantasy/waivers/claims', requireAuth, async (req, res) => {
   try {
     const { add_player_id, drop_player_id, bid_amount } = req.body
     const result = await submitWaiverClaim(req.params.id, req.user.id, add_player_id, drop_player_id, bid_amount || 0)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// Reorder the caller's own pending claims — most-wanted first. The resolver
+// works through each manager's claims in this order, so it decides which one
+// he actually ends up with when more than one could land.
+router.patch('/:id/fantasy/waivers/claims/order', requireAuth, async (req, res) => {
+  try {
+    const result = await reorderWaiverClaims(req.params.id, req.user.id, req.body?.claim_ids)
     res.json(result)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })

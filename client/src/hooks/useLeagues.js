@@ -815,6 +815,20 @@ export function useCancelWaiverClaim(leagueId) {
   })
 }
 
+// Reorder the caller's own pending claims. Takes the FULL list of claim ids,
+// most-wanted first — the server rejects a partial list, because omitted
+// claims would keep stale ranks that collide with the new ones.
+export function useReorderWaiverClaims(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (claimIds) =>
+      api.patch(`/leagues/${leagueId}/fantasy/waivers/claims/order`, { claim_ids: claimIds }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'waivers'] })
+    },
+  })
+}
+
 export function usePlayerDetail(leagueId, playerId) {
   return useQuery({
     queryKey: ['leagues', leagueId, 'fantasy', 'player-detail', playerId],

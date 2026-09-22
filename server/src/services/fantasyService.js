@@ -7024,6 +7024,20 @@ export async function submitWaiverClaim(leagueId, userId, addPlayerId, dropPlaye
     .eq('add_player_id', addPlayerId)
     .eq('status', 'pending')
 
+  // Rank within this manager's own queue — 1 is the one he wants most. NOT
+  // the league waiver position, which lives on fantasy_waiver_state; the
+  // column name is shared and the two are easy to confuse.
+  //
+  // A new claim appends to the bottom, which is what a manager expects: the
+  // claims he already thought about keep precedence until he says otherwise.
+  const { data: mine } = await supabase
+    .from('fantasy_waiver_claims')
+    .select('priority')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .eq('status', 'pending')
+  const nextRank = Math.max(0, ...(mine || []).map((c) => c.priority || 0)) + 1
+
   const { data, error } = await supabase
     .from('fantasy_waiver_claims')
     .insert({
@@ -7032,11 +7046,53 @@ export async function submitWaiverClaim(leagueId, userId, addPlayerId, dropPlaye
       add_player_id: addPlayerId,
       drop_player_id: dropPlayerId || null,
       bid_amount: bidAmount,
+      priority: nextRank,
     })
     .select()
     .single()
   if (error) throw error
   return data
+}
+
+/**
+ * Reorder a manager's own pending claims. `orderedClaimIds` is the full list,
+ * most-wanted first; ranks are rewritten as 1..N.
+ *
+ * Writes the whole permutation rather than a single row's rank, so two claims
+ * can never end up sharing one — the resolver breaks ties by submission time,
+ * which would quietly ignore the manager's intent.
+ *
+ * Scoped to the caller's OWN pending claims, and every id must be present:
+ * a partial list would leave the omitted claims holding stale ranks that
+ * collide with the new ones.
+ */
+export async function reorderWaiverClaims(leagueId, userId, orderedClaimIds) {
+  const { data: mine } = await supabase
+    .from('fantasy_waiver_claims')
+    .select('id')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .eq('status', 'pending')
+
+  const ids = (mine || []).map((c) => c.id)
+  const given = Array.isArray(orderedClaimIds) ? orderedClaimIds : []
+  if (given.length !== ids.length || new Set(given).size !== given.length || !given.every((id) => ids.includes(id))) {
+    const err = new Error('Claim order must list each of your pending claims exactly once')
+    err.status = 400
+    throw err
+  }
+
+  for (let i = 0; i < given.length; i++) {
+    const { error } = await supabase
+      .from('fantasy_waiver_claims')
+      .update({ priority: i + 1 })
+      .eq('id', given[i])
+      .eq('user_id', userId)
+      .eq('status', 'pending')
+    if (error) throw error
+  }
+  logger.info({ leagueId, userId, count: given.length }, 'Waiver claim order updated')
+  return { updated: given.length }
 }
 
 export async function cancelWaiverClaim(claimId, userId) {
@@ -7070,7 +7126,23 @@ export async function getMyWaiverClaims(leagueId, userId) {
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(50)
-  return data || []
+
+  // PENDING claims come back in the manager's own ranked order, because that
+  // is the order the resolver will work through them and the list is where he
+  // reorders it — showing them newest-first would be showing him a sequence
+  // that isn't the one being used.
+  //
+  // Settled claims keep newest-first: their rank is spent, and what matters
+  // there is recency. nullsLast keeps claims made before ranking existed from
+  // jumping the queue.
+  const rows = data || []
+  const pending = rows.filter((c) => c.status === 'pending').sort((a, b) => {
+    const ar = a.priority ?? Number.MAX_SAFE_INTEGER
+    const br = b.priority ?? Number.MAX_SAFE_INTEGER
+    if (ar !== br) return ar - br
+    return new Date(a.created_at) - new Date(b.created_at)
+  })
+  return [...pending, ...rows.filter((c) => c.status !== 'pending')]
 }
 
 /**
@@ -7216,60 +7288,15 @@ async function resolveLeagueWaiverClaims(leagueId) {
   }
 
   let processed = 0
-  for (const [playerId, playerClaims] of Object.entries(claimsByPlayer)) {
-    // Confirm the player isn't already rostered (could have been added since claim)
-    const { data: roster } = await supabase
-      .from('fantasy_rosters')
-      .select('id')
-      .eq('league_id', leagueId)
-      .eq('player_id', playerId)
-      .maybeSingle()
-    if (roster) {
-      // Player is no longer free — fail every claim
-      for (const c of playerClaims) {
-        await supabase
-          .from('fantasy_waiver_claims')
-          .update({ status: 'failed', fail_reason: 'Player no longer available', processed_at: new Date().toISOString() })
-          .eq('id', c.id)
-      }
-      continue
-    }
 
-    // Sort to find the winner
-    let winner
-    if (isFaab) {
-      playerClaims.sort((a, b) => {
-        if (b.bid_amount !== a.bid_amount) return b.bid_amount - a.bid_amount
-        const aPri = stateByUser[a.user_id]?.priority || 999
-        const bPri = stateByUser[b.user_id]?.priority || 999
-        return aPri - bPri
-      })
-      // Re-validate the top bid against current FAAB
-      while (playerClaims.length) {
-        const top = playerClaims[0]
-        const state = stateByUser[top.user_id]
-        if (!state || top.bid_amount > state.faab_remaining) {
-          await supabase
-            .from('fantasy_waiver_claims')
-            .update({ status: 'failed', fail_reason: 'Insufficient FAAB', processed_at: new Date().toISOString() })
-            .eq('id', top.id)
-          playerClaims.shift()
-          continue
-        }
-        winner = top
-        break
-      }
-    } else {
-      playerClaims.sort((a, b) => {
-        const aPri = stateByUser[a.user_id]?.priority || 999
-        const bPri = stateByUser[b.user_id]?.priority || 999
-        return aPri - bPri
-      })
-      winner = playerClaims[0]
-    }
-
-    if (!winner) continue
-
+  // Applying a claim that has already WON: drop the outgoing player if one
+  // was named, then add the incoming one, rolling the drop back if the add
+  // fails. Extracted because FAAB and priority differ only in HOW a winner is
+  // chosen, never in what happens once one is.
+  //
+  // Returns true on success. On failure it has already marked the claim
+  // failed with a reason, so the caller just moves on.
+  async function applyWinningClaim(winner) {
     // Apply the winning claim: drop player if specified, then add new player.
     // dropRosterRemoved / dropWaiverPoolAdded track how far the drop side of
     // the swap got. If the drop committed but the add subsequently failed,
@@ -7422,15 +7449,21 @@ async function resolveLeagueWaiverClaims(leagueId) {
         .from('fantasy_waiver_claims')
         .update({ status: 'failed', fail_reason: failReason, processed_at: new Date().toISOString() })
         .eq('id', winner.id)
-      continue
+      return false
     }
 
+
+    return true
+  }
+
+  // Bookkeeping after a successful award: record it, move the winner's waiver
+  // position, notify them.
+  async function recordAward(winner) {
     // Mark winner awarded
     await supabase
       .from('fantasy_waiver_claims')
       .update({ status: 'awarded', processed_at: new Date().toISOString() })
       .eq('id', winner.id)
-    processed++
 
     // Update waiver state
     if (isFaab) {
@@ -7477,22 +7510,167 @@ async function resolveLeagueWaiverClaims(leagueId) {
         { leagueId, playerId: winner.add_player_id })
     } catch (err) { logger.error({ err }, 'Failed to send awarded notification') }
 
-    // Fail the losing claims silently — users don't need a bell ping for
-    // every waiver they didn't win. They can see the outcome in the
-    // waiver queue UI. Only successful awards notify.
-    for (const loser of playerClaims) {
-      if (loser.id === winner.id) continue
-      await supabase
-        .from('fantasy_waiver_claims')
-        // "Outbid" only describes FAAB. In a priority league nobody bid on
-        // anything — the claim lost on waiver order — and telling a manager
-        // they were outbid in a league with no bidding is just confusing.
-        .update({
-          status: 'failed',
-          fail_reason: isFaab ? 'Outbid by another claim' : 'Another team had higher waiver priority',
-          processed_at: new Date().toISOString(),
+  }
+
+  // FAAB is a per-PLAYER auction — the highest bid wins regardless of whose
+  // claim it is, so grouping by player is exactly right and this path is
+  // unchanged apart from calling the extracted helpers.
+  if (isFaab) {
+    for (const [playerId, playerClaims] of Object.entries(claimsByPlayer)) {
+      // Confirm the player isn't already rostered (could have been added since claim)
+      const { data: roster } = await supabase
+        .from('fantasy_rosters')
+        .select('id')
+        .eq('league_id', leagueId)
+        .eq('player_id', playerId)
+        .maybeSingle()
+      if (roster) {
+        // Player is no longer free — fail every claim
+        for (const c of playerClaims) {
+          await supabase
+            .from('fantasy_waiver_claims')
+            .update({ status: 'failed', fail_reason: 'Player no longer available', processed_at: new Date().toISOString() })
+            .eq('id', c.id)
+        }
+        continue
+      }
+
+      // Sort to find the winner
+      let winner
+      if (isFaab) {
+        playerClaims.sort((a, b) => {
+          if (b.bid_amount !== a.bid_amount) return b.bid_amount - a.bid_amount
+          const aPri = stateByUser[a.user_id]?.priority || 999
+          const bPri = stateByUser[b.user_id]?.priority || 999
+          return aPri - bPri
         })
-        .eq('id', loser.id)
+        // Re-validate the top bid against current FAAB
+        while (playerClaims.length) {
+          const top = playerClaims[0]
+          const state = stateByUser[top.user_id]
+          if (!state || top.bid_amount > state.faab_remaining) {
+            await supabase
+              .from('fantasy_waiver_claims')
+              .update({ status: 'failed', fail_reason: 'Insufficient FAAB', processed_at: new Date().toISOString() })
+              .eq('id', top.id)
+            playerClaims.shift()
+            continue
+          }
+          winner = top
+          break
+        }
+      } else {
+        playerClaims.sort((a, b) => {
+          const aPri = stateByUser[a.user_id]?.priority || 999
+          const bPri = stateByUser[b.user_id]?.priority || 999
+          return aPri - bPri
+        })
+        winner = playerClaims[0]
+      }
+
+      if (!winner) continue
+
+      if (!(await applyWinningClaim(winner))) continue
+      processed++
+      await recordAward(winner)
+
+      // Fail the losing claims silently — users don't need a bell ping for
+      // every waiver they didn't win. They can see the outcome in the
+      // waiver queue UI. Only successful awards notify.
+      for (const loser of playerClaims) {
+        if (loser.id === winner.id) continue
+        await supabase
+          .from('fantasy_waiver_claims')
+          // "Outbid" only describes FAAB. In a priority league nobody bid on
+          // anything — the claim lost on waiver order — and telling a manager
+          // they were outbid in a league with no bidding is just confusing.
+          .update({
+            status: 'failed',
+            fail_reason: isFaab ? 'Outbid by another claim' : 'Another team had higher waiver priority',
+            processed_at: new Date().toISOString(),
+          })
+          .eq('id', loser.id)
+      }
+    }
+
+  } else {
+    // Priority waivers are CLAIM-driven, not player-driven.
+    //
+    // This used to iterate Object.entries(claimsByPlayer) and award each
+    // player to whichever claimant held the best waiver position. That is
+    // right for any single player, but it silently decided the order a
+    // manager's OWN claims were attempted in: JS orders integer-like object
+    // keys numerically, so claims were resolved in ascending Sleeper id.
+    // A manager wanting Thornton (8188) more than Mariota (2307) got Mariota,
+    // because 2307 sorts first. Nobody chose that.
+    //
+    // The textbook algorithm instead repeatedly asks: of everyone with claims
+    // left, who has the best waiver position? Take THEIR top-ranked claim.
+    // Award it and they drop to the back; fail it and they keep their turn
+    // and fall through to their next choice. Both halves matter — a manager
+    // outbid on his first choice must still get a shot at his second.
+    const queues = new Map()
+    for (const c of Object.values(claimsByPlayer).flat()) {
+      if (!queues.has(c.user_id)) queues.set(c.user_id, [])
+      queues.get(c.user_id).push(c)
+    }
+    // Each manager's own ranking. `priority` here is the claim's rank within
+    // that manager's queue — NOT the league waiver position, which lives on
+    // fantasy_waiver_state. Unranked claims fall to the back in submission
+    // order, which is how claims made before ranking existed behave.
+    for (const q of queues.values()) {
+      q.sort((a, b) => {
+        const ar = a.priority ?? Number.MAX_SAFE_INTEGER
+        const br = b.priority ?? Number.MAX_SAFE_INTEGER
+        if (ar !== br) return ar - br
+        return new Date(a.created_at) - new Date(b.created_at)
+      })
+    }
+
+    // Hard stop on the number of iterations. Every pass shifts one claim off
+    // a queue, so it cannot exceed the claim count — the guard is only here
+    // so a future edit that forgets to shift can't spin forever.
+    const maxPasses = Object.values(claimsByPlayer).flat().length
+    for (let pass = 0; pass < maxPasses; pass++) {
+      let turnUserId = null
+      let bestPriority = Infinity
+      for (const [userId, q] of queues) {
+        if (!q.length) continue
+        const pri = stateByUser[userId]?.priority ?? 999
+        if (pri < bestPriority) { bestPriority = pri; turnUserId = userId }
+      }
+      if (!turnUserId) break
+
+      const winner = queues.get(turnUserId).shift()
+
+      // Someone already has him — either awarded earlier in this very run by
+      // a manager with a better position, or added outside waivers since the
+      // claim went in.
+      const { data: taken } = await supabase
+        .from('fantasy_rosters')
+        .select('id')
+        .eq('league_id', leagueId)
+        .eq('player_id', winner.add_player_id)
+        .maybeSingle()
+      if (taken) {
+        await supabase
+          .from('fantasy_waiver_claims')
+          .update({
+            status: 'failed',
+            fail_reason: 'Another team had higher waiver priority',
+            processed_at: new Date().toISOString(),
+          })
+          .eq('id', winner.id)
+        continue
+      }
+
+      // A failed claim does NOT cost a waiver position — only an award does.
+      // That is why this `continue` leaves stateByUser untouched: the same
+      // manager is still the best-positioned one and comes straight back
+      // round for his next choice.
+      if (!(await applyWinningClaim(winner))) continue
+      processed++
+      await recordAward(winner)
     }
   }
 

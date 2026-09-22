@@ -3,6 +3,7 @@ import { buildStarterSlots as buildSlots } from '../../lib/rosterSlots'
 import {
   useAvailablePlayers, useFantasyRoster, useAddDropPlayer,
   useFantasySettings, useWaiverState, useMyWaiverClaims, useSubmitWaiverClaim, useCancelWaiverClaim,
+  useReorderWaiverClaims,
   useBlurbPlayerIds,
 } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
@@ -171,7 +172,43 @@ export default function FantasyPlayerBrowser({ league }) {
   const isFaab = settings?.waiver_type === 'faab'
   const isWaiver = settings?.waiver_type === 'priority' || settings?.waiver_type === 'rolling' || isFaab
   const myWaiverState = waiverData?.me
-  const pendingClaims = (myClaims || []).filter((c) => c.status === 'pending')
+  const reorderClaims = useReorderWaiverClaims(league.id)
+  const [editingClaims, setEditingClaims] = useState(false)
+  // Local override so an arrow tap moves the row immediately instead of
+  // waiting on the round trip. null = show whatever the server sent, which is
+  // already the ranked order.
+  const [claimOrder, setClaimOrder] = useState(null)
+
+  const serverPending = (myClaims || []).filter((c) => c.status === 'pending')
+  const pendingClaims = useMemo(() => {
+    if (!claimOrder) return serverPending
+    const byId = new Map(serverPending.map((c) => [c.id, c]))
+    // Anything the local order doesn't know about — a claim submitted in
+    // another tab, or one cancelled since — is appended rather than dropped,
+    // so the list can never hide a live claim.
+    const seen = new Set(claimOrder)
+    return [
+      ...claimOrder.map((id) => byId.get(id)).filter(Boolean),
+      ...serverPending.filter((c) => !seen.has(c.id)),
+    ]
+  }, [serverPending, claimOrder])
+
+  async function moveClaim(index, delta) {
+    const target = index + delta
+    if (target < 0 || target >= pendingClaims.length) return
+    const next = [...pendingClaims]
+    ;[next[index], next[target]] = [next[target], next[index]]
+    const ids = next.map((c) => c.id)
+    setClaimOrder(ids)
+    try {
+      await reorderClaims.mutateAsync(ids)
+    } catch (err) {
+      // Snap back rather than leave the user looking at an order the
+      // resolver won't actually use.
+      setClaimOrder(null)
+      toast(err.message || 'Failed to reorder claims', 'error')
+    }
+  }
   const claimedPlayerIds = new Set(pendingClaims.map((c) => c.add_player_id))
 
   // Roster ordered the same way the My Team view orders it: starters in
@@ -289,12 +326,31 @@ export default function FantasyPlayerBrowser({ league }) {
       {/* Pending claims */}
       {pendingClaims.length > 0 && (
         <div className="rounded-xl border border-text-primary/20 overflow-hidden bg-bg-primary/40">
-          <div className="px-4 py-2 border-b border-text-primary/10">
+          <div className="px-4 py-2 border-b border-text-primary/10 flex items-center justify-between gap-3">
             <h4 className="text-xs text-text-muted uppercase tracking-wider">Your Pending Claims</h4>
+            {pendingClaims.length > 0 && (
+              <button
+                onClick={() => setEditingClaims((v) => !v)}
+                className="text-[10px] font-semibold text-accent hover:text-accent/80 transition-colors uppercase tracking-wider"
+              >
+                {editingClaims ? 'Done' : 'Edit'}
+              </button>
+            )}
           </div>
+          {/* Order is the whole point of this list, not decoration: the
+              resolver works through a manager's claims top-down, so #1 is the
+              one he actually ends up with when more than one could land. */}
+          {editingClaims && pendingClaims.length > 1 && (
+            <p className="px-4 py-1.5 text-[10px] text-text-muted border-b border-text-primary/10">
+              Top claim is tried first. If it fails, the next one still gets a shot.
+            </p>
+          )}
           <div className="divide-y divide-border">
-            {pendingClaims.map((claim) => (
+            {pendingClaims.map((claim, i) => (
               <div key={claim.id} className="flex items-center gap-3 px-4 py-2">
+                {editingClaims && (
+                  <span className="text-[10px] font-bold text-text-muted tabular-nums w-3 shrink-0">{i + 1}</span>
+                )}
                 <PlayerHeadshot
                   name={claim.add_player?.full_name}
                   url={claim.add_player?.headshot_url}
@@ -307,19 +363,41 @@ export default function FantasyPlayerBrowser({ league }) {
                     {isFaab && ` · $${claim.bid_amount}`}
                   </div>
                 </div>
-                <button
-                  onClick={async () => {
-                    try {
-                      await cancelClaim.mutateAsync(claim.id)
-                      toast('Claim cancelled', 'success')
-                    } catch (err) {
-                      toast(err.message || 'Failed to cancel', 'error')
-                    }
-                  }}
-                  className="text-[10px] font-semibold text-incorrect hover:text-incorrect/80 transition-colors"
-                >
-                  Cancel
-                </button>
+                {editingClaims && (
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button
+                      onClick={() => moveClaim(i, -1)}
+                      disabled={i === 0 || reorderClaims.isPending}
+                      aria-label="Move claim up"
+                      className="px-1.5 py-0.5 rounded text-text-primary disabled:opacity-25 hover:bg-text-primary/10 transition-colors"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      onClick={() => moveClaim(i, 1)}
+                      disabled={i === pendingClaims.length - 1 || reorderClaims.isPending}
+                      aria-label="Move claim down"
+                      className="px-1.5 py-0.5 rounded text-text-primary disabled:opacity-25 hover:bg-text-primary/10 transition-colors"
+                    >
+                      ▼
+                    </button>
+                  </div>
+                )}
+                {editingClaims && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await cancelClaim.mutateAsync(claim.id)
+                        toast('Claim cancelled', 'success')
+                      } catch (err) {
+                        toast(err.message || 'Failed to cancel', 'error')
+                      }
+                    }}
+                    className="text-[10px] font-semibold text-incorrect hover:text-incorrect/80 transition-colors shrink-0"
+                  >
+                    Cancel
+                  </button>
+                )}
               </div>
             ))}
           </div>
