@@ -647,8 +647,6 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
     throw err
   }
 
-  const isBestOf7 = tournament.bracket_templates?.series_format === 'best_of_7'
-
   // Check if tournament lock deadline has passed
   const isLocked = new Date(tournament.locks_at) <= new Date()
   let ffGraceMode = false
@@ -793,8 +791,12 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
     if (matchup) {
       const roundConfig = rounds.find((r) => r.round_number === matchup.round_number)
       possiblePoints += roundConfig?.points_per_correct || 0
-      // Include max series length bonus (+4 for exact prediction)
-      if (isBestOf7 && pick.series_length) possiblePoints += 4
+      // Include max series length bonus (+4 for exact prediction). Per-round:
+      // a single-game round has no series to predict.
+      if (pick.series_length
+        && roundSeriesConfig(rounds, matchup.round_number, tournament.bracket_templates?.series_format).isSeries) {
+        possiblePoints += 4
+      }
     }
   }
 
@@ -852,7 +854,10 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
         position: matchup?.position || 0,
         picked_team: p.picked_team,
       }
-      if (isBestOf7 && p.series_length && [4, 5, 6, 7].includes(p.series_length)) {
+      // Valid lengths depend on the round: 2-3 for a best-of-3, 3-5 for a
+      // best-of-5, 4-7 for a best-of-7. Hardcoding [4,5,6,7] silently dropped
+      // every Wild Card and Division Series prediction.
+      if (roundSeriesConfig(rounds, p.round_number, tournament.bracket_templates?.series_format).lengths.includes(p.series_length)) {
         row.series_length = p.series_length
       }
       return row
@@ -890,7 +895,7 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
       picked_team: p.picked_team,
     }
     // Series length prediction for best-of-7 formats
-    if (isBestOf7 && p.series_length && [4, 5, 6, 7].includes(p.series_length)) {
+    if (roundSeriesConfig(rounds, p.round_number, tournament.bracket_templates?.series_format).lengths.includes(p.series_length)) {
       row.series_length = p.series_length
     }
     return row
@@ -1117,7 +1122,11 @@ async function cascadeResultToTournament(tournament, templateMatchup, winner, wi
 
   const losingTeam = winner === 'top' ? templateMatchup.team_bottom : templateMatchup.team_top
 
-  const isBestOf7 = tournament.bracket_templates?.series_format === 'best_of_7'
+  // Whether THIS round is a series at all, and therefore whether a length
+  // prediction is worth bonus points.
+  const isBestOf7 = roundSeriesConfig(
+    rounds, templateMatchup.round_number, tournament.bracket_templates?.series_format,
+  ).isSeries
 
   for (const pick of allPicks || []) {
     const isCorrect = pick.picked_team === winningTeam
@@ -1158,7 +1167,7 @@ async function cascadeResultToTournament(tournament, templateMatchup, winner, wi
     await eliminateAlreadyLostPicks(entry.id, tournament.template_id)
   }
 
-  await recalculateEntryPoints(tournamentId, rounds, tournament.bracket_templates?.series_format === 'best_of_7')
+  await recalculateEntryPoints(tournamentId, rounds, tournament.bracket_templates?.series_format)
   await updateTournamentStatus(tournamentId)
 }
 
@@ -1223,7 +1232,7 @@ async function eliminateDownstreamPicks(entryId, teamName, fromRound, tournament
   }
 }
 
-async function recalculateEntryPoints(tournamentId, rounds, isBestOf7 = false) {
+async function recalculateEntryPoints(tournamentId, rounds, seriesFormat = 'single_elimination') {
   const { data: entries } = await supabase
     .from('bracket_entries')
     .select('id')
@@ -1247,8 +1256,12 @@ async function recalculateEntryPoints(tournamentId, rounds, isBestOf7 = false) {
       } else if (pick.is_correct === null && !pick.is_eliminated) {
         const roundConfig = rounds.find((r) => r.round_number === pick.round_number)
         possiblePoints += roundConfig?.points_per_correct || 0
-        // Include max series length bonus for unscored picks
-        if (isBestOf7 && pick.series_length) possiblePoints += 4
+        // Include max series length bonus for unscored picks, when that round
+        // is actually a series.
+        if (pick.series_length
+          && roundSeriesConfig(rounds, pick.round_number, seriesFormat).isSeries) {
+          possiblePoints += 4
+        }
       }
     }
 
@@ -1403,7 +1416,7 @@ async function cascadeUndoToTournament(tournament, templateMatchup) {
 
   // Recalculate points
   const rounds = tournament.bracket_templates?.rounds || []
-  await recalculateEntryPoints(tournamentId, rounds, tournament.bracket_templates?.series_format === 'best_of_7')
+  await recalculateEntryPoints(tournamentId, rounds, tournament.bracket_templates?.series_format)
   await updateTournamentStatus(tournamentId)
 }
 
@@ -1416,11 +1429,46 @@ function normalizeTeam(name) {
   return name?.normalize('NFD').replace(/[\u0300-\u036f]/g, '') || ''
 }
 
+
+// Series length, per ROUND.
+//
+// It used to be one flag on the template — 'single_elimination' or
+// 'best_of_7' — which covers the NBA and NHL, where every round is the same
+// length. MLB is not: Wild Card is best-of-3, the Division Series best-of-5,
+// and the LCS and World Series best-of-7. Neither template-level option can
+// express that. best_of_7 leaves a Wild Card series unresolved waiting for a
+// 4th win that never comes; single_elimination hands it to whoever wins game
+// one.
+//
+// A round may now carry `best_of` in the template's rounds JSON. Everything
+// else is derived: a series clinches at ceil(best_of / 2), and the only
+// plausible lengths run from that number up to best_of — 2-3 for a best-of-3,
+// 3-5 for a best-of-5, 4-7 for a best-of-7.
+//
+// Falls back to the template flag when a round says nothing, so every
+// existing NBA / NHL / World Cup / UFL template keeps behaving exactly as it
+// does today.
+export function roundSeriesConfig(rounds, roundNumber, seriesFormat) {
+  const round = (rounds || []).find((r) => r.round_number === roundNumber)
+  const fromRound = Number(round?.best_of)
+  const bestOf = Number.isFinite(fromRound) && fromRound > 0
+    ? fromRound
+    : (seriesFormat === 'best_of_7' ? 7 : 1)
+
+  // best_of 1 is a single game: no series, and no length to predict.
+  if (bestOf <= 1) return { bestOf: 1, clinch: 1, lengths: [], isSeries: false }
+
+  const clinch = Math.ceil(bestOf / 2)
+  const lengths = []
+  for (let n = clinch; n <= bestOf; n++) lengths.push(n)
+  return { bestOf, clinch, lengths, isSeries: true }
+}
+
 export async function scoreBracketMatchups(homeTeam, awayTeam, winner, homeScore, awayScore, sportKey) {
   // Find unsettled template matchups where both teams match this game
   let query = supabase
     .from('bracket_template_matchups')
-    .select('*, bracket_templates!inner(id, is_active, sport, series_format)')
+    .select('*, bracket_templates!inner(id, is_active, sport, series_format, rounds)')
     .is('winner', null)
     .not('team_top', 'is', null)
     .not('team_bottom', 'is', null)
@@ -1460,7 +1508,12 @@ export async function scoreBracketMatchups(homeTeam, awayTeam, winner, homeScore
 
     const nWinner = normalizeTeam(winningTeam)
     const winnerSlot = nTop === nWinner ? 'top' : 'bottom'
-    const isBestOf7 = matchup.bracket_templates.series_format === 'best_of_7'
+    const seriesCfg = roundSeriesConfig(
+      matchup.bracket_templates.rounds,
+      matchup.round_number,
+      matchup.bracket_templates.series_format,
+    )
+    const isBestOf7 = seriesCfg.isSeries
 
     // Map home/away scores to top/bottom based on team positions
     let scoreTop, scoreBottom
@@ -1471,13 +1524,14 @@ export async function scoreBracketMatchups(homeTeam, awayTeam, winner, homeScore
 
     try {
       if (isBestOf7) {
-        // Increment series wins — only settle when a team reaches 4
+        // Increment series wins — settle when a team reaches this ROUND's
+        // clinch number (2 of 3, 3 of 5, 4 of 7).
         const currentWinsTop = matchup.series_wins_top || 0
         const currentWinsBottom = matchup.series_wins_bottom || 0
         const newWinsTop = winnerSlot === 'top' ? currentWinsTop + 1 : currentWinsTop
         const newWinsBottom = winnerSlot === 'bottom' ? currentWinsBottom + 1 : currentWinsBottom
 
-        if (newWinsTop >= 4 || newWinsBottom >= 4) {
+        if (newWinsTop >= seriesCfg.clinch || newWinsBottom >= seriesCfg.clinch) {
           // Series is over — settle the matchup with final series record
           await enterTemplateResult(
             matchup.bracket_templates.id, matchup.id, winnerSlot,

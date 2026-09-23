@@ -16,6 +16,27 @@ function PickerTeamLogo({ team, sportKey }) {
   }} />
 }
 
+
+// Mirrors roundSeriesConfig in server/src/services/bracketService.js. The two
+// MUST agree: this decides which buttons are offered, the server decides
+// which values it stores, and a mismatch shows a length that is silently
+// dropped on save.
+//
+// A round may declare `best_of`; otherwise the template-level flag applies,
+// which is how every NBA / NHL / World Cup template still behaves.
+function roundSeriesConfig(rounds, roundNumber, seriesFormat) {
+  const round = (rounds || []).find((r) => r.round_number === roundNumber)
+  const fromRound = Number(round?.best_of)
+  const bestOf = Number.isFinite(fromRound) && fromRound > 0
+    ? fromRound
+    : (seriesFormat === 'best_of_7' ? 7 : 1)
+  if (bestOf <= 1) return { bestOf: 1, clinch: 1, lengths: [], isSeries: false }
+  const clinch = Math.ceil(bestOf / 2)
+  const lengths = []
+  for (let n = clinch; n <= bestOf; n++) lengths.push(n)
+  return { bestOf, clinch, lengths, isSeries: true }
+}
+
 export default function BracketPicker({ league, tournament, matchups, existingPicks, existingTiebreakerScore, onClose, ffOnlyMode = false }) {
   const submitBracket = useSubmitBracket()
   const { data: otherEntries } = useMyOtherBracketEntries(league?.id)
@@ -73,7 +94,18 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
 
   const rounds = tournament?.bracket_templates?.rounds || []
   const regions = tournament?.bracket_templates?.regions || []
-  const isBestOf7 = tournament?.bracket_templates?.series_format === 'best_of_7'
+  const templateRounds = tournament?.bracket_templates?.rounds
+  const seriesFormat = tournament?.bracket_templates?.series_format
+  // Per-matchup, since MLB rounds differ: best-of-3 Wild Card, best-of-5
+  // Division Series, best-of-7 from the LCS on.
+  const seriesCfgFor = useCallback(
+    (m) => roundSeriesConfig(templateRounds, m?.round_number, seriesFormat),
+    [templateRounds, seriesFormat],
+  )
+  // "Any round is a series" — drives whether length predictions exist at all.
+  const isBestOf7 = (templateRounds || []).some(
+    (r) => roundSeriesConfig(templateRounds, r.round_number, seriesFormat).isSeries,
+  ) || seriesFormat === 'best_of_7'
   // World Cup teams are populated via group winners, not seeded brackets.
   // The 1-16 numbers our generator assigns are an NCAA-style artifact that
   // would mislead users (no FIFA equivalent). Hide them in user UI; admin
@@ -213,8 +245,9 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   const isStepComplete = useCallback((step, picksObj) => {
     const pickable = getPickableMatchups(step)
     if (pickable.length === 0) return true
-    return pickable.every((m) => picksObj[m.template_matchup_id] && (!isBestOf7 || seriesLengths[m.template_matchup_id]))
-  }, [getPickableMatchups, isBestOf7, seriesLengths])
+    return pickable.every((m) => picksObj[m.template_matchup_id]
+      && (!seriesCfgFor(m).isSeries || seriesLengths[m.template_matchup_id]))
+  }, [getPickableMatchups, seriesCfgFor, seriesLengths])
 
   // Find first incomplete step for initial position
   const initialStep = useMemo(() => {
@@ -437,7 +470,9 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   const tiebreakerTopValid = tiebreakerTop !== '' && Number.isInteger(Number(tiebreakerTop)) && Number(tiebreakerTop) >= 0 && Number(tiebreakerTop) <= 250
   const tiebreakerBottomValid = tiebreakerBottom !== '' && Number.isInteger(Number(tiebreakerBottom)) && Number(tiebreakerBottom) >= 0 && Number(tiebreakerBottom) <= 250
   const tiebreakerValid = tiebreakerTopValid && tiebreakerBottomValid
-  const allSeriesLengthsFilled = !isBestOf7 || allPickableMatchups.every((m) => seriesLengths[m.template_matchup_id])
+  const allSeriesLengthsFilled = allPickableMatchups.every(
+    (m) => !seriesCfgFor(m).isSeries || seriesLengths[m.template_matchup_id],
+  )
   const canSubmit = allFilled && tiebreakerValid && allSeriesLengthsFilled
 
   async function handleSubmit() {
@@ -738,12 +773,16 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                   )}
                 </button>
               </div>
-              {/* Series length picker for best-of-7 brackets */}
-              {isBestOf7 && currentPick && (
+              {/* Series length picker. Options come from THIS matchup's round:
+                  2-3 for a best-of-3, 3-5 for a best-of-5, 4-7 for a
+                  best-of-7 — so an MLB Wild Card offers 2 and 3, not 4-7. */}
+              {seriesCfgFor(matchup).isSeries && currentPick && (
                 <div className="px-3 pb-2 pt-1">
-                  <div className="text-[10px] text-text-muted mb-1.5">Series length</div>
+                  <div className="text-[10px] text-text-muted mb-1.5">
+                    Series length <span className="opacity-60">· best of {seriesCfgFor(matchup).bestOf}</span>
+                  </div>
                   <div className="flex gap-1.5">
-                    {[4, 5, 6, 7].map((n) => (
+                    {seriesCfgFor(matchup).lengths.map((n) => (
                       <button
                         key={n}
                         onClick={() => setSeriesLengths((prev) => ({ ...prev, [matchup.template_matchup_id]: n }))}

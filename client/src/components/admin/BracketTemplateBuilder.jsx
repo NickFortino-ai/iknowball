@@ -891,7 +891,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
           </div>
           {rounds.map((round, i) => (
             <div key={round.round_number} className="bg-bg-card rounded-xl border border-border p-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[10px] text-text-muted mb-1">Round Name</label>
                   <input
@@ -918,6 +918,33 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
                     min={0}
                     className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-sm text-text-primary text-center focus:outline-none focus:border-accent"
                   />
+                </div>
+                <div>
+                  {/* Per-round series length. Needed because MLB is not one
+                      length throughout: best-of-3 Wild Card, best-of-5
+                      Division Series, best-of-7 from the LCS. Blank falls back
+                      to the template-level format, which is what every
+                      existing NBA / NHL / World Cup template relies on. */}
+                  <label className="block text-[10px] text-text-muted mb-1">
+                    Best of <span className="opacity-60">· blank = template default</span>
+                  </label>
+                  <select
+                    value={round.best_of ?? ''}
+                    onChange={(e) => {
+                      const next = [...rounds]
+                      const v = e.target.value
+                      if (v === '') delete next[i].best_of
+                      else next[i] = { ...next[i], best_of: parseInt(v, 10) }
+                      setRounds([...next])
+                    }}
+                    className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+                  >
+                    <option value="">Default</option>
+                    <option value="1">1 — single game</option>
+                    <option value="3">3 — clinch at 2</option>
+                    <option value="5">5 — clinch at 3</option>
+                    <option value="7">7 — clinch at 4</option>
+                  </select>
                 </div>
               </div>
             </div>
