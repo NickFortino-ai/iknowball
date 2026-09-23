@@ -50,6 +50,30 @@ function abbreviateTeam(name) {
   return words.map((w) => w[0]).join('').toUpperCase()
 }
 
+
+// The odds to SHOW for a side.
+//
+// A prop is re-priced continuously, but a pick is locked at the odds that
+// were live when it was made — odds_at_pick, with risk/reward snapshotted
+// alongside. Rendering prop.over_odds for a side the user has already taken
+// shows them a number that was never theirs: Ustadbadger picked Pete Alonso
+// to homer at +300 and earned 30, then the prop drifted to +510 and his own
+// card told him he should have had 51.
+//
+// So: once a side is picked, that side shows what the user locked. The
+// untaken side keeps showing live odds, which is correct — it is still
+// available at that price.
+function lockedOddsFor(pick, side, liveOdds) {
+  if (pick && pick.picked_side === side && pick.odds_at_pick != null) {
+    return {
+      odds: pick.odds_at_pick,
+      risk: pick.risk_at_submission ?? pick.risk_points ?? calculateRiskPoints(pick.odds_at_pick),
+      reward: pick.reward_at_submission ?? pick.reward_points ?? calculateRewardPoints(pick.odds_at_pick),
+    }
+  }
+  return { odds: liveOdds, risk: calculateRiskPoints(liveOdds), reward: calculateRewardPoints(liveOdds) }
+}
+
 export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting, compact }) {
   const isLocked = prop.status !== 'published'
   const isSettled = prop.status === 'settled'
@@ -196,12 +220,12 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
             {prop.over_odds && (
               <div className="text-center">
                 <div className={`font-semibold text-xs ${overState === 'selected' ? 'text-white' : ''}`}>
-                  <span className="text-incorrect">-{calculateRiskPoints(prop.over_odds)}</span>
+                  <span className="text-incorrect">-{lockedOddsFor(pick, 'over', prop.over_odds).risk}</span>
                   <span className={overState === 'selected' ? 'text-white/70' : 'text-text-muted'}> → </span>
-                  <span className="text-correct">+{calculateRewardPoints(prop.over_odds)}</span>
+                  <span className="text-correct">+{lockedOddsFor(pick, 'over', prop.over_odds).reward}</span>
                 </div>
                 <div className={`text-xs ${overState === 'selected' ? 'text-white/70' : 'text-text-muted'}`}>
-                  {formatOdds(prop.over_odds)}
+                  {formatOdds(lockedOddsFor(pick, 'over', prop.over_odds).odds)}
                 </div>
               </div>
             )}
@@ -218,12 +242,12 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
               </div>
               <div className="text-center">
                 <div className={`font-semibold text-xs ${underState === 'selected' ? 'text-white' : ''}`}>
-                  <span className="text-incorrect">-{calculateRiskPoints(prop.under_odds)}</span>
+                  <span className="text-incorrect">-{lockedOddsFor(pick, 'under', prop.under_odds).risk}</span>
                   <span className={underState === 'selected' ? 'text-white/70' : 'text-text-muted'}> → </span>
-                  <span className="text-correct">+{calculateRewardPoints(prop.under_odds)}</span>
+                  <span className="text-correct">+{lockedOddsFor(pick, 'under', prop.under_odds).reward}</span>
                 </div>
                 <div className={`text-xs ${underState === 'selected' ? 'text-white/70' : 'text-text-muted'}`}>
-                  {formatOdds(prop.under_odds)}
+                  {formatOdds(lockedOddsFor(pick, 'under', prop.under_odds).odds)}
                 </div>
               </div>
             </button>
