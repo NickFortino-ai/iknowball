@@ -867,16 +867,44 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
     }
 
     if (league.format === 'bracket') {
-      const rounds = bracketTournament?.bracket_templates?.rounds || []
-      const isBo7 = bracketTournament?.bracket_templates?.series_format === 'best_of_7'
-      const roundScoring = rounds
-        .filter((r) => r.round_number > 0)
+      const tpl = bracketTournament?.bracket_templates
+      const rounds = (tpl?.rounds || []).filter((r) => r.round_number > 0)
         .sort((a, b) => a.round_number - b.round_number)
-        .map((r) => `${r.name}: ${r.points_per_correct} pts`)
-        .join(', ')
-      const seriesBonus = isBo7 ? ' For each correct winner, predict the series length (4–7 games) for bonus points: +4 for exact, +2 for one game off.' : ''
+      const fallbackBestOf = tpl?.series_format === 'best_of_7' ? 7 : 1
+
+      // Read each round's own length. This used to gate the entire series
+      // explanation on the template-level series_format and then hardcode
+      // "(4–7 games)" — which told an MLB or WNBA player their best-of-THREE
+      // first round was four to seven games, and quoted a flat +4/+2 bonus
+      // that no longer exists.
+      const bestOfFor = (r) => r.best_of ?? fallbackBestOf
+      const bonusFor = (bestOf) => {
+        if (!bestOf || bestOf <= 1) return { exact: 0, oneOff: 0 }
+        const outcomes = bestOf - Math.ceil(bestOf / 2) + 1
+        return { exact: outcomes, oneOff: outcomes >= 3 ? Math.floor(outcomes / 2) : 0 }
+      }
+
+      const roundScoring = rounds.map((r) => `${r.name}: ${r.points_per_correct} pts`).join(', ')
+
+      const seriesRounds = rounds.filter((r) => bestOfFor(r) > 1)
+      const seriesBonus = seriesRounds.length
+        ? ` For each correct winner in a series, also predict how many games it goes — the bonus scales with how many outcomes are possible: ${seriesRounds.map((r) => {
+            const bo = bestOfFor(r)
+            const b = bonusFor(bo)
+            const lo = Math.ceil(bo / 2)
+            return `${r.name} best of ${bo}, ${lo}–${bo} games (+${b.exact} exact${b.oneOff ? `, +${b.oneOff} one game off` : ''})`
+          }).join('; ')}.`
+        : ''
+
+      // Byes and reseeding change how the bracket behaves, and a player who
+      // doesn't know about them will think their bracket is wrong.
+      const reseeds = rounds.some((r) => r.reseed)
+      const reseedNote = reseeds
+        ? ' This bracket re-seeds: after the opening round the top remaining seed faces the lowest, so your later matchups depend on which seeds survive.'
+        : ''
+
       const globalImpact = `When the tournament ends, your finishing position impacts your global IKB score — see the table below.`
-      return `Fill out your bracket before the lock deadline. Earn points for each correct pick — later rounds are worth more. ${roundScoring ? `Scoring: ${roundScoring}.` : ''}${seriesBonus} A tiebreaker score prediction on the championship game breaks ties in the standings. ${globalImpact}`
+      return `Fill out your bracket before the lock deadline. Earn points for each correct pick — later rounds are worth more. ${roundScoring ? `Scoring: ${roundScoring}.` : ''}${seriesBonus}${reseedNote} A tiebreaker score prediction on the championship game breaks ties in the standings. ${globalImpact}`
     }
 
     return null

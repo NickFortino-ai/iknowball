@@ -793,10 +793,8 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
       possiblePoints += roundConfig?.points_per_correct || 0
       // Include max series length bonus (+4 for exact prediction). Per-round:
       // a single-game round has no series to predict.
-      if (pick.series_length
-        && roundSeriesConfig(rounds, matchup.round_number, tournament.bracket_templates?.series_format).isSeries) {
-        possiblePoints += 4
-      }
+      const lenCfg = roundSeriesConfig(rounds, matchup.round_number, tournament.bracket_templates?.series_format)
+      if (pick.series_length && lenCfg.isSeries) possiblePoints += lenCfg.exactBonus
     }
   }
 
@@ -1243,8 +1241,9 @@ async function cascadeResultToTournament(tournament, templateMatchup, winner, wi
     // ~5% of the total ceiling and barely registered in standings.
     if (isBestOf7 && isCorrect && pick.series_length && actualSeriesLength) {
       const diff = Math.abs(pick.series_length - actualSeriesLength)
-      if (diff === 0) points += 4      // Exact prediction
-      else if (diff === 1) points += 2 // One game off
+      const cfg = roundSeriesConfig(rounds, templateMatchup.round_number, tournament.bracket_templates?.series_format)
+      if (diff === 0) points += cfg.exactBonus
+      else if (diff === 1) points += cfg.oneOffBonus
       // Two or more off: no bonus
     }
 
@@ -1363,10 +1362,8 @@ async function recalculateEntryPoints(tournamentId, rounds, seriesFormat = 'sing
         possiblePoints += roundConfig?.points_per_correct || 0
         // Include max series length bonus for unscored picks, when that round
         // is actually a series.
-        if (pick.series_length
-          && roundSeriesConfig(rounds, pick.round_number, seriesFormat).isSeries) {
-          possiblePoints += 4
-        }
+        const lenCfg = roundSeriesConfig(rounds, pick.round_number, seriesFormat)
+        if (pick.series_length && lenCfg.isSeries) possiblePoints += lenCfg.exactBonus
       }
     }
 
@@ -1561,12 +1558,32 @@ export function roundSeriesConfig(rounds, roundNumber, seriesFormat) {
     : (seriesFormat === 'best_of_7' ? 7 : 1)
 
   // best_of 1 is a single game: no series, and no length to predict.
-  if (bestOf <= 1) return { bestOf: 1, clinch: 1, lengths: [], isSeries: false }
+  if (bestOf <= 1) return { bestOf: 1, clinch: 1, lengths: [], isSeries: false, exactBonus: 0, oneOffBonus: 0 }
 
   const clinch = Math.ceil(bestOf / 2)
   const lengths = []
   for (let n = clinch; n <= bestOf; n++) lengths.push(n)
-  return { bestOf, clinch, lengths, isSeries: true }
+
+  // The length bonus scales with how hard the guess actually is.
+  //
+  // A flat +4/+2 treated every series the same, but the number of possible
+  // answers is not the same: a best-of-3 can only end 2-3, so an "exact"
+  // prediction is a coin flip, while a best-of-7 has four outcomes. Paying
+  // both the same rewarded luck in the early rounds as much as judgement in
+  // the late ones.
+  //
+  //   best of 3   2 outcomes (50%)   +2 exact, no consolation
+  //   best of 5   3 outcomes (33%)   +3 exact, +1 one-off
+  //   best of 7   4 outcomes (25%)   +4 exact, +2 one-off
+  //
+  // Best-of-7 keeps 4/2, so the NBA and NHL brackets are unchanged.
+  //
+  // No one-off bonus on a best-of-3 on purpose: with only two answers,
+  // "one game off" IS the other answer, so paying for it would mean paying
+  // for every possible guess.
+  const exactBonus = lengths.length
+  const oneOffBonus = lengths.length >= 3 ? Math.floor(lengths.length / 2) : 0
+  return { bestOf, clinch, lengths, isSeries: true, exactBonus, oneOffBonus }
 }
 
 export async function scoreBracketMatchups(homeTeam, awayTeam, winner, homeScore, awayScore, sportKey) {

@@ -552,6 +552,19 @@ const SPORT_BACKDROPS = {
   basketball_wnba: 'wnba.jpg',
 }
 
+
+// Mirrors the bonus scaling in roundSeriesConfig (bracketService.js). The two
+// must agree — this is what the admin is promised, that is what gets awarded.
+//
+// The bonus tracks how many outcomes are possible, because "exact" is a coin
+// flip in a best-of-3 and a one-in-four call in a best-of-7. No consolation
+// on a best-of-3: with two answers, "one off" IS the other answer.
+function seriesBonus(bestOf) {
+  if (!bestOf || bestOf <= 1) return { outcomes: 0, exact: 0, oneOff: 0 }
+  const outcomes = bestOf - Math.ceil(bestOf / 2) + 1
+  return { outcomes, exact: outcomes, oneOff: outcomes >= 3 ? Math.floor(outcomes / 2) : 0 }
+}
+
 // Big picture-led tile for choosing a sport, matching the props grid.
 function SportTile({ option, onSelect }) {
   const backdrop = SPORT_BACKDROPS[option.value]
@@ -1149,17 +1162,19 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
                 With a preset, describe the rounds as they actually are. */}
             {activePreset && !customizeShape ? (
               <div className="space-y-0.5">
-                {(rounds || []).map((r) => (
-                  <div key={r.round_number} className="text-sm text-text-primary">
-                    {r.name}
-                    <span className="text-text-muted">
-                      {' · '}
-                      {r.best_of
-                        ? `best of ${r.best_of}`
-                        : activePreset.seriesFormat === 'best_of_7' ? 'best of 7' : 'single game'}
-                    </span>
-                  </div>
-                ))}
+                {(rounds || []).map((r) => {
+                  const bo = r.best_of ?? (activePreset.seriesFormat === 'best_of_7' ? 7 : 1)
+                  const b = seriesBonus(bo)
+                  return (
+                    <div key={r.round_number} className="text-sm text-text-primary">
+                      {r.name}
+                      <span className="text-text-muted">
+                        {' · '}{bo > 1 ? `best of ${bo}` : 'single game'}
+                        {b.exact > 0 && ` · length bonus +${b.exact}${b.oneOff ? ` / +${b.oneOff}` : ''}`}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             ) : (
             <div className="flex gap-2">
@@ -1183,11 +1198,9 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
                 "4-7 games" understates a best-of-3 round. */}
             {(activePreset ? (rounds || []).some((r) => (r.best_of ?? 0) > 1 || activePreset.seriesFormat === 'best_of_7') : seriesFormat === 'best_of_7') && (
               <div className="text-[10px] text-text-muted mt-1">
-                Users predict series length per matchup
-                {activePreset && (rounds || []).some((r) => r.best_of)
-                  ? ` (${[...new Set((rounds || []).filter((r) => r.best_of > 1).map((r) => `${Math.ceil(r.best_of / 2)}-${r.best_of}`))].join(', ')} by round)`
-                  : ' (4-7 games)'}
-                . Bonus: +4 exact, +2 one-off.
+                Users predict how many games each series goes. The bonus scales with
+                how many outcomes are possible — exact / one game off — so a best-of-3
+                coin flip is worth less than calling a best-of-7.
               </div>
             )}
           </div>
