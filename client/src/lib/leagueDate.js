@@ -51,3 +51,45 @@ export function formatDraftDateShort(isoStr) {
   const timePart = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   return `${datePart}, ${timePart}`
 }
+
+/**
+ * What a league's "runs until" label says.
+ *
+ * Lived as four copies — LeagueCard, LeagueInfoModal, OpenLeaguesSection and
+ * JoinLeaguePage — which is the shape that has already cost this codebase
+ * twice (the four GameStatusBadge copies, the two injury badges). They had
+ * not diverged semantically yet; adding the bracket case to four files was
+ * how that would have started.
+ *
+ * Returns null when there is nothing meaningful to say.
+ */
+export function formatRunsUntil(league) {
+  if (league.format === 'survivor') return 'Last one standing'
+  if (league.format === 'squares') return 'End of game'
+  // A bracket runs until someone wins it. Its ends_at is only ever an
+  // estimate — a best-of-seven can finish four days apart depending on how
+  // the series goes — so showing a date implies precision we don't have.
+  if (league.format === 'bracket') return 'Through the playoffs'
+  if (league.duration === 'full_season') return 'End of season'
+  if (league.duration === 'playoffs_only') return 'End of playoffs'
+  if (league.ends_at) return formatEndDateShort(league.ends_at)
+  return null
+}
+
+/**
+ * The whole phrase, so every surface words it identically.
+ *
+ * Brackets deliberately skip the start–end range: "Runs Sep 30 – Through the
+ * playoffs" reads as a mistake. They get one clause whether or not the league
+ * has started.
+ */
+export function formatLeagueRuns(league) {
+  const end = formatRunsUntil(league)
+  if (league.format === 'bracket') return 'Runs through the playoffs'
+  const start = formatStartDateShort(league.starts_at)
+  const notStartedYet = league.starts_at && new Date(league.starts_at) > new Date()
+  if (notStartedYet && start && end) return `Runs ${start} – ${end}`
+  if (notStartedYet && start) return `Starts ${start}`
+  if (end) return `Runs until ${end}`
+  return null
+}

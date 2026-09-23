@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { getBackdropUrl } from '../../lib/backdropUrl'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
-import { formatStartDateShort, formatEndDateShort, formatDraftDateShort } from '../../lib/leagueDate'
+import { formatStartDateShort, formatDraftDateShort, formatRunsUntil, formatLeagueRuns } from '../../lib/leagueDate'
 import Avatar from '../ui/Avatar'
 import TierBadge from '../ui/TierBadge'
 
@@ -61,25 +61,6 @@ const FORMAT_DESCRIPTIONS = {
   receptions: 'Pick 3 NFL pass catchers per week. Most receptions across the season wins.',
   td_pass: 'Pick 1 QB per week. Most passing touchdowns across the season wins. You can only pick each QB once.',
   squares: 'Pick a square on the grid. When the score lands on your row + column at the end of any quarter, you win that quarter.',
-}
-
-function formatRunsUntil(league) {
-  if (league.format === 'survivor') return 'Last one standing'
-  if (league.format === 'squares') return 'End of game'
-  if (league.duration === 'full_season') return 'End of season'
-  if (league.duration === 'playoffs_only') return 'End of playoffs'
-  if (league.ends_at) return formatEndDateShort(league.ends_at)
-  return null
-}
-
-function formatLeagueRuns(league) {
-  const start = formatStartDateShort(league.starts_at)
-  const end = formatRunsUntil(league)
-  const notStartedYet = league.starts_at && new Date(league.starts_at) > new Date()
-  if (notStartedYet && start && end) return `Runs ${start} – ${end}`
-  if (notStartedYet && start) return `Starts ${start}`
-  if (end) return `Runs until ${end}`
-  return null
 }
 
 function getLeagueHeadline(league) {

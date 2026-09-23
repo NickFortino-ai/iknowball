@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useOpenLeagues, useJoinOpenLeague } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
 import { getBackdropUrl } from '../../lib/backdropUrl'
-import { formatStartDateShort, formatEndDateShort, formatDraftDateShort } from '../../lib/leagueDate'
+import { formatDraftDateShort, formatLeagueRuns } from '../../lib/leagueDate'
 import LeagueInfoModal from '../leagues/LeagueInfoModal'
 
 const FORMAT_LABELS = {
@@ -67,15 +67,6 @@ function getLeagueHeadline(league) {
   return formatLabel
 }
 
-function formatRunsUntil(league) {
-  if (league.format === 'survivor') return 'Last one standing'
-  if (league.format === 'squares') return 'End of game'
-  if (league.duration === 'full_season') return 'End of season'
-  if (league.duration === 'playoffs_only') return 'End of playoffs'
-  if (league.ends_at) return formatEndDateShort(league.ends_at)
-  return null
-}
-
 // Pre-start: "Runs May 17 – Last one standing" so users see the full window.
 // Already underway: just "Runs until Last one standing" — the start date stops
 // being useful once the league is rolling.
@@ -83,15 +74,6 @@ function formatRunsUntil(league) {
 // Fantasy has its own rule (see formatFantasyTimeline): the draft date is
 // what a joiner actually cares about, and starts_at for fantasy is a
 // stale creation-time placeholder.
-function formatLeagueRuns(league) {
-  const start = formatStartDateShort(league.starts_at)
-  const end = formatRunsUntil(league)
-  const notStartedYet = league.starts_at && new Date(league.starts_at) > new Date()
-  if (notStartedYet && start && end) return `Runs ${start} – ${end}`
-  if (notStartedYet && start) return `Starts ${start}`
-  if (end) return `Runs until ${end}`
-  return null
-}
 
 function formatFantasyTimeline(league) {
   if (league.draft_date) return `Drafts ${formatDraftDateShort(league.draft_date)}`

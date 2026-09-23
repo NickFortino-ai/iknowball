@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { getBackdropUrl } from '../../lib/backdropUrl'
-import { formatStartDateShort, formatEndDateShort } from '../../lib/leagueDate'
+import { formatStartDateShort, formatRunsUntil } from '../../lib/leagueDate'
 import DraftStartsIn from './DraftStartsIn'
 
 const FORMAT_LABELS = {
@@ -36,15 +36,6 @@ const SPORT_LABELS = {
   soccer_world_cup: 'Int\'l Soccer',
   americanfootball_ufl: 'UFL',
   all: 'All Sports',
-}
-
-function formatRunsUntil(league) {
-  if (league.format === 'survivor') return 'Last one standing'
-  if (league.format === 'squares') return 'End of game'
-  if (league.duration === 'full_season') return 'End of season'
-  if (league.duration === 'playoffs_only') return 'End of playoffs'
-  if (league.ends_at) return formatEndDateShort(league.ends_at)
-  return null
 }
 
 const STATUS_STYLES = {
@@ -183,6 +174,16 @@ export default function LeagueCard({ league, noLink }) {
           const end = formatRunsUntil(league)
           const notStartedYet = league.starts_at && new Date(league.starts_at) > new Date()
           if (!start && !end) return null
+          // A bracket gets one clause, never a range: "Runs Sep 30 – Through
+          // the playoffs" reads as a bug. It also has no honest end date —
+          // a best-of-seven can finish four days apart.
+          if (league.format === 'bracket') {
+            return (
+              <div className="text-xs text-text-muted mt-1.5">
+                Runs <span className="text-text-secondary font-medium">through the playoffs</span>
+              </div>
+            )
+          }
           // Pre-start: show the full range so users see exactly when it begins and ends.
           if (notStartedYet && start && end) {
             return (

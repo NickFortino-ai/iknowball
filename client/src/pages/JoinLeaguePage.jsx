@@ -4,7 +4,7 @@ import { useJoinLeague, useOpenLeagues, useJoinOpenLeague } from '../hooks/useLe
 import { toast } from '../components/ui/Toast'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { getBackdropUrl } from '../lib/backdropUrl'
-import { formatStartDateShort, formatEndDateShort } from '../lib/leagueDate'
+import { formatStartDateShort, formatRunsUntil } from '../lib/leagueDate'
 import LeagueInfoModal from '../components/leagues/LeagueInfoModal'
 
 const FORMAT_LABELS = {
@@ -55,7 +55,6 @@ function formatLockDate(dateStr) {
   return 'Locks soon'
 }
 
-
 function LeagueSettingsPreview({ league }) {
   const s = league.settings || {}
   const items = []
@@ -78,17 +77,6 @@ function LeagueSettingsPreview({ league }) {
       ))}
     </div>
   )
-}
-
-function formatRunsUntil(league) {
-  if (league.format === 'survivor') return 'Last one standing'
-  if (league.format === 'squares') return 'End of game'
-  if (league.duration === 'full_season') return 'End of season'
-  if (league.duration === 'playoffs_only') return 'End of playoffs'
-  if (league.ends_at) {
-    return formatEndDateShort(league.ends_at)
-  }
-  return null
 }
 
 export default function JoinLeaguePage() {

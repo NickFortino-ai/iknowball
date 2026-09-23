@@ -1207,20 +1207,14 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-text-secondary mb-2">
-              Tournament Ends <span className="text-text-muted font-normal">(optional)</span>
-            </label>
-            <input
-              type="date"
-              value={endsAt}
-              onChange={(e) => setEndsAt(e.target.value)}
-              className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-            />
-            <div className="text-[10px] text-text-muted mt-1">
-              Date of the championship. Used as the default end date for leagues built from this template (so the league card shows the full run window).
-            </div>
-          </div>
+          {/* Tournament Ends removed. It only ever defaulted leagues.ends_at
+              so a card could show a run window — it never gated anything, and
+              completeLeagues.js deliberately finishes bracket leagues on the
+              championship result regardless of it. Bracket cards now read
+              "Runs through the playoffs", which is both honest (a best-of-
+              seven can end four days apart) and needs no date. endsAt is
+              still SENT as null so existing templates that carry one are not
+              silently rewritten on save. */}
 
           <div className={isWorldCup ? 'hidden' : ''}>
             <label className="block text-sm font-semibold text-text-secondary mb-2">
