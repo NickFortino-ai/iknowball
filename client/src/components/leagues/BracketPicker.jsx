@@ -340,9 +340,80 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     return map
   }, [matchups])
 
+
+  // Rounds whose pairings are decided by SEED rather than by a fixed wire.
+  //
+  // Every other bracket is statically wired: feeds_into tells you where a
+  // winner goes. The NFL reseeds — after the Wild Card round the 1 seed plays
+  // the LOWEST remaining seed — so the Divisional pairings depend on which
+  // seeds survived, and cannot be known when the template is built.
+  //
+  // This has to happen client-side as well as on the server, because a
+  // bracket is the user's PREDICTION: their Divisional matchups must follow
+  // from their OWN Wild Card picks. Resolving these from the static feeder
+  // map would show them a bracket they did not pick.
+  const reseedRounds = useMemo(
+    () => new Set((templateRounds || []).filter((r) => r.reseed).map((r) => r.round_number)),
+    [templateRounds],
+  )
+
+  const reseedPairs = useMemo(() => {
+    const out = {}
+    if (!reseedRounds.size) return out
+    const all = matchups || []
+    const regionKey = (m) => m.region ?? '__none__'
+
+    for (const roundNumber of reseedRounds) {
+      const thisRound = all.filter((m) => m.round_number === roundNumber)
+      const byRegion = {}
+      for (const m of thisRound) (byRegion[regionKey(m)] ||= []).push(m)
+
+      for (const [region, list] of Object.entries(byRegion)) {
+        const prev = all.filter((m) => m.round_number === roundNumber - 1 && regionKey(m) === region)
+        if (!prev.length) continue
+
+        // Survivors from the user's own picks, falling back to a settled
+        // result. Incomplete means the user hasn't finished the previous
+        // round — leave the round unresolved rather than pair half of it.
+        const survivors = []
+        let complete = true
+        for (const p of prev) {
+          const picked = p.template_matchup_id ? picks[p.template_matchup_id] : null
+          const team = picked || (p.winner ? (p.winner === 'top' ? p.team_top : p.team_bottom) : null)
+          if (!team) { complete = false; break }
+          survivors.push({ team, seed: teamSeedMap[team] ?? null })
+        }
+        if (!complete) continue
+
+        // Byes already seated in this round are survivors too — the NFL's
+        // 1 seed never played a Wild Card game.
+        for (const m of list) {
+          if (m.team_top) survivors.push({ team: m.team_top, seed: m.seed_top ?? teamSeedMap[m.team_top] ?? null })
+          if (m.team_bottom) survivors.push({ team: m.team_bottom, seed: m.seed_bottom ?? teamSeedMap[m.team_bottom] ?? null })
+        }
+
+        const seeded = survivors.filter((x) => x.team && x.seed != null).sort((a, b) => a.seed - b.seed)
+        // Must fill the round exactly, or seating anyone would be a guess.
+        if (seeded.length !== list.length * 2) continue
+
+        const ordered = [...list].sort((a, b) => a.position - b.position)
+        ordered.forEach((m, i) => {
+          const top = seeded[i]
+          const bottom = seeded[seeded.length - 1 - i]
+          out[m.id] = { top: top.team, bottom: bottom.team, seedTop: top.seed, seedBottom: bottom.seed }
+        })
+      }
+    }
+    return out
+  }, [matchups, picks, teamSeedMap, reseedRounds])
+
   // Get the available teams for a matchup (from feeder picks, settled results, or direct team names)
   // Returns { top, bottom, seedTop, seedBottom }
   const getTeamsForMatchup = useCallback((matchup) => {
+    // A reseeding round is resolved from the survivor set, not a fixed wire.
+    const reseeded = reseedPairs[matchup.id]
+    if (reseeded) return reseeded
+
     const feeders = feederMap[matchup.id]
     if (!feeders) return { top: matchup.team_top, bottom: matchup.team_bottom, seedTop: matchup.seed_top ?? teamSeedMap[matchup.team_top], seedBottom: matchup.seed_bottom ?? teamSeedMap[matchup.team_bottom] }
 
@@ -368,7 +439,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
       seedTop: top ? (matchup.seed_top ?? teamSeedMap[top] ?? null) : null,
       seedBottom: bottom ? (matchup.seed_bottom ?? teamSeedMap[bottom] ?? null) : null,
     }
-  }, [picks, feederMap, teamSeedMap])
+  }, [picks, feederMap, teamSeedMap, reseedPairs])
 
   // Forward lookup: template_matchup_id → next round's template_matchup_id (for clearing downstream picks)
   const feedsIntoTmId = useMemo(() => {

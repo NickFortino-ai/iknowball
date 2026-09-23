@@ -1009,6 +1009,94 @@ export async function getTemplateResults(templateId) {
   return matchups || []
 }
 
+
+/**
+ * Pair the survivors of a completed round by SEED, for a round that reseeds.
+ *
+ * Every other bracket we support is statically wired: feeds_into_matchup_id
+ * decides where a winner goes, fixed when the template was built. That holds
+ * for MLB, the NBA, the NHL, the NCAA tournament and the World Cup, none of
+ * which reseed.
+ *
+ * The NFL does. After the Wild Card round the 1 seed plays the LOWEST
+ * remaining seed, so if the 7 upsets the 2, the 1 draws the 7 — and which
+ * winner belongs in which Divisional matchup cannot be known in advance.
+ *
+ * Two consequences:
+ *   1. Placement can't happen per-matchup as games finish. Nobody can be
+ *      placed until EVERY matchup of the previous round in that region is
+ *      settled, because the pairing depends on the whole survivor set.
+ *   2. The bye team is already sitting in the reseeding round (the 1 seed as
+ *      team_top), so it joins the survivor pool rather than being placed.
+ *
+ * Pairing, survivors sorted ascending by seed:
+ *   matchup[0]  seeds[0] v seeds[last]      best vs worst
+ *   matchup[1]  seeds[1] v seeds[last-1]
+ *   ...
+ * which for the NFL's four survivors is 1-vs-lowest and the middle two.
+ *
+ * No-op unless the round declares `reseed: true`.
+ */
+async function applyReseedForRound(templateId, rounds, completedRound, region) {
+  const nextRound = (rounds || []).find((r) => r.round_number === completedRound + 1)
+  if (!nextRound?.reseed) return
+
+  const { data: all } = await supabase
+    .from('bracket_template_matchups')
+    .select('id, round_number, position, region, seed_top, seed_bottom, team_top, team_bottom, winner')
+    .eq('template_id', templateId)
+    .in('round_number', [completedRound, completedRound + 1])
+    .order('position')
+
+  const inRegion = (m) => (region == null ? m.region == null : m.region === region)
+  const prev = (all || []).filter((m) => m.round_number === completedRound && inRegion(m))
+  const next = (all || []).filter((m) => m.round_number === completedRound + 1 && inRegion(m))
+  if (!prev.length || !next.length) return
+
+  // Hold until the whole round is in. A partially-settled round would pair
+  // the wrong teams and then have to be undone.
+  if (prev.some((m) => !m.winner)) return
+
+  const survivors = prev.map((m) => (m.winner === 'top'
+    ? { team: m.team_top, seed: m.seed_top }
+    : { team: m.team_bottom, seed: m.seed_bottom }))
+
+  // Byes already seated in the reseeding round join the pool. They are
+  // survivors too — the NFL's 1 seed never played a Wild Card game.
+  for (const m of next) {
+    if (m.team_top && m.seed_top != null) survivors.push({ team: m.team_top, seed: m.seed_top })
+    if (m.team_bottom && m.seed_bottom != null) survivors.push({ team: m.team_bottom, seed: m.seed_bottom })
+  }
+
+  const seeded = survivors
+    .filter((s) => s.team && s.seed != null)
+    .sort((a, b) => a.seed - b.seed)
+
+  // Needs exactly two survivors per matchup, or the bracket is malformed and
+  // guessing would seat someone in the wrong game.
+  if (seeded.length !== next.length * 2) {
+    logger.error({ templateId, region, survivors: seeded.length, matchups: next.length }, 'Reseed aborted — survivor count does not fill the round')
+    return
+  }
+
+  const ordered = [...next].sort((a, b) => a.position - b.position)
+  for (let i = 0; i < ordered.length; i++) {
+    const top = seeded[i]
+    const bottom = seeded[seeded.length - 1 - i]
+    await supabase
+      .from('bracket_template_matchups')
+      .update({
+        team_top: top.team, seed_top: top.seed,
+        team_bottom: bottom.team, seed_bottom: bottom.seed,
+      })
+      .eq('id', ordered[i].id)
+  }
+  logger.info(
+    { templateId, region, round: completedRound + 1, pairs: ordered.map((m, i) => `${seeded[i].seed}v${seeded[seeded.length - 1 - i].seed}`) },
+    'Reseeded round',
+  )
+}
+
 export async function enterTemplateResult(templateId, templateMatchupId, winner, scoreTop, scoreBottom, seriesWinsTop, seriesWinsBottom) {
   // Get the template matchup
   const { data: templateMatchup } = await supabase
@@ -1049,8 +1137,25 @@ export async function enterTemplateResult(templateId, templateMatchupId, winner,
     .update(templateUpdate)
     .eq('id', templateMatchupId)
 
-  // Propagate winner to next template matchup (fill in team name for next round)
-  if (templateMatchup.feeds_into_matchup_id) {
+  // Where the winner goes next.
+  //
+  // Two modes. Normally the wire is static and the winner is pushed straight
+  // into feeds_into_slot. But if the NEXT round reseeds, no one can be placed
+  // until that whole round is settled for this region — pairing depends on
+  // the full survivor set — so the static push is skipped entirely and
+  // applyReseedForRound seats everyone at once. Doing both would seat the
+  // winner twice, once in the wrong game.
+  const { data: tpl } = await supabase
+    .from('bracket_templates')
+    .select('rounds')
+    .eq('id', templateId)
+    .single()
+  const nextRoundReseeds = !!(tpl?.rounds || [])
+    .find((r) => r.round_number === templateMatchup.round_number + 1)?.reseed
+
+  if (nextRoundReseeds) {
+    await applyReseedForRound(templateId, tpl?.rounds, templateMatchup.round_number, templateMatchup.region)
+  } else if (templateMatchup.feeds_into_matchup_id) {
     const update = templateMatchup.feeds_into_slot === 'top'
       ? { team_top: winningTeam, seed_top: winningSeed }
       : { team_bottom: winningTeam, seed_bottom: winningSeed }

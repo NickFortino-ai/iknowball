@@ -123,18 +123,27 @@ const SPORT_BRACKET_PRESETS = {
     ],
   },
 
-  // DELIBERATELY ABSENT — no preset is better than a wrong one, because a
-  // wrong shape produces a bracket that looks right and pays out wrong:
-  //
-  //   americanfootball_nfl — 14 teams, 7 per conference, the 1 seed on a bye.
-  //     Same byes-and-non-power-of-two problem as MLB, so it needs its own
-  //     generateMatchups case, not a team-count entry.
+  // NFL: 14 teams, 7 per conference, only the 1 seed on a bye. Round 2
+  // carries `reseed` — the 1 seed plays the lowest remaining seed, which no
+  // static wire can express. See docs/nfl-bracket-reseeding-design.md.
+  americanfootball_nfl: {
+    teamCount: 14,
+    seriesFormat: 'single_elimination',
+    regions: ['AFC', 'NFC'],
+    rounds: [
+      { round_number: 1, name: 'Wild Card', points_per_correct: 10 },
+      { round_number: 2, name: 'Divisional', points_per_correct: 20, reseed: true },
+      { round_number: 3, name: 'Conference Championship', points_per_correct: 40 },
+      { round_number: 4, name: 'Super Bowl', points_per_correct: 80 },
+    ],
+  },
+
   //
   // It falls through to the generic generator, which is the existing
   // behaviour. Added once the format is confirmed.
 }
 
-const TEAM_COUNT_OPTIONS = [4, 8, 12, 16, 32, 64, 68]
+const TEAM_COUNT_OPTIONS = [4, 8, 12, 14, 16, 32, 64, 68]
 
 function generateRounds(teamCount) {
   // 12 is MLB's postseason and it is not a power of two: two byes per league,
@@ -260,8 +269,77 @@ function generateMlb12Matchups(regions) {
   ]
 }
 
+
+// The NFL's 14-team bracket. 13 matchups, one bye per conference.
+//
+// Only the 1 seed rests — that changed in 2020 when the field went to seven
+// per conference. Wild Card is 2v7, 3v6, 4v5.
+//
+// Round 2 carries `reseed`, and that is the whole reason this can't be a
+// generic bracket: the NFL reseeds, so the 1 seed plays the LOWEST remaining
+// seed. The Wild Card matchups therefore have NO feeds_into wiring — there is
+// no fixed answer to where their winner goes. The server and the picker both
+// pair that round from the survivor set instead.
+//
+// From the Divisional round on there is no choice left (two teams per
+// conference), so those wires are static again.
+function generateNfl14Matchups(regions) {
+  const [afc, nfc] = regions?.length >= 2 ? regions : ['AFC', 'NFC']
+  const out = []
+  let position = 0
+  const conf = [afc, nfc]
+
+  // Wild Card — seeds 2-7 play, 3 per conference. No feeds_into: reseeded.
+  for (const region of conf) {
+    for (const [st, sb] of [[2, 7], [3, 6], [4, 5]]) {
+      out.push({
+        round_number: 1, position: position++, region,
+        seed_top: st, seed_bottom: sb, team_top: '', team_bottom: '',
+        is_bye: false, feeds_into_round: null, feeds_into_position: null, feeds_into_slot: null,
+      })
+    }
+  }
+
+  // Divisional — 2 per conference. The 1 seed is seated here from the start;
+  // his opponent, and the other pairing, are filled by the reseed.
+  position = 0
+  for (let c = 0; c < conf.length; c++) {
+    // matchup 0 of each conference holds the bye seed
+    out.push({
+      round_number: 2, position: position++, region: conf[c],
+      seed_top: 1, seed_bottom: null, team_top: '', team_bottom: '',
+      is_bye: false, feeds_into_round: 3, feeds_into_position: c, feeds_into_slot: 'top',
+    })
+    out.push({
+      round_number: 2, position: position++, region: conf[c],
+      seed_top: null, seed_bottom: null, team_top: '', team_bottom: '',
+      is_bye: false, feeds_into_round: 3, feeds_into_position: c, feeds_into_slot: 'bottom',
+    })
+  }
+
+  // Conference Championships
+  position = 0
+  for (let c = 0; c < conf.length; c++) {
+    out.push({
+      round_number: 3, position: position++, region: conf[c],
+      seed_top: null, seed_bottom: null, team_top: '', team_bottom: '',
+      is_bye: false, feeds_into_round: 4, feeds_into_position: 0,
+      feeds_into_slot: c === 0 ? 'top' : 'bottom',
+    })
+  }
+
+  // Super Bowl
+  out.push({
+    round_number: 4, position: 0, region: null,
+    seed_top: null, seed_bottom: null, team_top: '', team_bottom: '',
+    is_bye: false, feeds_into_round: null, feeds_into_position: null, feeds_into_slot: null,
+  })
+  return out
+}
+
 function generateMatchups(teamCount, regions, rounds) {
   if (teamCount === 12) return generateMlb12Matchups(regions)
+  if (teamCount === 14) return generateNfl14Matchups(regions)
   const effectiveTeamCount = teamCount === 68 ? 64 : teamCount
   const matchups = []
   // For 68 teams, rounds includes round 0 (First Four) — only generate matchups for rounds 1+
