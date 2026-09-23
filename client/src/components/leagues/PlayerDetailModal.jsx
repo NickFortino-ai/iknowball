@@ -630,9 +630,12 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
                   </button>
                 )}
                 {playerContext === 'waiver' && onClaim && (
+                  /* Orange BORDER, transparent interior — the house treatment
+                     for accent actions. A filled tint at this size reads as a
+                     solid block of colour rather than a button. */
                   <button
                     onClick={() => onClaim(playerId)}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent/15 text-accent hover:bg-accent/25 transition-colors font-semibold text-sm"
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-accent text-accent hover:bg-accent/10 transition-colors font-semibold text-sm"
                   >
                     <span className="w-6 h-6 rounded-full bg-accent/30 flex items-center justify-center text-lg leading-none">+</span>
                     Claim
