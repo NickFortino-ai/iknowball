@@ -605,6 +605,9 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
   const { data: apiTeams } = useTeamsForSport(sport)
 
   const [step, setStep] = useState(1)
+  // Escape hatch: a preset states the sport's real shape, but nothing should
+  // be unreachable if a one-off template needs a different one.
+  const [customizeShape, setCustomizeShape] = useState(false)
   const [name, setName] = useState(existing?.name || '')
   const [teamCount, setTeamCount] = useState(existing?.team_count || 64)
   const [description, setDescription] = useState(existing?.description || '')
@@ -659,6 +662,9 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
       setRegions(['Side 1', 'Side 2'])
     }
   }, [isWorldCup])
+
+  // Only when CREATING — an existing template's shape is whatever was saved.
+  const activePreset = !templateId ? SPORT_BRACKET_PRESETS[sport] : null
 
   // Selecting a sport fills in that league's postseason shape. Extracted
   // because the tile grid and the inline sport list both do it.
@@ -1087,6 +1093,22 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
 
           <div>
             <label className="block text-sm font-semibold text-text-secondary mb-2">Team Count</label>
+            {/* A sport with a preset has ONE right answer — MLB's postseason is
+                12 teams, not a choice between 4 and 68. Offering the full grid
+                invites a wrong pick and implies the others are valid. Shown as
+                a fact, with Customize for anything unusual. */}
+            {activePreset && !customizeShape ? (
+              <div className="flex items-baseline gap-3">
+                <span className="text-lg font-semibold text-text-primary">{teamCount} teams</span>
+                <button
+                  type="button"
+                  onClick={() => setCustomizeShape(true)}
+                  className="text-xs text-accent hover:underline"
+                >
+                  Customize
+                </button>
+              </div>
+            ) : (
             <div className="flex gap-2">
               {TEAM_COUNT_OPTIONS.map((n) => (
                 <button
@@ -1106,6 +1128,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
                 </button>
               ))}
             </div>
+            )}
           </div>
 
           <div>
@@ -1121,6 +1144,24 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
 
           <div>
             <label className="block text-sm font-semibold text-text-secondary mb-2">Series Format</label>
+            {/* "Best of 7" is a lie for MLB — its rounds are 3, 5, 7, 7 — and
+                this is the label someone reads before trusting the template.
+                With a preset, describe the rounds as they actually are. */}
+            {activePreset && !customizeShape ? (
+              <div className="space-y-0.5">
+                {(rounds || []).map((r) => (
+                  <div key={r.round_number} className="text-sm text-text-primary">
+                    {r.name}
+                    <span className="text-text-muted">
+                      {' · '}
+                      {r.best_of
+                        ? `best of ${r.best_of}`
+                        : activePreset.seriesFormat === 'best_of_7' ? 'best of 7' : 'single game'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
             <div className="flex gap-2">
               {[{ value: 'single_elimination', label: 'Single Elimination' }, { value: 'best_of_7', label: 'Best of 7' }].map((opt) => (
                 <button
@@ -1137,9 +1178,16 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
                 </button>
               ))}
             </div>
-            {seriesFormat === 'best_of_7' && (
+            )}
+            {/* Length options differ per round once best_of does, so a flat
+                "4-7 games" understates a best-of-3 round. */}
+            {(activePreset ? (rounds || []).some((r) => (r.best_of ?? 0) > 1 || activePreset.seriesFormat === 'best_of_7') : seriesFormat === 'best_of_7') && (
               <div className="text-[10px] text-text-muted mt-1">
-                Users will predict series length (4-7 games) per matchup. Bonus: +4 exact, +2 one-off.
+                Users predict series length per matchup
+                {activePreset && (rounds || []).some((r) => r.best_of)
+                  ? ` (${[...new Set((rounds || []).filter((r) => r.best_of > 1).map((r) => `${Math.ceil(r.best_of / 2)}-${r.best_of}`))].join(', ')} by round)`
+                  : ' (4-7 games)'}
+                . Bonus: +4 exact, +2 one-off.
               </div>
             )}
           </div>
