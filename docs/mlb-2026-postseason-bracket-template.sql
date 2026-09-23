@@ -48,7 +48,13 @@ values (
   '["American League","National League"]'::jsonb,
   false,                      -- flip to true once team names are filled in
   'best_of_7',                -- fallback only; every round declares best_of
-  '2026-09-28T16:00:00Z'      -- picks open Mon Sep 28, adjust to taste
+  -- Written as an ET wall-clock time rather than a UTC literal. The column
+  -- is timestamptz either way, so this stores the same kind of value — but a
+  -- UTC literal has to be converted in your head to be checked, and that is
+  -- how the NBA template ended up opening at 1:00 AM ET (05:00Z). Postgres
+  -- resolves the offset, so this is also correct across the DST change on
+  -- Nov 1, which the World Series runs past.
+  timestamp '2026-09-28 12:00:00' at time zone 'America/New_York'
 );
 
 insert into bracket_template_matchups
