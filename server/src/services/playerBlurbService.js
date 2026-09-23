@@ -637,10 +637,20 @@ export async function writeEspnBlurb({ playerId, sport, content, season, week })
  * through it would quietly retire hand-written blurbs — the exact thing this
  * feature must never do.
  *
- * The rule: a player who already has a PUBLISHED MANUAL blurb is skipped and
- * reported back, not overwritten. ESPN is a fallback for players nobody has
- * had time to write up; it never competes with something written by hand.
- * Re-running is safe — a skip stays a skip.
+ * The rule is about STALENESS, not authorship. A hand-written blurb is
+ * protected while it is CURRENT — same week as ESPN's draft, or later. Once
+ * ESPN is writing about a newer week, publishing is an UPDATE rather than an
+ * overwrite, and the old note is archived (not deleted) into the player's
+ * history where it stays readable.
+ *
+ * "Never overwrite manual" was the first cut and it was too blunt: every
+ * hand-written blurb was week 1 while ESPN had moved to week 3, so a
+ * selection of 112 players skipped all 112 and published nothing. Protecting
+ * a two-week-old note is not protecting the author, it just pins the stalest
+ * version in place.
+ *
+ * A blurb with NO week is skipped — we can't show it's stale, and the
+ * per-player "Publish instead" button is the explicit override for those.
  *
  * Returns { published, skippedManual, noDraft } so the panel can say what
  * actually happened rather than claiming a flat count.
@@ -649,22 +659,33 @@ export async function publishEspnBlurbs(playerIds, sport = 'nfl') {
   const ids = [...new Set((playerIds || []).filter(Boolean))]
   if (!ids.length) return { published: 0, skippedManual: [], noDraft: [] }
 
-  // Who already has something hand-written and live.
+  // Hand-written and live, with the week it covers so staleness is decidable.
   const { data: manualRows } = await supabase
     .from('player_blurbs')
-    .select('player_id')
+    .select('player_id, season, week')
     .eq('sport', sport)
     .eq('generated_by', 'manual')
     .eq('status', 'published')
     .in('player_id', ids)
-  const hasManual = new Set((manualRows || []).map((r) => r.player_id))
+  // Keep the NEWEST hand-written blurb per player — an older one sitting
+  // alongside it must not make the player look stale.
+  const period = (r) => (r.season == null || r.week == null ? null : r.season * 100 + r.week)
+  const manualPeriod = new Map()
+  for (const r of manualRows || []) {
+    const pr = period(r)
+    const cur = manualPeriod.get(r.player_id)
+    // null means "undateable" and always wins — it can never be shown stale.
+    if (!manualPeriod.has(r.player_id) || cur === null || (pr !== null && pr > cur)) {
+      manualPeriod.set(r.player_id, pr)
+    }
+  }
 
   // Newest pending ESPN row per player. writeEspnBlurb archives the previous
   // one on each write, so there should be at most one — ordered anyway so a
   // duplicate can't make this nondeterministic.
   const { data: drafts } = await supabase
     .from('player_blurbs')
-    .select('id, player_id, created_at')
+    .select('id, player_id, created_at, season, week')
     .eq('sport', sport)
     .eq('generated_by', 'espn')
     .eq('status', 'draft')
@@ -681,18 +702,30 @@ export async function publishEspnBlurbs(playerIds, sport = 'nfl') {
   let published = 0
 
   for (const playerId of ids) {
-    if (hasManual.has(playerId)) { skippedManual.push(playerId); continue }
     const draft = newestByPlayer.get(playerId)
     if (!draft) { noDraft.push(playerId); continue }
 
+    // Yours stands while it is current. Older than ESPN's draft = an update.
+    if (manualPeriod.has(playerId)) {
+      const mine = manualPeriod.get(playerId)
+      const theirs = period(draft)
+      if (mine === null || theirs === null || mine >= theirs) {
+        skippedManual.push(playerId)
+        continue
+      }
+    }
+
     // Retire any previously published ESPN row for this player, so the newest
     // is the only live one. Manual rows are excluded by generated_by.
+    // Retire whatever is currently live for this player. Reaching here means
+    // either nothing of yours exists or yours is from an earlier week, so
+    // this supersedes rather than discards — the old row becomes 'archived'
+    // and stays visible in the player's blurb history.
     await supabase
       .from('player_blurbs')
       .update({ status: 'archived', updated_at: new Date().toISOString() })
       .eq('player_id', playerId)
       .eq('sport', sport)
-      .eq('generated_by', 'espn')
       .eq('status', 'published')
 
     const { error } = await supabase

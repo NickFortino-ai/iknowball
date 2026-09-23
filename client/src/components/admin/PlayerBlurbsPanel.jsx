@@ -143,7 +143,10 @@ export default function PlayerBlurbsPanel() {
     try {
       const r = await api.post('/blurbs/publish-espn', { playerIds: [...selected], sport })
       const parts = [`Published ${r.published}`]
-      if (r.skippedManual?.length) parts.push(`${r.skippedManual.length} kept your own`)
+      // Skips now mean "yours already covers this week or later", not merely
+      // "you wrote something once" — worth saying, since the old wording read
+      // as a refusal when it is really "yours is still current".
+      if (r.skippedManual?.length) parts.push(`${r.skippedManual.length} yours already current`)
       if (r.noDraft?.length) parts.push(`${r.noDraft.length} had none`)
       toast(parts.join(' · '), r.published ? 'success' : 'error')
       setSelected(new Set())
