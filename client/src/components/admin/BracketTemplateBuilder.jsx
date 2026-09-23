@@ -459,6 +459,57 @@ function generateMatchups(teamCount, regions, rounds) {
   return matchups
 }
 
+
+// Reuses the props tiles' artwork in client/public/backdrops/props/. Only
+// six exist; the rest fall back to a plain tile, which is what PropsSection
+// does too.
+//
+// MLS is deliberately null: PropsSection references mls.jpg, which is NOT in
+// that folder, so that tile's background is already broken. No sense
+// repeating it here.
+const SPORT_BACKDROPS = {
+  americanfootball_nfl: 'nfl.jpg',
+  basketball_nba: 'nba.webp',
+  baseball_mlb: 'mlb.jpg',
+  basketball_ncaab: 'ncaab.webp',
+  americanfootball_ncaaf: 'ncaaf.jpg',
+  basketball_wnba: 'wnba.jpg',
+}
+
+// Big picture-led tile for choosing a sport, matching the props grid.
+function SportTile({ option, onSelect }) {
+  const backdrop = SPORT_BACKDROPS[option.value]
+  const preset = SPORT_BRACKET_PRESETS[option.value]
+  return (
+    <button
+      onClick={onSelect}
+      className="relative overflow-hidden bg-bg-primary border border-text-primary/20 hover:border-accent rounded-2xl px-6 py-10 transition-all hover:scale-[1.02] hover:shadow-lg"
+      style={backdrop ? {
+        backgroundImage: `url(/backdrops/props/${backdrop})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      } : undefined}
+    >
+      {backdrop && (
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/45 to-black/20 pointer-events-none" />
+      )}
+      <div className={`relative font-display text-3xl ${backdrop ? 'text-white drop-shadow-lg' : 'text-text-primary'}`}>
+        {option.label}
+      </div>
+      {/* The shape that will be filled in, so the choice is informed rather
+          than something to discover two steps later. */}
+      {preset && (
+        <div className={`relative mt-1 text-[11px] font-semibold ${backdrop ? 'text-white/80 drop-shadow' : 'text-text-muted'}`}>
+          {preset.teamCount} teams
+          {preset.rounds?.some((r) => r.best_of)
+            ? ` · best of ${[...new Set(preset.rounds.filter((r) => r.best_of).map((r) => r.best_of))].join('/')}`
+            : preset.seriesFormat === 'best_of_7' ? ' · best of 7' : ' · single elimination'}
+        </div>
+      )}
+    </button>
+  )
+}
+
 export default function BracketTemplateBuilder({ templateId, onClose }) {
   const { data: existing, isLoading } = useBracketTemplate(templateId)
   const createTemplate = useCreateBracketTemplate()
@@ -532,6 +583,22 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
       setRegions(['Side 1', 'Side 2'])
     }
   }, [isWorldCup])
+
+  // Selecting a sport fills in that league's postseason shape. Extracted
+  // because the tile grid and the inline sport list both do it.
+  function chooseSport(value) {
+    setSport(value)
+    // Guarded on templateId, not on `existing` — a New Template has no id,
+    // and that is the honest test for "am I creating". Editing a saved
+    // template must never have its team count or regions reset underneath it.
+    if (templateId) return
+    const preset = SPORT_BRACKET_PRESETS[value]
+    if (!preset) return
+    setTeamCount(preset.teamCount)
+    setSeriesFormat(preset.seriesFormat)
+    setRegions(preset.regions)
+    setRounds(preset.rounds ? preset.rounds.map((r) => ({ ...r })) : generateRounds(preset.teamCount))
+  }
 
   // Sync state when existing template data loads (useState initializers run before async fetch completes)
   useEffect(() => {
@@ -875,8 +942,26 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
         ))}
       </div>
 
+      {/* Choosing the sport comes FIRST when creating. It decides team count,
+          series format, regions and round lengths, so asking for a name and a
+          description before it is asking about a shape that doesn't exist
+          yet. Editing skips this — the sport is already set and locked. */}
+      {step === 1 && !templateId && !sport && (
+        <div>
+          <h3 className="font-display text-xl text-text-primary mb-1">Which sport?</h3>
+          <p className="text-sm text-text-muted mb-4">
+            Picks the postseason shape for you — teams, rounds and series lengths.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {SPORT_OPTIONS.map((opt) => (
+              <SportTile key={opt.value} option={opt} onSelect={() => chooseSport(opt.value)} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Step 1: Basic details */}
-      {step === 1 && (
+      {step === 1 && (templateId || sport) && (
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-text-secondary mb-2">Template Name</label>
@@ -909,21 +994,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
                     key={opt.value}
                     type="button"
                     onClick={() => {
-                      setSport(opt.value)
-                      // Fill the shape from the league's actual postseason.
-                      // Guarded on `existing` so editing a saved template
-                      // never has its team count or regions reset underneath
-                      // it — that would silently rewrite a live bracket.
-                      const preset = !existing && SPORT_BRACKET_PRESETS[opt.value]
-                      if (preset) {
-                        setTeamCount(preset.teamCount)
-                        setSeriesFormat(preset.seriesFormat)
-                        setRegions(preset.regions)
-                        // A preset may carry its own rounds when the lengths
-                        // aren't derivable from the team count — WNBA is 8
-                        // teams like plenty of brackets, but 3/5/7.
-                        setRounds(preset.rounds ? preset.rounds.map((r) => ({ ...r })) : generateRounds(preset.teamCount))
-                      }
+                      chooseSport(opt.value)
                     }}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                       sport === opt.value
