@@ -57,17 +57,36 @@ router.get('/players', async (req, res) => {
       const chunk = allBlurbLookupIds.slice(i, i + CHUNK)
       const { data: chunkBlurbs } = await supabase
         .from('player_blurbs')
-        .select('player_id, status, id, content, published_at, written_by, writer:written_by(username, display_name)')
+        .select('player_id, status, id, content, published_at, generated_by, written_by, writer:written_by(username, display_name)')
         .eq('sport', sport)
         .in('player_id', chunk)
         .in('status', ['draft', 'published'])
       if (chunkBlurbs) allBlurbs.push(...chunkBlurbs)
     }
+
+    // Which blurb the row SHOWS, and therefore which one Edit opens.
+    //
+    // This was `if (!blurbMap[x] || b.status === 'draft')` — a draft won
+    // unconditionally, which was correct when the only drafts were your own
+    // work in progress. ESPN now queues a draft for players you have already
+    // written about, so that rule handed the row to ESPN and hid your live
+    // blurb: Tyler Warren's row showed ESPN's text under YOUR publish date,
+    // and Edit opened theirs.
+    //
+    // Order: your work first, and within that an unfinished draft over the
+    // published version, which is the original intent. ESPN only ever
+    // surfaces for players you haven't touched.
+    const rank = (b) => (b.generated_by === 'espn' ? 2 : 0) + (b.status === 'published' ? 1 : 0)
     const blurbMap = {}
+    const espnDraftMap = {}
     const lastPublishedAt = {}
     for (const b of allBlurbs) {
       const canonical = idToCanonical.get(b.player_id) || b.player_id
-      if (!blurbMap[canonical] || b.status === 'draft') blurbMap[canonical] = b
+      const cur = blurbMap[canonical]
+      if (!cur || rank(b) < rank(cur)) blurbMap[canonical] = b
+      // Surfaced separately so the panel can say one is waiting without it
+      // taking over the row.
+      if (b.generated_by === 'espn' && b.status === 'draft') espnDraftMap[canonical] = b
       if (b.status === 'published' && b.published_at) {
         const prev = lastPublishedAt[canonical]
         if (!prev || new Date(b.published_at) > new Date(prev)) {
@@ -77,6 +96,7 @@ router.get('/players', async (req, res) => {
     }
     for (const p of players) {
       p.blurb = blurbMap[p.id] || null
+      p.espn_draft = espnDraftMap[p.id] || null
       p.last_published_at = lastPublishedAt[p.id] || null
     }
     const attached = players.filter((p) => p.blurb).length

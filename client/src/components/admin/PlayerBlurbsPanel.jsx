@@ -490,6 +490,19 @@ export default function PlayerBlurbsPanel() {
                         )}
                       </>
                     )}
+                    {/* An ESPN write-up is queued for this player. Shown as a
+                        marker rather than taking the row over: the row belongs
+                        to YOUR blurb, and Edit must open yours. Only rendered
+                        when it isn't already the thing on display, so players
+                        you've never written about don't get a redundant tag. */}
+                    {player.espn_draft && blurb?.id !== player.espn_draft.id && (
+                      <span
+                        title="ESPN has a write-up waiting — expand the row to read it"
+                        className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400"
+                      >
+                        ESPN
+                      </span>
+                    )}
                     {/* + always present so admins can publish a new blurb on top
                         of an existing one. Old blurbs stay in history; the
                         newest becomes current Player Notes. */}
@@ -513,11 +526,37 @@ export default function PlayerBlurbsPanel() {
                 {/* Tap-to-preview the current blurb. Read-only — hides
                     when Edit is opened to avoid rendering the same
                     content twice. */}
-                {isExpanded && !isEditing && blurb?.content && (
-                  <div className="px-3 pb-3">
-                    <div className="rounded-lg bg-bg-card border border-text-primary/10 px-3 py-2 text-sm text-text-primary whitespace-pre-wrap">
-                      {blurb.content}
-                    </div>
+                {isExpanded && !isEditing && (blurb?.content || player.espn_draft) && (
+                  <div className="px-3 pb-3 space-y-2">
+                    {blurb?.content && (
+                      <div className="rounded-lg bg-bg-card border border-text-primary/10 px-3 py-2 text-sm text-text-primary whitespace-pre-wrap">
+                        {blurb.content}
+                      </div>
+                    )}
+                    {/* ESPN's queued version sits BELOW yours, never replacing
+                        it in the row. Publishing it is an explicit per-player
+                        choice: publishBlurb archives whatever is currently
+                        live, so ESPN's takes over only when you say so. The
+                        bulk action still skips players you've written about —
+                        this button is the deliberate override. */}
+                    {player.espn_draft && blurb?.id !== player.espn_draft.id && (
+                      <div className="rounded-lg bg-bg-card border border-blue-500/30 px-3 py-2">
+                        <div className="flex items-baseline justify-between gap-3 mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">
+                            Waiting from ESPN
+                          </span>
+                          <button
+                            onClick={() => handlePublish(player.espn_draft.id)}
+                            className="text-correct text-xs font-semibold hover:underline shrink-0"
+                          >
+                            {blurb?.status === 'published' ? 'Publish instead' : 'Publish'}
+                          </button>
+                        </div>
+                        <div className="text-sm text-text-secondary whitespace-pre-wrap leading-relaxed">
+                          {player.espn_draft.content}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
