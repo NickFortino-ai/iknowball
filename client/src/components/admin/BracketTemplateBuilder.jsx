@@ -93,15 +93,32 @@ const SPORT_OPTIONS = [
 // `seriesFormat` here is just the fallback for rounds that declare no
 // best_of; generateRounds fills per-round lengths where they differ (MLB).
 const SPORT_BRACKET_PRESETS = {
-  baseball_mlb:          { teamCount: 12, seriesFormat: 'best_of_7',          regions: ['American League', 'National League'] },
-  basketball_nba:        { teamCount: 16, seriesFormat: 'best_of_7',          regions: ['Eastern Conference', 'Western Conference'] },
-  icehockey_nhl:         { teamCount: 16, seriesFormat: 'best_of_7',          regions: ['Eastern Conference', 'Western Conference'] },
-  basketball_wnba:       { teamCount: 8,  seriesFormat: 'best_of_7',          regions: [] },
-  basketball_ncaab:      { teamCount: 68, seriesFormat: 'single_elimination', regions: ['East', 'West', 'South', 'Midwest'] },
-  basketball_wncaab:     { teamCount: 68, seriesFormat: 'single_elimination', regions: ['East', 'West', 'South', 'Midwest'] },
-  americanfootball_nfl:  { teamCount: 8,  seriesFormat: 'single_elimination', regions: ['AFC', 'NFC'] },
-  americanfootball_ufl:  { teamCount: 4,  seriesFormat: 'single_elimination', regions: [] },
-  soccer_world_cup:      { teamCount: 32, seriesFormat: 'single_elimination', regions: ['Side 1', 'Side 2'] },
+  // Region ORDER matters — it decides which half of the bracket renders on
+  // which side — so these mirror the templates that actually shipped rather
+  // than being retyped from memory. Verified against bracket_templates
+  // 2026-09-23.
+  basketball_nba:    { teamCount: 16, seriesFormat: 'best_of_7',          regions: ['Western Conference', 'Eastern Conference'] },
+  icehockey_nhl:     { teamCount: 16, seriesFormat: 'best_of_7',          regions: ['Western', 'Eastern'] },
+  basketball_ncaab:  { teamCount: 68, seriesFormat: 'single_elimination', regions: ['East', 'South', 'West', 'Midwest'] },
+  basketball_wncaab: { teamCount: 68, seriesFormat: 'single_elimination', regions: ['Regional 1', 'Regional 4', 'Regional 2', 'Regional 3'] },
+  soccer_world_cup:  { teamCount: 32, seriesFormat: 'single_elimination', regions: ['Side 1', 'Side 2'] },
+  americanfootball_ufl: { teamCount: 4, seriesFormat: 'single_elimination', regions: [] },
+  // MLB is the one new entry. Verified against MLB.com's format page: 12
+  // teams, byes for the 1 and 2 seeds, 3v6 and 4v5, no reseeding.
+  // generateRounds(12) supplies the per-round best_of (3/5/7/7).
+  baseball_mlb:      { teamCount: 12, seriesFormat: 'best_of_7',          regions: ['American League', 'National League'] },
+
+  // DELIBERATELY ABSENT — no preset is better than a wrong one, because a
+  // wrong shape produces a bracket that looks right and pays out wrong:
+  //
+  //   americanfootball_nfl — 14 teams, 7 per conference, the 1 seed on a bye.
+  //     Same byes-and-non-power-of-two problem as MLB, so it needs its own
+  //     generateMatchups case, not a team-count entry.
+  //   basketball_wnba — 8 teams, but the rounds are different lengths and I
+  //     have not confirmed the current ones.
+  //
+  // Both fall through to the generic generator, which is the existing
+  // behaviour. Add them once the format is confirmed.
 }
 
 const TEAM_COUNT_OPTIONS = [4, 8, 12, 16, 32, 64, 68]
