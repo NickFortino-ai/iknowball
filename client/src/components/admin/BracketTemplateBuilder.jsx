@@ -106,7 +106,21 @@ const SPORT_BRACKET_PRESETS = {
   // MLB is the one new entry. Verified against MLB.com's format page: 12
   // teams, byes for the 1 and 2 seeds, 3v6 and 4v5, no reseeding.
   // generateRounds(12) supplies the per-round best_of (3/5/7/7).
-  baseball_mlb:      { teamCount: 12, seriesFormat: 'best_of_7',          regions: ['American League', 'National League'] },
+  // Rounds live on the preset rather than only inside generateRounds(12), so
+  // the tile can say "best of 3/5/7" instead of falling back to the
+  // template-level flag and claiming best-of-7 throughout — which is the
+  // exact misconception the per-round work exists to prevent.
+  baseball_mlb: {
+    teamCount: 12,
+    seriesFormat: 'best_of_7',
+    regions: ['American League', 'National League'],
+    rounds: [
+      { round_number: 1, name: 'Wild Card', best_of: 3, points_per_correct: 10 },
+      { round_number: 2, name: 'Division Series', best_of: 5, points_per_correct: 20 },
+      { round_number: 3, name: 'League Championship Series', best_of: 7, points_per_correct: 40 },
+      { round_number: 4, name: 'World Series', best_of: 7, points_per_correct: 80 },
+    ],
+  },
   // WNBA: eight teams seeded 1-8 LEAGUE-WIDE, not by conference, so no
   // regions. No byes, and a plain power-of-two bracket — BRACKET_SEEDS_8
   // already pairs it 1/8, 4/5, 3/6, 2/7. The only thing that isn't generic
