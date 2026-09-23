@@ -81,9 +81,45 @@ const SPORT_OPTIONS = [
   { value: 'americanfootball_ufl', label: 'UFL' },
 ]
 
-const TEAM_COUNT_OPTIONS = [4, 8, 16, 32, 64, 68]
+
+// What each league's postseason actually looks like, so picking a sport fills
+// in the shape instead of the admin having to know that MLB is 12 teams with
+// two byes per league or that the NCAA tournament is 68.
+//
+// Applied ONLY when creating a new template and only until the admin touches
+// a field — never when editing an existing one, where these values are
+// already whatever was chosen and must not be reset underneath them.
+//
+// `seriesFormat` here is just the fallback for rounds that declare no
+// best_of; generateRounds fills per-round lengths where they differ (MLB).
+const SPORT_BRACKET_PRESETS = {
+  baseball_mlb:          { teamCount: 12, seriesFormat: 'best_of_7',          regions: ['American League', 'National League'] },
+  basketball_nba:        { teamCount: 16, seriesFormat: 'best_of_7',          regions: ['Eastern Conference', 'Western Conference'] },
+  icehockey_nhl:         { teamCount: 16, seriesFormat: 'best_of_7',          regions: ['Eastern Conference', 'Western Conference'] },
+  basketball_wnba:       { teamCount: 8,  seriesFormat: 'best_of_7',          regions: [] },
+  basketball_ncaab:      { teamCount: 68, seriesFormat: 'single_elimination', regions: ['East', 'West', 'South', 'Midwest'] },
+  basketball_wncaab:     { teamCount: 68, seriesFormat: 'single_elimination', regions: ['East', 'West', 'South', 'Midwest'] },
+  americanfootball_nfl:  { teamCount: 8,  seriesFormat: 'single_elimination', regions: ['AFC', 'NFC'] },
+  americanfootball_ufl:  { teamCount: 4,  seriesFormat: 'single_elimination', regions: [] },
+  soccer_world_cup:      { teamCount: 32, seriesFormat: 'single_elimination', regions: ['Side 1', 'Side 2'] },
+}
+
+const TEAM_COUNT_OPTIONS = [4, 8, 12, 16, 32, 64, 68]
 
 function generateRounds(teamCount) {
+  // 12 is MLB's postseason and it is not a power of two: two byes per league,
+  // and four rounds of three different series lengths. Math.log2(12) is 3.58,
+  // so the generic path below would build THREE rounds and drop one entirely.
+  // best_of is filled in here so the per-round lengths are right without
+  // anyone having to know them.
+  if (teamCount === 12) {
+    return [
+      { round_number: 1, name: 'Wild Card', best_of: 3, points_per_correct: 10 },
+      { round_number: 2, name: 'Division Series', best_of: 5, points_per_correct: 20 },
+      { round_number: 3, name: 'League Championship Series', best_of: 7, points_per_correct: 40 },
+      { round_number: 4, name: 'World Series', best_of: 7, points_per_correct: 80 },
+    ]
+  }
   if (teamCount === 68) {
     return [
       { round_number: 0, name: 'First Four', points_per_correct: 5 },
@@ -151,7 +187,51 @@ const BRACKET_SEEDS_4 = [
   [1, 4], [2, 3],
 ]
 
+// MLB's 12-team bracket, wired explicitly.
+//
+// The generic generator halves a power of two each round, which cannot express
+// byes — and MLB's whole shape is the 1 and 2 seeds skipping the Wild Card.
+// MLB also does NOT reseed, so the wiring is fixed from the start and can be
+// written down rather than recomputed as rounds resolve.
+//
+// The pairing that matters: the 4/5 winner meets the 1 seed and the 3/6 winner
+// meets the 2 seed. That is what keeps the 1 seed from drawing another
+// division winner in the Division Series. Backwards here would not surface
+// until teams started advancing into the wrong slots.
+function generateMlb12Matchups(regions) {
+  const [al, nl] = regions?.length >= 2 ? regions : ['American League', 'National League']
+  const m = (round_number, position, region, seed_top, seed_bottom, feeds_into_position, feeds_into_slot) => ({
+    round_number, position, region,
+    seed_top, seed_bottom,
+    team_top: '', team_bottom: '',
+    is_bye: false,
+    feeds_into_round: round_number + 1,
+    feeds_into_position,
+    feeds_into_slot,
+  })
+  return [
+    // Wild Card — only seeds 3-6 play
+    m(1, 0, al, 3, 6, 1, 'bottom'),   // -> AL 2 seed
+    m(1, 1, al, 4, 5, 0, 'bottom'),   // -> AL 1 seed
+    m(1, 2, nl, 3, 6, 3, 'bottom'),   // -> NL 2 seed
+    m(1, 3, nl, 4, 5, 2, 'bottom'),   // -> NL 1 seed
+    // Division Series — the bye seeds sit on top, the Wild Card winner fills below
+    m(2, 0, al, 1, null, 0, 'top'),
+    m(2, 1, al, 2, null, 0, 'bottom'),
+    m(2, 2, nl, 1, null, 1, 'top'),
+    m(2, 3, nl, 2, null, 1, 'bottom'),
+    // LCS
+    m(3, 0, al, null, null, 0, 'top'),
+    m(3, 1, nl, null, null, 0, 'bottom'),
+    // World Series
+    { round_number: 4, position: 0, region: null, seed_top: null, seed_bottom: null,
+      team_top: '', team_bottom: '', is_bye: false,
+      feeds_into_round: null, feeds_into_position: null, feeds_into_slot: null },
+  ]
+}
+
 function generateMatchups(teamCount, regions, rounds) {
+  if (teamCount === 12) return generateMlb12Matchups(regions)
   const effectiveTeamCount = teamCount === 68 ? 64 : teamCount
   const matchups = []
   // For 68 teams, rounds includes round 0 (First Four) — only generate matchups for rounds 1+
@@ -720,7 +800,19 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
                   <button
                     key={opt.value}
                     type="button"
-                    onClick={() => setSport(opt.value)}
+                    onClick={() => {
+                      setSport(opt.value)
+                      // Fill the shape from the league's actual postseason.
+                      // Guarded on `existing` so editing a saved template
+                      // never has its team count or regions reset underneath
+                      // it — that would silently rewrite a live bracket.
+                      const preset = !existing && SPORT_BRACKET_PRESETS[opt.value]
+                      if (preset) {
+                        setTeamCount(preset.teamCount)
+                        setSeriesFormat(preset.seriesFormat)
+                        setRegions(preset.regions)
+                      }
+                    }}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                       sport === opt.value
                         ? 'bg-accent text-white'
