@@ -80,6 +80,25 @@ function readLocal() {
 let localVersion = 0
 const localListeners = new Set()
 
+// Marks made in THIS session, which always win the merge below.
+//
+// markRead writes localStorage immediately, but merge() lets the SERVER map
+// win on conflict — and the server copy is only refreshed when a caller
+// threads a queryClient through setQueryData. Every call site omits it, so
+// for a player whose PREVIOUS blurb had been marked seen, the server still
+// held the old blurb id and the merge overwrote the fresh local mark with it.
+// The dot then hung around until the 5-minute staleTime expired.
+//
+// That is why it looked intermittent: a player you had never read cleared
+// instantly (no server entry to lose to), one you had read before did not.
+// Publishing ESPN blurbs made it common, by giving hundreds of players a new
+// blurb id against a server entry holding the old one.
+//
+// A session mark is by definition the newest thing this device knows, so it
+// outranks both — and being module-level it does not depend on any call site
+// remembering to pass a client.
+const sessionMarks = {}
+
 function subscribeLocal(cb) {
   localListeners.add(cb)
   return () => localListeners.delete(cb)
@@ -97,7 +116,13 @@ function writeLocal(map) {
 function merge(local, server) {
   const out = {}
   for (const kind of Object.values(READ_KINDS)) {
-    out[kind] = { ...(local?.[kind] || {}), ...(server?.[kind] || {}) }
+    out[kind] = {
+      ...(local?.[kind] || {}),
+      ...(server?.[kind] || {}),
+      // Last, so a mark made just now is never overwritten by a server map
+      // fetched before it.
+      ...(sessionMarks[kind] || {}),
+    }
   }
   return out
 }
@@ -126,6 +151,8 @@ export function markRead(queryClient, kind, refId, value = '1') {
   if (!kind || !refId) return
   const id = String(refId)
   const val = value == null ? '1' : String(value)
+
+  sessionMarks[kind] = { ...(sessionMarks[kind] || {}), [id]: val }
 
   const local = readLocal()
   local[kind] = { ...(local[kind] || {}), [id]: val }
