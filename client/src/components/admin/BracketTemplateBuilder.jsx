@@ -107,6 +107,21 @@ const SPORT_BRACKET_PRESETS = {
   // teams, byes for the 1 and 2 seeds, 3v6 and 4v5, no reseeding.
   // generateRounds(12) supplies the per-round best_of (3/5/7/7).
   baseball_mlb:      { teamCount: 12, seriesFormat: 'best_of_7',          regions: ['American League', 'National League'] },
+  // WNBA: eight teams seeded 1-8 LEAGUE-WIDE, not by conference, so no
+  // regions. No byes, and a plain power-of-two bracket — BRACKET_SEEDS_8
+  // already pairs it 1/8, 4/5, 3/6, 2/7. The only thing that isn't generic
+  // is the round lengths, which climb 3 -> 5 -> 7. Confirmed against the
+  // WNBA postseason format page 2026-09-23.
+  basketball_wnba: {
+    teamCount: 8,
+    seriesFormat: 'best_of_7',
+    regions: [],
+    rounds: [
+      { round_number: 1, name: 'First Round', best_of: 3, points_per_correct: 10 },
+      { round_number: 2, name: 'Semifinals', best_of: 5, points_per_correct: 20 },
+      { round_number: 3, name: 'WNBA Finals', best_of: 7, points_per_correct: 40 },
+    ],
+  },
 
   // DELIBERATELY ABSENT — no preset is better than a wrong one, because a
   // wrong shape produces a bracket that looks right and pays out wrong:
@@ -114,11 +129,9 @@ const SPORT_BRACKET_PRESETS = {
   //   americanfootball_nfl — 14 teams, 7 per conference, the 1 seed on a bye.
   //     Same byes-and-non-power-of-two problem as MLB, so it needs its own
   //     generateMatchups case, not a team-count entry.
-  //   basketball_wnba — 8 teams, but the rounds are different lengths and I
-  //     have not confirmed the current ones.
   //
-  // Both fall through to the generic generator, which is the existing
-  // behaviour. Add them once the format is confirmed.
+  // It falls through to the generic generator, which is the existing
+  // behaviour. Added once the format is confirmed.
 }
 
 const TEAM_COUNT_OPTIONS = [4, 8, 12, 16, 32, 64, 68]
@@ -828,6 +841,10 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
                         setTeamCount(preset.teamCount)
                         setSeriesFormat(preset.seriesFormat)
                         setRegions(preset.regions)
+                        // A preset may carry its own rounds when the lengths
+                        // aren't derivable from the team count — WNBA is 8
+                        // teams like plenty of brackets, but 3/5/7.
+                        setRounds(preset.rounds ? preset.rounds.map((r) => ({ ...r })) : generateRounds(preset.teamCount))
                       }
                     }}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
