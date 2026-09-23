@@ -107,6 +107,22 @@ router.post('/generate', async (req, res) => {
   }
 })
 
+// Publish the pending ESPN blurb for the selected players. Players who
+// already have a hand-written published blurb are skipped, never overwritten,
+// and reported back so the panel can say so.
+router.post('/publish-espn', async (req, res) => {
+  const { playerIds, sport } = req.body
+  if (!playerIds?.length) return res.status(400).json({ error: 'playerIds required' })
+  try {
+    const { publishEspnBlurbs } = await import('../services/playerBlurbService.js')
+    const result = await publishEspnBlurbs(playerIds, (sport || 'nfl').toLowerCase())
+    res.json(result)
+  } catch (err) {
+    logger.error({ err }, 'Publishing ESPN blurbs failed')
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // Create a manual blurb — stamps written_by with the caller
 router.post('/', async (req, res) => {
   const { player_id, content, season, week, sport } = req.body

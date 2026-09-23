@@ -585,18 +585,22 @@ export async function writeEspnBlurb({ playerId, sport, content, season, week })
     .limit(1)
     .maybeSingle()
 
-  if (latest && latest.content === trimmed && latest.status === 'published') {
+  // Same text already queued or live — nothing to do. Covers draft too now,
+  // otherwise every 5-minute sync would stack an identical pending row.
+  if (latest && latest.content === trimmed && latest.status !== 'archived') {
     return { action: 'skipped' }
   }
 
-  // Archive any prior published ESPN row so history stays tidy.
+  // Supersede the previous ESPN row so only the newest is pending review.
+  // SCOPED TO generated_by='espn' — a manual blurb is never touched by this
+  // job, which is the whole basis of "my blurbs stay put".
   await supabase
     .from('player_blurbs')
     .update({ status: 'archived', updated_at: new Date().toISOString() })
     .eq('player_id', playerId)
     .eq('sport', sport)
     .eq('generated_by', 'espn')
-    .eq('status', 'published')
+    .in('status', ['published', 'draft'])
 
   const { error } = await supabase
     .from('player_blurbs')
@@ -604,8 +608,14 @@ export async function writeEspnBlurb({ playerId, sport, content, season, week })
       player_id: playerId,
       sport,
       content: trimmed,
-      status: 'published',
-      published_at: new Date().toISOString(),
+      // DRAFT, not published. ESPN blurbs are a FALLBACK the admin opts into
+      // per player — they must never appear on their own, and must never
+      // displace something hand-written. Migration 211 originally had these
+      // land published immediately; that is the behaviour being reversed.
+      // RLS already hides drafts from users (published-only read policy), so
+      // this is enforced at the database, not just in the app.
+      status: 'draft',
+      published_at: null,
       season: season ?? null,
       week: week ?? null,
       generated_by: 'espn',
@@ -616,4 +626,86 @@ export async function writeEspnBlurb({ playerId, sport, content, season, week })
     return { action: 'skipped' }
   }
   return { action: 'inserted' }
+}
+
+/**
+ * Publish the pending ESPN blurb for each of `playerIds` — the admin panel's
+ * "Publish ESPN Blurbs (N)" action.
+ *
+ * Deliberately NOT built on publishAllDrafts(). That helper archives every
+ * published row for a player regardless of who wrote it, so routing this
+ * through it would quietly retire hand-written blurbs — the exact thing this
+ * feature must never do.
+ *
+ * The rule: a player who already has a PUBLISHED MANUAL blurb is skipped and
+ * reported back, not overwritten. ESPN is a fallback for players nobody has
+ * had time to write up; it never competes with something written by hand.
+ * Re-running is safe — a skip stays a skip.
+ *
+ * Returns { published, skippedManual, noDraft } so the panel can say what
+ * actually happened rather than claiming a flat count.
+ */
+export async function publishEspnBlurbs(playerIds, sport = 'nfl') {
+  const ids = [...new Set((playerIds || []).filter(Boolean))]
+  if (!ids.length) return { published: 0, skippedManual: [], noDraft: [] }
+
+  // Who already has something hand-written and live.
+  const { data: manualRows } = await supabase
+    .from('player_blurbs')
+    .select('player_id')
+    .eq('sport', sport)
+    .eq('generated_by', 'manual')
+    .eq('status', 'published')
+    .in('player_id', ids)
+  const hasManual = new Set((manualRows || []).map((r) => r.player_id))
+
+  // Newest pending ESPN row per player. writeEspnBlurb archives the previous
+  // one on each write, so there should be at most one — ordered anyway so a
+  // duplicate can't make this nondeterministic.
+  const { data: drafts } = await supabase
+    .from('player_blurbs')
+    .select('id, player_id, created_at')
+    .eq('sport', sport)
+    .eq('generated_by', 'espn')
+    .eq('status', 'draft')
+    .in('player_id', ids)
+    .order('created_at', { ascending: false })
+
+  const newestByPlayer = new Map()
+  for (const d of drafts || []) {
+    if (!newestByPlayer.has(d.player_id)) newestByPlayer.set(d.player_id, d)
+  }
+
+  const skippedManual = []
+  const noDraft = []
+  let published = 0
+
+  for (const playerId of ids) {
+    if (hasManual.has(playerId)) { skippedManual.push(playerId); continue }
+    const draft = newestByPlayer.get(playerId)
+    if (!draft) { noDraft.push(playerId); continue }
+
+    // Retire any previously published ESPN row for this player, so the newest
+    // is the only live one. Manual rows are excluded by generated_by.
+    await supabase
+      .from('player_blurbs')
+      .update({ status: 'archived', updated_at: new Date().toISOString() })
+      .eq('player_id', playerId)
+      .eq('sport', sport)
+      .eq('generated_by', 'espn')
+      .eq('status', 'published')
+
+    const { error } = await supabase
+      .from('player_blurbs')
+      .update({
+        status: 'published',
+        published_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', draft.id)
+    if (!error) published++
+  }
+
+  logger.info({ sport, requested: ids.length, published, skippedManual: skippedManual.length, noDraft: noDraft.length }, 'ESPN blurbs published')
+  return { published, skippedManual, noDraft }
 }

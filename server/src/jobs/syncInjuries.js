@@ -765,6 +765,21 @@ export async function syncInjuries() {
     const activeNamesNorm = new Set()
     for (const n of nflActiveNames) activeNamesNorm.add(normalizeName(n))
 
+    // Season/week for any blurb this pass writes. player_blurbs.season is
+    // NOT NULL and these calls never supplied it, so EVERY ESPN blurb insert
+    // has failed since the feature shipped in March — which is why there are
+    // zero of them. Best-effort: a blurb is not worth failing the sync over.
+    let blurbSeason = new Date().getUTCFullYear()
+    let blurbWeek = null
+    try {
+      const { getCurrentNflWeek } = await import('../services/tdPassService.js')
+      const st = await getCurrentNflWeek()
+      if (st?.season) blurbSeason = st.season
+      if (st?.week) blurbWeek = st.week
+    } catch (err) {
+      logger.warn({ err }, 'Could not resolve NFL week for ESPN blurbs — falling back to calendar year')
+    }
+
     if (Object.keys(espnByName).length) {
       // Pull all NFL players (only ones still on a team) so we can
       // null-out injuries for players who no longer appear in ESPN's
@@ -803,6 +818,8 @@ export async function syncInjuries() {
               playerId: p.id,
               sport: 'nfl',
               content: espn.detail,
+              season: blurbSeason,
+              week: blurbWeek,
             })
             if (res.action === 'inserted') blurbsWritten++
           }
@@ -829,6 +846,8 @@ export async function syncInjuries() {
             playerId: p.id,
             sport: 'nfl',
             content: 'Cleared to play.',
+            season: blurbSeason,
+            week: blurbWeek,
           })
           if (res.action === 'inserted') clearedBlurbs++
         }

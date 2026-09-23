@@ -40,6 +40,7 @@ export default function PlayerBlurbsPanel() {
   const [selected, setSelected] = useState(new Set())
   const [generating, setGenerating] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const [publishingEspn, setPublishingEspn] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editContent, setEditContent] = useState('')
   const [creatingFor, setCreatingFor] = useState(null)
@@ -130,6 +131,27 @@ export default function PlayerBlurbsPanel() {
       }
       return next
     })
+  }
+
+  // ESPN blurbs are a FALLBACK, published per player on request. The server
+  // refuses to overwrite anything hand-written and tells us which players it
+  // skipped, so the toast reports what actually happened instead of a flat
+  // count that would hide the skips.
+  const handlePublishEspn = async () => {
+    if (!selected.size) return toast('Select players first', 'error')
+    setPublishingEspn(true)
+    try {
+      const r = await api.post('/blurbs/publish-espn', { playerIds: [...selected], sport })
+      const parts = [`Published ${r.published}`]
+      if (r.skippedManual?.length) parts.push(`${r.skippedManual.length} kept your own`)
+      if (r.noDraft?.length) parts.push(`${r.noDraft.length} had none`)
+      toast(parts.join(' · '), r.published ? 'success' : 'error')
+      setSelected(new Set())
+      fetchPlayers()
+    } catch (err) {
+      toast(err.message, 'error')
+    }
+    setPublishingEspn(false)
   }
 
   const handleGenerate = async () => {
@@ -344,6 +366,16 @@ export default function PlayerBlurbsPanel() {
             className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white disabled:opacity-50"
           >
             {generating ? 'Generating...' : `Generate AI Blurbs (${selected.size})`}
+          </button>
+        )}
+        {sport === 'nfl' && (
+          <button
+            onClick={handlePublishEspn}
+            disabled={publishingEspn || !selected.size}
+            title="Publish ESPN's write-up for the selected players. Players you've already written about are left alone."
+            className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-bg-secondary text-text-primary border border-text-primary/20 hover:bg-text-primary/10 transition-colors disabled:opacity-50"
+          >
+            {publishingEspn ? 'Publishing...' : `Publish ESPN Blurbs (${selected.size})`}
           </button>
         )}
         {draftCount > 0 && (
