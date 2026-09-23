@@ -101,6 +101,21 @@ const SPORT_BRACKET_PRESETS = {
   icehockey_nhl:     { teamCount: 16, seriesFormat: 'best_of_7',          regions: ['Western', 'Eastern'] },
   basketball_ncaab:  { teamCount: 68, seriesFormat: 'single_elimination', regions: ['East', 'South', 'West', 'Midwest'] },
   basketball_wncaab: { teamCount: 68, seriesFormat: 'single_elimination', regions: ['Regional 1', 'Regional 4', 'Regional 2', 'Regional 3'] },
+  // College Football Playoff: 12 teams, byes for the top FOUR on overall
+  // ranking (not on being a conference champion), and NO reseeding — teams
+  // advance along fixed paths. Confirmed 2026-09-23.
+  americanfootball_ncaaf: {
+    teamCount: 12,
+    seriesFormat: 'single_elimination',
+    regions: [],
+    rounds: [
+      { round_number: 1, name: 'First Round', points_per_correct: 10 },
+      { round_number: 2, name: 'Quarterfinals', points_per_correct: 20 },
+      { round_number: 3, name: 'Semifinals', points_per_correct: 40 },
+      { round_number: 4, name: 'National Championship', points_per_correct: 80 },
+    ],
+    buildMatchups: generateNcaaf12Matchups,
+  },
   soccer_world_cup:  { teamCount: 32, seriesFormat: 'single_elimination', regions: ['Side 1', 'Side 2'] },
   americanfootball_ufl: { teamCount: 4, seriesFormat: 'single_elimination', regions: [] },
   // MLB is the one new entry. Verified against MLB.com's format page: 12
@@ -120,6 +135,7 @@ const SPORT_BRACKET_PRESETS = {
       { round_number: 3, name: 'League Championship Series', best_of: 7, points_per_correct: 40 },
       { round_number: 4, name: 'World Series', best_of: 7, points_per_correct: 80 },
     ],
+    buildMatchups: generateMlb12Matchups,
   },
   // WNBA: eight teams seeded 1-8 LEAGUE-WIDE, not by conference, so no
   // regions. No byes, and a plain power-of-two bracket — BRACKET_SEEDS_8
@@ -150,6 +166,7 @@ const SPORT_BRACKET_PRESETS = {
       { round_number: 3, name: 'Conference Championship', points_per_correct: 40 },
       { round_number: 4, name: 'Super Bowl', points_per_correct: 80 },
     ],
+    buildMatchups: generateNfl14Matchups,
   },
 
   //
@@ -351,8 +368,53 @@ function generateNfl14Matchups(regions) {
   return out
 }
 
-function generateMatchups(teamCount, regions, rounds) {
-  if (teamCount === 12) return generateMlb12Matchups(regions)
+
+// The College Football Playoff. 12 teams, single elimination, byes for the
+// top FOUR — awarded on overall ranking, not on being a conference champion.
+//
+// Also 12 teams with 4 byes, exactly like MLB, which is why the generator
+// cannot be keyed on team count. It is chosen by SPORT via the preset's
+// buildMatchups.
+//
+// No reseeding: teams advance along fixed paths, so every wire is static.
+// One national bracket, no regions.
+//
+//   R1   5v12  6v11  7v10  8v9
+//   QF   1 v (8/9)   2 v (7/10)   3 v (6/11)   4 v (5/12)
+//   SF   QF(1) v QF(4)   and   QF(2) v QF(3)   — so 1 and 2 can only meet
+//        in the final, which is what the bracket is for.
+function generateNcaaf12Matchups() {
+  const m = (round_number, position, seed_top, seed_bottom, feeds_into_position, feeds_into_slot) => ({
+    round_number, position, region: null,
+    seed_top, seed_bottom, team_top: '', team_bottom: '',
+    is_bye: false,
+    feeds_into_round: feeds_into_position == null ? null : round_number + 1,
+    feeds_into_position, feeds_into_slot,
+  })
+  return [
+    // First round — the four byes sit out
+    m(1, 0, 8, 9, 0, 'bottom'),    // -> faces the 1 seed
+    m(1, 1, 7, 10, 1, 'bottom'),   // -> faces the 2 seed
+    m(1, 2, 6, 11, 2, 'bottom'),   // -> faces the 3 seed
+    m(1, 3, 5, 12, 3, 'bottom'),   // -> faces the 4 seed
+    // Quarterfinals — bye seeds seated on top
+    m(2, 0, 1, null, 0, 'top'),
+    m(2, 1, 2, null, 1, 'top'),
+    m(2, 2, 3, null, 1, 'bottom'),
+    m(2, 3, 4, null, 0, 'bottom'),
+    // Semifinals
+    m(3, 0, null, null, 0, 'top'),
+    m(3, 1, null, null, 0, 'bottom'),
+    // National Championship
+    m(4, 0, null, null, null, null),
+  ]
+}
+
+function generateMatchups(teamCount, regions, rounds, sport) {
+  // By SPORT first. MLB and the College Football Playoff are BOTH 12 teams
+  // with four byes, so the team count cannot tell them apart.
+  const build = SPORT_BRACKET_PRESETS[sport]?.buildMatchups
+  if (build) return build(regions)
   if (teamCount === 14) return generateNfl14Matchups(regions)
   const effectiveTeamCount = teamCount === 68 ? 64 : teamCount
   const matchups = []
@@ -766,7 +828,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
       }
     }
 
-    const generated = generateMatchups(teamCount, regions, rounds)
+    const generated = generateMatchups(teamCount, regions, rounds, sport)
 
     // Re-populate team names from seed mapping
     if (Object.keys(seedTeamMap).length > 0) {
