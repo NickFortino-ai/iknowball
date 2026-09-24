@@ -6012,6 +6012,21 @@ export async function getPlayerDetail(leagueId, playerId) {
   // no stat fields populated. Drives the "future games" rows in the
   // modal's weekly table.
   const playedWeekSet = new Set(playedWeeks.map((w) => w.week))
+
+  // A week is UPCOMING because it hasn't happened, not because this player
+  // has no stat row for it. Those are different things, and conflating them
+  // put a forward-looking projection on games already in the books.
+  //
+  // Kendre Miller is the Saints' RB3. He was active in week 2 and simply
+  // never touched the ball, so Sleeper wrote no row — and his modal showed
+  // an italic "4.4" for a game played three days earlier, reading as though
+  // the week were still ahead of him. Anyone deep on a depth chart hits this.
+  // Named leagueWeek, not currentWeek — there is already a `currentWeek` in
+  // this scope further down meaning "the player's most recent stat row",
+  // which is a different thing entirely.
+  const leagueWeek = settings?.current_week ?? null
+  const isPastWeek = (wk) => leagueWeek != null && wk < leagueWeek
+
   const upcomingWeeks = []
   for (const wkStr of Object.keys(scheduleByWeek)) {
     const wk = Number(wkStr)
@@ -6020,6 +6035,10 @@ export async function getPlayerDetail(leagueId, playerId) {
     upcomingWeeks.push({
       week: wk,
       played: false,
+      // Past with no stat line: the game happened and he produced nothing.
+      // The modal uses this to withhold the projection, so the row reads as
+      // a blank past week rather than a forecast.
+      is_past: isPastWeek(wk),
       opponent: sched.opponent || null,
       is_home: sched.is_home ?? null,
       pts: null,
@@ -6044,6 +6063,8 @@ export async function getPlayerDetail(leagueId, playerId) {
     const projByWeek = {}
     for (const r of projRows || []) projByWeek[r.week] = r
     for (const w of upcomingWeeks) {
+      // Never project a week that has already been played.
+      if (w.is_past) continue
       const computed = computeIdpAwareProjection(projByWeek[w.week], player.position, projCol, leagueRules)
       if (computed != null) w.projected_pts = Math.round(computed * 10) / 10
     }
