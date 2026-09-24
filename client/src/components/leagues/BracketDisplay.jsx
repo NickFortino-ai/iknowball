@@ -220,7 +220,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
   )
 }
 
-export default forwardRef(function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap, initialRegion, seriesFormat, sportKey, containerized = false }, ref) {
+export default forwardRef(function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap, initialRegion, seriesFormat, sportKey, templateMatchups, containerized = false }, ref) {
   const isBestOf7 = seriesFormat === 'best_of_7'
   const [selectedRegion, setSelectedRegion] = useState(initialRegion ?? null)
 
@@ -288,8 +288,45 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
       for (let i = 0; i < regions.length; i++) regionOrder[regions[i]] = i
     }
 
+    // Explicit wiring first. This was positional-only, which assumes every
+    // round-N matchup is fed by exactly TWO consecutive round-(N-1)
+    // matchups — a halving bracket. That is false the moment byes exist:
+    // in MLB each Division Series matchup is fed by ONE Wild Card series
+    // plus a bye seed, so matchup 0 drew lines from both Wild Card games
+    // and matchup 1 looked for prevMatchups[2] and [3], which don't exist,
+    // and drew nothing. Same for the NFL and the College Football Playoff.
+    //
+    // feeds_into_matchup_id says exactly where a winner goes. It lives on
+    // bracket_template_matchups, not on the tournament rows, which is why it
+    // has to be passed in — BracketPicker already resolves its own picks
+    // this way, so the diagram was the only surface still guessing.
+    const tmById = {}
+    for (const tm of templateMatchups || []) tmById[tm.id] = tm
+    const matchupByTemplateId = {}
+    for (const m of all) if (m.template_matchup_id) matchupByTemplateId[m.template_matchup_id] = m
+
     for (const m of all) {
       if (m.round_number <= 1) continue
+
+      const tm = m.template_matchup_id ? tmById[m.template_matchup_id] : null
+      if (tm) {
+        const feeders = (templateMatchups || []).filter((f) => f.feeds_into_matchup_id === tm.id)
+        const topFeeder = feeders.find((f) => f.feeds_into_slot === 'top')
+        const bottomFeeder = feeders.find((f) => f.feeds_into_slot === 'bottom')
+        if (topFeeder || bottomFeeder) {
+          // A slot with no feeder is a BYE — the seed is already seated, so
+          // null is correct and means "draw no line into this side".
+          map[m.id] = {
+            top: topFeeder ? matchupByTemplateId[topFeeder.id] || null : null,
+            bottom: bottomFeeder ? matchupByTemplateId[bottomFeeder.id] || null : null,
+          }
+          continue
+        }
+      }
+
+      // Positional fallback — correct for every power-of-two bracket, and
+      // what the admin builder still uses since its in-progress matchups
+      // carry feeds_into_round/position rather than ids.
       const prevRound = byRoundLocal[m.round_number - 1]
       if (!prevRound?.length) continue
       let prevMatchups
@@ -305,7 +342,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
       map[m.id] = { top: prevMatchups[myIdx * 2] || null, bottom: prevMatchups[myIdx * 2 + 1] || null }
     }
     return map
-  }, [matchups, regions])
+  }, [matchups, regions, templateMatchups])
 
   // Resolve team names from picks for matchups with null teams
   const resolvedMatchups = useMemo(() => {

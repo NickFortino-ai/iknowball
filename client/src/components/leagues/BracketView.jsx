@@ -427,6 +427,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
               rounds={rounds}
               regions={tournament.bracket_templates?.regions}
               seriesFormat={tournament.bracket_templates?.series_format}
+              templateMatchups={tournament.bracket_templates?.bracket_template_matchups}
               sportKey={league.sport}
               onMatchupTap={(displayMatchup) => {
                 // Use original matchup data for real team names and series wins
