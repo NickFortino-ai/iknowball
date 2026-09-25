@@ -51,7 +51,11 @@ export default function PlayerBlurbsPanel() {
   // textarea. Cuts a step for the common "just check what the note says"
   // scan. Only active when the player has a blurb.
   const [expandedId, setExpandedId] = useState(null)
-  const [week, setWeek] = useState(1)
+  // Blurbs are no longer tagged by week. The field defaulted to 1 and was
+  // never set to the live NFL week, so every hand-written blurb claimed week 1
+  // regardless of when it was written — which made the manual-protection rule
+  // in publishEspnBlurbs (now created_at based) never fire. Inserts send
+  // week: null and the server stamps nothing.
   const [search, setSearch] = useState('')
   const [injuryFilter, setInjuryFilter] = useState('all')
   // 'default' preserves the server ordering (points-based). 'recent' sorts
@@ -143,9 +147,9 @@ export default function PlayerBlurbsPanel() {
     try {
       const r = await api.post('/blurbs/publish-espn', { playerIds: [...selected], sport })
       const parts = [`Published ${r.published}`]
-      // Skips now mean "yours already covers this week or later", not merely
-      // "you wrote something once" — worth saying, since the old wording read
-      // as a refusal when it is really "yours is still current".
+      // Skips now mean "yours was written more recently than ESPN's draft",
+      // not merely "you wrote something once" — worth saying, since the old
+      // wording read as a refusal when it is really "yours is still current".
       if (r.skippedManual?.length) parts.push(`${r.skippedManual.length} yours already current`)
       if (r.noDraft?.length) parts.push(`${r.noDraft.length} had none`)
       toast(parts.join(' · '), r.published ? 'success' : 'error')
@@ -164,7 +168,7 @@ export default function PlayerBlurbsPanel() {
       const result = await api.post('/blurbs/generate', {
         playerIds: [...selected],
         season,
-        week: sport === 'nfl' ? week : null,
+        week: null,
       })
       toast(`Generated ${result.generated} blurbs`, 'success')
       setSelected(new Set())
@@ -210,7 +214,7 @@ export default function PlayerBlurbsPanel() {
 
   const handleCreate = async (playerId) => {
     try {
-      await api.post('/blurbs', { player_id: playerId, content: createContent, season, week: sport === 'nfl' ? week : null, sport })
+      await api.post('/blurbs', { player_id: playerId, content: createContent, season, week: null, sport })
       toast('Blurb created', 'success')
       setCreatingFor(null)
       setCreateContent('')
@@ -222,7 +226,7 @@ export default function PlayerBlurbsPanel() {
 
   const handleCreateAndPublish = async (playerId) => {
     try {
-      const created = await api.post('/blurbs', { player_id: playerId, content: createContent, season, week: sport === 'nfl' ? week : null, sport })
+      const created = await api.post('/blurbs', { player_id: playerId, content: createContent, season, week: null, sport })
       await api.post(`/blurbs/${created.id}/publish`)
       toast('Published', 'success')
       setCreatingFor(null)
@@ -314,21 +318,6 @@ export default function PlayerBlurbsPanel() {
           <option value="recent">Sort: Recent blurb</option>
         </select>
 
-        {/* Week is an NFL-only concept — hide the input on other sports
-            where scoring is daily. Non-NFL blurb inserts send week=null. */}
-        {sport === 'nfl' && (
-          <div className="flex items-center gap-2 ml-auto">
-            <label className="text-xs text-text-muted">Week</label>
-            <input
-              type="number"
-              min={1}
-              max={18}
-              value={week}
-              onChange={(e) => setWeek(Number(e.target.value))}
-              className="w-14 px-2 py-1 rounded-lg bg-bg-card border border-text-primary/20 text-sm text-text-primary"
-            />
-          </div>
-        )}
       </div>
 
       {/* Injury status filter */}
@@ -464,9 +453,9 @@ export default function PlayerBlurbsPanel() {
                         column with Edit. */}
                     {blurb && (
                       <span className={`sm:hidden inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mt-1 ${
-                        blurb.status === 'published' ? 'bg-correct/20 text-correct' : 'bg-yellow-500/20 text-yellow-500'
+                        blurb.status === 'published' ? 'bg-correct/20 text-correct' : blurb.generated_by === 'espn' ? 'bg-blue-500/15 text-blue-400' : 'bg-yellow-500/20 text-yellow-500'
                       }`}>
-                        {blurb.status === 'published' ? 'Published' : 'Draft'}
+                        {blurb.status === 'published' ? 'Published' : blurb.generated_by === 'espn' ? 'ESPN Draft' : 'Draft'}
                       </span>
                     )}
                   </div>
@@ -476,9 +465,9 @@ export default function PlayerBlurbsPanel() {
                     {blurb && (
                       <>
                         <span className={`hidden sm:inline-block text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                          blurb.status === 'published' ? 'bg-correct/20 text-correct' : 'bg-yellow-500/20 text-yellow-500'
+                          blurb.status === 'published' ? 'bg-correct/20 text-correct' : blurb.generated_by === 'espn' ? 'bg-blue-500/15 text-blue-400' : 'bg-yellow-500/20 text-yellow-500'
                         }`}>
-                          {blurb.status === 'published' ? 'Published' : 'Draft'}
+                          {blurb.status === 'published' ? 'Published' : blurb.generated_by === 'espn' ? 'ESPN Draft' : 'Draft'}
                         </span>
                         <button
                           onClick={() => { setEditingId(isEditing ? null : blurb.id); setEditContent(blurb.content) }}
@@ -638,7 +627,6 @@ export default function PlayerBlurbsPanel() {
                                   <span className="text-text-muted">
                                     {sourceLabel}
                                     {h.writer && ` · by ${h.writer.display_name || h.writer.username}`}
-                                    {sport === 'nfl' && ` · W${h.week || '?'}`}
                                     {h.published_at && ` · ${new Date(h.published_at).toLocaleDateString()}`}
                                   </span>
                                   <button onClick={() => handleDelete(h.id)} className="text-incorrect hover:underline">Delete</button>

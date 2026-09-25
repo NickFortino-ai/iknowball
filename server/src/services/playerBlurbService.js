@@ -638,19 +638,19 @@ export async function writeEspnBlurb({ playerId, sport, content, season, week })
  * feature must never do.
  *
  * The rule is about STALENESS, not authorship. A hand-written blurb is
- * protected while it is CURRENT — same week as ESPN's draft, or later. Once
- * ESPN is writing about a newer week, publishing is an UPDATE rather than an
- * overwrite, and the old note is archived (not deleted) into the player's
+ * protected while it is CURRENT — written more recently than ESPN's draft.
+ * Once ESPN has written something newer, publishing is an UPDATE rather than
+ * an overwrite, and the old note is archived (not deleted) into the player's
  * history where it stays readable.
  *
- * "Never overwrite manual" was the first cut and it was too blunt: every
- * hand-written blurb was week 1 while ESPN had moved to week 3, so a
- * selection of 112 players skipped all 112 and published nothing. Protecting
- * a two-week-old note is not protecting the author, it just pins the stalest
- * version in place.
+ * "Never overwrite manual" was the first cut and it was too blunt: a
+ * selection of 112 players skipped all 112 and published nothing.
  *
- * A blurb with NO week is skipped — we can't show it's stale, and the
- * per-player "Publish instead" button is the explicit override for those.
+ * The second cut compared (season, week) — also wrong, because the admin
+ * panel's week field defaulted to 1 and was never set to the live NFL week,
+ * so every hand-written blurb claimed week 1 forever and none of them ever
+ * looked current. Staleness now reads created_at, which needs no admin input
+ * and cannot be forgotten. Ties go to the author.
  *
  * Returns { published, skippedManual, noDraft } so the panel can say what
  * actually happened rather than claiming a flat count.
@@ -659,25 +659,35 @@ export async function publishEspnBlurbs(playerIds, sport = 'nfl') {
   const ids = [...new Set((playerIds || []).filter(Boolean))]
   if (!ids.length) return { published: 0, skippedManual: [], noDraft: [] }
 
-  // Hand-written and live, with the week it covers so staleness is decidable.
+  // Hand-written and live. Staleness is decided on WHEN IT WAS WRITTEN, not
+  // on the week it was tagged with.
+  //
+  // `week` was the original clock and it was a bad one. The admin panel's week
+  // field defaulted to 1 and was never initialized to the live NFL week, so in
+  // practice every hand-written blurb was stamped week 1 no matter when it was
+  // written — a note typed tonight, in week 4, still read "week 1". Against an
+  // ESPN draft covering week 3 that made every manual blurb look two weeks
+  // stale, so the protection this rule exists to provide never fired.
+  //
+  // created_at needs no admin input and cannot be forgotten. Same staleness
+  // semantics, honest clock: your note stands while it is newer than ESPN's
+  // draft, and once ESPN has written something more recent, publishing is an
+  // update rather than an overwrite (the old row is archived, not deleted).
   const { data: manualRows } = await supabase
     .from('player_blurbs')
-    .select('player_id, season, week')
+    .select('player_id, created_at')
     .eq('sport', sport)
     .eq('generated_by', 'manual')
     .eq('status', 'published')
     .in('player_id', ids)
   // Keep the NEWEST hand-written blurb per player — an older one sitting
   // alongside it must not make the player look stale.
-  const period = (r) => (r.season == null || r.week == null ? null : r.season * 100 + r.week)
-  const manualPeriod = new Map()
+  const manualWrittenAt = new Map()
   for (const r of manualRows || []) {
-    const pr = period(r)
-    const cur = manualPeriod.get(r.player_id)
-    // null means "undateable" and always wins — it can never be shown stale.
-    if (!manualPeriod.has(r.player_id) || cur === null || (pr !== null && pr > cur)) {
-      manualPeriod.set(r.player_id, pr)
-    }
+    const t = Date.parse(r.created_at)
+    if (!Number.isFinite(t)) continue
+    const cur = manualWrittenAt.get(r.player_id)
+    if (cur === undefined || t > cur) manualWrittenAt.set(r.player_id, t)
   }
 
   // Newest pending ESPN row per player. writeEspnBlurb archives the previous
@@ -705,11 +715,12 @@ export async function publishEspnBlurbs(playerIds, sport = 'nfl') {
     const draft = newestByPlayer.get(playerId)
     if (!draft) { noDraft.push(playerId); continue }
 
-    // Yours stands while it is current. Older than ESPN's draft = an update.
-    if (manualPeriod.has(playerId)) {
-      const mine = manualPeriod.get(playerId)
-      const theirs = period(draft)
-      if (mine === null || theirs === null || mine >= theirs) {
+    // Yours stands while it is current. Written before ESPN's draft = an
+    // update. Ties go to the author.
+    if (manualWrittenAt.has(playerId)) {
+      const mine = manualWrittenAt.get(playerId)
+      const theirs = Date.parse(draft.created_at)
+      if (!Number.isFinite(theirs) || mine >= theirs) {
         skippedManual.push(playerId)
         continue
       }
