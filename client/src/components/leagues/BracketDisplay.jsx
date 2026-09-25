@@ -93,7 +93,7 @@ function TeamRow({ team, seed, sportKey, size, className, cityClass, seriesRecor
   )
 }
 
-function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, showPick, onTap, size = 'default', playInPickResults = {}, isBestOf7 = false, sportKey, mirrored = false }) {
+function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, showPick, onTap, alwaysTappable = false, size = 'default', playInPickResults = {}, isBestOf7 = false, sportKey, mirrored = false }) {
   const topCorrect = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'top'
   const bottomCorrect = pick && matchup.status === 'completed' && pick === matchup.team_bottom && matchup.winner === 'bottom'
   const topWrong = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'bottom'
@@ -107,7 +107,12 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
   // matchup.score_top — some paths (admin populate, edge-case auto-settle)
   // leave that field null even though the game itself has scores.
   const hasCompletedScore = !isBestOf7 && matchup.status === 'completed'
-  const canTap = !!onTap && (hasLiveSeries || hasSeriesRecord || hasCompletedScore)
+  // Default: a tap only does something when there is a result to show, since
+  // BracketView's handler opens game detail. The PICKER passes a navigation
+  // handler instead ("jump to that step"), which must work before a single
+  // game is played — otherwise its own "Tap any matchup to jump to that step"
+  // hint sits above a grid where every card is inert.
+  const canTap = !!onTap && (alwaysTappable || hasLiveSeries || hasSeriesRecord || hasCompletedScore)
 
   // Series length prediction color: white during series, green/yellow/red
   // after completion ONLY if the team pick was correct (no series-length
@@ -220,7 +225,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
   )
 }
 
-export default forwardRef(function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap, initialRegion, seriesFormat, sportKey, templateMatchups, backdrop, containerized = false }, ref) {
+export default forwardRef(function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap, initialRegion, seriesFormat, sportKey, templateMatchups, backdrop, alwaysTappable = false, containerized = false }, ref) {
   const isBestOf7 = seriesFormat === 'best_of_7'
   const [selectedRegion, setSelectedRegion] = useState(initialRegion ?? null)
 
@@ -580,6 +585,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
         eliminatedTeams={eliminatedTeams}
         showPick={hasPicks}
         onTap={onMatchupTap}
+                              alwaysTappable={alwaysTappable}
         size={size}
         playInPickResults={playInPickResults}
         isBestOf7={isBestOf7}
@@ -954,6 +960,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
                               eliminatedTeams={eliminatedTeams}
                               showPick={hasPicks}
                               onTap={onMatchupTap}
+                              alwaysTappable={alwaysTappable}
                               size={cardSize}
                               playInPickResults={playInPickResults}
                               isBestOf7={isBestOf7}

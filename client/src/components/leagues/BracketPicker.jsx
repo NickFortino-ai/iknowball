@@ -753,6 +753,9 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
             seriesFormat={tournament?.bracket_templates?.series_format}
             sportKey={league.sport}
             initialRegion={currentStep?.region || null}
+            // Navigation, not game detail — must work before any game is
+            // played, which is the only state this overview is ever seen in.
+            alwaysTappable
             onMatchupTap={(matchup) => {
               const stepIdx = steps.findIndex((s) =>
                 s.matchups.some((m) => m.id === matchup.id)
