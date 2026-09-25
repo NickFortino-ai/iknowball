@@ -540,7 +540,19 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   const allFilled = filledCount >= totalRequired
   const tiebreakerTopValid = tiebreakerTop !== '' && Number.isInteger(Number(tiebreakerTop)) && Number(tiebreakerTop) >= 0 && Number(tiebreakerTop) <= 250
   const tiebreakerBottomValid = tiebreakerBottom !== '' && Number.isInteger(Number(tiebreakerBottom)) && Number(tiebreakerBottom) >= 0 && Number(tiebreakerBottom) <= 250
-  const tiebreakerValid = tiebreakerTopValid && tiebreakerBottomValid
+  // Editing a submitted bracket must not force re-entering a tiebreaker you
+  // already gave. Only the SUM is persisted, so the two halves genuinely
+  // cannot be restored into these inputs — which is why they start blank and
+  // `existingTiebreakerScore` sat unused. That left the submit button
+  // permanently disabled reading "Enter championship scores", while the
+  // inputs it referred to only render on the championship step, so the
+  // instruction pointed off-screen.
+  //
+  // Leaving both blank now means "keep what I submitted". Typing a new pair
+  // overrides it, and a half-filled pair is still invalid.
+  const hasExistingTiebreaker = existingTiebreakerScore !== null && existingTiebreakerScore !== undefined
+  const keepingExistingTiebreaker = hasExistingTiebreaker && tiebreakerTop === '' && tiebreakerBottom === ''
+  const tiebreakerValid = (tiebreakerTopValid && tiebreakerBottomValid) || keepingExistingTiebreaker
   const allSeriesLengthsFilled = allPickableMatchups.every(
     (m) => !seriesCfgFor(m).isSeries || seriesLengths[m.template_matchup_id],
   )
@@ -562,7 +574,9 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
         leagueId: league.id,
         picks: pickArray,
         entryName: entryName || undefined,
-        tiebreakerScore: Number(tiebreakerTop) + Number(tiebreakerBottom),
+        tiebreakerScore: keepingExistingTiebreaker
+          ? Number(existingTiebreakerScore)
+          : Number(tiebreakerTop) + Number(tiebreakerBottom),
       })
       localStorage.removeItem(draftKey)
 
@@ -878,8 +892,13 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
         {currentStep && championshipMatchup && currentStep.matchups.some((m) => m.id === championshipMatchup.id) && (
           <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 mt-1">
             <label className="block text-xs text-text-muted mb-2">
-              Predict the Final Score <span className="text-incorrect">*</span>
+              Predict the Final Score {!hasExistingTiebreaker && <span className="text-incorrect">*</span>}
             </label>
+            {keepingExistingTiebreaker && (
+              <p className="text-[11px] text-text-muted mb-2">
+                Keeping your submitted total of <span className="text-text-primary font-semibold">{existingTiebreakerScore}</span> — enter both scores to change it.
+              </p>
+            )}
             <div className="flex gap-2">
               <div className="flex-1">
                 <input
