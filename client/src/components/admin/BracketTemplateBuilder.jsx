@@ -1755,26 +1755,12 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
             </div>
           ) : (
             <div className="relative border border-text-primary/10 rounded-lg p-2">
-              {/* Bracket image overlay — same layering BracketView uses on
-                  the live page so the preview matches what users will see. */}
-              {bracketImage && (
-                <img
-                  src={bracketImage}
-                  alt=""
-                  draggable={false}
-                  className="hidden md:block md:max-w-[80%] md:max-h-full"
-                  style={{
-                    position: 'absolute',
-                    left: `${bracketImageX ?? 50}%`,
-                    top: `${bracketImageY ?? 50}%`,
-                    transform: `translate(-50%, -50%) scale(${bracketImageScale ?? 1})`,
-                    opacity: bracketImageOpacity ?? 0.4,
-                    zIndex: bracketImagePosition === 'above_finals' ? 20 : 1,
-                    pointerEvents: 'none',
-                    userSelect: 'none',
-                  }}
-                />
-              )}
+              {/* The image is passed THROUGH to BracketDisplay rather than
+                  overlaid here, matching what BracketView now does. It has to
+                  stay that way: x/y are anchored to the bracket's own scroll
+                  width, so an overlay positioned against this panel instead
+                  would put the centerpiece somewhere the live page won't, and
+                  the admin would be tuning against a lie. */}
               <BracketDisplay
                 matchups={matchups}
                 picks={[]}
@@ -1782,6 +1768,14 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
                 regions={regions}
                 seriesFormat={seriesFormat}
                 sportKey={sport}
+                backdrop={bracketImage ? {
+                  url: bracketImage,
+                  x: bracketImageX,
+                  y: bracketImageY,
+                  scale: bracketImageScale,
+                  opacity: bracketImageOpacity,
+                  position: bracketImagePosition,
+                } : null}
                 containerized
               />
             </div>

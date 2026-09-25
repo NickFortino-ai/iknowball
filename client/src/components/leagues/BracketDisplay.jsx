@@ -220,7 +220,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
   )
 }
 
-export default forwardRef(function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap, initialRegion, seriesFormat, sportKey, templateMatchups, containerized = false }, ref) {
+export default forwardRef(function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap, initialRegion, seriesFormat, sportKey, templateMatchups, backdrop, containerized = false }, ref) {
   const isBestOf7 = seriesFormat === 'best_of_7'
   const [selectedRegion, setSelectedRegion] = useState(initialRegion ?? null)
 
@@ -800,6 +800,46 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
     )
   }
 
+  // The centerpiece image renders INSIDE the horizontally-scrolling bracket
+  // content rather than in the page container around it. That is what lets it
+  // show on phones: the bracket is wider than the viewport and scrolls, so an
+  // image anchored to the container would sit still while the bracket slid out
+  // from under it. Anchored here, x/y mean "position along the BRACKET" and
+  // hold at every screen size — so x=80 puts it near the Finals on a linear
+  // bracket, and x=50 still centers it on the facing layouts where the final
+  // sits in the middle.
+  //
+  // z-index 11 preserves the paint order this image has always had: it was an
+  // absolutely-positioned sibling ahead of the bracket, so it drew OVER the
+  // cards at its own opacity. 11 clears the facing layout's z-10 content so
+  // that stays true in both layouts. 'above_finals' keeps its higher 20.
+  //
+  // crossOrigin matters now that this node is inside the element Share Bracket
+  // rasterizes — a cross-origin image without it taints the canvas and breaks
+  // sharing. Supabase storage returns `access-control-allow-origin: *`.
+  function renderBackdrop() {
+    if (!backdrop?.url) return null
+    return (
+      <img
+        src={backdrop.url}
+        alt=""
+        draggable={false}
+        crossOrigin="anonymous"
+        className="max-w-[80%] max-h-full"
+        style={{
+          position: 'absolute',
+          left: `${backdrop.x ?? 50}%`,
+          top: `${backdrop.y ?? 50}%`,
+          transform: `translate(-50%, -50%) scale(${backdrop.scale ?? 1})`,
+          opacity: backdrop.opacity ?? 0.4,
+          zIndex: backdrop.position === 'above_finals' ? 20 : 11,
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}
+      />
+    )
+  }
+
   // Desktop horizontal view — break out of parent max-w container to use
   // full viewport width. When `containerized` is true (e.g. admin Step 5
   // preview inside a narrower panel), skip the viewport-escape so the
@@ -853,10 +893,13 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
               {centerMatchups.ffRight && renderCenterMatchup(centerMatchups.ffRight, 'lg', centerMatchups.ffRound)}
               {renderBracketHalf(facingLayout.right, true, 'right')}
             </div>
+            {renderBackdrop()}
           </div>
         ) : (
-          /* ── Linear layout (single region or small bracket) ── */
-          <div className="flex min-w-max py-2">
+          /* ── Linear layout (single region or small bracket) ──
+             `relative` so the centerpiece anchors to the bracket's full
+             scroll width, not the viewport. No offsets, so flow is unchanged. */
+          <div className="relative flex min-w-max py-2">
             {roundNumbers.map((roundNum, roundIdx) => {
               const matchupsList = filteredByRound[roundNum] || []
               const span = Math.pow(2, roundIdx)
@@ -958,6 +1001,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
                 </Fragment>
               )
             })}
+            {renderBackdrop()}
           </div>
         )}
 

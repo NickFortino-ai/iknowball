@@ -402,25 +402,22 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
           </div>
 
           <div className="relative">
-            {hasTemplateImage && (
-              <img
-                src={templateImage}
-                alt=""
-                draggable={false}
-                className="hidden md:block md:max-w-[80%] md:max-h-full"
-                style={{
-                  position: 'absolute',
-                  left: `${template.bracket_image_x ?? 50}%`,
-                  top: `${template.bracket_image_y ?? 50}%`,
-                  transform: `translate(-50%, -50%) scale(${template.bracket_image_scale ?? 1})`,
-                  opacity: template.bracket_image_opacity ?? 0.4,
-                  zIndex: template.bracket_image_position === 'above_finals' ? 20 : 1,
-                  pointerEvents: 'none',
-                  userSelect: 'none',
-                }}
-              />
-            )}
+            {/* The centerpiece used to live here, absolutely positioned against
+                this container and hidden below `md` (e272cb62, 2026-06-04) —
+                it overlapped cards on narrow viewports. The cause was the
+                anchor, not the size: the bracket scrolls horizontally inside
+                BracketDisplay, so an image pinned to this container drifted
+                away from the bracket as you scrolled. It now renders inside
+                the scrolling content, which is why it can show on mobile. */}
             <BracketDisplay
+              backdrop={hasTemplateImage ? {
+                url: templateImage,
+                x: template.bracket_image_x,
+                y: template.bracket_image_y,
+                scale: template.bracket_image_scale,
+                opacity: template.bracket_image_opacity,
+                position: template.bracket_image_position,
+              } : null}
               ref={bracketRef}
               matchups={tournament.matchups}
               picks={viewingUserId ? displayPicks : null}
