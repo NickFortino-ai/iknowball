@@ -809,11 +809,32 @@ export async function syncInjuries() {
       // Pull all NFL players (only ones still on a team) so we can
       // null-out injuries for players who no longer appear in ESPN's
       // active injury list and bump status for those who do.
+      // EVERY rostered player, not just offensive skill positions. The filter
+      // here used to be ['QB','RB','WR','TE','K','DEF'], which silently
+      // excluded 1282 of 2168 rostered players — the entire defense.
+      //
+      // Observed 2026-09-25: Nick Bosa (DE) tore up the news with a calf
+      // injury. team_intel had it within the hour ("Doubtful", "Calf", with
+      // Schefter's note); nfl_players still read "Questionable / Knee" from
+      // Sleeper because DE was never in this SELECT, so ESPN's update had
+      // nowhere to land.
+      //
+      // Defense is not decoration here: IDP scoring is universal, and the
+      // sacks / ints / tackles contests are made entirely of these players.
+      // 224 of the excluded players carried an injury_status that ESPN could
+      // never correct.
+      //
+      // The cleared-to-play branch below now applies to them too. That is the
+      // intended symmetry and it is guarded the same way it is for offense —
+      // the player must still appear on a current depth chart (extractFootball
+      // Starters collects every athlete across offense, defense AND special
+      // teams, so defenders are genuinely covered) and must not hold a
+      // long-term designation. 92 non-skill players are currently clearable
+      // under those guards; the rest are IR/PUP/Sus and stay protected.
       const nflPlayers = await fetchAll(
         supabase
           .from('nfl_players')
           .select('id, full_name, team, injury_status, injury_body_part')
-          .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
           .not('team', 'is', null)
           .order('id')
       )
