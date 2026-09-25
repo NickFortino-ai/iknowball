@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useRef, forwardRef, useImperativeHandle, Fragment } from 'react'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
+import { roundSeriesConfig } from '../../lib/bracketSeries'
 
 function TeamLogo({ team, sportKey, size }) {
   const url = getTeamLogoUrl(team, sportKey)
@@ -93,7 +94,7 @@ function TeamRow({ team, seed, sportKey, size, className, cityClass, seriesRecor
   )
 }
 
-function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, showPick, onTap, alwaysTappable = false, size = 'default', playInPickResults = {}, isBestOf7 = false, sportKey, mirrored = false }) {
+function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, showPick, onTap, alwaysTappable = false, awardsOneOff = true, size = 'default', playInPickResults = {}, isBestOf7 = false, sportKey, mirrored = false }) {
   const topCorrect = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'top'
   const bottomCorrect = pick && matchup.status === 'completed' && pick === matchup.team_bottom && matchup.winner === 'bottom'
   const topWrong = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'bottom'
@@ -123,7 +124,11 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
       const actualLength = (matchup.series_wins_top || 0) + (matchup.series_wins_bottom || 0)
       const diff = Math.abs(pickData.series_length - actualLength)
       if (diff === 0) predictionColor = 'text-correct'
-      else if (diff === 1) predictionColor = 'text-yellow-500'
+      // Yellow reads as partial credit, so it may only appear where the round
+      // actually pays a one-off bonus. A best-of-3 pays none — with two
+      // possible answers, "one game off" IS the other answer — so on a WNBA or
+      // MLB opening round a miss is a miss and must render red, not yellow.
+      else if (diff === 1 && awardsOneOff) predictionColor = 'text-yellow-500'
       else predictionColor = 'text-incorrect'
     } else {
       predictionColor = 'text-text-muted'
@@ -589,6 +594,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
         size={size}
         playInPickResults={playInPickResults}
         isBestOf7={isBestOf7}
+                              awardsOneOff={roundSeriesConfig(rounds, matchup.round_number, seriesFormat).oneOffBonus > 0}
         sportKey={sportKey}
         mirrored={mirrored}
       />
@@ -956,6 +962,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
                             <MatchupCard
                               matchup={displayMatchup}
                               pick={pickMap[matchup.template_matchup_id]?.team}
+                              pickData={pickMap[matchup.template_matchup_id]}
                               eliminated={pickMap[matchup.template_matchup_id]?.eliminated}
                               eliminatedTeams={eliminatedTeams}
                               showPick={hasPicks}
@@ -964,6 +971,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
                               size={cardSize}
                               playInPickResults={playInPickResults}
                               isBestOf7={isBestOf7}
+                              awardsOneOff={roundSeriesConfig(rounds, matchup.round_number, seriesFormat).oneOffBonus > 0}
                               sportKey={sportKey}
                             />
                           </div>

@@ -3,6 +3,7 @@ import { useSubmitBracket, useMyOtherBracketEntries } from '../../hooks/useLeagu
 import { toast } from '../ui/Toast'
 import BracketDisplay from './BracketDisplay'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
+import { roundSeriesConfig } from '../../lib/bracketSeries'
 
 function PickerTeamLogo({ team, sportKey }) {
   const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
@@ -17,25 +18,6 @@ function PickerTeamLogo({ team, sportKey }) {
 }
 
 
-// Mirrors roundSeriesConfig in server/src/services/bracketService.js. The two
-// MUST agree: this decides which buttons are offered, the server decides
-// which values it stores, and a mismatch shows a length that is silently
-// dropped on save.
-//
-// A round may declare `best_of`; otherwise the template-level flag applies,
-// which is how every NBA / NHL / World Cup template still behaves.
-function roundSeriesConfig(rounds, roundNumber, seriesFormat) {
-  const round = (rounds || []).find((r) => r.round_number === roundNumber)
-  const fromRound = Number(round?.best_of)
-  const bestOf = Number.isFinite(fromRound) && fromRound > 0
-    ? fromRound
-    : (seriesFormat === 'best_of_7' ? 7 : 1)
-  if (bestOf <= 1) return { bestOf: 1, clinch: 1, lengths: [], isSeries: false }
-  const clinch = Math.ceil(bestOf / 2)
-  const lengths = []
-  for (let n = clinch; n <= bestOf; n++) lengths.push(n)
-  return { bestOf, clinch, lengths, isSeries: true }
-}
 
 export default function BracketPicker({ league, tournament, matchups, existingPicks, existingTiebreakerScore, onClose, ffOnlyMode = false }) {
   const submitBracket = useSubmitBracket()
