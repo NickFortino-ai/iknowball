@@ -464,13 +464,38 @@ async function getUpcomingTeams(sportKey, windowOverrideMs = null) {
     .gte('starts_at', now.toISOString())
     .lte('starts_at', cutoff.toISOString())
 
-  if (!games?.length) return []
-
   const teams = new Set()
-  for (const g of games) {
+  for (const g of games || []) {
     if (g.home_team) teams.add(g.home_team)
     if (g.away_team) teams.add(g.away_team)
   }
+
+  // Teams that JUST PLAYED, not only teams about to play.
+  //
+  // This selected on status='upcoming' AND starts_at >= now, so a team fell
+  // out of the sync the instant it kicked off — and for the NFL it stayed
+  // out until its next game came inside the 8-day window, which after a
+  // Thursday night game is over a week.
+  //
+  // That window is precisely when ESPN writes the recaps. Atlanta and Green
+  // Bay played Thursday 9/24 and their intel froze at 8:10 PM, five minutes
+  // before kickoff: no post-game injury changes, and no recap blurbs for any
+  // player on either team.
+  //
+  // 36 hours covers a game finishing late plus ESPN taking its time, without
+  // dragging every team back in permanently.
+  const RECENT_MS = 36 * 60 * 60 * 1000
+  const { data: recent } = await supabase
+    .from('games')
+    .select('home_team, away_team')
+    .in('sport_id', sportIds)
+    .gte('starts_at', new Date(now.getTime() - RECENT_MS).toISOString())
+    .lte('starts_at', now.toISOString())
+  for (const g of recent || []) {
+    if (g.home_team) teams.add(g.home_team)
+    if (g.away_team) teams.add(g.away_team)
+  }
+
   return [...teams]
 }
 
