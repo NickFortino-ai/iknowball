@@ -112,9 +112,27 @@ export async function updateTemplate(templateId, userId, data) {
   }
 
   const updates = { updated_at: new Date().toISOString() }
-  if (data.name !== undefined) updates.name = data.name
+  // Same hazard as `sport` below, but worse: there is no CHECK on name, so a
+  // blank one would silently wipe the template's name instead of erroring.
+  if (data.name !== undefined && String(data.name).trim() !== '') {
+    updates.name = data.name
+  }
   if (data.description !== undefined) updates.description = data.description
-  if (data.sport !== undefined) updates.sport = data.sport
+  // A BLANK sport is never a legitimate edit — the builder locks the sport on
+  // an edit because changing it would invalidate every matchup and team name.
+  // But the form still ships `sport` from React state on every save, and that
+  // state initializes to '' before the template fetch resolves. If a save is
+  // assembled from that pre-hydration state, we'd hand Postgres an empty
+  // string, which fails bracket_templates_sport_check with a message no admin
+  // can act on ("violates check constraint") while the real casualty is the
+  // edit they were actually making — e.g. attaching a bracket image.
+  //
+  // Treat blank as "not provided" and keep the stored sport. Verified against
+  // production 2026-09-25: `update({sport: ''})` reproduces that exact error,
+  // while the same update carrying the image alone succeeds.
+  if (data.sport !== undefined && String(data.sport).trim() !== '') {
+    updates.sport = data.sport
+  }
   if (data.team_count !== undefined) updates.team_count = data.team_count
   if (data.rounds !== undefined) updates.rounds = data.rounds
   if (data.regions !== undefined) updates.regions = data.regions
