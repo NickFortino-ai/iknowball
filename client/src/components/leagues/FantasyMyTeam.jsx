@@ -708,7 +708,11 @@ export default function FantasyMyTeam({ league }) {
               {ineligibleIrPlayers.length === 1 ? ' is' : ' are'} no longer eligible for IR
             </div>
             <div className="text-xs text-text-secondary mt-0.5">
-              Roster moves are blocked until {ineligibleIrPlayers.length === 1 ? 'he' : 'they'} move to your bench.
+              {/* Names what is actually blocked. "Roster moves are blocked"
+                  was both wrong once drops were allowed and unhelpful — a
+                  manager with a full bench has to drop someone to free the
+                  spot that lets him activate the player. */}
+              Adds, claims and trades are blocked until {ineligibleIrPlayers.length === 1 ? 'he moves' : 'they move'} to your bench. You can still drop players.
             </div>
           </div>
           <button

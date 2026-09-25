@@ -5097,8 +5097,11 @@ export async function promoteWeeklyLineup(leagueId, userId, currentWeek, season)
 /**
  * Throws if any of the user's roster players currently sitting in the IR
  * slot is no longer injured (status not Out / IR / Injured Reserve).
- * Mirrors Yahoo behavior: ineligible IR blocks all transactions until the
- * player is moved off IR (lineup change resolves it).
+ * Blocks transactions that would SPEND the extra roster spot an ineligible
+ * IR player represents — adds, claims, trades. Drops are deliberately
+ * allowed: they shrink the roster, so they can only move toward compliance,
+ * and a manager with a full bench needs one to free the spot that lets him
+ * activate the player. A lineup change resolves it outright.
  */
 async function assertNoIneligibleIR(leagueId, userId) {
   const { data: irRows } = await supabase
@@ -5124,7 +5127,11 @@ async function assertNoIneligibleIR(leagueId, userId) {
     const one = ineligible.length === 1
     const err = new Error(
       `${ineligible.join(' and ')} ${one ? 'is' : 'are'} on IR but no longer eligible. `
-      + `Move ${one ? 'them' : 'all of them, in one save,'} off IR before making any roster moves.`,
+      // Says what is actually blocked. "any roster moves" was wrong once
+      // drops were allowed, and it pointed a stuck manager away from the
+      // move that frees him.
+      + `Move ${one ? 'them' : 'all of them, in one save,'} off IR before adding, claiming or trading. `
+      + `You can still drop players${one ? ' — including them' : ''}.`,
     )
     err.status = 400
     err.ineligible_ir = true
@@ -5511,7 +5518,23 @@ export async function dropRosterPlayer(leagueId, userId, playerId) {
     err.status = 400
     throw err
   }
-  await assertNoIneligibleIR(leagueId, userId)
+
+  // Deliberately NOT gated on assertNoIneligibleIR.
+  //
+  // An ineligible IR player is effectively an extra roster spot, and the
+  // guard exists to stop that spot being SPENT — on an add, a claim or a
+  // trade. A drop is the opposite: it strictly reduces the roster, so it can
+  // only move a manager toward compliance, never away from it.
+  //
+  // Blocking it made the state hard to escape. A manager with a full bench
+  // has to drop someone to free the spot that lets him activate the IR
+  // player, and the guard refused exactly that move — and refused dropping
+  // the ineligible player himself, which is the most direct resolution there
+  // is. Reported by a manager stuck at 6/6 bench with Tua on IR, unable to
+  // drop Carson Wentz.
+  //
+  // Every path that could CONSUME the extra spot still checks:
+  // addDropPlayer, submitWaiverClaim, proposeTrade, acceptTrade.
   const { data: row } = await supabase
     .from('fantasy_rosters')
     .select('id, user_id, slot, acquired_at, nfl_players(full_name, team)')
