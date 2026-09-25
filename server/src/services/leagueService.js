@@ -5,6 +5,7 @@ import { getLeaguePickStandings } from './leaguePickService.js'
 import { toSportsDay } from '../utils/sportsDay.js'
 import { salaryCapEffectiveStart } from '../utils/salaryCapStart.js'
 import { throwIfInfra } from '../utils/dbError.js'
+import { getProrationFraction } from './prorationService.js'
 
 /**
  * Check whether a league is still joinable based on its format and start date.
@@ -1312,6 +1313,8 @@ export async function getLeagueDetails(leagueId, userId) {
   const effectiveStart = await salaryCapEffectiveStart(league)
   if (effectiveStart) league.starts_at = effectiveStart
 
+  const prorationFraction = await getProrationFraction(league)
+
   return {
     ...league,
     is_member: isMember,
@@ -1324,6 +1327,12 @@ export async function getLeagueDetails(leagueId, userId) {
     current_week: activeWeek || null,
     settings_editable: settingsEditable,
     has_locked_picks: hasLockedPicks,
+    // The fraction of a season this league has actually played, on the SAME
+    // nights-played basis completeLeagues.js pays the winner bonus on. The
+    // settings UI previously derived this from the calendar span between
+    // starts_at and ends_at, which is >= nights played and so could only
+    // overpromise. Null for formats that don't prorate.
+    proration_fraction: prorationFraction,
     champion,
   }
 }

@@ -509,6 +509,18 @@ const FULL_SEASON_DENOMINATOR = {
 }
 
 function computeProrationFraction(league, leagueFormat, fantasySettings) {
+  // Prefer the server's own number. It counts nights (or NFL weeks) actually
+  // PLAYED, which is the basis completeLeagues.js pays the winner bonus on.
+  // The date math below spans starts_at..ends_at, and days >= nights always,
+  // so it could only ever overpromise — a 7-night WNBA contest whose ends_at
+  // was a year out rendered "+24" against an actual payout of 5.
+  //
+  // Kept as a fallback so an older app bundle, or a payload from before this
+  // field existed, still renders something sane instead of nothing.
+  if (typeof league?.proration_fraction === 'number') {
+    return Math.min(1, Math.max(0, league.proration_fraction))
+  }
+
   // Salary-cap fantasy: mirror getSalaryCapBonus's mid-season branch —
   // prorate by weeksPlayed / 18 when not a full-season run. We approximate
   // weeksPlayed from the configured date range. A full-season run (>=17
