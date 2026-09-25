@@ -241,6 +241,11 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
     )
   }
 
+  // Before the lock you may only view your own entry; after it, everyone's.
+  const visibleEntries = isLocked
+    ? (entries || [])
+    : (entries || []).filter((e) => e.user_id === profile?.id)
+
   const displayPicks = viewingUserId === profile?.id
     ? myEntry?.picks
     : viewedEntry?.picks || null
@@ -358,8 +363,15 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
 
       {viewTab === 'bracket' && (
         <div>
-          {/* User bracket selector (after lock) */}
-          {isLocked && entries?.length > 0 && (
+          {/* User bracket selector.
+              After lock: everyone's bracket is viewable.
+              Before lock: only your OWN. This used to be gated on isLocked
+              alone, which meant that between submitting and the lock you had
+              no way to look at what you submitted — the diagram fell back to
+              the master bracket, whose later rounds are all TBD until games
+              are played, so a correctly-saved bracket looked empty. Other
+              members stay hidden until lock so picks don't leak early. */}
+          {visibleEntries.length > 0 && (
             <div className="mb-4 relative z-10 border border-white/15 rounded-xl p-2">
               <div className="flex gap-2 overflow-x-auto scrollbar-hide">
                 <button
@@ -370,7 +382,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
                 >
                   Master
                 </button>
-                {entries.map((e) => (
+                {visibleEntries.map((e) => (
                   <button
                     key={e.user_id}
                     onClick={() => setViewingUserId(e.user_id)}

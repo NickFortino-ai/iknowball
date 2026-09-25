@@ -899,7 +899,14 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
       // Valid lengths depend on the round: 2-3 for a best-of-3, 3-5 for a
       // best-of-5, 4-7 for a best-of-7. Hardcoding [4,5,6,7] silently dropped
       // every Wild Card and Division Series prediction.
-      if (roundSeriesConfig(rounds, p.round_number, tournament.bracket_templates?.series_format).lengths.includes(p.series_length)) {
+      //
+      // The round MUST come from the matchup, as the row above does. The
+      // request pick carries only {template_matchup_id, picked_team,
+      // series_length} — it has no round_number, so passing p.round_number
+      // handed roundSeriesConfig undefined, which matched no round and fell
+      // back to best-of-7. That reinstated the very [4,5,6,7] hardcode this
+      // comment says was removed, silently dropping shorter rounds again.
+      if (roundSeriesConfig(rounds, matchup?.round_number, tournament.bracket_templates?.series_format).lengths.includes(p.series_length)) {
         row.series_length = p.series_length
       }
       return row
@@ -936,8 +943,13 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
       position: matchup?.position || 0,
       picked_team: p.picked_team,
     }
-    // Series length prediction for best-of-7 formats
-    if (roundSeriesConfig(rounds, p.round_number, tournament.bracket_templates?.series_format).lengths.includes(p.series_length)) {
+    // Series length prediction, validated against THIS round's best_of.
+    // Round comes from the matchup, not the request pick — see the FF branch
+    // above: the request carries no round_number, so p.round_number was
+    // undefined and every round silently fell back to best-of-7's [4,5,6,7].
+    // A best-of-3 First Round pick (2 or 3 games) could never match, so it
+    // was dropped without error while possible_points still counted its bonus.
+    if (roundSeriesConfig(rounds, matchup?.round_number, tournament.bracket_templates?.series_format).lengths.includes(p.series_length)) {
       row.series_length = p.series_length
     }
     return row
