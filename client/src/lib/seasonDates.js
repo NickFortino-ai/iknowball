@@ -45,7 +45,14 @@ export function getSeasonEndDate(sportKey) {
     basketball_wncaab: `${year}-03-08`,
     americanfootball_ufl: `${year}-06-15`,
     americanfootball_ncaaf: `${year}-12-07`,
-    basketball_wnba: `${year}-09-14`,
+    // The 2026 WNBA regular season's last games were Sep 24 (verified against
+    // the games table). This read Sep 14, ten days early — and because the
+    // roll-forward below turns any already-past date into NEXT year, a league
+    // created Sep 16 for "Remainder of Regular Season" was given an end date
+    // of 2027-09-14. See the Taste the Rainbow league: it ran past the season
+    // it was scoped to and could not end. A stale date here is not a small
+    // error, it is a one-year error.
+    basketball_wnba: `${year}-09-24`,
     icehockey_nhl: `${year}-04-18`,
     soccer_usa_mls: `${year}-10-18`,
   }
