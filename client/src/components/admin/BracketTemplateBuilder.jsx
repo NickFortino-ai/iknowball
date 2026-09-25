@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import {
   useBracketTemplate,
   useCreateBracketTemplate,
@@ -695,9 +695,14 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
     setRounds(preset.rounds ? preset.rounds.map((r) => ({ ...r })) : generateRounds(preset.teamCount))
   }
 
+  // Set when the form has just been repopulated from the server, so the
+  // "Saved" capture below knows the next render's values ARE what is stored.
+  const justHydratedRef = useRef(false)
+
   // Sync state when existing template data loads (useState initializers run before async fetch completes)
   useEffect(() => {
     if (!existing) return
+    justHydratedRef.current = true
     setSport(existing.sport || '')
     setSeriesFormat(existing.series_format || 'single_elimination')
     setName(existing.name || '')
@@ -763,11 +768,39 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
   // Play-in slots for 68-team brackets: key = `${matchupIdx}-${'top'|'bottom'}`, value = { team1, team2 }
   const [playInSlots, setPlayInSlots] = useState({})
   const playInCount = Object.keys(playInSlots).length
-  const [saved, setSaved] = useState(false)
+  // "Saved ✓" must mean the form matches what is stored, so it is DERIVED
+  // rather than a boolean each edit path has to remember to clear. The flag
+  // it replaces was cleared in four places and missed two — Regenerate
+  // Bracket, and every field on the Details/Rounds/Image steps (which this
+  // same button persists via handleSaveTemplate). It only ever read honestly
+  // because it started false on mount and nothing could turn it on early, so
+  // opening an already-saved template showed a bright Save Template button.
+  //
+  // One signature over everything a save persists. It is captured at
+  // hydration (what is on screen IS what is stored) and after each successful
+  // save; any later edit changes the signature and the button lights back up.
+  const signatureParts = [
+    name, description, teamCount, regions, rounds, seriesFormat,
+    picksAvailableAt, endsAt, bracketImage, bracketImageX, bracketImageY,
+    bracketImageScale, bracketImageOpacity, bracketImagePosition,
+    matchups, playInSlots,
+  ]
+  const formSignature = useMemo(() => JSON.stringify(signatureParts), signatureParts)
+
+  const [savedSignature, setSavedSignature] = useState(null)
+  const saved = savedSignature !== null && savedSignature === formSignature
+
+  // The hydration effect sets a dozen pieces of state at once, and the
+  // signature they produce is only observable on the NEXT render — so the
+  // capture waits here rather than reading stale values inside that effect.
+  useEffect(() => {
+    if (!justHydratedRef.current) return
+    justHydratedRef.current = false
+    setSavedSignature(formSignature)
+  }, [formSignature])
 
   function togglePlayIn(idx, slot) {
     const key = `${idx}-${slot}`
-    setSaved(false)
     setPlayInSlots((prev) => {
       const next = { ...prev }
       if (next[key]) {
@@ -784,7 +817,6 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
   }
 
   function updatePlayInTeam(key, field, value) {
-    setSaved(false)
     setPlayInSlots((prev) => ({
       ...prev,
       [key]: { ...prev[key], [field]: value },
@@ -867,14 +899,12 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
   }
 
   function updateMatchupTeam(idx, field, value) {
-    setSaved(false)
     const next = [...matchups]
     next[idx] = { ...next[idx], [field]: value }
     setMatchups(next)
   }
 
   function toggleBye(idx) {
-    setSaved(false)
     const next = [...matchups]
     next[idx] = { ...next[idx], is_bye: !next[idx].is_bye }
     setMatchups(next)
@@ -997,7 +1027,11 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
     try {
       await saveMatchups.mutateAsync({ templateId: id, matchups: allMatchups })
       toast('Matchups saved!', 'success')
-      setSaved(true)
+      // Recomputed here rather than reusing the memo: the 68-team play-in
+      // branch above mutates matchup objects in place, and those objects are
+      // shared with `matchups` state, so the memo from this render is already
+      // stale. Stringifying now captures what was actually sent.
+      setSavedSignature(JSON.stringify(signatureParts))
     } catch (err) {
       toast(err.message || 'Failed to save matchups', 'error')
     }
