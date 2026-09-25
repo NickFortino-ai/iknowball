@@ -1229,10 +1229,22 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
               still SENT as null so existing templates that carry one are not
               silently rewritten on save. */}
 
+          {/* Hidden entirely when the sport has no regions. The WNBA seeds
+              1-8 LEAGUE-WIDE, so asking an admin to name conferences invites
+              a wrong answer — filling in two would split an 8-team field into
+              two groups of four and produce the wrong pairings. Same
+              reasoning as team count and series format: the sport already
+              answers it. Customize brings the editor back. */}
+          {activePreset && !customizeShape && activePreset.regions.length === 0 ? null : (
           <div className={isWorldCup ? 'hidden' : ''}>
             <label className="block text-sm font-semibold text-text-secondary mb-2">
               Conferences/Regions <span className="text-text-muted font-normal">(optional)</span>
             </label>
+            {activePreset && !customizeShape && activePreset.regions.length > 0 && (
+              <div className="text-xs text-text-muted -mt-1 mb-2">
+                Set from the {SPORT_OPTIONS.find((o) => o.value === sport)?.label || sport} postseason. Order decides which half renders on which side.
+              </div>
+            )}
             <div className="flex gap-2 mb-2">
               <input
                 type="text"
@@ -1278,6 +1290,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
               </div>
             )}
           </div>
+          )}
 
           <button
             onClick={() => setStep(2)}
