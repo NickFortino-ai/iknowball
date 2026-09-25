@@ -801,8 +801,34 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
     }
   }
 
-  // Calculate possible points
   const rounds = tournament.bracket_templates?.rounds || []
+
+  // Validate each predicted series length against ITS OWN round. The request
+  // schema can only bound the shape (1..7) because it has no tournament
+  // context, so this is the real gate — without it, widening that bound would
+  // let someone call a best-of-3 in 7 games. roundSeriesConfig is the single
+  // definition of what a round allows: best-of-3 clinches at 2, so 2 or 3;
+  // best-of-5 gives 3..5; best-of-7 gives 4..7.
+  for (const pick of picks) {
+    if (pick.series_length == null) continue
+    const matchup = matchupMap[pick.template_matchup_id]
+    if (!matchup) continue
+    const cfg = roundSeriesConfig(rounds, matchup.round_number, tournament.bracket_templates?.series_format)
+    if (!cfg.isSeries) {
+      const err = new Error(`Round ${matchup.round_number} is a single game — it has no series length to predict`)
+      err.status = 400
+      throw err
+    }
+    if (!cfg.lengths.includes(pick.series_length)) {
+      const err = new Error(
+        `Round ${matchup.round_number} is a best-of-${cfg.bestOf} — a series can only go ${cfg.lengths.join(', ')} games (got ${pick.series_length})`
+      )
+      err.status = 400
+      throw err
+    }
+  }
+
+  // Calculate possible points
   let possiblePoints = 0
   for (const pick of picks) {
     const matchup = matchupMap[pick.template_matchup_id]

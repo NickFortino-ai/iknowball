@@ -1226,7 +1226,13 @@ const submitBracketSchema = z.object({
     z.object({
       template_matchup_id: z.string().uuid(),
       picked_team: z.string().min(1),
-      series_length: z.number().int().min(4).max(7).optional(),
+      // Deliberately permissive: this schema validates the BODY SHAPE and has
+      // no tournament context, so it cannot know a round's best_of. It used to
+      // say min(4).max(7) — the best-of-7 range — which rejected every
+      // best-of-3 First Round pick (2 or 3 games) before the handler ran, with
+      // a bare "Validation failed". submitBracket does the real per-round check
+      // against roundSeriesConfig, which is the single source of truth.
+      series_length: z.number().int().min(1).max(7).optional(),
     })
   ).min(1),
   entry_name: z.string().max(50).optional(),
