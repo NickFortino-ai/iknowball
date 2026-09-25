@@ -708,11 +708,13 @@ export default function FantasyMyTeam({ league }) {
               {ineligibleIrPlayers.length === 1 ? ' is' : ' are'} no longer eligible for IR
             </div>
             <div className="text-xs text-text-secondary mt-0.5">
-              {/* Names what is actually blocked. "Roster moves are blocked"
-                  was both wrong once drops were allowed and unhelpful — a
-                  manager with a full bench has to drop someone to free the
-                  spot that lets him activate the player. */}
-              Adds, claims and trades are blocked until {ineligibleIrPlayers.length === 1 ? 'he moves' : 'they move'} to your bench. You can still drop players.
+              {/* Names the blocked actions AND the remedy. "Roster moves are
+                  blocked" was wrong once drops were allowed, and never
+                  mentioned that the button beside it resolves this — which
+                  is how a manager ended up messaging Nick instead of
+                  tapping it. */}
+              Tap Clear IR to move {ineligibleIrPlayers.length === 1 ? 'him' : 'them'} to your bench — it offers a drop if your bench is full.
+              Until then you can drop players, but not add, claim or trade.
             </div>
           </div>
           <button

@@ -5126,12 +5126,18 @@ async function assertNoIneligibleIR(leagueId, userId) {
   if (ineligible.length) {
     const one = ineligible.length === 1
     const err = new Error(
+      // Says what is blocked, AND points at the control that fixes it.
+      //
+      // "any roster moves" was wrong once drops were allowed, but the bigger
+      // failure was that it never mentioned the Clear IR banner. A manager
+      // hit this, went looking for a workaround, and messaged Nick — with
+      // the one-click resolution sitting two inches up the same page. An
+      // error that names the blocked action but not the remedy is a dead
+      // end.
       `${ineligible.join(' and ')} ${one ? 'is' : 'are'} on IR but no longer eligible. `
-      // Says what is actually blocked. "any roster moves" was wrong once
-      // drops were allowed, and it pointed a stuck manager away from the
-      // move that frees him.
-      + `Move ${one ? 'them' : 'all of them, in one save,'} off IR before adding, claiming or trading. `
-      + `You can still drop players${one ? ' — including them' : ''}.`,
+      + `Tap "Clear IR" at the top of My Team to move ${one ? 'them' : 'all of them'} to your bench `
+      + `— it will offer a drop if your bench is full. `
+      + `Until then you can drop players, but not add, claim or trade.`,
     )
     err.status = 400
     err.ineligible_ir = true
