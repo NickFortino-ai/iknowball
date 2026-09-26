@@ -482,17 +482,34 @@ export default function PlayerBlurbsPanel() {
                         )}
                       </>
                     )}
-                    {/* An ESPN write-up is queued for this player. Shown as a
-                        marker rather than taking the row over: the row belongs
-                        to YOUR blurb, and Edit must open yours. Only rendered
-                        when it isn't already the thing on display, so players
-                        you've never written about don't get a redundant tag. */}
-                    {player.espn_draft && blurb?.id !== player.espn_draft.id && (
+                    {/* WHO WROTE THE LIVE BLURB. Distinct from the "waiting"
+                        chip below: once an ESPN draft is published there is no
+                        pending draft left, so that chip disappears and the row
+                        read a bare green "Published" with nothing saying the
+                        text was ESPN's. Bijan Robinson's row looked identical
+                        to a hand-written one. */}
+                    {blurb?.generated_by === 'espn' && blurb.status === 'published' && (
                       <span
-                        title="ESPN has a write-up waiting — expand the row to read it"
+                        title="This live blurb was written by ESPN, not by you"
                         className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400"
                       >
                         ESPN
+                      </span>
+                    )}
+                    {/* An ESPN write-up is QUEUED for this player. Shown as a
+                        marker rather than taking the row over: the row belongs
+                        to YOUR blurb, and Edit must open yours. Only rendered
+                        when it isn't already the thing on display, so players
+                        you've never written about don't get a redundant tag.
+                        Worded distinctly from the authorship chip above — both
+                        can appear at once when ESPN's published text has been
+                        superseded by a newer ESPN draft. */}
+                    {player.espn_draft && blurb?.id !== player.espn_draft.id && (
+                      <span
+                        title="ESPN has a NEWER write-up waiting — expand the row to read it"
+                        className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 ring-1 ring-blue-400/40"
+                      >
+                        ESPN waiting
                       </span>
                     )}
                     {/* + always present so admins can publish a new blurb on top
