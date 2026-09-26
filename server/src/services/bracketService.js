@@ -809,23 +809,35 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
   // let someone call a best-of-3 in 7 games. roundSeriesConfig is the single
   // definition of what a round allows: best-of-3 clinches at 2, so 2 or 3;
   // best-of-5 gives 3..5; best-of-7 gives 4..7.
+  // An out-of-range series length must NEVER block the submission.
+  //
+  // The shipped iOS/Android bundle (v1.2.14, Sep 16) predates per-round
+  // best_of: it falls back to the template-level flag and offers 4/5/6/7 on
+  // every round, including a best-of-3 First Round. Rejecting those picks
+  // meant anyone on the app could not enter the WNBA bracket at all, with the
+  // lock two days away and five of eight members still to submit. The app
+  // cannot be fixed before then — App Store review does not fit in the window.
+  //
+  // So a length this round cannot produce is DROPPED (stored null, no bonus)
+  // rather than 400'd. That is the pre-existing behaviour for legacy clients,
+  // and it loses only the series-length bonus instead of the whole entry.
+  // Logged so legacy traffic is visible rather than silent.
+  let droppedLegacyLengths = 0
   for (const pick of picks) {
     if (pick.series_length == null) continue
     const matchup = matchupMap[pick.template_matchup_id]
     if (!matchup) continue
     const cfg = roundSeriesConfig(rounds, matchup.round_number, tournament.bracket_templates?.series_format)
-    if (!cfg.isSeries) {
-      const err = new Error(`Round ${matchup.round_number} is a single game — it has no series length to predict`)
-      err.status = 400
-      throw err
+    if (!cfg.isSeries || !cfg.lengths.includes(pick.series_length)) {
+      droppedLegacyLengths++
+      pick.series_length = null
     }
-    if (!cfg.lengths.includes(pick.series_length)) {
-      const err = new Error(
-        `Round ${matchup.round_number} is a best-of-${cfg.bestOf} — a series can only go ${cfg.lengths.join(', ')} games (got ${pick.series_length})`
-      )
-      err.status = 400
-      throw err
-    }
+  }
+  if (droppedLegacyLengths) {
+    logger.warn(
+      { tournamentId, userId, dropped: droppedLegacyLengths },
+      'Dropped out-of-range series lengths — client is likely a pre-per-round-best_of bundle'
+    )
   }
 
   // Calculate possible points
