@@ -520,6 +520,66 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
   const roundNumbers = Object.keys(filteredByRound).map(Number).sort((a, b) => a - b)
   const firstRoundCount = filteredByRound[roundNumbers[0]]?.length || 0
 
+  // ── Linear-layout geometry, derived from the WIRING rather than assumed ──
+  //
+  // Card rows and connector shapes used to come from `Math.pow(2, roundIdx)`,
+  // which encodes "every round halves the field". True for 16 -> 8 -> 4 -> 2,
+  // false for any bracket with byes:
+  //
+  //   MLB   4 Wild Card series feed 4 Division Series (each DS also seats a
+  //         bye seed), so 4 -> 4, not 4 -> 2.
+  //   NFL   6 Wild Card games feed 4 Divisional games.
+  //   CFP   4 first-round games feed 4 quarterfinals.
+  //
+  // With halving assumed, both AL wild cards were drawn into the SAME
+  // Division Series and the 2-seed's series got a line from nowhere, while
+  // later-round cards were placed on grid rows that do not exist.
+  //
+  // Instead: a first-round matchup occupies one row, and any later matchup
+  // spans exactly the rows of the matchups that feed it. A Division Series
+  // fed by one wild card sits beside that wild card; an LCS fed by two
+  // Division Series spans both and centres between them. For a power-of-two
+  // bracket this reproduces the old rows exactly, so nothing else changes.
+  const linearLayout = useMemo(() => {
+    const rows = new Map()   // matchup -> { start, span }
+    const feeders = new Map() // matchup -> array of feeding matchups
+    const keyOf = (m) => m.id ?? `${m.round_number}-${m.position}`
+
+    for (let ri = 0; ri < roundNumbers.length; ri++) {
+      const list = filteredByRound[roundNumbers[ri]] || []
+      const prev = ri > 0 ? (filteredByRound[roundNumbers[ri - 1]] || []) : []
+
+      list.forEach((m, idx) => {
+        if (ri === 0) {
+          rows.set(keyOf(m), { start: idx + 1, span: 1 })
+          feeders.set(keyOf(m), [])
+          return
+        }
+
+        // Explicit wiring, in the two shapes it exists in: saved templates
+        // carry feeds_into_matchup_id, the admin builder's unsaved matchups
+        // carry feeds_into_round + feeds_into_position.
+        let mine = prev.filter((f) =>
+          (f.feeds_into_matchup_id && m.template_matchup_id && f.feeds_into_matchup_id === m.template_matchup_id) ||
+          (f.feeds_into_round === m.round_number && f.feeds_into_position === m.position),
+        )
+        // Positional fallback for brackets with no wiring recorded at all.
+        if (!mine.length) mine = [prev[idx * 2], prev[idx * 2 + 1]].filter(Boolean)
+
+        feeders.set(keyOf(m), mine)
+        const blocks = mine.map((f) => rows.get(keyOf(f))).filter(Boolean)
+        if (blocks.length) {
+          const start = Math.min(...blocks.map((b) => b.start))
+          const end = Math.max(...blocks.map((b) => b.start + b.span - 1))
+          rows.set(keyOf(m), { start, span: end - start + 1 })
+        } else {
+          rows.set(keyOf(m), { start: idx + 1, span: 1 })
+        }
+      })
+    }
+    return { rows, feeders, keyOf }
+  }, [filteredByRound, roundNumbers])
+
   function getRoundName(roundNum) {
     const r = (rounds || []).find((r) => r.round_number === roundNum)
     return r?.name || `Round ${roundNum}`
@@ -914,7 +974,6 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
           <div className="relative flex min-w-max py-2">
             {roundNumbers.map((roundNum, roundIdx) => {
               const matchupsList = filteredByRound[roundNum] || []
-              const span = Math.pow(2, roundIdx)
               const isLast = roundIdx === roundNumbers.length - 1
               const cardSize =
                 roundIdx === roundNumbers.length - 1
@@ -925,7 +984,6 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
               const nextMatchupCount = !isLast
                 ? filteredByRound[roundNumbers[roundIdx + 1]]?.length || 0
                 : 0
-              const nextSpan = Math.pow(2, roundIdx + 1)
 
               return (
                 <Fragment key={roundNum}>
@@ -957,7 +1015,10 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
                           <div
                             key={matchup.id}
                             className="flex items-center"
-                            style={{ gridRow: `${idx * span + 1} / span ${span}` }}
+                            style={(() => {
+                              const b = linearLayout.rows.get(linearLayout.keyOf(matchup))
+                              return { gridRow: b ? `${b.start} / span ${b.span}` : `${idx + 1} / span 1` }
+                            })()}
                           >
                             <MatchupCard
                               matchup={displayMatchup}
@@ -990,26 +1051,42 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
                           gridTemplateRows: `repeat(${firstRoundCount}, minmax(100px, 1fr))`,
                         }}
                       >
-                        {Array.from({ length: nextMatchupCount }, (_, idx) => (
-                          <div
-                            key={idx}
-                            className="flex"
-                            style={{ gridRow: `${idx * nextSpan + 1} / span ${nextSpan}` }}
-                          >
-                            {/* Left: horizontal arms from feeder matchups + vertical bar */}
-                            <div className="w-3 flex flex-col">
-                              <div className="flex-1" />
-                              <div className="flex-1 border-t border-r border-border/70" />
-                              <div className="flex-1 border-b border-r border-border/70" />
-                              <div className="flex-1" />
+                        {(filteredByRound[roundNumbers[roundIdx + 1]] || []).map((nextM, idx) => {
+                          const block = linearLayout.rows.get(linearLayout.keyOf(nextM))
+                          const feedCount = (linearLayout.feeders.get(linearLayout.keyOf(nextM)) || []).length
+                          return (
+                            <div
+                              key={idx}
+                              className="flex"
+                              style={{ gridRow: block ? `${block.start} / span ${block.span}` : `${idx + 1} / span 1` }}
+                            >
+                              {/* A matchup fed by TWO winners gets the merge glyph. One fed
+                                  by a single winner — the other side being a bye seed — gets
+                                  a straight line, because there is nothing to merge with and
+                                  the old glyph drew an arm from a matchup that doesn't feed
+                                  it. */}
+                              {feedCount >= 2 ? (
+                                <>
+                                  <div className="w-3 flex flex-col">
+                                    <div className="flex-1" />
+                                    <div className="flex-1 border-t border-r border-border/70" />
+                                    <div className="flex-1 border-b border-r border-border/70" />
+                                    <div className="flex-1" />
+                                  </div>
+                                  <div className="w-3 flex flex-col">
+                                    <div className="flex-1 border-b border-border/70" />
+                                    <div className="flex-1" />
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="w-6 flex flex-col">
+                                  <div className="flex-1 border-b border-border/70" />
+                                  <div className="flex-1" />
+                                </div>
+                              )}
                             </div>
-                            {/* Right: horizontal line from midpoint to next matchup */}
-                            <div className="w-3 flex flex-col">
-                              <div className="flex-1 border-b border-border/70" />
-                              <div className="flex-1" />
-                            </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     </div>
                   )}
