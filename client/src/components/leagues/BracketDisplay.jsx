@@ -500,9 +500,18 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
       if (!feeders) continue
       const topResolved = resolveFromFeeder(feeders.top)
       const bottomResolved = resolveFromFeeder(feeders.bottom)
-      // When viewing picks, don't fall back to actual matchup teams — show TBD for unpicked slots
-      const topTeam = topResolved || (!picks?.length ? m.team_top : null)
-      const bottomTeam = bottomResolved || (!picks?.length ? m.team_bottom : null)
+      // When viewing picks, don't fall back to actual matchup teams — show TBD
+      // for unpicked slots.
+      //
+      // EXCEPT a slot with no feeder at all, which is a BYE: the team is
+      // seated on the matchup itself and no pick will ever fill it. Treating
+      // it like an unpicked slot blanked the highest seeds out of their own
+      // bracket — a completed MLB entry read "TBD / New York Yankees" for the
+      // Division Series when the top line should say Tampa Bay Rays.
+      const topIsBye = !feeders.top
+      const bottomIsBye = !feeders.bottom
+      const topTeam = topResolved || (topIsBye || !picks?.length ? m.team_top : null)
+      const bottomTeam = bottomResolved || (bottomIsBye || !picks?.length ? m.team_bottom : null)
       if (topTeam !== m.team_top || bottomTeam !== m.team_bottom) {
         resolved[m.id] = {
           team_top: topTeam,
