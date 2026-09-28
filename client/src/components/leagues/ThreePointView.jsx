@@ -239,19 +239,31 @@ export default function ThreePointView({ league, tab = 'picks' }) {
                     <span className="font-display text-lg lg:text-xl text-white text-right">{s.totalThrees}</span>
                   </div>
                   {isExpanded && (() => {
-                    const todayPicks = (s.picks || []).filter((p) => p.game_date === today)
+                    // A COMPLETED league has no "tonight". Showing a Tonight
+                    // heading over "No picks tonight" on a contest that ended
+                    // months ago reads as an error, and the 7-day recent
+                    // window is empty too, so the row expanded to nothing but
+                    // that line. Finished leagues show the last nights the
+                    // player actually picked instead.
+                    const isFinished = league?.status === 'completed'
+                    const todayPicks = isFinished
+                      ? []
+                      : (s.picks || []).filter((p) => p.game_date === today)
                     // Past 7 days (excluding today), grouped by date, most recent first.
                     // Anchor to PT sports day to match server-stored game_date.
                     const weekAgoStr = addDaysSportsDay(today, -7)
                     const recentByDate = {}
                     for (const p of (s.picks || [])) {
-                      if (p.game_date >= today || p.game_date < weekAgoStr) continue
+                      if (!isFinished && (p.game_date >= today || p.game_date < weekAgoStr)) continue
                       if (!recentByDate[p.game_date]) recentByDate[p.game_date] = []
                       recentByDate[p.game_date].push(p)
                     }
-                    const recentDates = Object.keys(recentByDate).sort((a, b) => b.localeCompare(a))
+                    let recentDates = Object.keys(recentByDate).sort((a, b) => b.localeCompare(a))
+                    // Finished: the most recent few nights, not the whole season.
+                    if (isFinished) recentDates = recentDates.slice(0, 3)
                     return (
                     <div className="px-3 lg:px-5 pb-3 space-y-3">
+                      {!isFinished && (
                       <div>
                         <div className="text-[10px] text-text-muted uppercase tracking-wider mb-2">Tonight</div>
                         {!todayPicks.length ? (
@@ -296,6 +308,10 @@ export default function ThreePointView({ league, tab = 'picks' }) {
                           </div>
                         )}
                       </div>
+                      )}
+                      {isFinished && !recentDates.length && (
+                        <p className="text-xs text-text-muted text-center py-2">No picks in this contest</p>
+                      )}
                       {recentDates.length > 0 && (
                         <div>
                           <div className="text-[10px] text-text-muted uppercase tracking-wider mb-2">Recent Picks</div>
