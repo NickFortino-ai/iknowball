@@ -230,6 +230,61 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
   )
 }
 
+// Bracket geometry derived from the WIRING rather than assumed halving.
+//
+// Rows used to come from Math.pow(2, roundIdx) — "every round halves the
+// field". True for 16 -> 8 -> 4 -> 2 and false for any bracket with byes:
+// MLB's 4 wild card series feed 4 division series (each also seating a bye
+// seed), the NFL's 6 wild cards feed 4 divisionals, the CFP's 4 first-round
+// games feed 4 quarterfinals. With halving assumed, two wild cards were drawn
+// into the SAME division series and later cards were placed on grid rows that
+// do not exist.
+//
+// A first-round matchup occupies one row; any later matchup spans exactly the
+// rows of the matchups feeding it. For a power-of-two bracket this reproduces
+// the previous rows exactly, so nothing else changes.
+//
+// Shared by BOTH layouts. The linear one is used for single-region brackets;
+// the FACING one is what MLB actually renders, since it has two regions — so
+// fixing only the linear branch changed nothing on screen.
+function computeWiringRows(byRound, roundList) {
+  const rows = new Map()
+  const feeders = new Map()
+  const keyOf = (m) => m.id ?? `${m.round_number}-${m.position}`
+
+  for (let ri = 0; ri < roundList.length; ri++) {
+    const list = byRound[roundList[ri]] || []
+    const prev = ri > 0 ? (byRound[roundList[ri - 1]] || []) : []
+
+    list.forEach((m, idx) => {
+      if (ri === 0) {
+        rows.set(keyOf(m), { start: idx + 1, span: 1 })
+        feeders.set(keyOf(m), [])
+        return
+      }
+      // Explicit wiring in both shapes it exists in: saved templates carry
+      // feeds_into_matchup_id, the admin builder's unsaved matchups carry
+      // feeds_into_round + feeds_into_position.
+      let mine = prev.filter((f) =>
+        (f.feeds_into_matchup_id && m.template_matchup_id && f.feeds_into_matchup_id === m.template_matchup_id) ||
+        (f.feeds_into_round === m.round_number && f.feeds_into_position === m.position),
+      )
+      if (!mine.length) mine = [prev[idx * 2], prev[idx * 2 + 1]].filter(Boolean)
+
+      feeders.set(keyOf(m), mine)
+      const blocks = mine.map((f) => rows.get(keyOf(f))).filter(Boolean)
+      if (blocks.length) {
+        const start = Math.min(...blocks.map((b) => b.start))
+        const end = Math.max(...blocks.map((b) => b.start + b.span - 1))
+        rows.set(keyOf(m), { start, span: end - start + 1 })
+      } else {
+        rows.set(keyOf(m), { start: idx + 1, span: 1 })
+      }
+    })
+  }
+  return { rows, feeders, keyOf }
+}
+
 export default forwardRef(function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap, initialRegion, seriesFormat, sportKey, templateMatchups, backdrop, alwaysTappable = false, containerized = false }, ref) {
   const isBestOf7 = seriesFormat === 'best_of_7'
   const [selectedRegion, setSelectedRegion] = useState(initialRegion ?? null)
@@ -504,6 +559,17 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
     ? `repeat(${perRegionCount}, minmax(100px, 1fr)) 20px repeat(${perRegionCount}, minmax(100px, 1fr))`
     : `repeat(${halfR1Count}, minmax(100px, 1fr))`
 
+  // Row for one card in a facing half, taken from the wiring. Falls back to
+  // the index when a matchup has no block (shouldn't happen, but a missing
+  // row must not collapse the whole column onto row 1).
+  function facingGridRowFor(layout, matchup, idx) {
+    const b = layout.rows.get(layout.keyOf(matchup))
+    if (!b) return facingGridRow(idx, 1)
+    // The multi-region gap row (4-region brackets) still applies.
+    const start = regionsPerSide > 1 && b.start > perRegionCount ? b.start + 1 : b.start
+    return `${start} / span ${b.span}`
+  }
+
   function facingGridRow(idx, span) {
     if (regionsPerSide <= 1) {
       // No gap — simple grid row
@@ -540,45 +606,11 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
   // fed by one wild card sits beside that wild card; an LCS fed by two
   // Division Series spans both and centres between them. For a power-of-two
   // bracket this reproduces the old rows exactly, so nothing else changes.
-  const linearLayout = useMemo(() => {
-    const rows = new Map()   // matchup -> { start, span }
-    const feeders = new Map() // matchup -> array of feeding matchups
-    const keyOf = (m) => m.id ?? `${m.round_number}-${m.position}`
+  const linearLayout = useMemo(
+    () => computeWiringRows(filteredByRound, roundNumbers),
+    [filteredByRound, roundNumbers],
+  )
 
-    for (let ri = 0; ri < roundNumbers.length; ri++) {
-      const list = filteredByRound[roundNumbers[ri]] || []
-      const prev = ri > 0 ? (filteredByRound[roundNumbers[ri - 1]] || []) : []
-
-      list.forEach((m, idx) => {
-        if (ri === 0) {
-          rows.set(keyOf(m), { start: idx + 1, span: 1 })
-          feeders.set(keyOf(m), [])
-          return
-        }
-
-        // Explicit wiring, in the two shapes it exists in: saved templates
-        // carry feeds_into_matchup_id, the admin builder's unsaved matchups
-        // carry feeds_into_round + feeds_into_position.
-        let mine = prev.filter((f) =>
-          (f.feeds_into_matchup_id && m.template_matchup_id && f.feeds_into_matchup_id === m.template_matchup_id) ||
-          (f.feeds_into_round === m.round_number && f.feeds_into_position === m.position),
-        )
-        // Positional fallback for brackets with no wiring recorded at all.
-        if (!mine.length) mine = [prev[idx * 2], prev[idx * 2 + 1]].filter(Boolean)
-
-        feeders.set(keyOf(m), mine)
-        const blocks = mine.map((f) => rows.get(keyOf(f))).filter(Boolean)
-        if (blocks.length) {
-          const start = Math.min(...blocks.map((b) => b.start))
-          const end = Math.max(...blocks.map((b) => b.start + b.span - 1))
-          rows.set(keyOf(m), { start, span: end - start + 1 })
-        } else {
-          rows.set(keyOf(m), { start: idx + 1, span: 1 })
-        }
-      })
-    }
-    return { rows, feeders, keyOf }
-  }, [filteredByRound, roundNumbers])
 
   function getRoundName(roundNum) {
     const r = (rounds || []).find((r) => r.round_number === roundNum)
@@ -698,21 +730,34 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
 
   // ── Helper: render a column of connector elements ──
 
-  function renderConnectorColumn(count, span, gridTemplate, rowFn, mirrored, key) {
+  // One connector per matchup BEING FED, placed on that matchup's own row
+  // block. A matchup with two feeders gets the merge fork; one fed by a single
+  // winner — the other side being a bye seed — gets a straight line, since
+  // there is nothing to merge with and the fork drew an arm from a matchup
+  // that does not feed it.
+  function renderConnectorColumn(targets, layout, gridTemplate, mirrored, key) {
     return (
       <div key={key} className="flex flex-col">
         <div className="text-xs font-semibold mb-1 invisible">&nbsp;</div>
         <div className="text-[10px] mb-3 invisible">&nbsp;</div>
         <div className="grid gap-y-2" style={{ gridTemplateRows: gridTemplate }}>
-          {Array.from({ length: count }, (_, idx) => (
-            <div
-              key={idx}
-              className="flex"
-              style={{ gridRow: rowFn(idx, span) }}
-            >
-              {renderConnectorElement(mirrored)}
-            </div>
-          ))}
+          {targets.map((t, idx) => {
+            const feedCount = (layout.feeders.get(layout.keyOf(t)) || []).length
+            return (
+              <div
+                key={t.id ?? idx}
+                className="flex"
+                style={{ gridRow: facingGridRowFor(layout, t, idx) }}
+              >
+                {feedCount >= 2 ? renderConnectorElement(mirrored) : (
+                  <div className="w-6 flex flex-col">
+                    <div className="flex-1 border-b border-border/70" />
+                    <div className="flex-1" />
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
     )
@@ -731,11 +776,12 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
 
     const displayRounds = mirrored ? [...regionalRounds].reverse() : regionalRounds
     const elements = []
+    // Rows for THIS half, from the wiring. MLB renders here, not in the
+    // linear branch, because it has two regions.
+    const halfLayout = computeWiringRows(halfByRound, regionalRounds)
 
     displayRounds.forEach((roundNum, displayIdx) => {
-      const logicalIdx = regionalRounds.indexOf(roundNum)
       const matchupsList = halfByRound[roundNum] || []
-      const span = Math.pow(2, logicalIdx)
       const isLastDisplay = displayIdx === displayRounds.length - 1
 
       // Round column
@@ -753,7 +799,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
               <div
                 key={matchup.id}
                 className="flex items-center"
-                style={{ gridRow: facingGridRow(idx, span) }}
+                style={{ gridRow: facingGridRowFor(halfLayout, matchup, idx) }}
               >
                 {renderCard(matchup, 'default', mirrored)}
               </div>
@@ -764,22 +810,16 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
 
       // Inter-round connector
       if (!isLastDisplay) {
-        let connCount, connSpan
-        if (mirrored) {
-          // Mirrored: current display round is "fewer" side (closer to center)
-          connCount = matchupsList.length
-          connSpan = span
-        } else {
-          // Normal: next display round is "fewer" side
-          const nextRound = displayRounds[displayIdx + 1]
-          const nextLogical = regionalRounds.indexOf(nextRound)
-          connCount = halfByRound[nextRound]?.length || 0
-          connSpan = Math.pow(2, nextLogical)
-        }
+        // The connector column belongs to whichever round is closer to the
+        // centre — the one being fed. Mirrored halves read right-to-left, so
+        // that is the CURRENT round there and the NEXT round otherwise.
+        const targets = mirrored
+          ? matchupsList
+          : (halfByRound[displayRounds[displayIdx + 1]] || [])
 
-        if (connCount > 0) {
+        if (targets.length > 0) {
           elements.push(
-            renderConnectorColumn(connCount, connSpan, facingGridTemplate, facingGridRow, mirrored, `${side}-c-${roundNum}`)
+            renderConnectorColumn(targets, halfLayout, facingGridTemplate, mirrored, `${side}-c-${roundNum}`)
           )
         }
       }
@@ -790,7 +830,6 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
     // in a 2-conference bracket), draw a straight line instead of a fork.
     const lastRegRound = regionalRounds[regionalRounds.length - 1]
     const lastRoundCount = (halfByRound[lastRegRound] || []).length
-    const fullSpanRow = (_, __) => '1 / -1'
 
     if (lastRoundCount <= 1) {
       // Straight horizontal line
@@ -811,13 +850,18 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
         elements.push(lineConn)
       }
     } else {
-      const mergeConn = renderConnectorColumn(
-        1,
-        0,
-        facingGridTemplate,
-        fullSpanRow,
-        mirrored,
-        `${side}-merge`
+      // Merge to the centre spans the whole half, so it is its own shape
+      // rather than a per-matchup connector.
+      const mergeConn = (
+        <div key={`${side}-merge`} className="flex flex-col">
+          <div className="text-xs font-semibold mb-1 invisible">&nbsp;</div>
+          <div className="text-[10px] mb-3 invisible">&nbsp;</div>
+          <div className="grid gap-y-2" style={{ gridTemplateRows: facingGridTemplate }}>
+            <div style={{ gridRow: '1 / -1' }} className="flex">
+              {renderConnectorElement(mirrored)}
+            </div>
+          </div>
+        </div>
       )
       if (mirrored) {
         elements.unshift(mergeConn)
