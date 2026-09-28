@@ -306,9 +306,6 @@ function SalaryCapLive({ league, week, season }) {
                               <span className="text-base lg:text-lg font-display text-white">
                                 {Math.round((slot.points_earned || 0) * 10) / 10}
                               </span>
-                              {slot.projected != null && slot.game_status !== 'final' && (
-                                <span className="text-[10px] text-text-primary/60">/ {slot.projected.toFixed(1)}</span>
-                              )}
                             </div>
                           )}
                         </>
