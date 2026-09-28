@@ -452,9 +452,23 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
           // ahead. When I'm the away user (right column), the bar starts
           // empty on the left and fills toward the right.
           const orangeOnRight = isMyMatchup && !myIsHome
+          // The bar alone doesn't say what it measures — a nearly-full bar
+          // reads as "definitely winning" without saying how definitely. The
+          // numbers flank it on the side they belong to, so each sits under
+          // its own team's column, and the favourite is brighter.
+          const homeProb = Math.round(winProb)
+          const awayProb = 100 - homeProb
           return (
-            <div className={`mt-2 h-1.5 rounded-full bg-text-muted/30 overflow-hidden flex ${orangeOnRight ? 'justify-end' : ''}`}>
-              <div className={`bg-accent/60 transition-all ${orangeOnRight ? 'rounded-r-full' : 'rounded-l-full'}`} style={{ width: `${orangePct}%` }} />
+            <div className="mt-2 flex items-center gap-2">
+              <span className={`text-[10px] font-semibold tabular-nums w-8 text-left ${homeProb >= awayProb ? 'text-text-primary' : 'text-text-muted'}`}>
+                {homeProb}%
+              </span>
+              <div className={`flex-1 h-1.5 rounded-full bg-text-muted/30 overflow-hidden flex ${orangeOnRight ? 'justify-end' : ''}`}>
+                <div className={`bg-accent/60 transition-all ${orangeOnRight ? 'rounded-r-full' : 'rounded-l-full'}`} style={{ width: `${orangePct}%` }} />
+              </div>
+              <span className={`text-[10px] font-semibold tabular-nums w-8 text-right ${awayProb > homeProb ? 'text-text-primary' : 'text-text-muted'}`}>
+                {awayProb}%
+              </span>
             </div>
           )
         })() : null)}
