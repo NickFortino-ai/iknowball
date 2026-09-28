@@ -4,6 +4,7 @@ import { fetchAll } from '../utils/fetchAll.js'
 import { ODDS_TO_ESPN, INJURY_SPORTS, BASKETBALL_SPORTS } from '../config/espnTeamMap.js'
 import { expandSportFamily } from '../utils/nflFamily.js'
 import { writeEspnBlurb } from '../services/playerBlurbService.js'
+import { buildPlayerIndex, resolvePlayer } from '../utils/playerResolver.js'
 import { todaySportsDay } from '../utils/sportsDay.js'
 
 const SEVERITY_ORDER = { Out: 0, Doubtful: 1, Questionable: 2, Probable: 3, 'Day-To-Day': 4 }
@@ -754,37 +755,50 @@ export async function syncInjuries() {
     // Six such pairs are currently rostered: Justin Jefferson, DeVonta Smith,
     // Byron Young, Byron Murphy, Marcus Harris and Michael Carter.
     const { NFL_FULL_TO_ABBR } = await import('../services/fantasyService.js')
-    const espnByNameTeam = {}
-    const nameCounts = {}
+
+    // Fetch our players FIRST so the resolver can index them, then match each
+    // ESPN entry onto a row. The old direction — build maps of ESPN names,
+    // then look each of our players up in them — required our name and ESPN's
+    // to normalize identically, and they do not:
+    //
+    //   nfl_players (Sleeper)  "Kenneth Walker"      "James Cook"
+    //   team_intel  (ESPN)     "Kenneth Walker III"  "James Cook III"
+    //
+    // normalizeName KEPT the suffix, so neither ever matched and neither ever
+    // got an injury status or an ESPN blurb. playerResolver exists for exactly
+    // this and was written after "Kenneth Walker III's headshot opened
+    // nothing" — its order is name+team, then SUFFIXLESS name+team, then name
+    // alone only when league-unique, then null.
+    //
+    // Using it also retires the hand-rolled duplicate-name guard here: a
+    // shared name with no team match resolves to null by design, which is the
+    // rule that keeps a Browns linebacker's "Out" off the Vikings' Justin
+    // Jefferson.
+    const nflPlayers = await fetchAll(
+      supabase
+        .from('nfl_players')
+        .select('id, full_name, team, injury_status, injury_body_part')
+        .not('team', 'is', null)
+        .order('id')
+    )
+    const playerIndex = buildPlayerIndex(nflPlayers || [])
+
+    const espnByPlayerId = new Map()
+    let unresolved = 0
     for (const row of nflIntel || []) {
       const abbr = NFL_FULL_TO_ABBR[row.team_name]
       for (const inj of row.injuries || []) {
         if (!inj.name || !inj.status) continue
-        const norm = normalizeName(inj.name)
-        const entry = {
+        const player = resolvePlayer(playerIndex, { name: inj.name, team: abbr })
+        if (!player) { unresolved++; continue }
+        espnByPlayerId.set(player.id, {
           status: normalizeStatus(inj.status),
           ...intelInjuryFields(inj),
-        }
-        nameCounts[norm] = (nameCounts[norm] || 0) + 1
-        if (abbr) espnByNameTeam[`${norm}|${abbr}`] = entry
+        })
       }
     }
-
-    // Name-only lookups are allowed ONLY where the name is unique league-wide.
-    // Anything shared has to match on team or be skipped — a wrong designation
-    // is worse than a missing one.
-    const espnByName = {}
-    for (const row of nflIntel || []) {
-      const abbr = NFL_FULL_TO_ABBR[row.team_name]
-      for (const inj of row.injuries || []) {
-        if (!inj.name || !inj.status) continue
-        const norm = normalizeName(inj.name)
-        if (nameCounts[norm] > 1) continue
-        espnByName[norm] = espnByNameTeam[`${norm}|${abbr}`] || {
-          status: normalizeStatus(inj.status),
-          ...intelInjuryFields(inj),
-        }
-      }
+    if (unresolved) {
+      logger.info({ unresolved }, 'ESPN injury entries with no matching nfl_players row')
     }
 
     const activeNamesNorm = new Set()
@@ -805,7 +819,7 @@ export async function syncInjuries() {
       logger.warn({ err }, 'Could not resolve NFL week for ESPN blurbs — falling back to calendar year')
     }
 
-    if (Object.keys(espnByName).length) {
+    if (espnByPlayerId.size) {
       // Pull all NFL players (only ones still on a team) so we can
       // null-out injuries for players who no longer appear in ESPN's
       // active injury list and bump status for those who do.
@@ -831,52 +845,19 @@ export async function syncInjuries() {
       // teams, so defenders are genuinely covered) and must not hold a
       // long-term designation. 92 non-skill players are currently clearable
       // under those guards; the rest are IR/PUP/Sus and stay protected.
-      const nflPlayers = await fetchAll(
-        supabase
-          .from('nfl_players')
-          .select('id, full_name, team, injury_status, injury_body_part')
-          .not('team', 'is', null)
-          .order('id')
-      )
 
       let updated = 0
       let cleared = 0
       let blurbsWritten = 0
       let clearedBlurbs = 0
-      // Names shared by two ROSTERED players. This is the guard that matters,
-      // and it is not the same as `nameCounts`: that counts how many times a
-      // name appears in ESPN's injury lists, which says nothing about how many
-      // real players carry it.
-      //
-      // 2026-09-27, in the 50 minutes before Minnesota's 4:05 PM kickoff: the
-      // Browns listed linebacker Justin Jefferson "Out — Coach's Decision"
-      // (inactive) and the Vikings listed nobody by that name, because the
-      // receiver had not been hurt yet. nameCounts was therefore 1, the
-      // name-only map was built, the receiver's team-scoped lookup found
-      // nothing for MIN, and he inherited the linebacker's Out. Three managers
-      // were told to bench a healthy Justin Jefferson before kickoff.
-      //
-      // Keying by name+team never protected against this on its own — the
-      // fallback below defeats it whenever only ONE of the pair is listed,
-      // which is the usual case.
-      const ambiguousNames = new Set()
-      {
-        const seen = new Set()
-        for (const p of nflPlayers || []) {
-          const n = normalizeName(p.full_name)
-          if (seen.has(n)) ambiguousNames.add(n)
-          seen.add(n)
-        }
-      }
-
+      // The duplicate-name guard that used to live here is gone: resolvePlayer
+      // returns null for a shared name with no team match, by design. That is
+      // the rule that kept a Browns linebacker's "Out" off the Vikings' Justin
+      // Jefferson on 2026-09-27, when three managers were told to bench a
+      // healthy receiver 50 minutes before kickoff.
       for (const p of nflPlayers || []) {
         const norm = normalizeName(p.full_name)
-        // Team-scoped first. The name-only fallback is allowed ONLY for names
-        // unique among rostered players — a shared name with no team match
-        // resolves to nothing and is left alone rather than taking another
-        // player's designation.
-        const espn = (p.team ? espnByNameTeam[`${norm}|${p.team}`] : null)
-          || (ambiguousNames.has(norm) ? null : espnByName[norm])
+        const espn = espnByPlayerId.get(p.id)
         if (espn) {
           // ESPN reports an active injury — patch status/body_part if different
           if (espn.status !== p.injury_status || espn.body_part !== p.injury_body_part) {
@@ -932,7 +913,7 @@ export async function syncInjuries() {
           cleared,
           blurbsWritten,
           clearedBlurbs,
-          espnCount: Object.keys(espnByName).length,
+          espnCount: espnByPlayerId.size,
           activeDepthChartCount: activeNamesNorm.size,
           nflPlayersCount: nflPlayers?.length || 0,
         },
