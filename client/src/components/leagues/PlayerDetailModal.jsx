@@ -38,6 +38,8 @@ const IDP_COLUMN_DEFS = [
   { key: 'idp_pass_def', label: 'PD' },
   { key: 'idp_ff', label: 'FF' },
   { key: 'idp_fum_rec', label: 'FR' },
+  // Scores 6 and had no column, so a pick-six was invisible in the grid.
+  { key: 'def_td', label: 'TD' },
 ]
 
 /**
@@ -142,6 +144,7 @@ function baseColumnsFor(position, weeks) {
       { key: 'idp_pass_def', label: 'PD' },
       { key: 'idp_ff', label: 'FF' },
       { key: 'idp_fum_rec', label: 'FR' },
+      { key: 'def_td', label: 'TD' },
     ]
   }
   if (position === 'RB') {
@@ -183,6 +186,12 @@ function idpNarrativeParts(week) {
   if (week.idp_pass_def) parts.push(`${week.idp_pass_def} pass${week.idp_pass_def !== 1 ? 'es' : ''} defended`)
   if (week.idp_ff) parts.push(`${week.idp_ff} forced fumble${week.idp_ff !== 1 ? 's' : ''}`)
   if (week.idp_fum_rec) parts.push(`${week.idp_fum_rec} fumble recovery${week.idp_fum_rec !== 1 ? 'ies' : ''}`)
+  // A defensive touchdown is the single biggest thing a defender can do — 6
+  // points, more than every tackle in a typical game combined — and it was
+  // the one line item the summary never mentioned. Talanoa Hufanga's week 3
+  // read "5 tackles. 1 sack. 1 TFL. 2 interceptions. 3 passes defended." for
+  // a 26-point game whose pick-six supplied 6 of them.
+  if (week.def_td) parts.push(`${week.def_td} defensive touchdown${week.def_td !== 1 ? 's' : ''}`)
   return parts
 }
 
