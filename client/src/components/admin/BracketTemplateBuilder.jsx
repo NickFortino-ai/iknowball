@@ -1632,9 +1632,10 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
                     {slots.map((b) => (
                       <div key={`${b.idx}-${b.slot}`}>
                         <label className="block text-[10px] text-text-muted mb-1">#{b.seed} seed</label>
-                        <TeamNameInput
-                          value={b.slot === 'top' ? b.matchup.team_top : b.matchup.team_bottom}
-                          onChange={(v) => updateMatchupTeam(b.idx, b.slot === 'top' ? 'team_top' : 'team_bottom', v)}
+                        <TeamAutocomplete
+                          value={(b.slot === 'top' ? b.matchup.team_top : b.matchup.team_bottom) || ''}
+                          onChange={(val) => updateMatchupTeam(b.idx, b.slot === 'top' ? 'team_top' : 'team_bottom', val)}
+                          placeholder="Team name"
                           teams={apiTeams}
                         />
                       </div>
