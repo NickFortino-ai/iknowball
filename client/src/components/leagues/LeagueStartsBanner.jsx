@@ -13,6 +13,11 @@ export default function LeagueStartsBanner({
   headline,
   subtitle,
   extra,
+  // Width is per-caller. The default is sized for the fantasy pre-start
+  // explainer, whose bulleted rules wrap onto three lines at anything
+  // narrower. A bracket card is a date, one line of status and a button —
+  // at 4xl that content floated in the middle of a very wide outline.
+  widthClass = 'max-w-md md:max-w-4xl',
 }) {
   const startPtDay = leagueStartSportsDay(countdownTo)
   const todayPtDay = todaySportsDay()
@@ -29,7 +34,7 @@ export default function LeagueStartsBanner({
     // widening at md: leaves mobile byte-identical and only affects
     // desktop, where 448px forced every pre-start bullet onto two or
     // three lines and made the card unnecessarily tall.
-    <div className="rounded-2xl border border-text-primary/20 bg-bg-primary/25 backdrop-blur-sm p-8 mb-4 text-center max-w-md md:max-w-4xl mx-auto">
+    <div className={`rounded-2xl border border-text-primary/20 bg-bg-primary/25 backdrop-blur-sm p-8 mb-4 text-center ${widthClass} mx-auto`}>
       {countdownLabel && (
         <div className="inline-flex items-center justify-center px-5 py-2 rounded-full border border-accent/60 bg-accent/10 text-accent text-sm font-bold tracking-wide mb-5 shadow-lg shadow-accent/10">
           {countdownLabel}

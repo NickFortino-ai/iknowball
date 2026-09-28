@@ -332,6 +332,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
                     weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles',
                   })}
                   extra={body}
+                  widthClass="max-w-md md:max-w-xl"
                 />
               )
             }
