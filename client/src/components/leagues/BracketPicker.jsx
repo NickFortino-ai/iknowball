@@ -893,8 +893,21 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
         {currentStep && championshipMatchup && currentStep.matchups.some((m) => m.id === championshipMatchup.id) && (
           <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 mt-1">
             <label className="block text-xs text-text-muted mb-2">
-              Predict the Final Score {!hasExistingTiebreaker && <span className="text-incorrect">*</span>}
+              {seriesCfgFor(championshipMatchup).isSeries
+                ? 'Predict the Deciding Game\u2019s Final Score'
+                : 'Predict the Final Score'} {!hasExistingTiebreaker && <span className="text-incorrect">*</span>}
             </label>
+            {/* "Final Score" is unambiguous for a one-game final and not for a
+                best-of-seven, where it could reasonably read as game 7
+                specifically or as a series total. The tiebreaker is the
+                COMBINED score of whichever game ends the series — game 4 if
+                it's a sweep — so the label says so on any bracket whose final
+                is a series. */}
+            {seriesCfgFor(championshipMatchup).isSeries && (
+              <p className="text-[11px] text-text-muted mb-2">
+                Whichever game ends the series — both teams&rsquo; scores added together.
+              </p>
+            )}
             {keepingExistingTiebreaker && (
               <p className="text-[11px] text-text-muted mb-2">
                 Keeping your submitted total of <span className="text-text-primary font-semibold">{existingTiebreakerScore}</span> — enter both scores to change it.
