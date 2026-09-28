@@ -1047,6 +1047,40 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
     groupedByRegion[key].push(m)
   }
 
+  // BYE SLOTS. In a bracket that isn't a power of two, the top seeds skip the
+  // opening round and start in round 2 — MLB's 1 and 2 seeds in each league,
+  // the NFL's 1 seed in each conference, the CFP's top four.
+  //
+  // Those teams arrive from nowhere: no feeder matchup supplies them, so
+  // "later rounds auto-populate from bracket structure" is not true of them.
+  // The Teams step only rendered round 1, so there was no field anywhere in
+  // the builder to name them and an MLB template could only ever be half
+  // filled in.
+  //
+  // A slot needs manual entry when it carries a SEED but nothing feeds it.
+  // That test is structural, so it covers every sport without special-casing.
+  const byeSlots = []
+  for (const m of matchups) {
+    if (m.round_number < 2) continue
+    for (const slot of ['top', 'bottom']) {
+      const seed = slot === 'top' ? m.seed_top : m.seed_bottom
+      if (seed == null) continue
+      const isFed = matchups.some((f) =>
+        f.feeds_into_round === m.round_number &&
+        f.feeds_into_position === m.position &&
+        f.feeds_into_slot === slot,
+      )
+      if (!isFed) byeSlots.push({ matchup: m, slot, seed, idx: matchups.indexOf(m) })
+    }
+  }
+  const byesByRegion = {}
+  for (const b of byeSlots) {
+    const key = b.matchup.region || 'Main'
+    if (!byesByRegion[key]) byesByRegion[key] = []
+    byesByRegion[key].push(b)
+  }
+  byeSlots.sort((a, b) => a.seed - b.seed)
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -1433,7 +1467,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
         return (
         <div className="space-y-4">
           <div className="text-sm text-text-muted mb-2">
-            Enter Round 1 teams and seeds. Later rounds auto-populate from bracket structure.
+            {byeSlots.length > 0 ? 'Enter Round 1 teams, then the teams with a first-round bye below. Everything else auto-populates from the bracket structure.' : 'Enter Round 1 teams and seeds. Later rounds auto-populate from bracket structure.'}
           </div>
 
           {regionsMismatch && regions.length > 0 && (
@@ -1582,6 +1616,34 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
               </div>
             </div>
           ))}
+
+          {byeSlots.length > 0 && (
+            <div className="rounded-xl border border-text-primary/15 p-3">
+              <h3 className="font-display text-sm text-text-primary mb-1">First-round byes</h3>
+              <p className="text-[11px] text-text-muted mb-3">
+                These seeds skip Round 1 and enter in {matchups.find((m) => m.round_number === 2)?.round_number === 2 ? 'Round 2' : 'a later round'}. Nothing feeds them, so they have to be named here.
+              </p>
+              {Object.entries(byesByRegion).map(([regionName, slots]) => (
+                <div key={regionName} className="mb-3 last:mb-0">
+                  {regions.length > 0 && (
+                    <h4 className="font-display text-xs text-accent mb-2">{regionName}</h4>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {slots.map((b) => (
+                      <div key={`${b.idx}-${b.slot}`}>
+                        <label className="block text-[10px] text-text-muted mb-1">#{b.seed} seed</label>
+                        <TeamNameInput
+                          value={b.slot === 'top' ? b.matchup.team_top : b.matchup.team_bottom}
+                          onChange={(v) => updateMatchupTeam(b.idx, b.slot === 'top' ? 'team_top' : 'team_bottom', v)}
+                          teams={apiTeams}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="space-y-2">
             <button
