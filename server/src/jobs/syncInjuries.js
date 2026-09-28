@@ -843,12 +843,40 @@ export async function syncInjuries() {
       let cleared = 0
       let blurbsWritten = 0
       let clearedBlurbs = 0
+      // Names shared by two ROSTERED players. This is the guard that matters,
+      // and it is not the same as `nameCounts`: that counts how many times a
+      // name appears in ESPN's injury lists, which says nothing about how many
+      // real players carry it.
+      //
+      // 2026-09-27, in the 50 minutes before Minnesota's 4:05 PM kickoff: the
+      // Browns listed linebacker Justin Jefferson "Out — Coach's Decision"
+      // (inactive) and the Vikings listed nobody by that name, because the
+      // receiver had not been hurt yet. nameCounts was therefore 1, the
+      // name-only map was built, the receiver's team-scoped lookup found
+      // nothing for MIN, and he inherited the linebacker's Out. Three managers
+      // were told to bench a healthy Justin Jefferson before kickoff.
+      //
+      // Keying by name+team never protected against this on its own — the
+      // fallback below defeats it whenever only ONE of the pair is listed,
+      // which is the usual case.
+      const ambiguousNames = new Set()
+      {
+        const seen = new Set()
+        for (const p of nflPlayers || []) {
+          const n = normalizeName(p.full_name)
+          if (seen.has(n)) ambiguousNames.add(n)
+          seen.add(n)
+        }
+      }
+
       for (const p of nflPlayers || []) {
         const norm = normalizeName(p.full_name)
-        // Team-scoped first; the name-only map holds league-unique names only,
-        // so a shared name with no team match resolves to nothing and is left
-        // alone rather than taking another player's designation.
-        const espn = (p.team ? espnByNameTeam[`${norm}|${p.team}`] : null) || espnByName[norm]
+        // Team-scoped first. The name-only fallback is allowed ONLY for names
+        // unique among rostered players — a shared name with no team match
+        // resolves to nothing and is left alone rather than taking another
+        // player's designation.
+        const espn = (p.team ? espnByNameTeam[`${norm}|${p.team}`] : null)
+          || (ambiguousNames.has(norm) ? null : espnByName[norm])
         if (espn) {
           // ESPN reports an active injury — patch status/body_part if different
           if (espn.status !== p.injury_status || espn.body_part !== p.injury_body_part) {
