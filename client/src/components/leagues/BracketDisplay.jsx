@@ -247,10 +247,24 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
 // Shared by BOTH layouts. The linear one is used for single-region brackets;
 // the FACING one is what MLB actually renders, since it has two regions — so
 // fixing only the linear branch changed nothing on screen.
-function computeWiringRows(byRound, roundList) {
+function computeWiringRows(byRound, roundList, templateMatchups) {
   const rows = new Map()
   const feeders = new Map()
   const keyOf = (m) => m.id ?? `${m.round_number}-${m.position}`
+
+  // A LEAGUE renders bracket_matchups rows, which carry only
+  // template_matchup_id — no feeds_into_* columns at all. The wiring lives on
+  // bracket_template_matchups, passed in as templateMatchups. Without this
+  // the league view fell straight through to the positional fallback, i.e.
+  // back to assuming the field halves, which is the whole bug. The admin
+  // builder is unaffected: its in-progress matchups carry feeds_into_round /
+  // feeds_into_position and no templateMatchups prop.
+  const feederTmIdsByTarget = new Map()
+  for (const f of templateMatchups || []) {
+    if (!f.feeds_into_matchup_id) continue
+    if (!feederTmIdsByTarget.has(f.feeds_into_matchup_id)) feederTmIdsByTarget.set(f.feeds_into_matchup_id, new Set())
+    feederTmIdsByTarget.get(f.feeds_into_matchup_id).add(f.id)
+  }
 
   for (let ri = 0; ri < roundList.length; ri++) {
     const list = byRound[roundList[ri]] || []
@@ -262,13 +276,23 @@ function computeWiringRows(byRound, roundList) {
         feeders.set(keyOf(m), [])
         return
       }
-      // Explicit wiring in both shapes it exists in: saved templates carry
-      // feeds_into_matchup_id, the admin builder's unsaved matchups carry
-      // feeds_into_round + feeds_into_position.
-      let mine = prev.filter((f) =>
-        (f.feeds_into_matchup_id && m.template_matchup_id && f.feeds_into_matchup_id === m.template_matchup_id) ||
-        (f.feeds_into_round === m.round_number && f.feeds_into_position === m.position),
-      )
+      // Explicit wiring, in the three shapes it reaches this component:
+      //  1. league view  — tournament rows matched through the template
+      //  2. template rows themselves — feeds_into_matchup_id on the row
+      //  3. admin builder — feeds_into_round + feeds_into_position, no ids yet
+      let mine = []
+      const wantedTmIds = m.template_matchup_id ? feederTmIdsByTarget.get(m.template_matchup_id) : null
+      if (wantedTmIds) mine = prev.filter((f) => f.template_matchup_id && wantedTmIds.has(f.template_matchup_id))
+      if (!mine.length && m.id && feederTmIdsByTarget.get(m.id)) {
+        const ids = feederTmIdsByTarget.get(m.id)
+        mine = prev.filter((f) => ids.has(f.id))
+      }
+      if (!mine.length) {
+        mine = prev.filter((f) =>
+          (f.feeds_into_matchup_id && m.template_matchup_id && f.feeds_into_matchup_id === m.template_matchup_id) ||
+          (f.feeds_into_round === m.round_number && f.feeds_into_position === m.position),
+        )
+      }
       if (!mine.length) mine = [prev[idx * 2], prev[idx * 2 + 1]].filter(Boolean)
 
       feeders.set(keyOf(m), mine)
@@ -607,8 +631,8 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
   // Division Series spans both and centres between them. For a power-of-two
   // bracket this reproduces the old rows exactly, so nothing else changes.
   const linearLayout = useMemo(
-    () => computeWiringRows(filteredByRound, roundNumbers),
-    [filteredByRound, roundNumbers],
+    () => computeWiringRows(filteredByRound, roundNumbers, templateMatchups),
+    [filteredByRound, roundNumbers, templateMatchups],
   )
 
 
@@ -778,7 +802,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
     const elements = []
     // Rows for THIS half, from the wiring. MLB renders here, not in the
     // linear branch, because it has two regions.
-    const halfLayout = computeWiringRows(halfByRound, regionalRounds)
+    const halfLayout = computeWiringRows(halfByRound, regionalRounds, templateMatchups)
 
     displayRounds.forEach((roundNum, displayIdx) => {
       const matchupsList = halfByRound[roundNum] || []
