@@ -350,10 +350,26 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
 
   // Build team→seed map from Round 1 matchups (seeds only set on early rounds)
   const teamSeedMap = useMemo(() => {
+    // EVERY round, earliest first — not round 1 only.
+    //
+    // A team with a first-round bye never appears in round 1: MLB's 1 and 2
+    // seeds enter in the Division Series, the NFL's 1 seed in the Divisional
+    // round, the CFP's top four in the quarterfinals. Restricting this to
+    // round 1 left them with no seed at all, so the Guardians rendered as
+    // "Cleveland Guardians" with a blank where "2" belongs while every team
+    // that played a wild card kept its number.
+    //
+    // Worse than cosmetic for the NFL: reseeding sorts survivors by seed, and
+    // the bye team is exactly the one whose seed decides the pairings.
+    //
+    // Ascending round order with first-write-wins keeps round 1 authoritative
+    // for anyone who plays in it, so resolved later-round seeds can't
+    // overwrite a real one.
     const map = {}
-    for (const m of matchups || []) {
-      if (m.round_number <= 1 && m.team_top && m.seed_top != null) map[m.team_top] = m.seed_top
-      if (m.round_number <= 1 && m.team_bottom && m.seed_bottom != null) map[m.team_bottom] = m.seed_bottom
+    const ordered = [...(matchups || [])].sort((a, b) => a.round_number - b.round_number)
+    for (const m of ordered) {
+      if (m.team_top && m.seed_top != null && map[m.team_top] == null) map[m.team_top] = m.seed_top
+      if (m.team_bottom && m.seed_bottom != null && map[m.team_bottom] == null) map[m.team_bottom] = m.seed_bottom
     }
     return map
   }, [matchups])
