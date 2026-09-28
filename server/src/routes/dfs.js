@@ -883,35 +883,55 @@ router.get('/matchup-live', async (req, res) => {
     //
     // Scale it by how much projected scoring is still to come. With nothing
     // left, sigma is 0 and the result is 0 or 100 — which is the truth.
-    const unplayedShare = (starters) => {
-      let remaining = 0
-      for (const st of starters) {
-        const proj = st.pregame_projection || 0
-        if (!proj) continue
-        if (st.game_status === 'final') continue
-        if (st.game_status === 'live') {
-          // Rough, and deliberately so: period is the only progress signal
-          // on a starter row here.
-          remaining += proj * (1 - gameProgressFraction('in', st.game_period))
-        } else {
-          remaining += proj
-        }
+    // How much of each remaining starter's projection is still to come.
+    const remainingFor = (st) => {
+      const proj = st.pregame_projection || 0
+      if (!proj) return 0
+      if (st.game_status === 'final') return 0
+      if (st.game_status === 'live') {
+        // Rough, and deliberately so: period is the only progress signal
+        // on a starter row here.
+        return proj * (1 - gameProgressFraction('in', st.game_period))
       }
-      return remaining
+      return proj
     }
 
-    const totalPregame = homePregameProjected + awayPregameProjected
-    const remainingProj = unplayedShare(homeStarters) + unplayedShare(awayStarters)
-    const liveFraction = totalPregame > 0
-      ? Math.max(0, Math.min(1, remainingProj / totalPregame))
-      : 0
+    // Sigma comes from the VARIANCE OF THE PLAYERS STILL TO PLAY, not from a
+    // fraction of the whole matchup.
+    //
+    // It used to be `20 * (remaining / total pregame)`. That collapses fast:
+    // with ~41 projected points left out of 300, sigma was 2.7, so a 21-point
+    // projected gap read as nearly eight standard deviations and the bar
+    // showed 100% while an opposing QB had not kicked off. It hit 100% once
+    // roughly two thirds of the scoring was done, which is most of Sunday.
+    //
+    // A single quarterback swings more than 2.7 points. Fantasy outcomes run
+    // about 65% of projection in standard deviation, so each unplayed starter
+    // contributes sd = 0.65 * remaining projection and they add in
+    // quadrature. Three players worth ~41 projected points then give sigma
+    // ~16, and the same matchup reads ~91% — clearly winning, not decided.
+    const PLAYER_SD_FACTOR = 0.65
+    const varianceOf = (starters) => starters.reduce((sum, st) => {
+      const rem = remainingFor(st)
+      return rem > 0 ? sum + Math.pow(PLAYER_SD_FACTOR * rem, 2) : sum
+    }, 0)
+
+    const remainingProj =
+      homeStarters.reduce((a, st) => a + remainingFor(st), 0) +
+      awayStarters.reduce((a, st) => a + remainingFor(st), 0)
+    const sigma = Math.sqrt(varianceOf(homeStarters) + varianceOf(awayStarters))
 
     const diff = homeProjected - awayProjected
-    const sigma = 20 * liveFraction
-    const homeWinProb = sigma > 0.5
+    const rawProb = sigma > 0.5
       ? Math.round(normalCDF(diff / sigma) * 100)
       // Nothing meaningful left to play: the scoreboard IS the answer.
       : (diff > 0 ? 100 : diff < 0 ? 0 : 50)
+    // Never claim certainty while someone is still on the field. Rounding
+    // alone reports 100% from 99.5, which is how a live matchup ended up
+    // showing a completely full bar.
+    const homeWinProb = remainingProj > 0
+      ? Math.min(99, Math.max(1, rawProb))
+      : rawProb
 
     return {
       id: m.id,
