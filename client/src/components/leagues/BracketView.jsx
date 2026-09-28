@@ -12,6 +12,7 @@ import BracketStandings from './BracketStandings'
 import SeriesDetailModal from './SeriesDetailModal'
 import UserProfileModal from '../profile/UserProfileModal'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import LeagueStartsBanner from './LeagueStartsBanner'
 import EmptyState from '../ui/EmptyState'
 import { toast } from '../ui/Toast'
 
@@ -286,9 +287,19 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
             </div>
           )}
 
-          {/* Status banner */}
-          {!isLocked && !picksBlocked && (
-            <div className={`${showCourtBg ? '' : 'bg-bg-primary/20 backdrop-blur-sm rounded-xl border border-text-primary/20'} p-4 text-center`}>
+          {/* Status banner.
+              Before the league starts this is nested INSIDE the countdown
+              card rather than sitting in a second box beneath it. Two stacked
+              cards said "Tuesday, September 29 / Fill out your bracket before
+              the first game tips off" and then, separately, "Your bracket has
+              been submitted!" — the generic prompt contradicting the real
+              status directly above it. One card now carries the date and what
+              you actually need to do. */}
+          {!isLocked && !picksBlocked && (() => {
+            const notStarted = league.status === 'open' && league.starts_at &&
+              new Date(league.starts_at) > new Date()
+            const body = (
+              <>
               <div className="text-sm text-text-secondary mb-2">
                 {hasSubmitted
                   ? 'Your bracket has been submitted!'
@@ -311,8 +322,25 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
               >
                 {hasSubmitted ? 'Edit Bracket' : savedDraft ? 'Continue Bracket' : 'Fill Your Bracket'}
               </button>
-            </div>
-          )}
+              </>
+            )
+            if (notStarted) {
+              return (
+                <LeagueStartsBanner
+                  countdownTo={league.starts_at}
+                  headline={new Date(league.starts_at).toLocaleDateString('en-US', {
+                    weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles',
+                  })}
+                  extra={body}
+                />
+              )
+            }
+            return (
+              <div className={`${showCourtBg ? '' : 'bg-bg-primary/20 backdrop-blur-sm rounded-xl border border-text-primary/20'} p-4 text-center`}>
+                {body}
+              </div>
+            )
+          })()}
 
           {hasMissingFFPicks && (
             <div className={`${showCourtBg ? '' : 'bg-bg-card rounded-xl border border-border'} p-4 text-center`}>

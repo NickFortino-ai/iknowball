@@ -3017,13 +3017,10 @@ export default function LeagueDetailPage() {
         </>
       ) : (tabs[activeTab] === 'Bracket' || tabs[activeTab] === 'Standings') ? (
         <>
-          {tabs[activeTab] === 'Bracket' && league.status === 'open' && league.starts_at && new Date(league.starts_at) > new Date() && (
-            <LeagueStartsBanner
-              countdownTo={league.starts_at}
-              headline={new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles' })}
-              subtitle="Fill out your bracket before the first game tips off."
-            />
-          )}
+          {/* The pre-start countdown for a bracket league is rendered by
+              BracketView, nested around its own status card. Rendering it here
+              too produced two stacked boxes: a generic "fill out your bracket"
+              prompt directly above "Your bracket has been submitted!". */}
           <BracketView
             league={league}
             tab={tabs[activeTab] === 'Standings' ? 'standings' : 'bracket'}
