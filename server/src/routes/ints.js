@@ -73,6 +73,54 @@ router.get('/players', async (req, res) => {
     intMap[s.player_id] = (intMap[s.player_id] || 0) + (Number(s.idp_int) || 0)
   }
 
+  // Signals for ordering everyone still on zero — which is most of the pool
+  // most of the season. Alphabetical put A.J. Bouye and Aaron Donald at the
+  // top and buried every starting corner, so the tail needs a real ranking.
+  //
+  // PRIOR-SEASON INTERCEPTIONS are the backbone. They are position-agnostic,
+  // which is the point: sorting defensive backs ahead of linebackers as a
+  // RULE buries ball-hawking linebackers, and Ernest Jones (5 in 2025) and
+  // Tremaine Edmunds (4) belong near the top on merit rather than by
+  // position. PASSES DEFENDED adds current form — a corner being targeted
+  // and getting hands on the ball. TACKLES are a snap proxy, and they are
+  // what keeps ROOKIES from sinking: a first-year starter has no prior
+  // season at all, so playing time is the only honest signal he has.
+  //
+  // Only the defensive LINE is demoted outright. A lineman's pass defended
+  // is a batted ball at the line and essentially never becomes his own
+  // interception.
+  const priorStats = await fetchAll(
+    supabase
+      .from('nfl_player_stats')
+      .select('player_id, idp_int')
+      .eq('season', season - 1)
+      .order('player_id', { ascending: true }),
+  )
+  const oppStats = await fetchAll(
+    supabase
+      .from('nfl_player_stats')
+      .select('player_id, idp_pass_def, idp_tkl_solo, idp_tkl_ast')
+      .eq('season', season)
+      .order('player_id', { ascending: true }),
+  )
+  const priorIntMap = {}
+  for (const s of (priorStats || [])) {
+    priorIntMap[s.player_id] = (priorIntMap[s.player_id] || 0) + (Number(s.idp_int) || 0)
+  }
+  const pdMap = {}
+  const tklMap = {}
+  for (const s of (oppStats || [])) {
+    pdMap[s.player_id] = (pdMap[s.player_id] || 0) + (Number(s.idp_pass_def) || 0)
+    tklMap[s.player_id] = (tklMap[s.player_id] || 0)
+      + (Number(s.idp_tkl_solo) || 0) + (Number(s.idp_tkl_ast) || 0)
+  }
+  const FRONT_SEVEN_LINE = new Set(['DE', 'DT', 'NT', 'DL'])
+  const intLikelihood = (playerId, position) =>
+    (priorIntMap[playerId] || 0)
+    + (pdMap[playerId] || 0) * 0.8
+    + (tklMap[playerId] || 0) * 0.05
+    - (FRONT_SEVEN_LINE.has(position) ? 2 : 0)
+
   const matchupByTeam = await getCurrentWeekMatchups()
 
   // Locked players are only sent when the caller asks for them. Shipped
@@ -126,15 +174,20 @@ router.get('/players', async (req, res) => {
     const aBye = a.opponent ? 0 : 1
     const bBye = b.opponent ? 0 : 1
     if (aBye !== bBye) return aBye - bBye
+    // Live totals first. Everyone still on zero — most of the pool for most
+    // of the season — is then ordered by how likely he is to get one, which
+    // used to be the curated preseason list followed by pure alphabetical.
+    // That list is ~40 names and goes stale (it still carries players who
+    // have retired), and the alphabetical remainder put A.J. Bouye and
+    // Aaron Donald above every starting corner.
     if (hasStats) {
-      // Tie-break on the curated preseason rank before the name. Without
-      // it the first recorded stat of the season flips the whole list to
-      // live totals, and the ~1000 players still on zero all tie and fall
-      // into alphabetical order -- burying every elite name.
-      return b.season_ints - a.season_ints
-        || (PRESEASON_INT_RANK[a.player_name] ?? 999) - (PRESEASON_INT_RANK[b.player_name] ?? 999)
-        || a.player_name.localeCompare(b.player_name)
+      if (b.season_ints !== a.season_ints) return b.season_ints - a.season_ints
     }
+    const aScore = intLikelihood(a.sleeper_player_id, a.position)
+    const bScore = intLikelihood(b.sleeper_player_id, b.position)
+    if (aScore !== bScore) return bScore - aScore
+    // Curated list survives as a late tie-break: it still encodes judgement
+    // about players with no prior-season stats at all.
     const aRank = PRESEASON_INT_RANK[a.player_name] ?? 999
     const bRank = PRESEASON_INT_RANK[b.player_name] ?? 999
     if (aRank !== bRank) return aRank - bRank
