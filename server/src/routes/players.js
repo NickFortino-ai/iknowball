@@ -1109,11 +1109,57 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     // gamelog didn't cover (weeks with no played gamelog entry yet)
     // plus a dedicated BYE row so the full season's calendar shows
     // continuously — mirrors the FF modal.
-    let finalGames = games
+    // ESPN is not the only place these numbers live. When its gamelog comes
+    // back empty for an NFL player we already hold the same stats in
+    // nfl_player_stats — it is what scoring runs on — so fall back to them
+    // rather than rendering a column of dashes.
+    //
+    // Observed 2026-09-29: Emeka Egbuka's modal showed weeks 1-4 with correct
+    // opponents and no stats at all, while ESPN's gamelog (checked directly)
+    // had all three games. The opponents came from nfl_schedule, so a failed
+    // ESPN call is indistinguishable from a player who has not played —
+    // which is exactly how it looked. We call ESPN every five minutes for
+    // injuries and got per-host blocked once already (2026-08-26), so a read
+    // path for data we own should not depend on them answering.
+    let gamesFromOurStats = []
+    if (isNFL && games.length === 0 && blurbLookupId) {
+      const { data: ourStats } = await supabase
+        .from('nfl_player_stats')
+        .select('week, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost')
+        .eq('player_id', blurbLookupId)
+        .eq('season', seasonYear)
+      const byWeek = new Map((ourStats || []).map((r) => [r.week, r]))
+      if (byWeek.size) {
+        gamesFromOurStats = nflUpcoming
+          .filter((u) => byWeek.has(u.week))
+          .map((u) => {
+            const r = byWeek.get(u.week)
+            return {
+              ...u,
+              pass_yds: Number(r.pass_yd) || 0,
+              pass_td: r.pass_td || 0,
+              int: r.pass_int || 0,
+              rush_att: r.rush_att || 0,
+              rush_yds: Number(r.rush_yd) || 0,
+              rush_td: r.rush_td || 0,
+              rec: r.rec || 0,
+              rec_yds: Number(r.rec_yd) || 0,
+              rec_td: r.rec_td || 0,
+              fum: r.fum_lost || 0,
+            }
+          })
+        logger.info(
+          { espnId, week_rows: gamesFromOurStats.length },
+          'ESPN gamelog empty for NFL player — served stats from nfl_player_stats'
+        )
+      }
+    }
+
+    let finalGames = gamesFromOurStats.length ? gamesFromOurStats : games
     if (isNFL && (nflUpcoming.length || nflPlayerByeWeek)) {
-      const playedWeeks = new Set(games.map((g) => g.week).filter((w) => w != null))
+      const playedWeeks = new Set(finalGames.map((g) => g.week).filter((w) => w != null))
       const upcomingUnplayed = nflUpcoming.filter((u) => !playedWeeks.has(u.week))
-      const rows = [...games, ...upcomingUnplayed]
+      const rows = [...finalGames, ...upcomingUnplayed]
       const knownWeeks = new Set(rows.map((r) => r.week).filter((w) => w != null))
       if (nflPlayerByeWeek && !knownWeeks.has(nflPlayerByeWeek)) {
         rows.push({
