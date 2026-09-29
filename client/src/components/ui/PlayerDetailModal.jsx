@@ -282,6 +282,7 @@ const NFL_LOG_COLS = {
   // one and receiving TDs in the other, so the same header meant different
   // things depending on the player.
   rb: [
+    { key: 'rush_att', label: 'CAR' },
     { key: 'rush_yds', label: 'RuYD', primary: true },
     { key: 'rush_td', label: 'RuTD' },
     { key: 'rec', label: 'REC' },
