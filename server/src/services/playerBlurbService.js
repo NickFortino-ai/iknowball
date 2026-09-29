@@ -35,16 +35,11 @@ const BLURB_POSITIONS = [
 
 export async function getTopPlayersByPosition(season, { unlimited = false } = {}) {
   const scoringCol = 'pts_half_ppr' // default ranking column
-  const { data: stats } = await supabase
-    .from('nfl_player_stats')
-    .select('player_id, week')
-    .eq('season', season)
-
-  // Sum season totals per player
-  const totals = {}
-  for (const s of stats || []) {
-    totals[s.player_id] = (totals[s.player_id] || 0) + 1
-  }
+  // A games-played tally used to be computed here from an unbounded select
+  // and then never read — `totals` had no consumers. It cost a 1,000-row
+  // fetch on every blurbs-panel load and, being unpaginated, was only ever
+  // week 1 anyway. The real per-player totals come from the chunked query
+  // below, which pages by player_id.
 
   // Get all active NFL players with a team. Explicit .order('id') is
   // load-bearing for the fetchAll paginator: Postgres doesn't guarantee
