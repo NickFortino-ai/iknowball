@@ -125,7 +125,18 @@ export default function GamePreview({ preview, away, home, afterOdds = null, sho
                   {entry.categories.map((c, i) => (
                     <div key={i} className="text-[11px] leading-tight">
                       <div className="text-text-muted">{c.label}</div>
-                      <div className="text-text-primary truncate">{c.name} <span className="text-text-muted">{c.value}</span></div>
+                      {/* Stat line sits UNDER the name rather than beside it.
+                          Sharing one truncated row cut off the longest and most
+                          useful line: "Deshaun Watson 56/82, 587 YDS, 3 TD" is
+                          ~41 characters against roughly 28 that fit in a
+                          half-width column at 11px.
+                          Initials were the other option and don't go far
+                          enough — "D. Watson" saves five characters, so the
+                          passing line still truncates, and Game Intel is
+                          precisely where you want the full name of a player
+                          you don't recognise. */}
+                      <div className="text-text-primary truncate">{c.name}</div>
+                      <div className="text-text-muted">{c.value}</div>
                     </div>
                   ))}
                 </div>
