@@ -15,6 +15,7 @@ import UserProfileModal from '../profile/UserProfileModal'
 import { toast } from '../ui/Toast'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import PlayerHeadshot from '../ui/PlayerHeadshot'
+import PlayerDetailModal from '../ui/PlayerDetailModal'
 
 export default function TdPassView({ league, tab = 'picks' }) {
   const { profile } = useAuth()
@@ -28,6 +29,8 @@ export default function TdPassView({ league, tab = 'picks' }) {
   const submit = useSubmitTdPassPick()
 
   const [search, setSearch] = useState('')
+  // Tapping a QB's headshot opens his game log instead of picking him.
+  const [detailQb, setDetailQb] = useState(null)
   const [expandedUserId, setExpandedUserId] = useState(null)
   const [profileUserId, setProfileUserId] = useState(null)
   // Expanded by default — the whole strategy of TD Pass is not burning a QB
@@ -329,8 +332,13 @@ export default function TdPassView({ league, tab = 'picks' }) {
               <button
                 key={qb.id}
                 type="button"
-                onClick={() => !qb.used && !qb.is_locked && handlePick(qb)}
-                disabled={submit.isPending || qb.used || qb.is_locked}
+                onClick={() => !submit.isPending && !qb.used && !qb.is_locked && handlePick(qb)}
+                // aria-disabled rather than `disabled`: a disabled button
+                // swallows clicks on its CHILDREN too, and the headshot inside
+                // opens the player modal. That has to keep working for a QB
+                // who is used or locked — those are exactly the ones you want
+                // to look up. The onClick above still refuses the pick.
+                aria-disabled={submit.isPending || qb.used || qb.is_locked}
                 // text-left: <button> defaults to text-align:center, so the
                 // matchup line under the name rendered centred while the name
                 // itself looked left-aligned only because it's a flex child.
@@ -340,7 +348,16 @@ export default function TdPassView({ league, tab = 'picks' }) {
                       instead of vanishing — the inline version only had a
                       fallback when the URL was ABSENT, so a broken URL left
                       the row with no avatar at all. */}
-                  <PlayerHeadshot name={qb.full_name} url={qb.headshot_url} size="md" />
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    title={`${qb.full_name} — game log`}
+                    onClick={(e) => { e.stopPropagation(); setDetailQb(qb) }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setDetailQb(qb) } }}
+                    className="shrink-0 rounded-full cursor-pointer hover:ring-2 hover:ring-accent/60 transition-shadow"
+                  >
+                    <PlayerHeadshot name={qb.full_name} url={qb.headshot_url} size="md" />
+                  </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-bold text-text-primary truncate">{qb.full_name}</span>
@@ -387,6 +404,22 @@ export default function TdPassView({ league, tab = 'picks' }) {
           the page every week as the history grows. Nick: "it should be below
           the available QBs to pick for the week on mobile." */}
       <div className="lg:hidden mt-4">{usedPanel}</div>
+
+      {detailQb && (
+        <PlayerDetailModal
+          sport="americanfootball_nfl"
+          player={{
+            sleeper_player_id: detailQb.id,
+            player_name: detailQb.full_name,
+            name: detailQb.full_name,
+            position: 'QB',
+            team: detailQb.team,
+            headshot_url: detailQb.headshot_url,
+            injury_status: detailQb.injury_status,
+          }}
+          onClose={() => setDetailQb(null)}
+        />
+      )}
     </div>
   )
 }

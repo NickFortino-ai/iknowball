@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js'
+import { fetchAll } from '../utils/fetchAll.js'
 import { logger } from '../utils/logger.js'
 import { isUnavailable } from '../utils/injuryStatus.js'
 
@@ -307,11 +308,22 @@ export async function getAvailableQBs(leagueId, userId) {
     .not('team', 'is', null)
     .order('full_name', { ascending: true })
 
-  // Aggregate season passing TDs from nfl_player_stats
-  const { data: tdStats } = await supabase
-    .from('nfl_player_stats')
-    .select('player_id, pass_td')
-    .eq('season', season)
+  // Aggregate season passing TDs from nfl_player_stats.
+  //
+  // fetchAll with an explicit order: this table holds 5,541 rows for 2026 and
+  // a plain select silently returns the first 1,000. Postgres has no stable
+  // order without ORDER BY, so in practice that was every WEEK 1 row and
+  // nothing else — "Season TD" was showing each quarterback's week-1 passing
+  // touchdowns. Almost every starter threw exactly one in week 1, so the
+  // entire board read 1 and looked plausible: Burrow showed 1 against an
+  // actual 6, Lamar 1 against 4.
+  const tdStats = await fetchAll(
+    supabase
+      .from('nfl_player_stats')
+      .select('player_id, pass_td')
+      .eq('season', season)
+      .order('id')
+  )
 
   const tdMap = {}
   for (const s of (tdStats || [])) {
