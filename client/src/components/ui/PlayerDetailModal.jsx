@@ -272,17 +272,28 @@ const NFL_LOG_COLS = {
     { key: 'int', label: 'INT' },
     { key: 'rush_yds', label: 'RuYD' },
   ],
+  // Both sets were missing the OTHER kind of touchdown. A running back's
+  // receiving scores had no column at all — Kyren Williams caught one in
+  // week 2 and the log showed RUYD/RTD/REC/REYD with nowhere for it — and a
+  // receiver's rushing scores were invisible for the same reason. Six points
+  // either way, and the blurb above the table was describing them.
+  //
+  // Labels disambiguated while here: both sets used 'RTD', for rushing TDs in
+  // one and receiving TDs in the other, so the same header meant different
+  // things depending on the player.
   rb: [
     { key: 'rush_yds', label: 'RuYD', primary: true },
-    { key: 'rush_td', label: 'RTD' },
+    { key: 'rush_td', label: 'RuTD' },
     { key: 'rec', label: 'REC' },
     { key: 'rec_yds', label: 'ReYD' },
+    { key: 'rec_td', label: 'ReTD' },
   ],
   rec: [
     { key: 'rec', label: 'REC', primary: true },
     { key: 'rec_yds', label: 'ReYD' },
-    { key: 'rec_td', label: 'RTD' },
+    { key: 'rec_td', label: 'ReTD' },
     { key: 'rush_yds', label: 'RuYD' },
+    { key: 'rush_td', label: 'RuTD' },
   ],
   skill: [
     { key: 'rush_yds', label: 'RuYD' },
