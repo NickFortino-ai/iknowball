@@ -1125,7 +1125,7 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     if (isNFL && games.length === 0 && blurbLookupId) {
       const { data: ourStats } = await supabase
         .from('nfl_player_stats')
-        .select('week, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost')
+        .select('week, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, fgm, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm')
         .eq('player_id', blurbLookupId)
         .eq('season', seasonYear)
       const byWeek = new Map((ourStats || []).map((r) => [r.week, r]))
@@ -1146,6 +1146,21 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
               rec_yds: Number(r.rec_yd) || 0,
               rec_td: r.rec_td || 0,
               fum: r.fum_lost || 0,
+              // A team D/ST has NO espn_id — nfl_players stores it under the
+              // team abbreviation — so ESPN's athlete gamelog can never serve
+              // one. This is not a fallback for defenses, it is the only
+              // source, which is why MIN D/ST showed a full schedule and not
+              // a single stat.
+              def_sack: Number(r.def_sack) || 0,
+              def_int: r.def_int || 0,
+              def_fum_rec: r.def_fum_rec || 0,
+              def_td: r.def_td || 0,
+              def_safety: r.def_safety || 0,
+              def_pts_allowed: r.def_pts_allowed ?? null,
+              fgm: r.fgm || 0,
+              fgm_50_plus: r.fgm_50_plus || 0,
+              fgmiss: (r.fgmiss_0_39 || 0) + (r.fgmiss_40_49 || 0) + (r.fgmiss_50_plus || 0),
+              xpm: r.xpm || 0,
             }
           })
         logger.info(

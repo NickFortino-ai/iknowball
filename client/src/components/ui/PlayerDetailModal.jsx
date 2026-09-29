@@ -302,6 +302,24 @@ const NFL_LOG_COLS = {
     { key: 'rec', label: 'REC' },
     { key: 'rush_td', label: 'TD' },
   ],
+  // getNFLPositionGroup returns 'def' and 'k', but neither had a column set
+  // here, so both fell through to `skill` — a team defense rendered
+  // RUYD/REYD/REC/TD and a kicker did the same, every value a dash because
+  // those keys never exist on a D/ST or a kicker's line.
+  def: [
+    { key: 'def_sack', label: 'SACK', primary: true },
+    { key: 'def_int', label: 'INT' },
+    { key: 'def_fum_rec', label: 'FR' },
+    { key: 'def_td', label: 'TD' },
+    { key: 'def_safety', label: 'SAF' },
+    { key: 'def_pts_allowed', label: 'PA' },
+  ],
+  k: [
+    { key: 'fgm', label: 'FG', primary: true },
+    { key: 'fgm_50_plus', label: '50+' },
+    { key: 'fgmiss', label: 'MISS' },
+    { key: 'xpm', label: 'XP' },
+  ],
   idp: [
     { key: 'def_tackles_solo', label: 'SOLO', primary: true },
     { key: 'def_tackles_ast', label: 'AST' },
