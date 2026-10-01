@@ -422,13 +422,51 @@ export async function sendTemplateBracketEmail(subject, body, templateId) {
 // instead of being buried in the in-app notification drawer.
 export async function sendAdminEmail(subject, body) {
   const transport = getTransporter()
-  const { data: admins } = await supabase
+
+  // Addresses live in auth.users, NOT the public users table — there is no
+  // `users.email` column. Selecting one made PostgREST error, which left
+  // `admins` null and sent this down the "no admins have email set" path on
+  // every call, so every ops alert (stat coverage, Sleeper zero-guard,
+  // payment events, DFS) silently reached nobody. Resolve through auth the
+  // same way getSubscribedUsers does.
+  const { data: adminRows, error: adminErr } = await supabase
     .from('users')
-    .select('id, email, username')
+    .select('id, username')
     .eq('is_admin', true)
-    .not('email', 'is', null)
-  if (!admins?.length) {
-    logger.warn({ subject }, 'sendAdminEmail called but no admins have email set')
+
+  if (adminErr) {
+    logger.error({ err: adminErr.message, subject }, 'sendAdminEmail failed to load admin users')
+    return { sent: 0 }
+  }
+
+  const adminIds = new Map((adminRows || []).map((a) => [a.id, a.username]))
+  if (adminIds.size === 0) {
+    logger.warn({ subject }, 'sendAdminEmail called but no users are flagged is_admin')
+    return { sent: 0 }
+  }
+
+  const admins = []
+  let page = 1
+  const perPage = 1000
+  while (true) {
+    const { data: authPage, error: authErr } = await supabase.auth.admin.listUsers({ page, perPage })
+    if (authErr) {
+      logger.error({ err: authErr.message, subject }, 'sendAdminEmail failed to resolve admin emails from auth')
+      break
+    }
+    const authUsers = authPage?.users || []
+    if (authUsers.length === 0) break
+    for (const u of authUsers) {
+      if (u.email && adminIds.has(u.id)) {
+        admins.push({ id: u.id, email: u.email, username: adminIds.get(u.id) })
+      }
+    }
+    if (authUsers.length < perPage) break
+    page++
+  }
+
+  if (!admins.length) {
+    logger.warn({ subject, adminCount: adminIds.size }, 'sendAdminEmail found no resolvable admin email addresses')
     return { sent: 0 }
   }
 
