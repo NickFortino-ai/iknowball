@@ -2,6 +2,17 @@ import { supabase } from '../config/supabase.js'
 import { fetchOdds } from '../services/oddsService.js'
 import { logger } from '../utils/logger.js'
 import { fetchAll } from '../utils/fetchAll.js'
+import { sendAdminEmail } from '../services/emailService.js'
+
+// Orphaned games that carry picks and therefore can't be auto-pruned. Filled
+// by syncSport, reset and drained once per syncOdds run.
+let strandedOrphans = []
+
+// Game ids already emailed about, so a sync that runs every few minutes
+// doesn't flood the inbox. Deliberately process-lifetime only: after a deploy
+// or restart the nag returns, which is what we want for a row that is still
+// unresolved.
+const notifiedOrphans = new Set()
 
 async function syncSport(sportKey, { force = false } = {}) {
   const { data: sport } = await supabase
@@ -209,6 +220,21 @@ async function syncSport(sportKey, { force = false } = {}) {
         parlayLegs: legsRes.count,
         leaguePicks: leaguePicksRes.count,
       }, 'Orphaned game has picks — admin must resolve manually')
+      // A warn log is not enough: this row can never settle (no Odds API
+      // event to finalize it, no ESPN event to match it) and it keeps
+      // showing on the picks board as a duplicate of the surviving row, so
+      // users take both sides of one real game. That happened with the
+      // 2026-10-01 Phillies @ Braves wild card opener and went unnoticed
+      // until it was spotted by eye. Collect for the end-of-run email.
+      strandedOrphans.push({
+        sportKey,
+        gameId: orphan.id,
+        matchup: `${orphan.away_team} @ ${orphan.home_team}`,
+        startsAt: orphan.starts_at,
+        picks: picksRes.count || 0,
+        parlayLegs: legsRes.count || 0,
+        leaguePicks: leaguePicksRes.count || 0,
+      })
       continue
     }
 
@@ -233,13 +259,53 @@ export async function syncOdds({ force = false } = {}) {
   const sports = ['americanfootball_nfl', 'americanfootball_nfl_preseason', 'basketball_nba', 'baseball_mlb', 'basketball_ncaab', 'basketball_wncaab', 'americanfootball_ncaaf', 'basketball_wnba', 'icehockey_nhl', 'soccer_usa_mls', 'soccer_world_cup', 'americanfootball_ufl']
   const results = []
 
+  strandedOrphans = []
+
   for (const sportKey of sports) {
     const result = await syncSport(sportKey, { force })
     results.push(result)
   }
 
+  await reportStrandedOrphans()
+
   const total = results.reduce((sum, r) => sum + r.synced, 0)
   logger.info({ total }, 'Odds sync complete')
 
   return results
+}
+
+// Email the admin about orphaned games that couldn't be pruned because users
+// have already picked them. Each one is a duplicate row on the picks board
+// whose picks will lock and then never settle, so it needs a human to move or
+// drop those picks before the row can go.
+async function reportStrandedOrphans() {
+  const fresh = strandedOrphans.filter((o) => !notifiedOrphans.has(o.gameId))
+  if (fresh.length === 0) return
+
+  const lines = fresh.map((o) => {
+    const deps = [
+      o.picks ? `${o.picks} pick(s)` : null,
+      o.parlayLegs ? `${o.parlayLegs} parlay leg(s)` : null,
+      o.leaguePicks ? `${o.leaguePicks} league pick(s)` : null,
+    ].filter(Boolean).join(', ')
+    return `${o.sportKey} — ${o.matchup}\n  starts ${o.startsAt}\n  game_id ${o.gameId}\n  blocked by ${deps}`
+  })
+
+  const body = [
+    `${fresh.length} game row${fresh.length === 1 ? '' : 's'} no longer exist${fresh.length === 1 ? 's' : ''} in the Odds API feed but still carr${fresh.length === 1 ? 'ies' : 'y'} user action, so the orphan pruner left ${fresh.length === 1 ? 'it' : 'them'} in place.`,
+    '',
+    'This usually means the Odds API re-issued a game under a new event id after its start time changed (common in the postseason). The old row stays on the picks board as a duplicate, and its picks can never settle because there is no upstream event left to finalize them.',
+    '',
+    ...lines,
+    '',
+    'Resolve by moving each pick onto the surviving row for that matchup (where the user has no pick there already) or deleting it. Once the row has no dependencies left, the next sync prunes it automatically.',
+  ].join('\n')
+
+  try {
+    await sendAdminEmail(`${fresh.length} orphaned game row${fresh.length === 1 ? '' : 's'} with user picks`, body)
+    fresh.forEach((o) => notifiedOrphans.add(o.gameId))
+    logger.info({ count: fresh.length }, 'Emailed admin about stranded orphan games')
+  } catch (err) {
+    logger.error({ err }, 'Failed to email admin about stranded orphan games')
+  }
 }
