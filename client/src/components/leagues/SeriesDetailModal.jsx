@@ -137,7 +137,7 @@ function SingleGameFooter({ isLoading, singleGame, matchup, teamTop, isFootball 
   )
 }
 
-export default function SeriesDetailModal({ matchup, sportKey, leagueId, isSingleGame = false, onClose }) {
+export default function SeriesDetailModal({ matchup, sportKey, leagueId, isSingleGame = false, clinchWins = 4, onClose }) {
   const teamTop = matchup.team_top
   const teamBottom = matchup.team_bottom
   const { data: games, isLoading } = useSeriesGames(leagueId, teamTop, teamBottom)
@@ -171,7 +171,10 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, isSingl
 
   const seriesWinsTop = matchup.series_wins_top || 0
   const seriesWinsBottom = matchup.series_wins_bottom || 0
-  const seriesOver = seriesWinsTop >= 4 || seriesWinsBottom >= 4
+  // Wins needed to take THIS round, not a hardcoded 4. MLB's Wild Card is a
+  // best-of-3, so a finished 2-0 series read "White Sox lead 2-0" — the
+  // series was over and the modal still described it as a lead.
+  const seriesOver = seriesWinsTop >= clinchWins || seriesWinsBottom >= clinchWins
   const topLeading = isSingleGame
     ? (displayScoreTop != null && displayScoreBottom != null && displayScoreTop > displayScoreBottom)
     : (seriesWinsTop > seriesWinsBottom)
@@ -187,7 +190,7 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, isSingl
       seriesLabel = winnerName ? `${winnerName} win` : 'Final'
     }
   } else if (seriesOver) {
-    const winnerName = seriesWinsTop >= 4 ? topInfo.name : bottomInfo.name
+    const winnerName = seriesWinsTop >= clinchWins ? topInfo.name : bottomInfo.name
     seriesLabel = `${winnerName} win ${Math.max(seriesWinsTop, seriesWinsBottom)}-${Math.min(seriesWinsTop, seriesWinsBottom)}`
   } else if (seriesWinsTop === 0 && seriesWinsBottom === 0) {
     seriesLabel = 'Series not started'
@@ -311,7 +314,10 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, isSingl
                 // Sort by a stable category order so the football rows
                 // always read passing → rushing → receiving.
                 const topScorers = game.top_scorers || []
-                const CATEGORY_ORDER = { passing: 0, rushing: 1, receiving: 2, defensive: 3, overall: 4 }
+                // pitcher before hitter: in a playoff baseball game the
+                // starter is the headline, and it keeps the two rows in the
+                // same order on both sides of the card.
+                const CATEGORY_ORDER = { passing: 0, rushing: 1, receiving: 2, defensive: 3, overall: 4, pitcher: 5, hitter: 6 }
                 const sortScorers = (arr) => [...arr].sort((a, b) =>
                   (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99)
                 )

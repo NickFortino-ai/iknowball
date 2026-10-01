@@ -7,6 +7,7 @@ import {
 } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import BracketDisplay from './BracketDisplay'
+import { roundSeriesConfig } from '../../lib/bracketSeries'
 import BracketPicker from './BracketPicker'
 import BracketStandings from './BracketStandings'
 import SeriesDetailModal from './SeriesDetailModal'
@@ -509,6 +510,13 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
           sportKey={league.sport}
           leagueId={league.id}
           isSingleGame={!isBestOf7}
+          // Clinch comes from THIS matchup's round — MLB clinches the Wild
+          // Card at 2 and the World Series at 4.
+          clinchWins={roundSeriesConfig(
+            tournament.bracket_templates?.rounds,
+            seriesMatchup.round_number,
+            tournament.bracket_templates?.series_format,
+          ).clinch}
           onClose={() => setSeriesMatchup(null)}
         />
       )}

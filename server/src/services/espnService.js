@@ -397,6 +397,91 @@ function extractFootballTopPerformers(boxscore) {
   return results
 }
 
+
+// Baseball has no single "top scorer" — the two performances worth surfacing
+// are the best hitter and the best pitcher, so this returns up to two rows per
+// team rather than one.
+//
+// Groups are identified by their LABELS, never by statistics[].name: MLB
+// box scores leave that null, which is a gotcha this codebase has hit before.
+// Batting carries AB, pitching carries IP.
+function extractMlbTopPerformers(boxscore) {
+  const results = []
+  const num = (v) => {
+    const n = parseFloat(String(v ?? '').replace(/[^0-9.-]/g, ''))
+    return Number.isFinite(n) ? n : 0
+  }
+
+  for (const teamBox of boxscore.players || []) {
+    const teamName = teamBox.team?.displayName || teamBox.team?.name || ''
+
+    for (const group of teamBox.statistics || []) {
+      const labels = group.labels || []
+      if (!group.athletes?.length) continue
+      const idx = (l) => labels.indexOf(l)
+
+      // ── Pitching ──
+      if (idx('IP') >= 0) {
+        let best = null
+        for (const a of group.athletes) {
+          const st = a.stats || []
+          const ip = num(st[idx('IP')])
+          if (ip <= 0) continue
+          const k = idx('K') >= 0 ? num(st[idx('K')]) : 0
+          const er = idx('ER') >= 0 ? num(st[idx('ER')]) : 0
+          // Innings carry the most weight — a reliever with two strikeouts
+          // is not the story of the game. Earned runs subtract.
+          const score = ip * 2 + k * 0.5 - er
+          if (!best || score > best.score) {
+            best = {
+              score,
+              team: teamName,
+              playerName: a.athlete?.displayName || '',
+              points: Math.round(ip * 10) / 10,
+              headshotUrl: a.athlete?.headshot?.href || null,
+              category: 'pitcher',
+              statLine: `${st[idx('IP')]} IP, ${k} K, ${er} ER`,
+            }
+          }
+        }
+        if (best) { const { score, ...row } = best; results.push(row) }
+        continue
+      }
+
+      // ── Hitting ──
+      if (idx('AB') >= 0) {
+        let best = null
+        for (const a of group.athletes) {
+          const st = a.stats || []
+          const h = idx('H') >= 0 ? num(st[idx('H')]) : 0
+          const rbi = idx('RBI') >= 0 ? num(st[idx('RBI')]) : 0
+          const hr = idx('HR') >= 0 ? num(st[idx('HR')]) : 0
+          const r = idx('R') >= 0 ? num(st[idx('R')]) : 0
+          const score = h + rbi * 1.5 + hr * 2 + r * 0.5
+          if (score <= 0) continue
+          if (!best || score > best.score) {
+            const hAb = idx('H-AB') >= 0 ? st[idx('H-AB')] : `${h}-${num(st[idx('AB')])}`
+            const bits = [`${hAb}`]
+            if (hr) bits.push(`${hr} HR`)
+            if (rbi) bits.push(`${rbi} RBI`)
+            best = {
+              score,
+              team: teamName,
+              playerName: a.athlete?.displayName || '',
+              points: h,
+              headshotUrl: a.athlete?.headshot?.href || null,
+              category: 'hitter',
+              statLine: bits.join(', '),
+            }
+          }
+        }
+        if (best) { const { score, ...row } = best; results.push(row) }
+      }
+    }
+  }
+  return results
+}
+
 export async function fetchGameTopScorers(sportKey, espnEventId) {
   const sport = SPORT_TO_ESPN[sportKey]
   if (!sport || !espnEventId) return []
@@ -412,6 +497,10 @@ export async function fetchGameTopScorers(sportKey, espnEventId) {
 
     if (FOOTBALL_SPORT_KEYS.has(sportKey)) {
       return extractFootballTopPerformers(boxscore)
+    }
+
+    if (sportKey === 'baseball_mlb') {
+      return extractMlbTopPerformers(boxscore)
     }
 
     const results = []
