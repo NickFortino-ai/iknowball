@@ -581,7 +581,14 @@ export default function FantasyPlayerBrowser({ league }) {
               <>
                 <p className="text-sm text-text-secondary mb-3">Roster is full. Pick a player to drop:</p>
                 <div className="space-y-1 mb-4 max-h-60 overflow-y-auto">
-                  {sortedRoster.map((r) => (
+                  {/* IR players are NOT droppable here. The roster-full test
+                      above already excludes them (activeRosterCount), so
+                      dropping one frees nothing — offering it let a manager
+                      satisfy "roster is full" by cutting an IR player and end
+                      up with 8 bench spots used out of 7 and an empty IR
+                      slot. Dropping an IR player is still possible from the
+                      roster view; it just isn't an answer to this prompt. */}
+                  {sortedRoster.filter((r) => (r.slot || '').toLowerCase() !== 'ir').map((r) => (
                     <button
                       key={r.id}
                       onClick={() => setDropPlayerId(r.player_id)}

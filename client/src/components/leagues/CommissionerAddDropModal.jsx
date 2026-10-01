@@ -210,10 +210,16 @@ export default function CommissionerAddDropModal({ league, targetUserId, targetU
                   )}
                 </div>
                 <div className="rounded-lg border border-text-primary/15 bg-text-primary/[0.02] max-h-52 overflow-y-auto">
-                  {sortedRoster.length === 0 ? (
+                  {/* When a drop is REQUIRED, IR players are not candidates:
+                      needsDrop is computed from activeRoster, which already
+                      excludes them, so cutting one frees nothing and leaves
+                      the manager over the bench limit. When the drop is
+                      optional a commissioner may legitimately release an IR
+                      player, so the list stays complete. */}
+                  {(needsDrop ? sortedRoster.filter((r) => (r.slot || '').toLowerCase() !== 'ir') : sortedRoster).length === 0 ? (
                     <div className="p-4 text-center text-xs text-text-muted">This manager has no roster.</div>
                   ) : (
-                    sortedRoster.map((r) => {
+                    (needsDrop ? sortedRoster.filter((r) => (r.slot || '').toLowerCase() !== 'ir') : sortedRoster).map((r) => {
                       const isSelected = r.player_id === selectedDropId
                       const p = r.nfl_players || {}
                       return (
