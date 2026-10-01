@@ -47,7 +47,13 @@ async function fetchFromOddsApi(path, params = {}) {
       if (attempt === MAX_RETRIES || (err.message.includes('Odds API error: 4') && !err.message.includes('429'))) {
         throw err
       }
-      const delay = 1000 * 2 ** (attempt - 1) // 1s, 2s, 4s
+      // Full jitter on the backoff. Callers that fan out across a slate issue
+      // many requests at once; without jitter every one of them waits the
+      // identical 1s/2s/4s and retries in the same instant, so a burst that
+      // tripped EXCEEDED_FREQ_LIMIT trips it again on every wave and burns all
+      // three attempts. Randomising across the window spreads the retries out.
+      const ceiling = 1000 * 2 ** (attempt - 1) // 1s, 2s, 4s
+      const delay = Math.round(ceiling * (0.5 + Math.random() * 0.5)) // 50-100% of it
       logger.warn({ attempt, delay, err: err.message }, 'Odds API request failed, retrying')
       await new Promise((r) => setTimeout(r, delay))
     }

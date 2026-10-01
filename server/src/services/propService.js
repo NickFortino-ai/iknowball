@@ -61,6 +61,42 @@ const SPORT_KEY_TO_ESPN_PATH = {
 const PROPS_LOAD_CACHE = new Map()
 const PROPS_LOAD_TTL_MS = 5 * 60 * 1000
 
+// A failed fetch is cached for far less time than a successful one. See the
+// catch block in loadPropsForSportMarket for why the two can't share a TTL.
+const PROPS_LOAD_FAILURE_TTL_MS = 20 * 1000
+
+// Max simultaneous Odds API calls when fanning out across a slate. The Odds
+// API rate-limits on requests per second (EXCEEDED_FREQ_LIMIT) independently
+// of the monthly quota, and /props/load is user-triggered — every open of the
+// Props tab fired one request per game at once, so a full NFL slate reliably
+// tripped it and the whole market came back empty.
+const PROPS_LOAD_CONCURRENCY = 4
+
+// Wall-clock budget for the whole fan-out. Throttling to a pool turns one
+// parallel wave into several sequential ones, so a slate that is being hard
+// rate-limited could run ~4 waves x ~7s of retries and blow past the client's
+// 25s fetch timeout — trading an empty market for a spinner. Past the budget
+// we stop issuing new fetches and fall through to the DB read-back, which
+// still returns every prop already stored. Skipped games aren't cached, so
+// the next load picks them up.
+const PROPS_LOAD_BUDGET_MS = 12 * 1000
+
+// Run `fn` over `items` with at most `limit` in flight. Workers pull from a
+// shared cursor rather than running fixed-size batches, so one slow game
+// doesn't idle the other workers waiting on a batch boundary. Rejections
+// propagate like Promise.all — callers here handle their own errors inside
+// `fn`, so a throw is a genuine bug rather than an expected API failure.
+async function mapWithConcurrency(items, limit, fn) {
+  let cursor = 0
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor++
+      await fn(items[index], index)
+    }
+  })
+  await Promise.all(workers)
+}
+
 // Sports we deliberately do NOT support player props on, even though
 // odds sync + game finalization run against them. NFL preseason falls
 // here — no fantasy weight in preseason, and settleNFLProps only
@@ -421,17 +457,36 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey) {
 
   const now = Date.now()
 
-  await Promise.all(games.map(async (game) => {
+  const fetchDeadline = now + PROPS_LOAD_BUDGET_MS
+  let skippedForBudget = 0
+
+  await mapWithConcurrency(games, PROPS_LOAD_CONCURRENCY, async (game) => {
     const cacheKey = `${game.id}:${marketKey}`
     const cached = PROPS_LOAD_CACHE.get(cacheKey)
     if (cached && cached.expiresAt > now) return
+
+    if (Date.now() > fetchDeadline) {
+      skippedForBudget++
+      return
+    }
 
     let apiData
     try {
       apiData = await fetchPlayerProps(fullSportKey, game.external_id, [marketKey])
     } catch (err) {
+      // Cache the FAILURE briefly, not for the full TTL. A 429 or a blip is
+      // not the same fact as "this game has no props for this market", but
+      // both used to be memoized for 5 minutes — so one rate-limited burst
+      // blanked the market for every user for the whole window, and the next
+      // request after it expired re-ran the same burst. Short TTL lets the
+      // slate recover on the next page load while still stopping a hot loop.
+      //
+      // Stamped from Date.now() rather than the loop-start `now`: throttling
+      // the fan-out means a late game can fail well after the loop began, and
+      // against a 20s window that offset is enough to write an already-expired
+      // entry — which would defeat the backstop entirely.
       logger.warn({ err: err.message, gameId: game.id, marketKey }, 'fetchPlayerProps failed for load')
-      PROPS_LOAD_CACHE.set(cacheKey, { expiresAt: now + PROPS_LOAD_TTL_MS })
+      PROPS_LOAD_CACHE.set(cacheKey, { expiresAt: Date.now() + PROPS_LOAD_FAILURE_TTL_MS })
       return
     }
 
@@ -534,7 +589,17 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey) {
     }
 
     PROPS_LOAD_CACHE.set(cacheKey, { expiresAt: now + PROPS_LOAD_TTL_MS })
-  }))
+  })
+
+  if (skippedForBudget > 0) {
+    logger.warn({
+      sport: fullSportKey,
+      marketKey,
+      skipped: skippedForBudget,
+      totalGames: games.length,
+      budgetMs: PROPS_LOAD_BUDGET_MS,
+    }, 'Props load hit its time budget — some games not fetched this pass')
+  }
 
   // Read back everything — fresh + cached rows — so the response is
   // consistent regardless of who paid the fetch. Only 'published' rows are
