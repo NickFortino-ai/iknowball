@@ -125,18 +125,32 @@ export default function GamePreview({ preview, away, home, afterOdds = null, sho
                   {entry.categories.map((c, i) => (
                     <div key={i} className="text-[11px] leading-tight">
                       <div className="text-text-muted">{c.label}</div>
-                      {/* Stat line sits UNDER the name rather than beside it.
-                          Sharing one truncated row cut off the longest and most
-                          useful line: "Deshaun Watson 56/82, 587 YDS, 3 TD" is
-                          ~41 characters against roughly 28 that fit in a
-                          half-width column at 11px.
-                          Initials were the other option and don't go far
-                          enough — "D. Watson" saves five characters, so the
-                          passing line still truncates, and Game Intel is
-                          precisely where you want the full name of a player
-                          you don't recognise. */}
-                      <div className="text-text-primary truncate">{c.name}</div>
-                      <div className="text-text-muted">{c.value}</div>
+                      {/* Narrow: stat line sits UNDER the name. Sharing one
+                          truncated row cut off the longest and most useful
+                          line — "Deshaun Watson 56/82, 587 YDS, 3 TD" is ~41
+                          characters against roughly 28 that fit in a
+                          half-width column at 11px. Initials were the other
+                          option and don't go far enough: "D. Watson" saves
+                          five characters so the passing line still truncates,
+                          and Game Intel is precisely where you want the full
+                          name of a player you don't recognise.
+
+                          md and up: back on one row. Both modals cap at
+                          sm:max-w-3xl, so from md the column is a fixed ~354px
+                          — the NFL passing line needs ~225px and a name ~80px,
+                          so it fits with room to spare, and stacking there just
+                          spent three lines per leader on a column that was
+                          never short of width. Below md the modal is still
+                          fluid (~290px per column) which is where it truncates,
+                          so the breakpoint is md and not sm.
+
+                          If it ever does overflow, the name truncates and the
+                          stat survives — shrink-0 keeps the number intact,
+                          since the number is what the row is for. */}
+                      <div className="md:flex md:items-baseline md:gap-1.5">
+                        <div className="text-text-primary truncate min-w-0">{c.name}</div>
+                        <div className="text-text-muted md:shrink-0">{c.value}</div>
+                      </div>
                     </div>
                   ))}
                 </div>
