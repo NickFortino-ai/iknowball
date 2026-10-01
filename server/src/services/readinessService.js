@@ -248,10 +248,23 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
   return result
 }
 
+// Statuses that mean the player CANNOT play, not merely that he might not.
+//
+// "Out" is one week; IR, PUP, NA and a suspension are longer than that and
+// strictly more severe, yet they were grouped with Questionable as a yellow
+// flag. A manager with De'Von Achane on IR in his starting lineup saw an
+// amber "needs eyes" marker on a slot that is a guaranteed zero.
+//
+// Doubtful and Questionable stay yellow — those are genuine judgement calls.
+const UNAVAILABLE_STATUSES = new Set([
+  'out', 'ir', 'injured reserve', 'pup', 'na', 'sus', 'suspended', 'dnr',
+])
+const isUnavailableStatus = (s) => UNAVAILABLE_STATUSES.has(String(s || '').trim().toLowerCase())
+
 async function applyInjuryDowngrades(byFormat, userId, todayET, result) {
   // Split injured players into Out (red downgrade) and yellow-flag (Q / DTD /
   // Doubtful / IR — yellow downgrade). Probable doesn't downgrade.
-  const isYellowStatus = (s) => s && s !== 'Probable' && s !== 'Out'
+  const isYellowStatus = (s) => s && s !== 'Probable' && !isUnavailableStatus(s)
   const downgradeAttention = (leagueId, detail) => {
     // Only downgrade from 'ready' — don't overwrite a more severe 'action'.
     const cur = result.get(leagueId)
@@ -270,7 +283,7 @@ async function applyInjuryDowngrades(byFormat, userId, todayET, result) {
     const outIds = []
     const yellowIds = []
     for (const r of salaryRows || []) {
-      if (r.injury_status === 'Out') outIds.push(r.espn_player_id)
+      if (isUnavailableStatus(r.injury_status)) outIds.push(r.espn_player_id)
       else if (isYellowStatus(r.injury_status)) yellowIds.push(r.espn_player_id)
     }
     if (outIds.length || yellowIds.length) {
@@ -304,7 +317,7 @@ async function applyInjuryDowngrades(byFormat, userId, todayET, result) {
     const outIds = []
     const yellowIds = []
     for (const r of salaryRows || []) {
-      if (r.injury_status === 'Out') outIds.push(r.espn_player_id)
+      if (isUnavailableStatus(r.injury_status)) outIds.push(r.espn_player_id)
       else if (isYellowStatus(r.injury_status)) yellowIds.push(r.espn_player_id)
     }
     if (outIds.length || yellowIds.length) {
@@ -340,7 +353,7 @@ async function applyInjuryDowngrades(byFormat, userId, todayET, result) {
     const outIds = []
     const yellowIds = []
     for (const r of salaryRows || []) {
-      if (r.injury_status === 'Out') outIds.push(r.espn_player_id)
+      if (isUnavailableStatus(r.injury_status)) outIds.push(r.espn_player_id)
       else if (isYellowStatus(r.injury_status)) yellowIds.push(r.espn_player_id)
     }
     if (outIds.length || yellowIds.length) {
@@ -397,7 +410,7 @@ async function applyInjuryDowngrades(byFormat, userId, todayET, result) {
     const outIds = []
     const yellowIds = []
     for (const p of injuredPlayers || []) {
-      if (p.injury_status === 'Out' || p.injury_status === 'IR') outIds.push(p.id)
+      if (isUnavailableStatus(p.injury_status)) outIds.push(p.id)
       else if (isYellowStatus(p.injury_status)) yellowIds.push(p.id)
     }
     if (outIds.length || yellowIds.length) {
@@ -601,8 +614,8 @@ async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTa
     const trackLineup = rosterTable === 'mlb_dfs_rosters'
     for (const slot of slots) {
       const status = injuryByPlayer[slot.espn_player_id]
-      if (status === 'Out') outPlayers.push(status)
-      else if (status && status !== 'Probable') flagged.push(status)
+      if (isUnavailableStatus(status)) outPlayers.push(status)
+      else if (status && status !== 'Probable' && !isUnavailableStatus(status)) flagged.push(status)
       if (trackLineup) {
         const ls = lineupByPlayer[slot.espn_player_id]
         if (ls === 'not_starting') notStarting.push(slot.espn_player_id)
@@ -1065,7 +1078,7 @@ async function computeFantasyReadiness(leagues, userId, result) {
         set(result, l.id, 'action', summary)
         continue
       }
-      const outPlayers = slots.filter((sl) => sl.nfl_players?.injury_status === 'Out')
+      const outPlayers = slots.filter((sl) => isUnavailableStatus(sl.nfl_players?.injury_status))
       if (outPlayers.length > 0) {
         const summary = outPlayers.length === 1
           ? `${outPlayers[0].nfl_players?.full_name || 'A player'} is Out`
@@ -1116,7 +1129,7 @@ async function computeFantasyReadiness(leagues, userId, result) {
       set(result, l.id, 'action', summary)
       continue
     }
-    const outStarters = starters.filter((r) => r.nfl_players?.injury_status === 'Out')
+    const outStarters = starters.filter((r) => isUnavailableStatus(r.nfl_players?.injury_status))
     if (outStarters.length > 0) {
       const summary = outStarters.length === 1
         ? `${outStarters[0].nfl_players?.full_name || 'A starter'} is Out`
