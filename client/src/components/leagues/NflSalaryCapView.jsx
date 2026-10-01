@@ -76,7 +76,20 @@ export default function NflSalaryCapView({ league }) {
     if (!team || !oppMap) return null
     const op = oppMap[team]
     if (!op) return { text: 'BYE', isBye: true }
-    return { text: `${op.is_home ? 'vs' : '@'} ${op.opponent}`, isBye: false }
+    // Kickoff rides along with the opponent. starts_at is already in this
+    // payload — the roster showed "vs DEN" with no indication of WHEN, which
+    // is the thing that decides whether you can still swap the player.
+    // Eastern throughout, as everywhere else NFL kickoffs are shown.
+    let kickoff = null
+    if (op.starts_at) {
+      const d = new Date(op.starts_at)
+      if (!Number.isNaN(d.getTime())) {
+        kickoff = d.toLocaleString('en-US', {
+          weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York',
+        })
+      }
+    }
+    return { text: `${op.is_home ? 'vs' : '@'} ${op.opponent}`, isBye: false, kickoff }
   }
 
   const [posFilter, setPosFilter] = useState('All')
@@ -282,7 +295,12 @@ export default function NflSalaryCapView({ league }) {
                         {(() => {
                           const opp = oppLabel(player.team)
                           if (!opp) return null
-                          return <span className={`ml-2 ${opp.isBye ? 'text-yellow-400 font-semibold' : ''}`}>{opp.text}</span>
+                          return (
+                            <>
+                              <span className={`ml-2 ${opp.isBye ? 'text-yellow-400 font-semibold' : ''}`}>{opp.text}</span>
+                              {opp.kickoff && <span className="ml-2 text-text-muted">{opp.kickoff}</span>}
+                            </>
+                          )
                         })()}
                       </div>
                     </div>
@@ -457,7 +475,12 @@ export default function NflSalaryCapView({ league }) {
                       {(() => {
                         const opp = oppLabel(player.team)
                         if (!opp) return null
-                        return <span className={`ml-2 ${opp.isBye ? 'text-yellow-400 font-semibold' : ''}`}>{opp.text}</span>
+                        return (
+                          <>
+                            <span className={`ml-2 ${opp.isBye ? 'text-yellow-400 font-semibold' : ''}`}>{opp.text}</span>
+                            {opp.kickoff && <span className="ml-2 text-text-muted">{opp.kickoff}</span>}
+                          </>
+                        )
                       })()}
                     </div>
                   </div>
