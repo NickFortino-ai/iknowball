@@ -7,7 +7,7 @@ import { syncOdds } from '../jobs/syncOdds.js'
 import { syncInjuries } from '../jobs/syncInjuries.js'
 import { scoreGames } from '../jobs/scoreGames.js'
 import { recalculateAllUserPoints } from '../services/scoringService.js'
-import { sendEmailBlast, sendTargetedEmail, sendTemplateBracketEmail } from '../services/emailService.js'
+import { sendEmailBlast, sendTargetedEmail, sendTemplateBracketEmail, sendAdminEmail } from '../services/emailService.js'
 import {
   syncPropsForGame,
   getAllPropsForGame,
@@ -362,6 +362,23 @@ router.post('/test-push', async (req, res) => {
     {}
   )
   res.json({ ok: true, note })
+})
+
+// One-shot ops-email diagnostic. sendAdminEmail spent months resolving
+// recipients against a `users.email` column that does not exist — PostgREST
+// errored, the recipient list came back null, and it logged "no admins have
+// email set" and returned {sent: 0}. It failed exactly like a correct no-op,
+// so every alert built on it (stat coverage, the Sleeper zero-guard abort,
+// payment hooks, DFS) reached nobody and nothing surfaced the breakage.
+// This route exists so the path can be proven from the deployed server
+// instead of assumed. Returns the per-recipient result.
+router.post('/test-admin-email', async (req, res) => {
+  const { message } = req.body || {}
+  const result = await sendAdminEmail(
+    'Admin email diagnostic',
+    message || 'Test ops email from I KNOW BALL server. If you are reading this, sendAdminEmail can reach you.'
+  )
+  res.json({ ok: result.sent > 0, ...result })
 })
 
 // One-shot backfill for dates whose MLB stats got zeroed out by the
