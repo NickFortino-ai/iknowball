@@ -340,12 +340,48 @@ export function useHotTakeImageUpload() {
   return { uploading, previewUrl, previewUrls, selectImage, selectImages, removeImage, uploadImage, hasImage: imageFiles.length > 0, imageCount: imageFiles.length }
 }
 
+// Declared to Cloudflare when minting the upload URL; Stream rejects any
+// video longer than this. The server clamps to 600s, so this is the binding
+// limit. It was 90s, which is under the length of a normal highlight clip —
+// a 1:40 video sailed past the size check and then died inside Cloudflare.
+const MAX_VIDEO_SECONDS = 180
+
+// Cloudflare Stream's basic (form POST) direct upload caps at 200MB. Past
+// that you need the resumable tus protocol, which is a different client.
+const MAX_VIDEO_BYTES = 200 * 1024 * 1024
+
+/**
+ * Read a local video's duration without uploading it. Resolves null when the
+ * browser can't parse the container (some .mov variants) or reports a
+ * non-finite duration — in that case we let the upload proceed rather than
+ * block on a probe we don't trust, since Cloudflare still enforces the limit.
+ */
+function formatClipLength(seconds) {
+  const whole = Math.round(seconds)
+  const mins = Math.floor(whole / 60)
+  const secs = whole % 60
+  if (!mins) return `${secs} seconds`
+  return `${mins}:${String(secs).padStart(2, '0')}`
+}
+
+function readVideoDuration(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const probe = document.createElement('video')
+    const done = (value) => { URL.revokeObjectURL(url); resolve(value) }
+    probe.preload = 'metadata'
+    probe.onloadedmetadata = () => done(Number.isFinite(probe.duration) ? probe.duration : null)
+    probe.onerror = () => done(null)
+    probe.src = url
+  })
+}
+
 export function useHotTakeVideoUpload() {
   const [uploading, setUploading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [videoFile, setVideoFile] = useState(null)
 
-  function selectVideo(file) {
+  async function selectVideo(file) {
     if (!file) return
 
     // Cloudflare Stream transcodes any input container to HLS on the way
@@ -355,11 +391,24 @@ export function useHotTakeVideoUpload() {
       toast('That file doesn\'t look like a video. Try a video file.', 'error')
       return
     }
-    // Cloudflare Stream direct-upload accepts up to 200MB per file on our
-    // plan. Bigger uploads would need the resumable tus protocol — not
-    // worth the complexity for typical mobile-recorded clips.
-    if (file.size > 200 * 1024 * 1024) {
-      toast('Video must be under 200MB', 'error')
+    // Say what's actually wrong. Size here is driven by resolution and frame
+    // rate, not length: 4K/60 off a phone runs ~50 Mbps, so it clears 200MB
+    // in about 30 seconds, while the same clip at 1080p is a quarter of that.
+    // "Video must be under 200MB" sent people hunting for a shorter clip when
+    // the fix is to record or export smaller.
+    if (file.size > MAX_VIDEO_BYTES) {
+      const mb = Math.round(file.size / (1024 * 1024))
+      toast(`That video is ${mb}MB and the limit is 200MB. Recording at 1080p instead of 4K usually gets well under it.`, 'error')
+      return
+    }
+
+    // Check length locally so an over-long video fails here, with a sentence
+    // that explains itself, instead of being uploaded and then rejected
+    // inside Cloudflare — which surfaced as raw API JSON in a toast.
+    const duration = await readVideoDuration(file)
+    if (duration != null && duration > MAX_VIDEO_SECONDS) {
+      const mins = Math.floor(MAX_VIDEO_SECONDS / 60)
+      toast(`That video is ${formatClipLength(duration)} and the limit is ${mins} minutes. Trim it and try again.`, 'error')
       return
     }
 
@@ -388,7 +437,7 @@ export function useHotTakeVideoUpload() {
     if (!videoFile) return null
     setUploading(true)
     try {
-      const { uploadURL, uid, hlsUrl } = await api.post('/stream/direct-upload', { maxDurationSeconds: 90 })
+      const { uploadURL, uid, hlsUrl } = await api.post('/stream/direct-upload', { maxDurationSeconds: MAX_VIDEO_SECONDS })
       if (!uploadURL || !uid) throw new Error('Video upload service is unavailable')
 
       const form = new FormData()
