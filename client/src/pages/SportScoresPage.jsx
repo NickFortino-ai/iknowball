@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useScoresForDay, useSportStandings, useNflSchedule, useNflWeekGames, useNcaafSchedule, useNcaafWeekGames } from '../hooks/useScoresStrip'
@@ -513,6 +513,35 @@ function GroupedStandings({ standings, config }) {
 // during preseason, PRE 1 gets NOW; WEEK 1 does not).
 function NflWeekScrubber({ weeks, activeSelection, current, onPick }) {
   const activeIdx = weeks.findIndex((w) => w.season_type === activeSelection.seasonType && w.week === activeSelection.week)
+
+  // Land on the selected week instead of at PRE 1. The strip is 21 buttons
+  // wide (PRE 1-3 + WEEK 1-18) and only ~4 fit on a phone, so with the
+  // scroller left at 0 the first thing you saw on entry was August preseason
+  // while the games below it were from the current week.
+  //
+  // Left-aligned rather than centred: by October everything to the left is
+  // over, and the weeks you might actually want next are the upcoming ones to
+  // the right. Scrolling back for history is still one swipe.
+  const scrollerRef = useRef(null)
+  const activeButtonRef = useRef(null)
+  const hasAutoScrolled = useRef(false)
+
+  useEffect(() => {
+    if (hasAutoScrolled.current) return
+    const scroller = scrollerRef.current
+    const button = activeButtonRef.current
+    // `weeks` arrives async, so the first render has no button to scroll to.
+    // Bail without arming the latch and the next render tries again.
+    if (!scroller || !button) return
+
+    // Measured off bounding rects rather than offsetLeft: offsetLeft is
+    // relative to the nearest positioned ancestor, which this scroller is not,
+    // so it would be measuring from the wrong origin.
+    const delta = button.getBoundingClientRect().left - scroller.getBoundingClientRect().left
+    scroller.scrollLeft += delta
+    hasAutoScrolled.current = true
+  }, [activeIdx, weeks.length])
+
   const goPrev = () => {
     if (activeIdx > 0) {
       const w = weeks[activeIdx - 1]
@@ -537,7 +566,7 @@ function NflWeekScrubber({ weeks, activeSelection, current, onPick }) {
           <polyline points="15 18 9 12 15 6" />
         </svg>
       </button>
-      <div className="flex-1 min-w-0 flex gap-1 overflow-x-auto scrollbar-hide">
+      <div ref={scrollerRef} className="flex-1 min-w-0 flex gap-1 overflow-x-auto scrollbar-hide">
         {weeks.map((w) => {
           const key = `${w.season_type}-${w.week}`
           const isSelected = w.season_type === activeSelection.seasonType && w.week === activeSelection.week
@@ -549,6 +578,7 @@ function NflWeekScrubber({ weeks, activeSelection, current, onPick }) {
           return (
             <button
               key={key}
+              ref={isSelected ? activeButtonRef : null}
               onClick={() => onPick({ week: w.week, seasonType: w.season_type })}
               className={`shrink-0 min-w-[72px] rounded-lg py-2 px-2 flex flex-col items-center transition-colors ${
                 isSelected
