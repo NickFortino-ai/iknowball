@@ -134,7 +134,15 @@ export default function MovePlayerSheet({
           )}
 
           {options.map((opt) => {
-            const p = opt.kind === 'player' ? opt.player : opt.occupant
+            // Keyed off the payload, not a `kind` string. This read
+            // `opt.kind === 'player'`, and buildMoveOptions never emits that
+            // kind — it emits 'swap', 'move' and 'fill' — so the test was
+            // always false and every fill option fell through to `occupant`,
+            // which fill options don't carry. The result: tapping an empty
+            // starter slot listed each eligible player as a dashed "Empty"
+            // row. Reading the field directly can't drift out of sync with
+            // the producer's naming.
+            const p = opt.player || opt.occupant
             return (
               <button
                 key={opt.key}
@@ -143,7 +151,11 @@ export default function MovePlayerSheet({
                 onClick={() => onPick(opt)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-bg-primary/40 border border-text-primary/10 hover:bg-bg-card-hover hover:border-accent/40 transition-colors disabled:opacity-50"
               >
-                <PositionBadge label={opt.kind === 'player' ? slotLabel(p.slot) : opt.label} />
+                {/* Filling an empty slot: badge where the player is coming
+                    FROM (BN, IR, another starting slot), since the slot he's
+                    going to is already named in the sheet's subtitle. Moving
+                    or swapping an existing player: badge the destination. */}
+                <PositionBadge label={opt.player ? slotLabel(opt.player.slot) : opt.label} />
                 {p ? (
                   <Line
                     name={p.nfl_players?.full_name}
