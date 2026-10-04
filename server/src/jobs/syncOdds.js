@@ -124,15 +124,55 @@ async function syncSport(sportKey, { force = false } = {}) {
       }
       // Sibling is also upcoming — keep the older row, update its odds &
       // start time, and skip creating a new one.
-      await supabase
+      //
+      // ADOPT the event id too. Without this the row goes on being maintained
+      // from `event` while still identified by an event id the feed no longer
+      // carries, which breaks two things at once: the orphan pruner sees an
+      // id missing from the feed and reports the row as abandoned (it is the
+      // opposite — it is the live one), and scoreGames, which looks games up
+      // by external_id alone, can never find an event to finalize it against.
+      //
+      // Seen on the 2026-10-04 Liberty @ Dream game: the row holding the
+      // correct 18:00Z start carried the dead id while a stuck 10:00Z phantom
+      // held the live one. Safe because this row is, by definition, the row
+      // we just decided `event` describes.
+      const adoptId = sibling.external_id !== event.id
+      if (adoptId) {
+        logger.info({
+          sportKey,
+          gameId: sibling.id,
+          matchup: `${event.away_team} @ ${event.home_team}`,
+          from: sibling.external_id,
+          to: event.id,
+        }, 'Adopting re-issued event id onto the surviving duplicate row')
+      }
+      const { error: sibErr } = await supabase
         .from('games')
         .update({
+          external_id: event.id,
           starts_at: event.commence_time,
           home_odds: homeOutcome?.price || null,
           away_odds: awayOutcome?.price || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', sibling.id)
+      if (sibErr) {
+        // external_id is UNIQUE, so adoption loses to a row that still holds
+        // the id — typically a phantom that has aged into 'live' and is no
+        // longer reachable by the pruner. Keep the odds/time refresh rather
+        // than dropping the update entirely, and leave a breadcrumb naming
+        // the collision, since resolving it needs the other row removed.
+        logger.warn({ sportKey, gameId: sibling.id, eventId: event.id, err: sibErr.message }, 'Could not adopt event id onto sibling — retrying without it')
+        await supabase
+          .from('games')
+          .update({
+            starts_at: event.commence_time,
+            home_odds: homeOutcome?.price || null,
+            away_odds: awayOutcome?.price || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', sibling.id)
+      }
       upserted++
       continue
     }
