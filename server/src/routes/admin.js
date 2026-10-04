@@ -1633,7 +1633,11 @@ router.post('/dfs/generate-salaries', requireFullAdmin, async (req, res) => {
   // before users see them. Auto cron path chains publishSalaries after
   // generateSalaries so the automatic behavior is unchanged.
   res.json({ message: 'NFL salary generation started', week, season })
-  generateSalaries(week, season).catch((err) => logger.error({ err, week, season }, 'Background NFL salary generation failed'))
+  // force: an admin pressing Generate on a week that is already priced means
+  // it deliberately. generateSalaries otherwise refuses to reprice an
+  // existing week, because the unattended cron was rewriting live slates out
+  // from under rosters that had already been built against them.
+  generateSalaries(week, season, { force: true }).catch((err) => logger.error({ err, week, season }, 'Background NFL salary generation failed'))
 })
 
 // Publish all draft rows for a (week, season) so users can see them.

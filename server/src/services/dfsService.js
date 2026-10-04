@@ -727,8 +727,8 @@ function usesNewCurve(season, week) {
   return week >= NEW_CURVE_FROM.week
 }
 
-export async function generateSalaries(week, season) {
-  logger.info({ week, season }, 'Generating DFS salaries')
+export async function generateSalaries(week, season, { force = false } = {}) {
+  logger.info({ week, season, force }, 'Generating DFS salaries')
 
   // Pre-fetch existing rows so we can distinguish INSERTs from UPDATEs.
   // Auto-hide rules (bye week, deep-bench QB) should only apply on the
@@ -748,6 +748,26 @@ export async function generateSalaries(week, season) {
       .eq('nfl_week', week)
       .order('player_id')
   )
+  // A week is priced ONCE. Without this, the daily 3 AM ET cron re-ran the
+  // pricing algorithm over the CURRENT week every morning — including Sunday,
+  // after rosters were built. Mack Hollins went $5,800 -> $6,100 at 3 AM on a
+  // game day: his owner dropped him to look around, got $5,800 of cap back,
+  // and could no longer afford the $6,100 to undo it. The pool filter is
+  // `salary <= remaining`, so he didn't even render as unaffordable — he
+  // simply wasn't in the list.
+  //
+  // Repricing a live slate is never right. A salary is a contract with
+  // everyone who already built against it, and it has to hold for the week.
+  // The admin's Generate button passes force so a deliberate reprice still
+  // works; only the unattended path is blocked.
+  if (!force && (existingRows || []).length > 0) {
+    logger.info(
+      { week, season, existing: existingRows.length },
+      'DFS salaries already exist for this week — skipping regeneration (pass force to reprice)',
+    )
+    return { generated: 0, updated: 0, skipped: true, reason: 'already_priced' }
+  }
+
   const existingPlayerIds = new Set((existingRows || []).map((r) => r.player_id))
   // Existing hidden state, so a regen can carry it forward explicitly
   // instead of omitting the key (see the upsert payload below).
