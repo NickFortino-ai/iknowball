@@ -5719,23 +5719,56 @@ export async function detectAndNotifyStatCorrections(week, season, newRows, oldS
   // Teams whose week-N game has finished are the only ones eligible. A real
   // correction lands hours or days later, always against a final game, so
   // nothing legitimate is lost by waiting for the whistle.
+  // Scoped to THIS WEEK's games. The window used to be "any final game in the
+  // trailing 21 days", which is a different question entirely: a team that
+  // finished its week 2 game is inside a 21-day window for the whole of weeks
+  // 3 and 4, so it stayed permanently eligible and the guard never actually
+  // guarded anything. On 2026-10-04 the Colts and Commanders were mid-game in
+  // London and owners got "stat correction" pushes for Tyler Warren and
+  // Jacory Croskey-Merritt — live points, both teams qualifying on finals
+  // from earlier weeks.
   const finalTeams = new Set()
   try {
     const { data: sportRow } = await supabase
       .from('sports').select('id').eq('key', 'americanfootball_nfl').single()
-    if (sportRow) {
-      const { data: weekGames } = await supabase
-        .from('games')
-        .select('home_team, away_team, status')
-        .eq('sport_id', sportRow.id)
-        .eq('status', 'final')
-        .gte('starts_at', new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString())
-      for (const g of weekGames || []) {
-        const h = NFL_FULL_TO_ABBR[g.home_team]
-        const a = NFL_FULL_TO_ABBR[g.away_team]
-        if (h) finalTeams.add(h)
-        if (a) finalTeams.add(a)
-      }
+
+    // The week's bounds come from nfl_schedule, which is the only place that
+    // knows which dates belong to which week.
+    const { data: weekSchedule } = await supabase
+      .from('nfl_schedule')
+      .select('game_date')
+      .eq('season', Number(season))
+      .eq('week', Number(week))
+      .not('game_date', 'is', null)
+      .order('game_date', { ascending: true })
+
+    if (!sportRow || !weekSchedule?.length) {
+      logger.warn({ week, season }, 'No schedule for week — skipping correction notifications')
+      return { detected: 0, notified: 0 }
+    }
+
+    // game_date is the ET calendar date while starts_at is UTC, so a Monday
+    // night kickoff (00:15Z) lands on the NEXT UTC day. Closing the window at
+    // the last game_date would drop that game and leave both its teams
+    // permanently ineligible — the mirror of the bug above. Same +2 days the
+    // DFS kickoff lock uses.
+    const rangeStart = weekSchedule[0].game_date
+    const rangeEnd = weekSchedule[weekSchedule.length - 1].game_date
+    const rangeEndUtc = new Date(new Date(`${rangeEnd}T00:00:00Z`).getTime() + 2 * 86400000).toISOString()
+
+    const { data: weekGames } = await supabase
+      .from('games')
+      .select('home_team, away_team, status')
+      .eq('sport_id', sportRow.id)
+      .eq('status', 'final')
+      .gte('starts_at', `${rangeStart}T00:00:00Z`)
+      .lt('starts_at', rangeEndUtc)
+
+    for (const g of weekGames || []) {
+      const h = NFL_FULL_TO_ABBR[g.home_team]
+      const a = NFL_FULL_TO_ABBR[g.away_team]
+      if (h) finalTeams.add(h)
+      if (a) finalTeams.add(a)
     }
   } catch (err) {
     logger.warn({ err: err.message }, 'Could not resolve final games — skipping correction notifications')
