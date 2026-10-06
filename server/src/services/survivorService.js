@@ -226,18 +226,36 @@ export async function submitTouchdownPick(leagueId, userId, weekId, playerId) {
     throw err
   }
 
-  // Find the player's next game to determine the week and lock time
+  // Find the player's next game to determine the week and lock time.
+  //
+  // Scoped to NFL. This read every sport's upcoming games and then matched on
+  // `home_team.includes(player.team)` — a SUBSTRING test against a two-letter
+  // abbreviation. "UNLV Rebels".includes("LV") is true, so Ashton Jeanty (LV)
+  // was filed against California @ UNLV, a college game that kicked a day
+  // before the Raiders played. Nothing ever scored the pick: the NFL survivor
+  // scorer resolves picks by NFL game, and this one pointed into NCAAF. It sat
+  // 'locked' through the week while every other pick in the league settled.
+  // "LA" matches "UCLA Bruins" the same way.
   const now = new Date()
+  const { data: nflSport } = await supabase
+    .from('sports').select('id').eq('key', 'americanfootball_nfl').single()
+  if (!nflSport) {
+    const err = new Error('NFL sport row missing')
+    err.status = 500
+    throw err
+  }
   const { data: upcomingGames } = await supabase
     .from('games')
     .select('id, starts_at, home_team, away_team')
+    .eq('sport_id', nflSport.id)
     .eq('status', 'upcoming')
     .gte('starts_at', now.toISOString())
     .order('starts_at', { ascending: true })
 
-  // Match player's team to a game
+  // Exact abbreviation only. The substring arms are gone: they could never
+  // make a correct match the abbreviation lookup would miss, and every match
+  // unique to them was a false one.
   const playerGame = (upcomingGames || []).find((g) =>
-    g.home_team?.includes(player.team) || g.away_team?.includes(player.team) ||
     player.team === getTeamAbbrev(g.home_team) || player.team === getTeamAbbrev(g.away_team)
   )
 
