@@ -769,6 +769,14 @@ const NFL_GAME_COLS = (statMap) => ({
   pass_yds: parseInt(statMap['pass.YDS'] ?? statMap['PYDS'] ?? statMap['Pass YDS']) || 0,
   pass_td: parseInt(statMap['pass.TD'] ?? statMap['PTD'] ?? statMap['Pass TD']) || 0,
   int: parseInt(statMap['INT']) || 0,
+  // Carries. The client's RB game log has had a CAR column since 071ebd99,
+  // but this mapper never produced the key, so every row rendered a dash —
+  // only the our-stats fallback below (which runs just when ESPN returns
+  // nothing) was supplying it. ESPN labels rushing attempts 'CAR'
+  // (names: 'rushingAttempts'), and CAR appears once per row, so the flat key
+  // is safe — the statMap builder lists it among the unambiguous ones it
+  // deliberately keeps unqualified.
+  rush_att: parseInt(statMap['CAR'] ?? statMap['rush.CAR'] ?? statMap['ATT']) || 0,
   rush_yds: parseInt(statMap['rush.YDS'] ?? statMap['RYDS'] ?? statMap['Rush YDS']) || 0,
   rush_td: parseInt(statMap['rush.TD'] ?? statMap['RTD'] ?? statMap['Rush TD']) || 0,
   rec: parseInt(statMap['REC']) || 0,
