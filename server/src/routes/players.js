@@ -799,6 +799,66 @@ const NFL_GAME_COLS = (statMap) => ({
   def_fum_rec: parseInt(statMap['FR']) || 0,
 })
 
+// Columns we can serve a game log from WITHOUT ESPN, straight out of
+// nfl_player_stats. Shared by both no-ESPN paths below.
+const NFL_OUR_STATS_SELECT =
+  'week, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, ' +
+  'def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, fgm, fgm_50_plus, ' +
+  'fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm'
+
+function nflStatRowToGameCols(r) {
+  return {
+    pass_yds: Number(r.pass_yd) || 0,
+    pass_td: r.pass_td || 0,
+    int: r.pass_int || 0,
+    rush_att: r.rush_att || 0,
+    rush_yds: Number(r.rush_yd) || 0,
+    rush_td: r.rush_td || 0,
+    rec: r.rec || 0,
+    rec_yds: Number(r.rec_yd) || 0,
+    rec_td: r.rec_td || 0,
+    fum: r.fum_lost || 0,
+    def_sack: Number(r.def_sack) || 0,
+    def_int: r.def_int || 0,
+    def_fum_rec: r.def_fum_rec || 0,
+    def_td: r.def_td || 0,
+    def_safety: r.def_safety || 0,
+    def_pts_allowed: r.def_pts_allowed ?? null,
+    fgm: r.fgm || 0,
+    fgm_50_plus: r.fgm_50_plus || 0,
+    fgmiss: (r.fgmiss_0_39 || 0) + (r.fgmiss_40_49 || 0) + (r.fgmiss_50_plus || 0),
+    xpm: r.xpm || 0,
+  }
+}
+
+/**
+ * Merge our own weekly stats onto schedule rows. Weeks we have no stats for
+ * are returned untouched, so future games still render as empty schedule rows.
+ *
+ * Returns { rows, matchedWeeks } — callers that need "only the weeks he has
+ * actually played" filter on matchedWeeks rather than sniffing for the
+ * presence of a stat field, which would misread a legitimate zero.
+ */
+async function attachOurNflStats(scheduleRows, playerId, seasonYear) {
+  const rows = scheduleRows || []
+  if (!playerId || !rows.length) return { rows, matchedWeeks: new Set() }
+  const { data: ourStats } = await supabase
+    .from('nfl_player_stats')
+    .select(NFL_OUR_STATS_SELECT)
+    .eq('player_id', playerId)
+    .eq('season', seasonYear)
+  if (!ourStats?.length) return { rows, matchedWeeks: new Set() }
+  const byWeek = new Map(ourStats.map((r) => [r.week, r]))
+  const matchedWeeks = new Set()
+  const merged = rows.map((row) => {
+    const r = byWeek.get(row.week)
+    if (!r) return row
+    matchedWeeks.add(row.week)
+    return { ...row, ...nflStatRowToGameCols(r) }
+  })
+  return { rows: merged, matchedWeeks }
+}
+
 // Player game log — last 10 games (supports NBA, MLB, and NFL)
 router.get('/player/:espnId/gamelog', async (req, res) => {
   const { espnId: rawId } = req.params
@@ -955,6 +1015,19 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
           fallbackGames.push({ week: nflPlayerByeWeek, date: null, opponent: null, is_home: null, on_bye: true, result: null, fantasy_pts: null })
         }
         fallbackGames.sort((a, b) => (a.week ?? 999) - (b.week ?? 999))
+
+        // Attach the stats we already hold. This branch used to return the
+        // schedule and nothing else, and it is the ONLY branch a team defense
+        // can reach: a D/ST has no espn_id (nfl_players keys it by team
+        // abbreviation), so the ESPN athlete fetch above is always for
+        // /athletes/null/ and never succeeds. The nfl_player_stats fallback
+        // written for exactly this case sits ~180 lines below, after this
+        // early return, so no defense ever reached it — every D/ST modal
+        // showed a full schedule with a dash in every stat column.
+        //
+        // It also helps any offensive player ESPN 404s or rate-limits on,
+        // which previously degraded to a bare schedule for the same reason.
+        fallbackGames = (await attachOurNflStats(fallbackGames, blurbLookupId, seasonYear)).rows
       }
       return res.json({ games: fallbackGames, averages: null, sport, isPitcher: false, blurbs, blurb: blurbs[0] || null })
     }
@@ -1129,48 +1202,15 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     // which is exactly how it looked. We call ESPN every five minutes for
     // injuries and got per-host blocked once already (2026-08-26), so a read
     // path for data we own should not depend on them answering.
+    // Same merge the not-OK branch above performs, via the shared helper —
+    // this used to be a second, hand-maintained copy of the field mapping.
+    // Only the weeks we actually hold stats for are kept here, since the
+    // remaining schedule is re-attached as `upcomingUnplayed` just below.
     let gamesFromOurStats = []
     if (isNFL && games.length === 0 && blurbLookupId) {
-      const { data: ourStats } = await supabase
-        .from('nfl_player_stats')
-        .select('week, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, fgm, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm')
-        .eq('player_id', blurbLookupId)
-        .eq('season', seasonYear)
-      const byWeek = new Map((ourStats || []).map((r) => [r.week, r]))
-      if (byWeek.size) {
-        gamesFromOurStats = nflUpcoming
-          .filter((u) => byWeek.has(u.week))
-          .map((u) => {
-            const r = byWeek.get(u.week)
-            return {
-              ...u,
-              pass_yds: Number(r.pass_yd) || 0,
-              pass_td: r.pass_td || 0,
-              int: r.pass_int || 0,
-              rush_att: r.rush_att || 0,
-              rush_yds: Number(r.rush_yd) || 0,
-              rush_td: r.rush_td || 0,
-              rec: r.rec || 0,
-              rec_yds: Number(r.rec_yd) || 0,
-              rec_td: r.rec_td || 0,
-              fum: r.fum_lost || 0,
-              // A team D/ST has NO espn_id — nfl_players stores it under the
-              // team abbreviation — so ESPN's athlete gamelog can never serve
-              // one. This is not a fallback for defenses, it is the only
-              // source, which is why MIN D/ST showed a full schedule and not
-              // a single stat.
-              def_sack: Number(r.def_sack) || 0,
-              def_int: r.def_int || 0,
-              def_fum_rec: r.def_fum_rec || 0,
-              def_td: r.def_td || 0,
-              def_safety: r.def_safety || 0,
-              def_pts_allowed: r.def_pts_allowed ?? null,
-              fgm: r.fgm || 0,
-              fgm_50_plus: r.fgm_50_plus || 0,
-              fgmiss: (r.fgmiss_0_39 || 0) + (r.fgmiss_40_49 || 0) + (r.fgmiss_50_plus || 0),
-              xpm: r.xpm || 0,
-            }
-          })
+      const { rows: merged, matchedWeeks } = await attachOurNflStats(nflUpcoming, blurbLookupId, seasonYear)
+      gamesFromOurStats = merged.filter((g) => matchedWeeks.has(g.week))
+      if (gamesFromOurStats.length) {
         logger.info(
           { espnId, week_rows: gamesFromOurStats.length },
           'ESPN gamelog empty for NFL player — served stats from nfl_player_stats'
