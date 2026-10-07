@@ -22,6 +22,16 @@ const SPORTS = [
   'soccer_world_cup',
 ]
 
+// Categories a COMPLETE top-scorer capture has, per team, for sports whose
+// extractor emits more than one. Used to tell a partial capture from a
+// finished one — see retryStaleTopScorers. Only MLB splits its leaders by
+// category today (extractMlbTopPerformers emits a hitter and a pitcher);
+// everything else writes a single 'overall' row per team, where "any rows at
+// all" is already the right test.
+const EXPECTED_SCORER_CATEGORIES = {
+  baseball_mlb: ['hitter', 'pitcher'],
+}
+
 async function syncSportLiveScores(sportKey) {
   // Smart gate: only fetch if there are live or recently-started games
   const { data: sport } = await supabase
@@ -333,10 +343,28 @@ async function retryStaleTopScorers() {
 
     const { data: scorerRows } = await supabase
       .from('game_top_scorers')
-      .select('points')
+      .select('points, team, category')
       .eq('game_id', game.id)
 
-    const needsRefresh = !scorerRows?.length || scorerRows.every((r) => (r.points || 0) === 0)
+    // A PARTIAL capture counts as stale too. This asked "do we have any
+    // rows", not "do we have the complete set", so a box score read after
+    // the batting lines populated but before the pitching ones stored two
+    // hitters, looked answered, and was never retried. The 2026-10-04
+    // Dodgers/Braves game sat like that: both hitters, neither pitcher,
+    // while ESPN had full pitching for all 13 pitchers who appeared.
+    const expected = EXPECTED_SCORER_CATEGORIES[sportKey]
+    let incomplete = false
+    if (expected && scorerRows?.length) {
+      const categoriesByTeam = new Map()
+      for (const r of scorerRows) {
+        if (!categoriesByTeam.has(r.team)) categoriesByTeam.set(r.team, new Set())
+        categoriesByTeam.get(r.team).add(r.category)
+      }
+      incomplete = categoriesByTeam.size < 2
+        || [...categoriesByTeam.values()].some((cats) => expected.some((c) => !cats.has(c)))
+    }
+
+    const needsRefresh = !scorerRows?.length || scorerRows.every((r) => (r.points || 0) === 0) || incomplete
     if (!needsRefresh) continue
 
     try {
