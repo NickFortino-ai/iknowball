@@ -445,7 +445,13 @@ export default function FantasyMyTeam({ league }) {
     const seen = blurbReadState[READ_KINDS.BLURB] || {}
     let total = 0
     let unread = 0
-    for (const r of roster) {
+    // `roster` is undefined until the fetch lands: applyWeekOverlay returns
+    // its argument untouched when falsy, so serverRoster — and therefore
+    // roster — is undefined on the first render. The pre-existing uses are
+    // both behind a pendingSlots guard and never saw it; this memo runs
+    // immediately, and iterating undefined threw "re is not iterable" on
+    // every My Team load.
+    for (const r of roster || []) {
       const latestId = blurbIds.get(r.player_id)
       if (!latestId) continue
       total++
