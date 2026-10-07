@@ -1355,6 +1355,18 @@ export function useBlurbPlayerIds(leagueId) {
   })
 }
 
+// Latest published note PLUS its text for each player on my roster — the
+// Updates sheet on My Team. useBlurbPlayerIds covers the dots and is cached
+// separately; this is only fetched when the sheet opens.
+export function useFantasyRosterUpdates(leagueId, enabled = true) {
+  return useQuery({
+    queryKey: ['fantasy', leagueId, 'roster-updates'],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/roster-updates`),
+    enabled: !!leagueId && enabled,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export function useFantasyTransactions(leagueId) {
   return useQuery({
     queryKey: ['leagues', leagueId, 'fantasy', 'transactions'],

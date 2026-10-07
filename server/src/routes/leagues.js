@@ -1850,6 +1850,63 @@ router.get('/:id/fantasy/blurb-ids', requireAuth, async (req, res) => {
   res.json([...seen.entries()].map(([player_id, latest_id]) => ({ player_id, latest_id })))
 })
 
+// Latest published blurb CONTENT for every player on the caller's roster,
+// for the "Updates" sheet on My Team. /blurb-ids above answers "who has an
+// unread update" but carries no text, so the sheet needs this.
+//
+// `latest_id` is picked the SAME way /blurb-ids picks it — newest by
+// created_at, first occurrence per player. These two must agree: the unread
+// dot compares the user's stored seen-id against blurb-ids' latest_id, so if
+// this endpoint nominated a different row as "latest", marking it seen would
+// store an id the dot never checks and the dot would never clear.
+router.get('/:id/fantasy/roster-updates', requireAuth, async (req, res) => {
+  const { data: roster } = await supabase
+    .from('fantasy_rosters')
+    .select('player_id, slot, nfl_players(id, full_name, position, team, headshot_url, injury_status)')
+    .eq('league_id', req.params.id)
+    .eq('user_id', req.user.id)
+
+  const playerIds = [...new Set((roster || []).map((r) => r.player_id).filter(Boolean))]
+  if (!playerIds.length) return res.json([])
+
+  // Scoped to this roster (~15 players), so unlike /blurb-ids this doesn't
+  // need to page the whole published-blurb table.
+  const { data: blurbs } = await supabase
+    .from('player_blurbs')
+    .select('id, player_id, content, created_at, published_at, generated_by')
+    .eq('status', 'published')
+    .in('player_id', playerIds)
+    .order('created_at', { ascending: false })
+
+  const latestByPlayer = new Map()
+  for (const b of blurbs || []) {
+    if (!latestByPlayer.has(b.player_id)) latestByPlayer.set(b.player_id, b)
+  }
+
+  const out = []
+  for (const r of roster || []) {
+    const blurb = latestByPlayer.get(r.player_id)
+    if (!blurb) continue // nothing to show for a player with no published note
+    out.push({
+      player_id: r.player_id,
+      slot: r.slot,
+      player_name: r.nfl_players?.full_name || null,
+      position: r.nfl_players?.position || null,
+      team: r.nfl_players?.team || null,
+      headshot_url: r.nfl_players?.headshot_url || null,
+      injury_status: r.nfl_players?.injury_status || null,
+      latest_id: blurb.id,
+      content: blurb.content,
+      source: blurb.generated_by,
+      published_at: blurb.published_at || blurb.created_at,
+    })
+  }
+  // Newest first. The client re-sorts unread above read; this just makes the
+  // within-group order sensible.
+  out.sort((a, b) => String(b.published_at || '').localeCompare(String(a.published_at || '')))
+  res.json(out)
+})
+
 // Set fantasy team name
 router.patch('/:id/fantasy/team-name', requireAuth, async (req, res) => {
   const { team_name } = req.body

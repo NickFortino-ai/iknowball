@@ -3,7 +3,7 @@ import { buildStarterSlots as buildSlots, SLOT_LABELS, SLOT_LABELS_SHORT } from 
 import { applyMove, toSlotAssignments } from '../../lib/lineupMoves'
 import MovePlayerSheet from './MovePlayerSheet'
 import PositionBadge from './PositionBadge'
-import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useResolveIneligibleIr, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds, useFantasySettings, useGlobalRank, useFantasyLineupHistory, useFantasyWeeklyLineup, useSetFantasyWeeklyLineup, useFantasyWeekProjections } from '../../hooks/useLeagues'
+import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useResolveIneligibleIr, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds, useFantasySettings, useGlobalRank, useFantasyLineupHistory, useFantasyWeeklyLineup, useSetFantasyWeeklyLineup, useFantasyWeekProjections, useFantasyRosterUpdates } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { SkeletonRows, SkeletonBlock } from '../ui/Skeleton'
 import { toast } from '../ui/Toast'
@@ -12,6 +12,8 @@ import PlayerDetailModal from './PlayerDetailModal'
 import FantasyGlobalRankModal from './FantasyGlobalRankModal'
 import { ProposeTradeModal } from './FantasyTrades'
 import BlurbDot, { markBlurbSeen } from './BlurbDot'
+import RosterUpdatesSheet from './RosterUpdatesSheet'
+import { useReadState, READ_KINDS } from '../../hooks/useReadState'
 import InjuryBadge from '../ui/InjuryBadge'
 import { TradeDropModal } from './FantasyTrades'
 import { isIrEligible } from '../../lib/injuryStatus'
@@ -337,6 +339,13 @@ export default function FantasyMyTeam({ league }) {
     () => new Map((blurbIdsList || []).map((r) => [r.player_id, r.latest_id])),
     [blurbIdsList],
   )
+  // Same source the row dots read, so the pill's badge can never disagree
+  // with the dots sitting right below it.
+  const blurbReadState = useReadState()
+  // Updates sheet. The content fetch is deferred until the sheet is opened —
+  // the dots themselves only need blurbIds, which is already cached.
+  const [showUpdates, setShowUpdates] = useState(false)
+  const { data: rosterUpdates, isLoading: updatesLoading } = useFantasyRosterUpdates(league.id, showUpdates)
   const respond = useRespondToTrade(league.id)
   const setLineup = useSetFantasyLineup(league.id)
   const dropPlayer = useDropRosterPlayer(league.id)
@@ -428,6 +437,24 @@ export default function FantasyMyTeam({ league }) {
         : r
     ))
   }, [serverRoster, pendingSlots])
+
+  // Pill visibility + badge. Derived from blurbIds and read state, which are
+  // already loaded for the row dots, so neither costs an extra request — the
+  // badge is correct before the sheet's content has ever been fetched.
+  const rosterBlurbState = useMemo(() => {
+    const seen = blurbReadState[READ_KINDS.BLURB] || {}
+    let total = 0
+    let unread = 0
+    for (const r of roster) {
+      const latestId = blurbIds.get(r.player_id)
+      if (!latestId) continue
+      total++
+      if (seen[r.player_id] !== latestId) unread++
+    }
+    return { total, unread }
+  }, [roster, blurbIds, blurbReadState])
+  const rosterHasAnyBlurb = rosterBlurbState.total > 0
+  const unreadUpdateCount = rosterBlurbState.unread
 
   // The server has caught up — stop overriding it.
   useEffect(() => {
@@ -952,9 +979,39 @@ export default function FantasyMyTeam({ league }) {
         />
       )}
 
+      {/* Mounted only while open: the sheet snapshots unread state in its
+          initial render, so keeping it mounted would freeze that snapshot
+          against a roster that has since changed. */}
+      {showUpdates && (
+        <RosterUpdatesSheet
+          updates={rosterUpdates}
+          isLoading={updatesLoading}
+          onClose={() => setShowUpdates(false)}
+        />
+      )}
+
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center gap-3">
           <h3 className="text-base font-semibold text-text-primary">Starting Lineup</h3>
+          {/* Every note on the roster in one place, rather than hunting the
+              orange dots row by row. Rendered whenever the roster has any
+              note at all — not only when something is unread — so the
+              control doesn't appear and vanish between visits. The count
+              badge is what carries the urgency. */}
+          {rosterHasAnyBlurb && (
+            <button
+              type="button"
+              onClick={() => setShowUpdates(true)}
+              className="shrink-0 flex items-center gap-1.5 rounded-full border border-text-primary/40 px-3 py-1 text-xs font-semibold text-text-primary hover:bg-bg-card-hover transition-colors"
+            >
+              Updates
+              {unreadUpdateCount > 0 && (
+                <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-white text-[10px] font-bold flex items-center justify-center">
+                  {unreadUpdateCount}
+                </span>
+              )}
+            </button>
+          )}
           {/* Column label for the stat line PlayerRow renders on desktop.
               Names the week being viewed — the column shows that week's
               stats, never a season total. Hidden in edit mode (the stat
