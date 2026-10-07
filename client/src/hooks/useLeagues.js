@@ -1358,12 +1358,26 @@ export function useBlurbPlayerIds(leagueId) {
 // Latest published note PLUS its text for each player on my roster — the
 // Updates sheet on My Team. useBlurbPlayerIds covers the dots and is cached
 // separately; this is only fetched when the sheet opens.
+//
+// Deliberately uncached. The pill's badge is derived live from the roster and
+// blurbIds queries, so adding a player updated the count immediately while
+// this list was still serving a 5-minute-old snapshot taken before the add:
+// the new players were missing from the sheet, nothing could mark them seen,
+// and the badge sat there refusing to clear.
+//
+// gcTime 0 as well as staleTime 0 — not belt and braces. The sheet snapshots
+// unread state the first time data arrives, so being handed a cached array
+// first would freeze that stale snapshot before the refetch landed. Dropping
+// the cache on close means every open starts from no data and freezes on
+// something fresh. It costs one request per open, and the query only runs
+// while the sheet is actually open.
 export function useFantasyRosterUpdates(leagueId, enabled = true) {
   return useQuery({
     queryKey: ['fantasy', leagueId, 'roster-updates'],
     queryFn: () => api.get(`/leagues/${leagueId}/fantasy/roster-updates`),
     enabled: !!leagueId && enabled,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
+    gcTime: 0,
   })
 }
 
