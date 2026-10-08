@@ -32,6 +32,11 @@ const EXPECTED_SCORER_CATEGORIES = {
   baseball_mlb: ['hitter', 'pitcher'],
 }
 
+// How far back retryStaleTopScorers will look, and how many games it will
+// repair in any single pass. See that function for why the window is wide.
+const RETRY_WINDOW_HOURS = 72
+const MAX_RETRIES_PER_PASS = 5
+
 async function syncSportLiveScores(sportKey) {
   // Smart gate: only fetch if there are live or recently-started games
   const { data: sport } = await supabase
@@ -327,17 +332,33 @@ async function syncSportLiveScores(sportKey) {
 // the original fire-and-forget call hit ESPN before its box score had
 // populated stats).
 async function retryStaleTopScorers() {
-  const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
+  // 72h, not 6. Six hours gives a partial capture one short shot at being
+  // repaired, and if anything goes wrong in that span — an ESPN hiccup, a
+  // deploy, a slow pass — the game ages out and stays broken forever. Seven
+  // MLB playoff games were sitting half-captured when this was widened,
+  // every one of them a game whose window had closed.
+  //
+  // The extra reach costs nothing in the common case: a complete game exits
+  // on the needsRefresh check below without touching ESPN. Only genuinely
+  // incomplete games cost a lookup, and MAX_RETRIES_PER_PASS bounds how many
+  // of those run in any one minute.
+  const cutoff = new Date(Date.now() - RETRY_WINDOW_HOURS * 60 * 60 * 1000).toISOString()
   const { data: finalGames } = await supabase
     .from('games')
     .select('id, home_team, away_team, starts_at, sports!inner(key)')
     .eq('status', 'final')
     .gte('starts_at', cutoff)
+    .order('starts_at', { ascending: false })
 
   if (!finalGames?.length) return 0
 
   let refreshed = 0
   for (const game of finalGames) {
+    // Newest first, so a backlog drains from the games people are looking at
+    // now. Capped per pass because each retry is a pair of ESPN calls and
+    // this runs every minute — we have been per-host blocked by ESPN once
+    // already.
+    if (refreshed >= MAX_RETRIES_PER_PASS) break
     const sportKey = game.sports?.key
     if (!SPORTS.includes(sportKey)) continue
 
