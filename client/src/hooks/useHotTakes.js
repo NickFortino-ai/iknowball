@@ -163,6 +163,14 @@ export function useBookmarkedHotTakes() {
   })
 }
 
+// Images per post. Nothing in the rendering constrains this — the feed card
+// is a carousel, not a fixed grid, so it shows one image at a time whatever
+// the count, and the dot indicators are 1.5 units wide with a 1.5 gap, so
+// even twenty fit across a phone. The old cap of 4 matched Twitter's grid
+// layout, which this UI never used. Kept finite because each image is a
+// separate upload with no progress indicator.
+const MAX_IMAGES_PER_POST = 10
+
 function resizeImage(file, maxWidth = 2400, quality = 0.92) {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -242,8 +250,8 @@ export function useHotTakeImageUpload() {
       return
     }
 
-    if (imageFiles.length >= 4) {
-      toast('Maximum 4 images per post', 'error')
+    if (imageFiles.length >= MAX_IMAGES_PER_POST) {
+      toast(`Maximum ${MAX_IMAGES_PER_POST} images per post`, 'error')
       return
     }
 
@@ -281,8 +289,25 @@ export function useHotTakeImageUpload() {
     }
   }
 
+  // Budget computed ONCE from current state, then the batch is sliced to fit.
+  // selectImage's own check reads imageFiles.length out of its closure while
+  // appending via a functional update, and this loop doesn't await, so React
+  // never re-renders between iterations — every file in one multi-select saw
+  // the same stale count and the cap only ever applied across separate
+  // interactions. Pasting twenty at once sailed past it and would now fail
+  // server validation instead.
   function selectImages(files) {
-    for (const file of files) {
+    const list = Array.from(files || [])
+    if (!list.length) return
+    const room = MAX_IMAGES_PER_POST - imageFiles.length
+    if (room <= 0) {
+      toast(`Maximum ${MAX_IMAGES_PER_POST} images per post`, 'error')
+      return
+    }
+    if (list.length > room) {
+      toast(`Only ${room} more image${room === 1 ? '' : 's'} will fit — ${MAX_IMAGES_PER_POST} per post.`, 'error')
+    }
+    for (const file of list.slice(0, room)) {
       selectImage(file)
     }
   }

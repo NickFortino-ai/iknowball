@@ -19,7 +19,9 @@ const hotTakeSchema = z.object({
   team_tags: z.array(z.string().max(50)).max(5).optional(),
   sport_key: z.string().max(50).optional(),
   image_url: z.string().url().optional(),
-  image_urls: z.array(z.string().url()).max(4).optional(),
+  // Mirrors MAX_IMAGES_PER_POST in client/src/hooks/useHotTakes.js — the
+  // feed card carousel imposes no limit of its own.
+  image_urls: z.array(z.string().url()).max(10).optional(),
   video_url: z.string().url().optional(),
   stream_video_uid: z.string().max(128).optional(),
   user_tags: z.array(z.string().uuid()).max(3).optional(),
