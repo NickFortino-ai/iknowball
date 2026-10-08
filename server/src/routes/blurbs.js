@@ -143,6 +143,29 @@ router.post('/publish-espn', async (req, res) => {
   }
 })
 
+// Pull ESPN's injury prose for a sport and queue it as drafts.
+//
+// NBA/WNBA/MLB only — NFL has its own path in syncInjuries.js, which runs on
+// its own schedule and keys on Sleeper ids rather than ESPN ones.
+//
+// Runs in the BACKGROUND: MLB alone is ~280 injuries and each one is a
+// read-archive-insert round trip, which comfortably exceeds a request
+// timeout. The panel re-fetches its player list to pick up the new drafts.
+router.post('/sync-espn', async (req, res) => {
+  const sport = String(req.body?.sport || '').toLowerCase()
+  if (!['nba', 'wnba', 'mlb'].includes(sport)) {
+    return res.status(400).json({ error: 'sport must be one of nba, wnba, mlb' })
+  }
+  res.json({ message: `Syncing ESPN ${sport.toUpperCase()} notes in the background`, sport })
+  try {
+    const { syncEspnInjuryBlurbs } = await import('../services/playerBlurbService.js')
+    const result = await syncEspnInjuryBlurbs(sport)
+    logger.info({ result }, 'ESPN injury blurb sync finished')
+  } catch (err) {
+    logger.error({ err, sport }, 'ESPN injury blurb sync failed')
+  }
+})
+
 // Create a manual blurb — stamps written_by with the caller
 router.post('/', async (req, res) => {
   const { player_id, content, season, week, sport } = req.body

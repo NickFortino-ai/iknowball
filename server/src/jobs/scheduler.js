@@ -199,6 +199,24 @@ export function startScheduler() {
       try { await syncInjuries() } catch (err) { logger.error({ err }, 'Injury sync job failed') }
     })
     logger.info('Injury sync scheduled: every 5 minutes')
+
+    // ESPN injury prose for the non-NFL sports, queued as drafts for review.
+    // Hourly rather than every 5 minutes: these are written when a report
+    // changes, and writeEspnBlurb is a no-op when the text is unchanged, so a
+    // tighter loop would be ~430 wasted round trips an hour. NFL keeps its own
+    // 5-minute cadence inside syncInjuries, where it rides along with the
+    // injury_status patching that fantasy scoring depends on.
+    cron.schedule('7 * * * *', async () => {
+      const { syncEspnInjuryBlurbs } = await import('../services/playerBlurbService.js')
+      for (const sport of ['nba', 'wnba', 'mlb']) {
+        try {
+          await syncEspnInjuryBlurbs(sport)
+        } catch (err) {
+          logger.error({ err, sport }, 'ESPN injury blurb sync failed')
+        }
+      }
+    })
+    logger.info('ESPN injury blurbs (NBA/WNBA/MLB) scheduled: hourly')
   }
 
   // NBA/MLB DFS scoring jobs run unconditionally. The stats they scrape from

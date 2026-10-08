@@ -34,6 +34,7 @@ const INJURY_FILTERS = [
 
 export default function PlayerBlurbsPanel() {
   const [sport, setSport] = useState('nfl')
+  const [syncingEspn, setSyncingEspn] = useState(false)
   const [position, setPosition] = useState('all')
   const [players, setPlayers] = useState([])
   const [loading, setLoading] = useState(false)
@@ -141,6 +142,29 @@ export default function PlayerBlurbsPanel() {
   // refuses to overwrite anything hand-written and tells us which players it
   // skipped, so the toast reports what actually happened instead of a flat
   // count that would hide the skips.
+  // Pull ESPN's latest injury notes for this sport into the draft queue.
+  //
+  // NFL is excluded because syncInjuries already does this every 5 minutes as
+  // part of the injury_status patching fantasy scoring depends on — there is
+  // nothing to trigger by hand. NBA/WNBA/MLB ride an hourly job, so this is
+  // the "don't wait an hour" button.
+  //
+  // The server returns immediately and finishes in the background (MLB is
+  // ~280 players, each a read-archive-insert), so this waits before
+  // re-fetching rather than reporting a count it cannot know yet.
+  const handleSyncEspn = async () => {
+    setSyncingEspn(true)
+    try {
+      await api.post('/blurbs/sync-espn', { sport })
+      toast(`Fetching ESPN ${sport.toUpperCase()} notes — this takes a moment`, 'success')
+      setTimeout(fetchPlayers, 6000)
+    } catch (err) {
+      toast(err.message, 'error')
+    } finally {
+      setSyncingEspn(false)
+    }
+  }
+
   const handlePublishEspn = async () => {
     if (!selected.size) return toast('Select players first', 'error')
     setPublishingEspn(true)
@@ -360,7 +384,20 @@ export default function PlayerBlurbsPanel() {
             {generating ? 'Generating...' : `Generate AI Blurbs (${selected.size})`}
           </button>
         )}
-        {sport === 'nfl' && (
+        {sport !== 'nfl' && (
+          <button
+            onClick={handleSyncEspn}
+            disabled={syncingEspn}
+            title="Pull ESPN's latest injury notes for this sport into the draft queue. Runs hourly on its own; this is the manual nudge."
+            className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-bg-secondary text-text-primary border border-text-primary/20 hover:bg-text-primary/10 transition-colors disabled:opacity-50"
+          >
+            {syncingEspn ? 'Fetching...' : `Fetch ESPN ${sport.toUpperCase()} Notes`}
+          </button>
+        )}
+        {/* Every sport, not just NFL — publishEspnBlurbs has always taken a
+            sport and the route has always forwarded it; the button was the
+            only thing hiding it. */}
+        {(
           <button
             onClick={handlePublishEspn}
             disabled={publishingEspn || !selected.size}

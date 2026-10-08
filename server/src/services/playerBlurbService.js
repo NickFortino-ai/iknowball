@@ -611,7 +611,16 @@ export async function writeEspnBlurb({ playerId, sport, content, season, week })
       // this is enforced at the database, not just in the app.
       status: 'draft',
       published_at: null,
-      season: season ?? null,
+      // season is NOT NULL in the schema, so `season ?? null` was a guaranteed
+      // 23502 for any caller that didn't pass one — which is every NBA, WNBA
+      // and MLB caller. The insert failed, this function returns 'skipped' on
+      // error, and the whole thing looked like a quiet no-op for five months.
+      // Only syncInjuries.js (NFL) passes a season, which is why only NFL has
+      // ever produced ESPN blurbs.
+      //
+      // week stays nullable by design — per-week tagging was deliberately
+      // removed; staleness is decided on created_at.
+      season: season ?? new Date().getFullYear(),
       week: week ?? null,
       generated_by: 'espn',
     })
@@ -747,4 +756,123 @@ export async function publishEspnBlurbs(playerIds, sport = 'nfl') {
 
   logger.info({ sport, requested: ids.length, published, skippedManual: skippedManual.length, noDraft: noDraft.length }, 'ESPN blurbs published')
   return { published, skippedManual, noDraft }
+}
+
+// ESPN's LEAGUE-WIDE injuries endpoint, per sport. This is the only path that
+// carries injury prose.
+//
+// NBA/WNBA/MLB blurb ingestion was written against the per-team roster
+// endpoint (`/teams/{id}/roster`), where `athlete.injuries[0]` holds only
+// `status` and `date` — no shortComment. So `injury_detail` was always null,
+// the write sat behind `if (next.injury_detail)`, and in five months those
+// three sports produced zero ESPN blurbs between them while NFL produced
+// 3,629. syncInjuries.js had already learned this for NFL; its comment says
+// the per-team path "returns 0 rows… the only working path is the league-wide
+// /injuries endpoint". That lesson just never crossed sports.
+//
+// Measured 2026-10-08 — the other three are better covered than NFL:
+//   nfl 661/800 carry shortComment, nba 99/99, wnba 49/49, mlb 282/282.
+const ESPN_LEAGUE_INJURY_PATHS = {
+  nba: 'basketball/nba',
+  wnba: 'basketball/wnba',
+  mlb: 'baseball/mlb',
+}
+
+/**
+ * ESPN's athlete id, which this payload does NOT expose as a field.
+ *
+ * `injury.athlete` carries firstName/displayName/headshot/links and no `id`,
+ * so the id has to come out of a URL: the player-card link
+ * (.../player/_/id/4397183/aaron-wiggins) or, failing that, the headshot
+ * (.../full/4397183.png). Measured across all three sports, the link resolves
+ * 100% of entries (nba 99/99, wnba 49/49, mlb 282/282) — the headshot is a
+ * belt-and-braces fallback.
+ *
+ * Reading `athlete.id` directly is what made the first run of this report
+ * seen=0 while ESPN was plainly returning hundreds of injuries.
+ */
+function espnAthleteId(athlete) {
+  if (!athlete) return null
+  if (athlete.id) return String(athlete.id)
+  for (const link of athlete.links || []) {
+    const m = String(link?.href || '').match(/\/id\/(\d+)/)
+    if (m) return m[1]
+  }
+  const h = String(athlete.headshot?.href || '').match(/\/(\d+)\.png/)
+  return h ? h[1] : null
+}
+
+/**
+ * Pull ESPN's injury prose for a sport and fan it into player_blurbs as
+ * drafts. Idempotent on content via writeEspnBlurb, so re-running costs
+ * nothing when nothing has changed.
+ *
+ * Keyed on the ESPN athlete id, which is what these three sports store in
+ * `player_blurbs.player_id` (NFL keys on the Sleeper id instead and has its
+ * own path in syncInjuries.js — this function deliberately does not handle
+ * NFL).
+ *
+ * Deliberately does NOT write "Cleared to play." A player who recovers simply
+ * drops out of this payload, and firing on absence is exactly the false-clear
+ * bug the NFL path's depth-chart cross-reference exists to prevent — a
+ * transient ESPN omission would announce a recovery that never happened.
+ * Clearing stays with the refresh{Nba,Wnba,Mlb}Injuries paths, which read the
+ * roster endpoint and can tell "no longer listed" from "no longer there".
+ */
+export async function syncEspnInjuryBlurbs(sport) {
+  const key = String(sport || '').toLowerCase()
+  const path = ESPN_LEAGUE_INJURY_PATHS[key]
+  if (!path) {
+    const err = new Error(`syncEspnInjuryBlurbs does not handle sport "${sport}"`)
+    err.status = 400
+    throw err
+  }
+
+  const url = `https://site.api.espn.com/apis/site/v2/sports/${path}/injuries`
+  let data
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+    if (!res.ok) throw new Error(`ESPN ${key} injuries ${res.status}`)
+    data = await res.json()
+  } catch (err) {
+    logger.error({ err: err.message, sport: key }, 'ESPN league injuries fetch failed')
+    throw err
+  }
+
+  let seen = 0
+  let written = 0
+  let skipped = 0
+  let noProse = 0
+  let unresolved = 0
+
+  for (const teamEntry of data.injuries || []) {
+    for (const injury of teamEntry.injuries || []) {
+      seen++
+      const athleteId = espnAthleteId(injury.athlete)
+      if (!athleteId) { unresolved++; continue }
+      // shortComment is the one-liner the modal shows; longComment is the
+      // fuller writeup and is used only when ESPN omits the short one.
+      const content = injury.shortComment || injury.longComment
+      if (!content) { noProse++; continue }
+
+      const targets = [String(athleteId)]
+      // MLB stores a separate pitcher row under `${id}-P` so the two-way
+      // player modal resolves a blurb whichever row it was opened from.
+      // Writing both keeps that lookup working.
+      if (key === 'mlb') targets.push(`${athleteId}-P`)
+
+      for (const playerId of targets) {
+        try {
+          const result = await writeEspnBlurb({ playerId, sport: key, content })
+          if (result?.action === 'skipped') skipped++
+          else written++
+        } catch (err) {
+          logger.warn({ err: err.message, playerId, sport: key }, 'writeEspnBlurb failed')
+        }
+      }
+    }
+  }
+
+  logger.info({ sport: key, seen, written, skipped, noProse, unresolved }, 'ESPN injury blurbs synced')
+  return { sport: key, seen, written, skipped, noProse, unresolved }
 }
