@@ -998,7 +998,7 @@ export default function FantasyMyTeam({ league }) {
 
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center gap-3">
-          <h3 className="text-base font-semibold text-text-primary">Starting Lineup</h3>
+          <h3 className="text-base font-semibold text-text-primary whitespace-nowrap">Starting Lineup</h3>
           {/* Every note on the roster in one place, rather than hunting the
               orange dots row by row. Rendered whenever the roster has any
               note at all — not only when something is unread — so the
@@ -1024,8 +1024,12 @@ export default function FantasyMyTeam({ league }) {
               line is hidden then too). Sits to the left of the Edit
               button so it anchors above where the stats column begins. */}
           <span className="hidden md:inline-block text-xs uppercase tracking-wider text-text-muted ml-auto mr-auto">Week {activeWeek}</span>
+          {/* Desktop only. With the Updates pill alongside it there is no room
+              for this on a phone — "Starting Lineup" wrapped onto two lines to
+              make space for a hint about a gesture that is self-evident the
+              first time you try it, and pointless every time after. */}
           {canEditLineup && (
-            <span className="text-[10px] text-text-muted ml-auto md:ml-0">Tap a position to move a player</span>
+            <span className="hidden md:inline-block text-[10px] text-text-muted">Tap a position to move a player</span>
           )}
         </div>
         <div className="p-3 space-y-1">
