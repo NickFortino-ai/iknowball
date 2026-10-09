@@ -37,6 +37,40 @@ function touchLastActive(userId) {
     })
 }
 
+// Short-lived cache of verified tokens.
+//
+// supabase.auth.getUser() is a NETWORK round trip to the auth service —
+// measured at a ~104ms median — and it ran on every single authenticated
+// request. Screens that fan out pay it once per call: the user profile modal
+// alone fires eight (profile, picks, parlays, prop picks, bonuses, futures,
+// head-to-head, connection status), so roughly 0.8s of the spinner was auth
+// overhead before a single query had started, on a one-CPU instance.
+//
+// 60 seconds is deliberately short. A cached entry is a window in which a
+// revoked session still works, so this trades a minute of staleness for
+// collapsing a burst into one verification.
+const AUTH_CACHE_TTL_MS = 60 * 1000
+const AUTH_CACHE_MAX = 2000
+const authCache = new Map()
+
+/**
+ * The token's own expiry, read WITHOUT verifying it.
+ *
+ * This never grants trust — Supabase has already verified the token before
+ * anything is cached. It only ever SHORTENS the cache window, so a token that
+ * expires in 20s is never served from cache for the full 60. Parsing an
+ * unverified payload is safe precisely because the answer can only make us
+ * more conservative.
+ */
+function jwtExpiryMs(token) {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf8'))
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null
+  } catch {
+    return null
+  }
+}
+
 export async function requireAuth(req, res, next) {
   const header = req.headers.authorization
   if (!header?.startsWith('Bearer ')) {
@@ -44,11 +78,32 @@ export async function requireAuth(req, res, next) {
   }
 
   const token = header.slice(7)
+
+  const cached = authCache.get(token)
+  if (cached && cached.expiresAt > Date.now()) {
+    req.user = cached.user
+    touchLastActive(cached.user.id)
+    return next()
+  }
+
   const { data: { user }, error } = await supabase.auth.getUser(token)
 
   if (error || !user) {
+    // Failures are never cached — a token that becomes valid (clock skew, a
+    // refresh landing mid-flight) must not be locked out for a minute.
+    authCache.delete(token)
     return res.status(401).json({ error: 'Invalid or expired token' })
   }
+
+  // Simple size cap. These are short-lived and keyed by token, so the map
+  // would otherwise grow with every refresh for the life of the process.
+  if (authCache.size >= AUTH_CACHE_MAX) authCache.clear()
+  const tokenExpiry = jwtExpiryMs(token)
+  const ttlExpiry = Date.now() + AUTH_CACHE_TTL_MS
+  authCache.set(token, {
+    user,
+    expiresAt: tokenExpiry ? Math.min(ttlExpiry, tokenExpiry) : ttlExpiry,
+  })
 
   req.user = user
   touchLastActive(user.id)
