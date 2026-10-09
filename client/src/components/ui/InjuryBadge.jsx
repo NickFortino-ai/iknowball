@@ -35,12 +35,35 @@ function shortLabel(status) {
   return status?.charAt(0)?.toUpperCase() || ''
 }
 
+// Values that are NOT injuries. shortLabel ends in
+// `status.charAt(0).toUpperCase()`, so anything unlisted invents a badge out
+// of its first letter — which is how a healthy player ends up marked.
+//
+// This has now bitten three times with the same shape, each patched
+// individually: Sleeper's "NA" placeholder rendered a bare "N" next to
+// healthy players through a whole draft; ESPN's roster feed then supplied
+// "Active", which rendered a grey "A" on every fit starter in Game Intel;
+// and "Practice Squad" rendered a grey "P" — the letter this component's own
+// legend assigns to Probable.
+//
+// Listing them explicitly rather than widening shortLabel again, because the
+// fallback is the defect: a roster state is not an injury designation, and a
+// feed is free to add another one tomorrow.
+//
+// Deliberately NOT inverted to "render only recognised injuries". An
+// unfamiliar but genuine designation should still show something rather than
+// vanish — a visible letter we haven't styled is recoverable, a silently
+// hidden injury is not.
+const NOT_AN_INJURY = new Set([
+  'na',              // Sleeper: no designation
+  'active',          // ESPN roster: fit and available
+  'practice squad',  // ESPN roster: a roster state, not a health one
+  'healthy',
+])
+
 export default function InjuryBadge({ status, className = '' }) {
   if (!status) return null
-  // "NA" is Sleeper's placeholder for "no designation", not an injury. It
-  // had no case in shortLabel, so it fell through to charAt(0) and rendered
-  // a bare "N" next to healthy players — Josh Jacobs showed one all draft.
-  if (String(status).toLowerCase() === 'na') return null
+  if (NOT_AN_INJURY.has(String(status).trim().toLowerCase())) return null
   const color = INJURY_COLORS[String(status).toLowerCase()] || 'text-text-muted'
   return (
     <span
