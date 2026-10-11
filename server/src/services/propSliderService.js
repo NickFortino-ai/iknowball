@@ -187,12 +187,23 @@ export function buildSlider(marketKey, baseLine, risk = 10) {
     defaultIndex: lines.indexOf(baseLine),
     // Both sides on every stop, so the card can show what each would pay
     // without asking the server again as the slider moves.
-    stops: lines.map((line) => ({
-      line,
-      over: rewardFor(marketKey, baseLine, line, risk, 'over'),
-      under: rewardFor(marketKey, baseLine, line, risk, 'under'),
-      probability: Number(hitProbability(marketKey, baseLine, line).toFixed(3)),
-    })),
+    //
+    // `reward` is the over price under its old name. Renaming it outright
+    // broke the deployed client the moment this shipped — it reads
+    // stop.reward and rendered "win undefined" on every card, because the
+    // server redeploys in seconds and a browser keeps whatever bundle it
+    // loaded. A field the shipped client reads is a contract; add alongside,
+    // never rename.
+    stops: lines.map((line) => {
+      const over = rewardFor(marketKey, baseLine, line, risk, 'over')
+      return {
+        line,
+        over,
+        under: rewardFor(marketKey, baseLine, line, risk, 'under'),
+        reward: over,
+        probability: Number(hitProbability(marketKey, baseLine, line).toFixed(3)),
+      }
+    }),
   }
 }
 
