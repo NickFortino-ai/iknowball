@@ -106,6 +106,10 @@ export default function HubPage() {
   // The arcade is a room, not a feed scope — it replaces the feed and the
   // news rail rather than filtering them, so it gets its own flag. Seeded
   // from ?tab=arcade so the old deep link still lands somewhere sensible.
+  // Search is a magnifier beside the title rather than a permanent bar. It
+  // is used rarely — you search for someone once, then they're in your squad
+  // — and as a full-width input it was charging every visit for that.
+  const [searchOpen, setSearchOpen] = useState(false)
   const [arcadeOpen, setArcadeOpen] = useState(() => searchParams.get('tab') === 'arcade')
   const hasManuallyToggled = useRef(false)
   // Where the feed was when the arcade opened, so closing it puts you back
@@ -262,6 +266,11 @@ export default function HubPage() {
   //
   // The old 'SEARCH USER' heading is gone: a label above a box whose
   // placeholder already says the same thing is the heading saying it twice.
+  function closeSearch() {
+    setSearchOpen(false)
+    setSearchQuery('')
+  }
+
   function renderSearch() {
     return (
             <div className="relative">
@@ -269,7 +278,9 @@ export default function HubPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search user..."
+                onKeyDown={(e) => { if (e.key === 'Escape') closeSearch() }}
+                placeholder="Search by username..."
+                autoFocus
                 className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
               />
     
@@ -384,7 +395,28 @@ export default function HubPage() {
 
   return (
     <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 pt-6 pb-32">
-      <h1 className="font-display text-3xl mb-6">Hub</h1>
+      <div className="flex items-center gap-2 mb-6">
+        <h1 className="font-display text-3xl">Hub</h1>
+        <button
+          onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
+          aria-label={searchOpen ? 'Close search' : 'Search users'}
+          aria-expanded={searchOpen}
+          className={`shrink-0 rounded-lg p-2 transition-colors ${
+            searchOpen ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-text-primary'
+          }`}
+        >
+          <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M20 20l-3.5-3.5" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Revealed under the title rather than expanding inside it: at 375px
+          the title row has no width to give, and results need the full page
+          anyway. */}
+      {searchOpen && <div className="mb-6">{renderSearch()}</div>}
 
       {/* Identity card + the things you DO from the Hub, side by side on
           desktop. Search used to be a full-width block of its own under the
@@ -411,24 +443,20 @@ export default function HubPage() {
               there, so this one can't simply move. */}
           <div className="hidden lg:block lg:mt-auto lg:pt-3">{renderSquadHeader('mb-0')}</div>
         </div>
-        {/* Search and the arcade travel together: a row on mobile, a column
-            on desktop. Grouping "things you do" costs no vertical space at
-            either size and puts the arcade in thumb reach on a phone, rather
-            than pinned to the end of a tab scroller nobody scrolls. */}
-        <div className="mb-6 lg:mb-0 flex gap-2 lg:flex-col lg:gap-3 lg:w-72 lg:shrink-0 lg:pb-3">
-          <div className="flex-1 lg:flex-none min-w-0">{renderSearch()}</div>
+        {/* With search moved to the title, this column is the arcade alone —
+            so it gets the whole height beside the profile card, and the
+            cabinet reads the same way at both sizes. */}
+        <div className="mb-6 lg:mb-0 lg:w-72 lg:shrink-0 lg:flex lg:pb-3">
           {/* No border, no fill — the cabinet IS the button. A bordered box
               around art that already has its own outline and glow was two
               frames competing; stripped back, the icon can grow into the
-              whole space instead of sitting in the middle of a panel.
-              On desktop it fills the height left under the search bar, with
-              the label beneath; on mobile there's no room for a label. */}
+              whole space instead of sitting in the middle of a panel. */}
           <button
             onClick={() => setArcadeOpen(true)}
             aria-label="Arcade"
-            className="shrink-0 flex lg:flex-1 flex-col items-center justify-center gap-1 w-14 lg:w-full min-h-0 text-accent transition-transform hover:scale-105 active:scale-95"
+            className="flex w-full lg:flex-1 flex-col items-center justify-center gap-1 min-h-0 text-accent transition-transform hover:scale-105 active:scale-95"
           >
-            <ArcadeIcon className="w-12 h-12 lg:hidden" />
+            <ArcadeIcon className="w-20 h-20 lg:hidden" />
             {/* The icon is positioned OUT OF FLOW on desktop. In flow its
                 intrinsic 256px height counts toward this column's content
                 height, which stretches the row — and the profile card with
@@ -440,7 +468,7 @@ export default function HubPage() {
             <span className="relative hidden lg:block lg:flex-1 w-full min-h-[56px]">
               <ArcadeIcon className="absolute inset-0 w-full h-full" />
             </span>
-            <span className="hidden lg:block text-sm font-semibold leading-none">Arcade</span>
+            <span className="text-sm font-semibold leading-none">Arcade</span>
           </button>
         </div>
       </div>
