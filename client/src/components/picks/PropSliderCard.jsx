@@ -11,9 +11,14 @@ import { getTeamAbbr } from '../../lib/teamLogos'
  * over/under card put two equal choices next to each other — here there is
  * one choice on a continuum, and centring it says so.
  *
- * The slider REPLACES over/under. You pick a threshold you think the player
- * beats; sliding down is an easier bar for less, sliding up is a harder bar
- * for more.
+ * The slider sets WHERE the threshold is; over/under decides which way you
+ * are betting it. Both are needed: a slider alone can only say "how far
+ * over", and someone who thinks a player is going to be quiet has no way to
+ * say so.
+ *
+ * Because under is the complement, the slider means opposite things on each
+ * side — dragging down is the safe end for over and the long shot for under.
+ * That is why both prices sit on the buttons and move as you drag.
  *
  * Dragging never commits. A slider is an exploratory control — people move it
  * to see what the numbers do — so letting go must be free, and a stray
@@ -50,6 +55,10 @@ export default function PropSliderCard({
     }
     return slider?.defaultIndex >= 0 ? slider.defaultIndex : Math.floor(stops.length / 2)
   })
+  // Which way you're betting the threshold. The slider says WHERE the line
+  // is; this says which side of it you want — and because under is the
+  // complement, the same stop pays opposite amounts on each side.
+  const [side, setSide] = useState(() => (pick?.picked_side === 'under' ? 'under' : 'over'))
   const [showPlayerModal, setShowPlayerModal] = useState(false)
   const { data: playerLookup } = useNbaDfsPlayerLookup(showPlayerModal ? prop.player_name : null, sportKey)
 
@@ -76,6 +85,10 @@ export default function PropSliderCard({
   if (!current) return null
 
   const pickedLine = pick?.chosen_line != null ? Number(pick.chosen_line) : null
+  const rewardFor = (s) => (s === 'under' ? current.under : current.over)
+  // Once a pick exists the card describes THAT bet, not whatever the
+  // controls happen to be set to.
+  const shownSide = pickedLine != null ? (pick.picked_side || side) : side
   const resultTone = isSettled
     ? (pick.is_correct == null ? 'push' : pick.is_correct ? 'correct' : 'incorrect')
     : null
@@ -124,7 +137,7 @@ export default function PropSliderCard({
         {/* The line being chosen, large, with the market under it. This is the
             number the slider moves, so it is the biggest thing on the card. */}
         <div className="mt-2 flex items-baseline gap-1.5">
-          <span className="text-text-muted text-sm">Over</span>
+          <span className="text-text-muted text-sm capitalize">{shownSide}</span>
           <span className="font-display text-4xl tabular-nums text-text-primary">
             {isSettled || isLockedPick ? (pickedLine ?? current.line) : current.line}
           </span>
@@ -139,8 +152,8 @@ export default function PropSliderCard({
           <span className="text-text-muted">→</span>
           <span className="text-correct tabular-nums font-semibold">
             +{isSettled || isLockedPick
-              ? (stops.find((s) => Number(s.line) === pickedLine)?.reward ?? pick?.reward_at_submission ?? current.reward)
-              : current.reward}
+              ? (pick?.reward_at_submission ?? rewardFor(shownSide))
+              : rewardFor(shownSide)}
           </span>
         </div>
 
@@ -168,30 +181,55 @@ export default function PropSliderCard({
             className="w-full accent-accent"
             aria-label={`Line for ${prop.player_name} ${prop.market_label}`}
           />
-          {/* Ends labelled so the trade-off is legible without dragging. */}
+          {/* Just the bounds. "Safer" was an over-only idea — with both sides
+              on the table each end is the safe one for somebody, and the
+              buttons below carry the actual prices. */}
           <div className="flex justify-between text-[10px] text-text-muted -mt-1">
-            <span>{stops[0].line} · safer (+{stops[0].reward})</span>
-            <span>{stops[stops.length - 1].line} · +{stops[stops.length - 1].reward}</span>
+            <span>{stops[0].line}</span>
+            <span>{stops[stops.length - 1].line}</span>
           </div>
 
+          {/* Both sides, each carrying its own price, so the trade-off is
+              visible without committing to see it. Under on the left and
+              over on the right, matching the slider underneath: low numbers
+              are to the left, and under is the bet that wants them.
+
+              Tapping one places that bet. That is still an explicit,
+              labelled commitment — the principle was that DRAGGING must not
+              commit, not that a button press needs confirming twice. */}
           <div className="mt-3 flex gap-2">
-            <button
-              onClick={() => onPickLine?.(prop.id, current.line)}
-              disabled={isSubmitting || (pickedLine != null && pickedLine === current.line)}
-              className="flex-1 rounded-xl bg-accent py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              {pickedLine != null && pickedLine === current.line
-                ? `Picked over ${current.line}`
-                : pickedLine != null
-                ? `Change to over ${current.line}`
-                : `Pick over ${current.line} · win ${current.reward}`}
-            </button>
+            {['under', 'over'].map((sideKey) => {
+              const isThis = pickedLine === current.line && pick?.picked_side === sideKey
+              return (
+                <button
+                  key={sideKey}
+                  onPointerEnter={() => setSide(sideKey)}
+                  onFocus={() => setSide(sideKey)}
+                  onClick={() => { setSide(sideKey); onPickLine?.(prop.id, current.line, sideKey) }}
+                  disabled={isSubmitting || isThis}
+                  className={`flex-1 min-w-0 rounded-xl py-2.5 px-2 text-sm font-semibold disabled:opacity-60 ${
+                    isThis
+                      ? 'bg-accent text-white'
+                      : 'border border-accent/60 text-accent hover:bg-accent/10'
+                  }`}
+                >
+                  <span className="block truncate capitalize">
+                    {isThis ? 'Picked ' : ''}{sideKey} {current.line}
+                  </span>
+                  {!isThis && (
+                    <span className="block text-[11px] font-normal opacity-80">
+                      win {rewardFor(sideKey)}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
             {movedOffDefault && (
               <button
                 onClick={() => setIndex(slider.defaultIndex)}
                 disabled={isSubmitting}
                 title="Back to the book's line"
-                className="rounded-xl border border-text-primary/20 px-3 text-xs font-semibold text-text-secondary"
+                className="shrink-0 rounded-xl border border-text-primary/20 px-3 text-xs font-semibold text-text-secondary"
               >
                 Reset
               </button>

@@ -442,39 +442,47 @@ export function applyChosenLine(picks) {
  * ±33% ladders over the same question, where the stale ones are still
  * pickable at a price the book has since moved off.
  *
- * So: among PUBLISHED rows, keep only the latest quote. Rows that are locked
- * or settled are kept untouched — they are history, and may hold picks. So
- * are rows anyone has an open pick on, which is why this needs a round trip:
- * dropping a row out from under a pending pick would make someone's own card
- * disappear from the board.
+ * So: among PUBLISHED rows, exactly ONE survives per player/market/game —
+ * the row THIS USER has a pick on if they have one, otherwise the latest
+ * quote. Preferring their own row rather than keeping it IN ADDITION to the
+ * newest matters: the first version of this rescued any row with a pick on
+ * it, which put the picked card and the current card side by side and looked
+ * exactly like the collapse had failed.
+ *
+ * Rows that are locked or settled are left alone — they are history.
  */
-async function collapseStaleLines(props) {
+async function collapseStaleLines(props, userId) {
   if (!props?.length) return props || []
 
+  const published = props.filter((p) => p.status === 'published')
+  if (!published.length) return props
+
+  // Which of these the caller has already picked. One round trip, and it is
+  // what makes "your card" beat "the newest card".
+  const mine = new Set()
+  if (userId) {
+    const { data: picks } = await supabase
+      .from('prop_picks')
+      .select('prop_id')
+      .eq('user_id', userId)
+      .in('prop_id', published.map((p) => p.id))
+    for (const row of picks || []) mine.add(row.prop_id)
+  }
+
+  const stamp = (p) => p.updated_at || p.created_at || ''
   const groups = new Map()
-  for (const p of props) {
-    if (p.status !== 'published') continue
+  for (const p of published) {
     const key = `${p.game_id}|${p.market_key}|${p.player_name}`
     const prev = groups.get(key)
-    // Newest quote wins. updated_at is set on every upsert; created_at is the
-    // tiebreak for rows written before updated_at existed.
-    if (!prev || (p.updated_at || p.created_at || '') > (prev.updated_at || prev.created_at || '')) {
-      groups.set(key, p)
-    }
+    if (!prev) { groups.set(key, p); continue }
+    // Your own pick always wins the slot. Failing that, the newest quote.
+    const pMine = mine.has(p.id)
+    const prevMine = mine.has(prev.id)
+    if (pMine && !prevMine) groups.set(key, p)
+    else if (pMine === prevMine && stamp(p) > stamp(prev)) groups.set(key, p)
   }
 
   const keep = new Set([...groups.values()].map((p) => p.id))
-  const candidates = props.filter((p) => p.status === 'published' && !keep.has(p.id))
-  if (!candidates.length) return props
-
-  // Anything with a pick on it stays, whoever made the pick — these lists are
-  // the same for every user, so this can't be narrowed to the caller.
-  const { data: picked } = await supabase
-    .from('prop_picks')
-    .select('prop_id')
-    .in('prop_id', candidates.map((p) => p.id))
-  for (const row of picked || []) keep.add(row.prop_id)
-
   return props.filter((p) => p.status !== 'published' || keep.has(p.id))
 }
 
@@ -489,7 +497,7 @@ async function collapseStaleLines(props) {
 //
 // Status preservation: existing 'locked' / 'settled' rows are left alone
 // so a mid-game reload can't roll a settled prop back to published.
-export async function loadPropsForSportMarket(shortSportKey, marketKey) {
+export async function loadPropsForSportMarket(shortSportKey, marketKey, userId = null) {
   const fullSportKey = SHORT_TO_FULL_SPORT_KEY[shortSportKey]
   if (!fullSportKey) {
     const err = new Error(`Unknown sport: ${shortSportKey}`)
@@ -735,7 +743,7 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey) {
     )
   }
 
-  return withSliders(await collapseStaleLines(allProps || []))
+  return withSliders(await collapseStaleLines(allProps || [], userId))
 }
 
 /**
@@ -971,12 +979,13 @@ export async function settleProps(settlements) {
           // markets on .5 precisely to avoid it.
           isCorrect = null
           pointsEarned = 0
-        } else if (actual > line) {
-          isCorrect = true
-          pointsEarned = pick.reward_points || 0
         } else {
-          isCorrect = false
-          pointsEarned = -(pick.risk_points || 0)
+          // Which way they bet it. Judging every custom line as an over would
+          // settle under picks exactly backwards — paying out the losers and
+          // charging the winners.
+          const cleared = pick.picked_side === 'under' ? actual < line : actual > line
+          isCorrect = cleared
+          pointsEarned = cleared ? (pick.reward_points || 0) : -(pick.risk_points || 0)
         }
       } else if (outcome === 'push') {
         isCorrect = null
@@ -1095,17 +1104,18 @@ export async function submitPropPick(userId, propId, pickedSide, chosenLine = nu
   let riskAtSubmission = odds ? calculateRiskPoints(odds) : null
   let rewardAtSubmission = odds ? calculateRewardPoints(odds) : null
 
-  // Custom line. The client sends only the NUMBER it wants; the payout is
+  // Custom line. The client sends only the NUMBER and the SIDE; the payout is
   // recomputed here from the measured hit-rate table, so a tampered request
   // buys exactly the same price as an honest one. A line that isn't an
   // offered stop is refused rather than priced.
   //
-  // A slider pick is always "over" — the slider replaced the over/under
-  // choice, and the threshold IS the opinion.
+  // Both sides are offered. The slider sets WHERE the threshold is; over and
+  // under decide which way you're betting it — and because under is the
+  // complement, the same stop pays opposite amounts on each side.
   let storedLine = null
   if (chosenLine !== null && chosenLine !== undefined) {
     const { priceChosenLine } = await import('./propSliderService.js')
-    const priced = priceChosenLine(prop.market_key, Number(prop.line), chosenLine)
+    const priced = priceChosenLine(prop.market_key, Number(prop.line), chosenLine, 10, pickedSide)
     if (!priced.ok) {
       const err = new Error(priced.error)
       err.status = 400
@@ -1114,7 +1124,6 @@ export async function submitPropPick(userId, propId, pickedSide, chosenLine = nu
     storedLine = priced.line
     riskAtSubmission = priced.risk
     rewardAtSubmission = priced.reward
-    pickedSide = 'over'
   }
 
   const { data, error } = await supabase

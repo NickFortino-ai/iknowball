@@ -156,11 +156,19 @@ export function hitProbability(marketKey, baseLine, line) {
  * would be taking a margin we have no reason to take — if someone wants to
  * shoot for the stars, the number should be the real one.
  *
+ * UNDER is the complement and needs no second table: the player either
+ * exceeds the line or doesn't, and the stepping keeps counting markets on .5
+ * so there is no third outcome to price. That makes the slider mean opposite
+ * things depending on the side — dragging down is the safe end for over and
+ * the long shot for under — which is the whole point of offering both.
+ *
  * Floored at 1 so the safest position still pays something.
  */
-export function rewardFor(marketKey, baseLine, line, risk = 10) {
-  const p = hitProbability(marketKey, baseLine, line)
-  if (p == null || p <= 0) return null
+export function rewardFor(marketKey, baseLine, line, risk = 10, side = 'over') {
+  const pOver = hitProbability(marketKey, baseLine, line)
+  if (pOver == null) return null
+  const p = side === 'under' ? 1 - pOver : pOver
+  if (p <= 0) return null
   if (p >= 1) return 1
   return Math.max(1, Math.round((risk * (1 - p)) / p))
 }
@@ -177,9 +185,12 @@ export function buildSlider(marketKey, baseLine, risk = 10) {
     baseLine,
     risk,
     defaultIndex: lines.indexOf(baseLine),
+    // Both sides on every stop, so the card can show what each would pay
+    // without asking the server again as the slider moves.
     stops: lines.map((line) => ({
       line,
-      reward: rewardFor(marketKey, baseLine, line, risk),
+      over: rewardFor(marketKey, baseLine, line, risk, 'over'),
+      under: rewardFor(marketKey, baseLine, line, risk, 'under'),
       probability: Number(hitProbability(marketKey, baseLine, line).toFixed(3)),
     })),
   }
@@ -192,19 +203,24 @@ export function buildSlider(marketKey, baseLine, risk = 10) {
  * payout is recomputed here, so a tampered request buys the same price as an
  * honest one.
  */
-export function priceChosenLine(marketKey, baseLine, chosenLine, risk = 10) {
+export function priceChosenLine(marketKey, baseLine, chosenLine, risk = 10, side = 'over') {
   const stops = sliderLines(marketKey, baseLine)
   if (!stops.length) return { ok: false, error: 'This market does not support a custom line' }
+  if (side !== 'over' && side !== 'under') {
+    return { ok: false, error: 'picked_side must be over or under' }
+  }
   const line = Number(chosenLine)
   if (!Number.isFinite(line)) return { ok: false, error: 'chosen_line must be a number' }
   if (!stops.some((s) => Math.abs(s - line) < 1e-9)) {
     return { ok: false, error: `Line ${line} is not an available stop for this prop` }
   }
+  const pOver = hitProbability(marketKey, baseLine, line)
   return {
     ok: true,
     line,
+    side,
     risk,
-    reward: rewardFor(marketKey, baseLine, line, risk),
-    probability: hitProbability(marketKey, baseLine, line),
+    reward: rewardFor(marketKey, baseLine, line, risk, side),
+    probability: side === 'under' ? 1 - pOver : pOver,
   }
 }

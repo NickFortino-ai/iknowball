@@ -49,7 +49,7 @@ router.get('/load', async (req, res) => {
   }
 
   try {
-    const props = await loadPropsForSportMarket(sport, market)
+    const props = await loadPropsForSportMarket(sport, market, req.user?.id)
     res.json(props)
   } catch (err) {
     const status = err.status || 500

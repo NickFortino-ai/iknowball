@@ -380,7 +380,7 @@ function PropList({ props, isLoading, emptyText }) {
     try {
       await submitPick.mutateAsync({ propId, pickedSide: side, chosenLine: line })
       triggerHaptic('Light')
-      toast(line != null ? `Pick locked at ${line}` : 'Prop pick submitted!', 'success')
+      toast(line != null ? `Picked ${side} ${line}` : 'Prop pick submitted!', 'success')
     } catch (err) {
       toast(err.message || 'Failed to submit prop pick', 'error')
     }

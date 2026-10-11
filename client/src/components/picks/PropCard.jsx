@@ -90,7 +90,7 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
       <PropSliderCard
         prop={prop}
         pick={pick}
-        onPickLine={(propId, line) => onPick?.(propId, 'over', line)}
+        onPickLine={(propId, line, side) => onPick?.(propId, side || 'over', line)}
         onUndoPick={onUndoPick}
         isSubmitting={isSubmitting}
         sportKey={sportKey}
