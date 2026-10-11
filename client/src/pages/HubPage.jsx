@@ -234,17 +234,103 @@ export default function HubPage() {
     )
   }
 
+  // The user search, rendered beside the profile card on desktop and under
+  // it on mobile. A function rather than a component so it keeps using the
+  // page's search state directly — extracting it to a component would mean
+  // threading five props to move one input.
+  //
+  // The old 'SEARCH USER' heading is gone: a label above a box whose
+  // placeholder already says the same thing is the heading saying it twice.
+  function renderSearch() {
+    return (
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search user..."
+                className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+              />
+    
+              {searchQuery.length >= 2 && searchResults?.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 z-10 space-y-1.5">
+                  {searchResults.map((user) => {
+                    const isConnected = connectedUserIds.has(user.id)
+                    return (
+                      <div
+                        key={user.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setSelectedUserId(user.id)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedUserId(user.id) }}
+                        className="w-full text-left px-4 py-3 flex items-center gap-3 bg-bg-primary border border-text-primary/20 rounded-lg hover:bg-text-primary/5 transition-colors cursor-pointer"
+                      >
+                        <Avatar user={user} size="lg" />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium text-text-primary truncate">{user.display_name || user.username}</div>
+                          <div className="text-xs text-text-muted">@{user.username}</div>
+                        </div>
+                        {isConnected ? (
+                          <span className="text-xs text-text-muted font-medium flex-shrink-0">Connected</span>
+                        ) : (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleSendRequest(user.username) }}
+                            disabled={sendRequest.isPending}
+                            className="py-1 px-3 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 flex-shrink-0"
+                          >
+                            Connect
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+    
+              {searchQuery.length >= 2 && searchResults?.length === 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 z-10 bg-bg-primary border border-text-primary/20 rounded-lg px-4 py-3 text-sm text-text-muted">
+                  No users found
+                </div>
+              )}
+            </div>
+    )
+  }
+
   return (
     <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 pt-6 pb-32">
       <h1 className="font-display text-3xl mb-6">Hub</h1>
 
-      {/* My Profile */}
-      {profile && (
-        <MyProfileBanner
-          profile={profile}
-          onTap={() => setSelectedUserId(session?.user?.id)}
-        />
-      )}
+      {/* Identity card + the things you DO from the Hub, side by side on
+          desktop. Search used to be a full-width block of its own under the
+          banner, which gave a one-line input the same vertical weight as the
+          profile card and pushed the feed down. Paired with the banner it
+          costs no extra height, and the room it frees is what the arcade
+          button now occupies.
+
+          Stacks on mobile in the same order as before — banner, search —
+          so the phone layout is unchanged for now. */}
+      <div className="lg:flex lg:items-stretch lg:gap-4 lg:mb-6">
+        {profile && (
+          <MyProfileBanner
+            profile={profile}
+            onTap={() => setSelectedUserId(session?.user?.id)}
+            layoutClassName="mb-6 lg:mb-0 lg:flex-1 lg:min-w-0"
+          />
+        )}
+        <div className="mb-6 lg:mb-0 lg:w-72 lg:shrink-0 lg:flex lg:flex-col lg:gap-3">
+          {renderSearch()}
+          {/* Desktop only: on a phone this would sit between the profile
+              card and the feed with nothing around it. Mobile placement is
+              its own question. */}
+          <button
+            onClick={() => setArcadeOpen(true)}
+            className="hidden lg:flex lg:flex-1 items-center justify-center gap-2 w-full rounded-xl border border-accent bg-accent/10 py-3 text-sm font-semibold text-accent hover:bg-accent/20 transition-colors"
+          >
+            <ArcadeIcon className="w-6 h-6" />
+            Arcade
+          </button>
+        </div>
+      </div>
 
       {/* Pending Requests */}
       {pending?.length > 0 && (
@@ -283,61 +369,6 @@ export default function HubPage() {
           </div>
         </div>
       )}
-
-      {/* Search User */}
-      <div className="mb-6">
-        <h2 className="text-xs text-text-muted uppercase tracking-wider mb-3">Search User</h2>
-        <div className="relative">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by username..."
-            className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-          />
-
-          {searchQuery.length >= 2 && searchResults?.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 z-10 space-y-1.5">
-              {searchResults.map((user) => {
-                const isConnected = connectedUserIds.has(user.id)
-                return (
-                  <div
-                    key={user.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setSelectedUserId(user.id)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedUserId(user.id) }}
-                    className="w-full text-left px-4 py-3 flex items-center gap-3 bg-bg-primary border border-text-primary/20 rounded-lg hover:bg-text-primary/5 transition-colors cursor-pointer"
-                  >
-                    <Avatar user={user} size="lg" />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-text-primary truncate">{user.display_name || user.username}</div>
-                      <div className="text-xs text-text-muted">@{user.username}</div>
-                    </div>
-                    {isConnected ? (
-                      <span className="text-xs text-text-muted font-medium flex-shrink-0">Connected</span>
-                    ) : (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleSendRequest(user.username) }}
-                        disabled={sendRequest.isPending}
-                        className="py-1 px-3 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 flex-shrink-0"
-                      >
-                        Connect
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          {searchQuery.length >= 2 && searchResults?.length === 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 z-10 bg-bg-primary border border-text-primary/20 rounded-lg px-4 py-3 text-sm text-text-muted">
-              No users found
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* My Squad */}
       <div className="mb-6">
@@ -466,7 +497,10 @@ export default function HubPage() {
       <div className="min-w-0">
         <div className="flex items-center gap-2 mb-3">
           <h2 className="text-xs text-text-muted uppercase tracking-wider flex-shrink-0">Feed</h2>
-          <div className="flex gap-1 overflow-x-auto flex-nowrap no-scrollbar">
+          {/* min-w-0 or the scroller claims its max-content width and the
+              last tab ends up underneath whatever is pinned to its right —
+              "Receipts" was being clipped by the arcade button. */}
+          <div className="flex gap-1 overflow-x-auto flex-nowrap no-scrollbar min-w-0">
             {[
               { key: 'all', label: 'All of IKB' },
               { key: 'news', label: 'News', mobileOnly: true },
@@ -489,14 +523,12 @@ export default function HubPage() {
               </button>
             ))}
           </div>
-          {/* The arcade is not a feed scope, so it does not sit in the feed
-              scroller. It's pinned outside it — always reachable at any width
-              instead of scrolled off the end — and styled as its own thing:
-              accent border and the cabinet mark, so it reads as a place you
-              go rather than another way to filter posts. */}
+          {/* Mobile only. On desktop the arcade lives beside the profile
+              card, where there's room for it; here it stays pinned outside
+              the scroller so it can't be scrolled off the end. */}
           <button
             onClick={() => setArcadeOpen(true)}
-            className="ml-auto shrink-0 flex items-center gap-1.5 rounded-lg border border-accent bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent hover:bg-accent/20 transition-colors"
+            className="lg:hidden ml-auto shrink-0 flex items-center gap-1.5 rounded-lg border border-accent bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent hover:bg-accent/20 transition-colors"
           >
             <ArcadeIcon className="w-4 h-4" />
             Arcade

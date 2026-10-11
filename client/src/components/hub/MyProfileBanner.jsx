@@ -9,14 +9,20 @@ import { getBackdropUrl } from '../../lib/backdropUrl'
 // Shared between the Hub (top of the page) and Results (top of the
 // page). Clicking anywhere on the card opens the user's own profile
 // modal via the parent's onTap handler.
-export default function MyProfileBanner({ profile, onTap }) {
+// Where the card sits is the CALLER's business, not the card's. Results
+// still wants a centred column; the Hub now sits it beside a search panel,
+// where a baked-in `mx-auto` would centre it inside its own flex track. The
+// default keeps every existing caller rendering exactly as before.
+const DEFAULT_LAYOUT = 'mb-6 lg:max-w-2xl lg:mx-auto'
+
+export default function MyProfileBanner({ profile, onTap, layoutClassName = DEFAULT_LAYOUT }) {
   const tier = getTier(profile.total_points)
   const hasBackdrop = !!profile.backdrop_image
 
   return (
     <div
       onClick={onTap}
-      className={`relative bg-bg-primary border border-text-primary/20 rounded-2xl mb-6 cursor-pointer hover:bg-text-primary/5 transition-colors overflow-hidden lg:max-w-2xl lg:mx-auto ${hasBackdrop ? 'p-5 lg:py-8' : 'p-5'}`}
+      className={`relative bg-bg-primary border border-text-primary/20 rounded-2xl cursor-pointer hover:bg-text-primary/5 transition-colors overflow-hidden ${layoutClassName} ${hasBackdrop ? 'p-5 lg:py-8' : 'p-5'}`}
     >
       {hasBackdrop && (
         <>
