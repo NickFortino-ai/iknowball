@@ -372,6 +372,79 @@ export async function syncPropsForGame(gameId, markets) {
   return { synced: rows.length }
 }
 
+
+/**
+ * Attach each prop's slider ladder.
+ *
+ * Computed here rather than in the browser so the price the slider SHOWS is
+ * the price the submit path will CHARGE. A client-side copy of the hit-rate
+ * table would drift the moment the rates are re-measured, and the drift would
+ * be invisible — the card would quote one number and the server would store
+ * another.
+ *
+ * `slider` is null for flat markets (anytime TD and friends), which is the
+ * client's signal to render the existing over/under card.
+ */
+async function withSliders(props) {
+  if (!props?.length) return props || []
+  const { buildSlider } = await import('./propSliderService.js')
+  return props.map((p) => ({
+    ...p,
+    slider: buildSlider(p.market_key, Number(p.line)),
+  }))
+}
+
+/**
+ * One card per player, per market, per game.
+ *
+ * The odds feed re-quotes a line as the week goes on, and `line` is part of
+ * the upsert conflict key — so every move INSERTS a row rather than updating
+ * one. That is deliberate (a prop someone already picked must keep the line
+ * they picked), but it means the board accumulated five pickable Tyson Bagent
+ * pass-yards props for the same game at 217.5 through 222.5. 255 of 532
+ * player/market/game groups on the current football slate were duplicated
+ * this way.
+ *
+ * Harmless-looking before, actively wrong with the slider: five overlapping
+ * ±33% ladders over the same question, where the stale ones are still
+ * pickable at a price the book has since moved off.
+ *
+ * So: among PUBLISHED rows, keep only the latest quote. Rows that are locked
+ * or settled are kept untouched — they are history, and may hold picks. So
+ * are rows anyone has an open pick on, which is why this needs a round trip:
+ * dropping a row out from under a pending pick would make someone's own card
+ * disappear from the board.
+ */
+async function collapseStaleLines(props) {
+  if (!props?.length) return props || []
+
+  const groups = new Map()
+  for (const p of props) {
+    if (p.status !== 'published') continue
+    const key = `${p.game_id}|${p.market_key}|${p.player_name}`
+    const prev = groups.get(key)
+    // Newest quote wins. updated_at is set on every upsert; created_at is the
+    // tiebreak for rows written before updated_at existed.
+    if (!prev || (p.updated_at || p.created_at || '') > (prev.updated_at || prev.created_at || '')) {
+      groups.set(key, p)
+    }
+  }
+
+  const keep = new Set([...groups.values()].map((p) => p.id))
+  const candidates = props.filter((p) => p.status === 'published' && !keep.has(p.id))
+  if (!candidates.length) return props
+
+  // Anything with a pick on it stays, whoever made the pick — these lists are
+  // the same for every user, so this can't be narrowed to the caller.
+  const { data: picked } = await supabase
+    .from('prop_picks')
+    .select('prop_id')
+    .in('prop_id', candidates.map((p) => p.id))
+  for (const row of picked || []) keep.add(row.prop_id)
+
+  return props.filter((p) => p.status !== 'published' || keep.has(p.id))
+}
+
 // User-facing prop loader for the Props tab. Fans out fetchPlayerProps
 // across all of today's games in the given sport for a single market,
 // upserts fresh prop rows with status='published' so they're immediately
@@ -622,12 +695,14 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey) {
   // American odds are not monotonic as numbers (-150 is likelier than +110
   // but sorts lower), so they convert to implied probability first.
   if (marketKey === 'player_anytime_td') {
+    // Anytime TD never re-quotes — the line is always 0.5 — so there is
+    // nothing for collapseStaleLines to find.
     return (allProps || []).slice().sort(
       (a, b) => impliedProbability(b.over_odds) - impliedProbability(a.over_odds),
     )
   }
 
-  return allProps || []
+  return withSliders(await collapseStaleLines(allProps || []))
 }
 
 /**
@@ -736,12 +811,12 @@ export async function getFeaturedProps(date, { fallback = false } = {}) {
 
     if (nextProps?.length) {
       const nextDate = nextProps[0].featured_date
-      return nextProps.filter((p) => p.featured_date === nextDate)
+      return withSliders(nextProps.filter((p) => p.featured_date === nextDate))
     }
     return []
   }
 
-  return props
+  return withSliders(props)
 }
 
 export async function getAllFeaturedProps() {

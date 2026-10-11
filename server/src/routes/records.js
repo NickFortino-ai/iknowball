@@ -157,7 +157,7 @@ router.get('/history/:id/detail', requireAuth, async (req, res, next) => {
     else if (meta.propPickIds?.length) {
       const { data: propPicks, error: propErr } = await supabase
         .from('prop_picks')
-        .select('id, user_id, picked_side, is_correct, points_earned, odds_at_pick, updated_at, player_props(player_name, market_label, line, actual_value, player_headshot_url, games(home_team, away_team, starts_at, sports(key, name)))')
+        .select('id, user_id, picked_side, is_correct, points_earned, odds_at_pick, chosen_line, updated_at, player_props(player_name, market_label, line, actual_value, player_headshot_url, games(home_team, away_team, starts_at, sports(key, name)))')
         .in('id', meta.propPickIds)
         .order('updated_at', { ascending: true })
       if (propErr) return next(propErr)
@@ -191,7 +191,9 @@ router.get('/history/:id/detail', requireAuth, async (req, res, next) => {
         ...p,
         player_name: p.player_props?.player_name ?? null,
         market_label: p.player_props?.market_label ?? null,
-        line: p.player_props?.line ?? null,
+        // The user's own line when they set one — a slider pick at 288 that
+        // reads "OVER 265" describes the book's bet, not theirs.
+        line: p.chosen_line ?? p.player_props?.line ?? null,
         actual_value: p.player_props?.actual_value ?? null,
         player_headshot_url: p.player_props?.player_headshot_url ?? null,
       }))

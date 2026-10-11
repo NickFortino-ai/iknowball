@@ -1251,7 +1251,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       ? supabase.from('parlays').select('id, leg_count, combined_multiplier, points_earned, is_correct, parlay_legs(id, picked_team, odds_at_lock, odds_at_submission, status, games(home_team, away_team, sports(name)))').in('id', [...flexParlayIds])
       : Promise.resolve({ data: [] }),
     flexPropPickIds.size > 0
-      ? supabase.from('prop_picks').select('id, picked_side, is_correct, points_earned, player_props(id, player_name, line, market_label, actual_value, games(home_team, away_team, sports(key, name)))').in('id', [...flexPropPickIds])
+      ? supabase.from('prop_picks').select('id, picked_side, is_correct, points_earned, chosen_line, player_props(id, player_name, line, market_label, actual_value, games(home_team, away_team, sports(key, name)))').in('id', [...flexPropPickIds])
       : Promise.resolve({ data: [] }),
   ])
 
