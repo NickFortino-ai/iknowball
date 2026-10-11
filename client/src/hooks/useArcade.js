@@ -38,7 +38,7 @@ export function useFinishMemoryRound() {
 
 export function useStartTriviaRound() {
   return useMutation({
-    mutationFn: ({ variant }) => api.post('/arcade/trivia/start', { variant }),
+    mutationFn: ({ variant, count }) => api.post('/arcade/trivia/start', { variant, count }),
   })
 }
 

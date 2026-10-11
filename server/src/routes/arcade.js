@@ -16,8 +16,12 @@ router.use(requireAuth)
 const MEMORY = 'memory'
 const TRIVIA = 'trivia'
 
-// Questions per round, and what each is worth.
-const TRIVIA_QUESTIONS = 8
+// Round lengths on offer. A short round is the default commitment and a
+// long one is for someone who wants to sit with it; this list is the single
+// source of truth, so a third length is one entry here and one more button
+// on the intro.
+const TRIVIA_COUNTS = [10, 20]
+const TRIVIA_QUESTIONS = TRIVIA_COUNTS[0]
 // Harder questions pay more, so clearing a 5 isn't level with clearing a 1.
 // Kept a modest spread (10..20) — difficulty should tilt a close round, not
 // make the easy ones pointless to answer.
@@ -249,7 +253,17 @@ router.post('/memory/finish', async (req, res, next) => {
 router.post('/trivia/start', async (req, res, next) => {
   try {
     const variant = String(req.body?.variant || 'all')
-    const questions = await buildRound({ sport: variant, count: TRIVIA_QUESTIONS })
+    // Validated against the offered lengths rather than trusted: `count`
+    // decides how many questions a round is worth, so an arbitrary number
+    // would be an arbitrary score.
+    const requested = req.body?.count === undefined ? TRIVIA_QUESTIONS : Number(req.body.count)
+    if (!TRIVIA_COUNTS.includes(requested)) {
+      return res.status(400).json({ error: `count must be one of ${TRIVIA_COUNTS.join(', ')}` })
+    }
+    // Deals short rather than refusing when the pool cannot fill the length
+    // asked for — par and scoring both read questions.length, so a short
+    // round is priced as the short round it is.
+    const questions = await buildRound({ sport: variant, count: requested })
     if (questions.length < 2) {
       return res.status(503).json({ error: 'Not enough questions available for that sport yet.' })
     }

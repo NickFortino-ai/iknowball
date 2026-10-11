@@ -29,6 +29,12 @@ function Timer({ startedAt }) {
 // Start button spanning the lot.
 const SCREEN = 'space-y-4 max-w-xl mx-auto'
 
+// Round lengths, mirroring the server's TRIVIA_COUNTS. Offered as equal
+// start buttons with none pre-selected — the same reason memory's
+// difficulties are: tapping one deals immediately, so highlighting a
+// default would describe a confirm step that doesn't exist.
+const COUNTS = [10, 20]
+
 export default function TriviaGame({ variant = 'all', onExit }) {
   const [round, setRound] = useState(null)
   const [index, setIndex] = useState(0)
@@ -40,10 +46,15 @@ export default function TriviaGame({ variant = 'all', onExit }) {
   const startTrivia = useStartTriviaRound()
   const finishTrivia = useFinishTriviaRound()
 
-  async function deal() {
+  // Remembered so "Play again" repeats the length you just played rather
+  // than silently dropping you back to the default.
+  const [count, setCount] = useState(COUNTS[0])
+
+  async function deal(n = count) {
+    setCount(n)
     setBusy(true)
     try {
-      const data = await startTrivia.mutateAsync({ variant })
+      const data = await startTrivia.mutateAsync({ variant, count: n })
       setRound(data)
       setIndex(0)
       setAnswers([])
@@ -91,13 +102,18 @@ export default function TriviaGame({ variant = 'all', onExit }) {
           worth more, and answering fast adds a bonus — but a right answer
           always beats a quick one.
         </p>
-        <button
-          onClick={deal}
-          disabled={busy}
-          className="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          {busy ? 'Dealing…' : 'Start'}
-        </button>
+        <div className="flex gap-2">
+          {COUNTS.map((n) => (
+            <button
+              key={n}
+              onClick={() => deal(n)}
+              disabled={busy}
+              className="flex-1 rounded-xl border border-text-primary/20 bg-bg-primary/50 backdrop-blur-sm py-3 text-sm font-semibold text-text-primary transition-colors hover:border-accent hover:bg-accent/10 disabled:opacity-40"
+            >
+              {busy ? 'Dealing…' : `${n} questions`}
+            </button>
+          ))}
+        </div>
       </div>
     )
   }
@@ -145,7 +161,7 @@ export default function TriviaGame({ variant = 'all', onExit }) {
         </div>
 
         <div className="flex gap-2 justify-center">
-          <button onClick={deal} className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white">Play again</button>
+          <button onClick={() => deal(count)} className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white">Play again</button>
           <button onClick={onExit} className="rounded-xl border border-text-primary/20 px-5 py-2.5 text-sm font-semibold text-text-secondary">Done</button>
         </div>
       </div>
