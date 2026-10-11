@@ -39,20 +39,34 @@ export function ArcadeIcon({ className = 'w-5 h-5' }) {
 }
 
 /**
- * Tile art for Memory: four real backdrops from the chosen set, laid out as
- * a 2x2 of face-up cards. It shows the player exactly what they'd be matching.
+ * Tile art for Memory: a board mid-game.
+ *
+ * Four backdrops laid flat said "we have pictures". This says what the game
+ * IS — one matched pair face up, the rest face down with the same question
+ * mark the real board uses. The pair is the same image twice, because that
+ * is what a match looks like, and the eye reads it before the caption does.
  */
 function MemoryArt({ samples }) {
-  const tiles = (samples || []).slice(0, 4)
-  if (tiles.length < 4) {
+  const face = (samples || [])[0]
+  if (!face) {
     return <div className="absolute inset-0 bg-gradient-to-br from-accent/30 to-bg-primary" />
   }
+  // Positions of the matched pair in a 3x2 board. Diagonal on purpose —
+  // adjacent cards would read as one wide photo rather than two cards.
+  const MATCHED = [0, 4]
   return (
-    <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-0.5 p-0.5">
-      {tiles.map((f, i) => (
-        <img key={i} src={getBackdropUrl(f)} alt="" draggable={false}
-          className="w-full h-full object-cover rounded-sm" />
-      ))}
+    <div className="absolute inset-0 grid grid-cols-3 grid-rows-2 gap-1 p-1">
+      {[0, 1, 2, 3, 4, 5].map((i) =>
+        MATCHED.includes(i) ? (
+          <img key={i} src={getBackdropUrl(face)} alt="" draggable={false}
+            className="h-full w-full rounded object-cover ring-1 ring-accent/70" />
+        ) : (
+          <span key={i}
+            className="flex h-full w-full items-center justify-center rounded bg-bg-primary/80 font-display text-base text-text-muted">
+            ?
+          </span>
+        ),
+      )}
     </div>
   )
 }
@@ -65,9 +79,9 @@ function MemoryArt({ samples }) {
  */
 function TriviaArt() {
   return (
-    <div className="absolute inset-0 flex flex-col justify-center gap-1.5 px-3 sm:px-4">
+    <div className="absolute inset-0 flex flex-col justify-center gap-2 px-4 sm:px-6">
       {[0, 1, 2, 3].map((i) => (
-        <div key={i} className={`h-2 sm:h-2.5 rounded-full ${
+        <div key={i} className={`h-2.5 sm:h-3 rounded-full ${
           i === 2 ? 'bg-accent' : 'bg-text-primary/15'
         }`} style={{ width: `${[78, 62, 88, 54][i]}%` }} />
       ))}
@@ -139,7 +153,7 @@ export default function ArcadeRoom({ onExit }) {
   return (
     <div className="space-y-5 min-w-0">
       <div className="flex items-center gap-2 sm:gap-3">
-        <ArcadeBack onClick={onExit} label="Feed" />
+        <ArcadeBack onClick={onExit} label="Hub" />
         <ArcadeIcon className="w-9 h-9 sm:w-10 sm:h-10 shrink-0" />
         <div className="min-w-0">
           <h2 className="font-display text-xl sm:text-2xl text-text-primary leading-none">Arcade</h2>
@@ -149,7 +163,7 @@ export default function ArcadeRoom({ onExit }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {GAMES.map((g) => {
           const Art = g.art
           // A round needs questions. Rather than let the tile launch into
@@ -164,12 +178,12 @@ export default function ArcadeRoom({ onExit }) {
               <button
                 disabled={notReady}
                 onClick={() => setPlaying(g.key)}
-                className={`relative block w-full h-24 sm:h-28 lg:h-32 overflow-hidden bg-bg-secondary group ${notReady ? 'cursor-default' : ''}`}
+                className={`relative block w-full h-40 sm:h-44 lg:h-48 overflow-hidden bg-bg-secondary group ${notReady ? 'cursor-default' : ''}`}
               >
                 <Art samples={allSet?.samples} />
                 <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/20 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-1.5 p-2 sm:p-3">
-                  <span className="font-display text-base sm:text-xl text-text-primary leading-none truncate">{g.name}</span>
+                  <span className="font-display text-lg sm:text-2xl text-text-primary leading-tight truncate">{g.name}</span>
                   {notReady ? (
                     <span className="rounded-lg border border-text-primary/20 px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-semibold text-text-muted shrink-0">
                       Soon
