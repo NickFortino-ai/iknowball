@@ -16,6 +16,7 @@ import WnbaSalariesEditor from '../components/admin/WnbaSalariesEditor'
 import NbaSalariesEditor from '../components/admin/NbaSalariesEditor'
 import MlbSalariesEditor from '../components/admin/MlbSalariesEditor'
 import PlayerBlurbsPanel from '../components/admin/PlayerBlurbsPanel'
+import TriviaPanel from '../components/admin/TriviaPanel'
 import WritersPanel from '../components/admin/WritersPanel'
 import AdminToolsPanel from '../components/admin/AdminToolsPanel'
 import DashboardPanel from '../components/admin/DashboardPanel'
@@ -272,6 +273,7 @@ export default function AdminPage() {
           { key: 'backdrops', label: 'Backdrops', badge: pendingCounts?.backdrops },
           { key: 'positions', label: 'Positions' },
           { key: 'playerblurbs', label: 'Blurbs' },
+          { key: 'trivia', label: 'Trivia' },
           { key: 'writers', label: 'Writers' },
           { key: 'seasons', label: 'Seasons' },
           { key: 'tools', label: 'Tools' },
@@ -613,6 +615,7 @@ export default function AdminPage() {
       {adminSection === 'positions' && <PlayerPositionPanel />}
 
       {adminSection === 'playerblurbs' && <PlayerBlurbsPanel />}
+      {adminSection === 'trivia' && <TriviaPanel />}
       {adminSection === 'writers' && <WritersPanel />}
 
       {adminSection === 'seasons' && <SeasonDatesPanel />}

@@ -17,6 +17,7 @@ import draftPrepRouter from './routes/draftPrep.js'
 import adminRouter from './routes/admin.js'
 import blurbsRouter from './routes/blurbs.js'
 import arcadeRouter from './routes/arcade.js'
+import triviaRouter from './routes/trivia.js'
 import propsRouter from './routes/props.js'
 import parlaysRouter from './routes/parlays.js'
 import paymentsRouter from './routes/payments.js'
@@ -84,6 +85,7 @@ app.use('/api/draft-prep', draftPrepRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/blurbs', blurbsRouter)
 app.use('/api/arcade', arcadeRouter)
+app.use('/api/trivia', triviaRouter)
 // Back-compat alias for native iOS builds shipped before the writer-role
 // refactor moved these routes off of /api/admin/blurbs. Removing this
 // would 404 every install of v1.1.3 and earlier; keep until we've had

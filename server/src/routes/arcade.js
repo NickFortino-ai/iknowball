@@ -7,11 +7,25 @@ import { Router } from 'express'
 import { supabase } from '../config/supabase.js'
 import { requireAuth } from '../middleware/auth.js'
 import { logger } from '../utils/logger.js'
+import { buildRound } from '../services/triviaService.js'
 
 const router = Router()
 router.use(requireAuth)
 
 const MEMORY = 'memory'
+const TRIVIA = 'trivia'
+
+// Questions per round, and what each is worth.
+const TRIVIA_QUESTIONS = 8
+// Harder questions pay more, so clearing a 5 isn't level with clearing a 1.
+// Kept a modest spread (100..200) — difficulty should tilt a close round, not
+// make the easy ones pointless to answer.
+const POINTS_FOR_DIFFICULTY = { 1: 100, 2: 125, 3: 150, 4: 175, 5: 200 }
+const POINTS_PER_CORRECT = 125 // used when a question carries no ranking
+// Answering fast is worth something, but not so much that it beats being
+// right — a perfect slow round still outscores a fast half-wrong one.
+const TRIVIA_PAR_SECONDS_PER_Q = 12
+const TRIVIA_BONUS_PER_SECOND = 2
 
 // Pair counts we deal. Four columns is the mobile ceiling — at 375px wide a
 // fifth column puts cards under ~65px, too small to recognise a backdrop,
@@ -190,6 +204,157 @@ router.post('/memory/finish', async (req, res, next) => {
       score,
       breakdown,
       durationMs,
+      personalBest: best?.score ?? score,
+      isPersonalBest: (best?.score ?? 0) <= score,
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// Deal a trivia round.
+//
+// The answers are deliberately NOT in the response. They are held in
+// arcade_rounds.payload and scored server-side on finish — a quiz that ships
+// its own answer key is not a quiz.
+router.post('/trivia/start', async (req, res, next) => {
+  try {
+    const variant = String(req.body?.variant || 'all')
+    const questions = await buildRound({ sport: variant, count: TRIVIA_QUESTIONS })
+    if (questions.length < 2) {
+      return res.status(503).json({ error: 'Not enough questions available for that sport yet.' })
+    }
+
+    const { data: round, error } = await supabase
+      .from('arcade_rounds')
+      .insert({
+        user_id: req.user.id,
+        game_key: TRIVIA,
+        variant,
+        pairs: questions.length, // reused as "question count" for this game
+        payload: {
+          answers: questions.map((q) => q.answerIndex),
+          explanations: questions.map((q) => q.explanation || null),
+          questionIds: questions.map((q) => q.id || null),
+          difficulties: questions.map((q) => q.difficulty ?? 2),
+        },
+      })
+      .select('id')
+      .single()
+    if (error) throw error
+
+    res.json({
+      roundId: round.id,
+      variant,
+      parSeconds: questions.length * TRIVIA_PAR_SECONDS_PER_Q,
+      questions: questions.map((q) => ({
+        question: q.question,
+        choices: q.choices,
+        sport: q.sport,
+        difficulty: q.difficulty ?? 2,
+      })),
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// Score a trivia round. The client sends only its chosen indexes.
+router.post('/trivia/finish', async (req, res, next) => {
+  try {
+    const { roundId } = req.body || {}
+    const answers = req.body?.answers
+    if (!roundId) return res.status(400).json({ error: 'roundId required' })
+    if (!Array.isArray(answers)) return res.status(400).json({ error: 'answers must be an array' })
+
+    const { data: round } = await supabase
+      .from('arcade_rounds')
+      .select('id, user_id, game_key, variant, pairs, started_at, finished_at, payload')
+      .eq('id', roundId)
+      .maybeSingle()
+
+    if (!round) return res.status(404).json({ error: 'Round not found' })
+    if (round.user_id !== req.user.id) return res.status(403).json({ error: 'Not your round' })
+    if (round.finished_at) return res.status(409).json({ error: 'Round already finished' })
+
+    const correctAnswers = round.payload?.answers || []
+    const explanations = round.payload?.explanations || []
+    const results = correctAnswers.map((correct, i) => ({
+      correct,
+      chosen: Number.isInteger(answers[i]) ? answers[i] : null,
+      wasRight: answers[i] === correct,
+      explanation: explanations[i] || null,
+    }))
+    const correctCount = results.filter((r) => r.wasRight).length
+    const difficulties = round.payload?.difficulties || []
+
+    const durationMs = Date.now() - new Date(round.started_at).getTime()
+    const parSeconds = correctAnswers.length * TRIVIA_PAR_SECONDS_PER_Q
+    const base = results.reduce((sum, r, i) => {
+      if (!r.wasRight) return sum
+      return sum + (POINTS_FOR_DIFFICULTY[difficulties[i]] ?? POINTS_PER_CORRECT)
+    }, 0)
+    const timeBonus = correctCount === 0
+      ? 0 // no reward for racing through and getting nothing right
+      : Math.max(0, Math.round((parSeconds - durationMs / 1000) * TRIVIA_BONUS_PER_SECOND))
+    const score = Math.max(0, base + timeBonus)
+
+    await supabase.from('arcade_rounds').update({ finished_at: new Date().toISOString() }).eq('id', round.id)
+
+    const { error: saveErr } = await supabase.from('arcade_scores').insert({
+      user_id: req.user.id,
+      round_id: round.id,
+      game_key: TRIVIA,
+      variant: round.variant,
+      score,
+      pairs: correctAnswers.length,
+      moves: correctCount,
+      duration_ms: durationMs,
+    })
+    if (saveErr) throw saveErr
+
+    // Per-question stats, for the AUTHORED questions only (generated ones have
+    // no row to count against) — tells you which hand-written questions are
+    // too easy or too hard to keep.
+    //
+    // Read-then-write rather than an atomic increment: PostgREST can't express
+    // `col = col + 1` without a database function, and inventing an RPC that
+    // doesn't exist yet would be a call into nothing. A lost count under
+    // concurrency is acceptable for what is a curation hint, not a ledger.
+    const ids = round.payload?.questionIds || []
+    const authoredIds = ids.filter(Boolean)
+    if (authoredIds.length) {
+      const { data: current } = await supabase
+        .from('trivia_questions')
+        .select('id, times_served, times_correct')
+        .in('id', authoredIds)
+      const byId = Object.fromEntries((current || []).map((r) => [r.id, r]))
+      for (let i = 0; i < ids.length; i++) {
+        const row = ids[i] && byId[ids[i]]
+        if (!row) continue
+        await supabase
+          .from('trivia_questions')
+          .update({
+            times_served: (row.times_served || 0) + 1,
+            times_correct: (row.times_correct || 0) + (results[i]?.wasRight ? 1 : 0),
+          })
+          .eq('id', row.id)
+      }
+    }
+
+    const { data: best } = await supabase
+      .from('arcade_scores')
+      .select('score')
+      .eq('user_id', req.user.id).eq('game_key', TRIVIA).eq('variant', round.variant)
+      .order('score', { ascending: false }).limit(1).maybeSingle()
+
+    res.json({
+      saved: true,
+      score,
+      correctCount,
+      total: correctAnswers.length,
+      breakdown: { base, timeBonus, parSeconds, elapsedSeconds: Math.round(durationMs / 1000) },
+      results,
       personalBest: best?.score ?? score,
       isPersonalBest: (best?.score ?? 0) <= score,
     })

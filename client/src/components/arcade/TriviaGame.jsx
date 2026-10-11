@@ -1,0 +1,182 @@
+import { useState, useEffect, useRef } from 'react'
+import { useStartTriviaRound, useFinishTriviaRound } from '../../hooks/useArcade'
+import { toast } from '../ui/Toast'
+
+/**
+ * Arcade trivia.
+ *
+ * Questions arrive WITHOUT their answers — the server holds those and scores
+ * the round, so the answer key is never in the browser.
+ *
+ * No per-question reveal. Answers are collected and the whole round is marked
+ * at the end, which keeps the clock honest (a reveal pause would otherwise be
+ * timed as thinking) and lets the review screen show every question at once.
+ */
+function Timer({ startedAt }) {
+  const [, tick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => tick((n) => n + 1), 500)
+    return () => clearInterval(id)
+  }, [])
+  const s = Math.floor((Date.now() - startedAt) / 1000)
+  return <span className="tabular-nums">{Math.floor(s / 60)}:{String(s % 60).padStart(2, '0')}</span>
+}
+
+export default function TriviaGame({ variant, variantLabel, onExit }) {
+  const [round, setRound] = useState(null)
+  const [index, setIndex] = useState(0)
+  const [answers, setAnswers] = useState([])
+  const [result, setResult] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const startedAt = useRef(null)
+
+  const startTrivia = useStartTriviaRound()
+  const finishTrivia = useFinishTriviaRound()
+
+  async function deal() {
+    setBusy(true)
+    try {
+      const data = await startTrivia.mutateAsync({ variant })
+      setRound(data)
+      setIndex(0)
+      setAnswers([])
+      setResult(null)
+      startedAt.current = Date.now()
+    } catch (err) {
+      toast(err.message || 'Could not start a round', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function choose(choiceIndex) {
+    if (!round || busy) return
+    const next = [...answers]
+    next[index] = choiceIndex
+    setAnswers(next)
+
+    if (index + 1 < round.questions.length) {
+      setIndex(index + 1)
+      return
+    }
+
+    setBusy(true)
+    try {
+      const res = await finishTrivia.mutateAsync({ roundId: round.roundId, answers: next })
+      setResult(res)
+    } catch (err) {
+      toast(err.message || 'Could not save your score', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // ── Intro ─────────────────────────────────────────────────────────────
+  if (!round) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <button onClick={onExit} className="text-xs text-text-muted hover:text-text-primary">← Arcade</button>
+          <h3 className="font-display text-lg text-text-primary">Trivia · {variantLabel}</h3>
+        </div>
+        <p className="text-sm text-text-secondary">
+          Eight questions drawn from this season's real results. Answer fast for
+          a bonus — but a right answer is always worth more than a quick one.
+        </p>
+        <button
+          onClick={deal}
+          disabled={busy}
+          className="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {busy ? 'Dealing…' : 'Start'}
+        </button>
+      </div>
+    )
+  }
+
+  // ── Review ────────────────────────────────────────────────────────────
+  if (result) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center space-y-1">
+          <h3 className="font-display text-2xl text-text-primary">
+            {result.isPersonalBest ? 'New personal best' : 'Round complete'}
+          </h3>
+          <div className="font-display text-5xl text-accent tabular-nums">{result.score}</div>
+          <p className="text-sm text-text-secondary">
+            {result.correctCount}/{result.total} correct
+            {result.breakdown.timeBonus > 0 && ` · +${result.breakdown.timeBonus} for speed`}
+          </p>
+        </div>
+
+        <div className="divide-y divide-text-primary/10">
+          {round.questions.map((q, i) => {
+            const r = result.results[i]
+            return (
+              <div key={i} className="py-3">
+                <div className="flex gap-2">
+                  <span className={`shrink-0 font-bold ${r?.wasRight ? 'text-correct' : 'text-incorrect'}`}>
+                    {r?.wasRight ? '✓' : '✕'}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm text-text-primary">{q.question}</p>
+                    {!r?.wasRight && (
+                      <p className="text-xs text-text-muted mt-1">
+                        You said <span className="text-incorrect">{q.choices[r?.chosen] ?? '—'}</span>
+                        {' · '}Answer: <span className="text-correct">{q.choices[r?.correct]}</span>
+                      </p>
+                    )}
+                    {r?.explanation && (
+                      <p className="text-xs text-text-muted mt-0.5">{r.explanation}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="flex gap-2 justify-center">
+          <button onClick={deal} className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white">Play again</button>
+          <button onClick={onExit} className="rounded-xl border border-text-primary/20 px-5 py-2.5 text-sm font-semibold text-text-secondary">Done</button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Question ──────────────────────────────────────────────────────────
+  const q = round.questions[index]
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between text-sm text-text-secondary">
+        <button onClick={onExit} className="text-xs text-text-muted hover:text-text-primary">← Quit</button>
+        <div className="flex items-center gap-4">
+          <span>{index + 1}/{round.questions.length}</span>
+          <Timer startedAt={startedAt.current} />
+        </div>
+      </div>
+
+      <div className="h-1 rounded-full bg-bg-card overflow-hidden">
+        <div
+          className="h-full bg-accent transition-all"
+          style={{ width: `${((index) / round.questions.length) * 100}%` }}
+        />
+      </div>
+
+      <p className="font-display text-xl text-text-primary leading-snug">{q.question}</p>
+
+      <div className="space-y-2">
+        {q.choices.map((choice, i) => (
+          <button
+            key={i}
+            onClick={() => choose(i)}
+            disabled={busy}
+            className="w-full rounded-xl border border-text-primary/20 px-4 py-3 text-left text-sm text-text-primary hover:border-accent hover:bg-accent/5 transition-colors disabled:opacity-50"
+          >
+            {choice}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}

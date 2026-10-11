@@ -35,3 +35,19 @@ export function useFinishMemoryRound() {
     },
   })
 }
+
+export function useStartTriviaRound() {
+  return useMutation({
+    mutationFn: ({ variant }) => api.post('/arcade/trivia/start', { variant }),
+  })
+}
+
+export function useFinishTriviaRound() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ roundId, answers }) => api.post('/arcade/trivia/finish', { roundId, answers }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['arcade', 'leaderboard'] })
+    },
+  })
+}

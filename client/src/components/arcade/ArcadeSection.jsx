@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import MemoryGame from './MemoryGame'
+import TriviaGame from './TriviaGame'
 import Avatar from '../ui/Avatar'
 import { useMemoryVariants, useArcadeLeaderboard } from '../../hooks/useArcade'
 
@@ -94,20 +95,34 @@ function Leaderboard({ variant }) {
 }
 
 export default function ArcadeSection() {
-  const [playing, setPlaying] = useState(false)
+  // null when browsing; 'memory' | 'trivia' while a game is open.
+  const [playing, setPlaying] = useState(null)
+  const [game, setGame] = useState('memory')
   const [variant, setVariant] = useState('all')
   const { data: variantData, isLoading } = useMemoryVariants()
 
   const variants = useMemo(() => variantData?.variants || [], [variantData])
 
-  if (playing) {
+  if (playing === 'memory') {
     return (
       <div className="rounded-xl border border-text-primary/20 bg-bg-primary/40 p-4">
         <MemoryGame
           variant={variant}
           variantLabel={labelFor(variant)}
           variantCount={variants.find((v) => v.key === variant)?.count}
-          onExit={() => setPlaying(false)}
+          onExit={() => setPlaying(null)}
+        />
+      </div>
+    )
+  }
+
+  if (playing === 'trivia') {
+    return (
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/40 p-4">
+        <TriviaGame
+          variant={triviaVariant}
+          variantLabel={labelFor(triviaVariant)}
+          onExit={() => setPlaying(null)}
         />
       </div>
     )
@@ -149,7 +164,7 @@ export default function ArcadeSection() {
           </div>
 
           <button
-            onClick={() => setPlaying(true)}
+            onClick={() => { setGame('memory'); setPlaying('memory') }}
             className="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-white"
           >
             Play {labelFor(variant)}
