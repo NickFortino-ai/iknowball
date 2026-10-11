@@ -188,7 +188,27 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
     setTimeout(() => { setFlipped([]) }, peekMs)
   }
 
-  const cols = round && round.cards.length > 16 ? 'grid-cols-4 sm:grid-cols-5' : 'grid-cols-4 sm:grid-cols-4'
+  // Four columns on a phone, five from `sm` once there are more than 16
+  // cards. Kept as a number too, because the board has to be sized from the
+  // VIEWPORT HEIGHT and that needs the row count.
+  const wideBoard = round && round.cards.length > 16
+  const cols = wideBoard ? 'grid-cols-4 sm:grid-cols-5' : 'grid-cols-4 sm:grid-cols-4'
+
+  // A memory board you cannot see all of is not a memory game: you cannot
+  // remember a card you never saw, and scrolling between flips means the
+  // top half is out of sight exactly when you need to recall it. Hard on a
+  // desktop was four rows of 240px cards — the bottom two rows were below
+  // the fold.
+  //
+  // Cards are square, so capping the WIDTH caps the height: with `rows` rows
+  // in the space left under the nav, each card can be that tall, and the
+  // board is that times the column count. The cap only ever binds when the
+  // screen is wide relative to its height, which is every desktop and no
+  // phone — on mobile the computed width exceeds the page, so nothing
+  // changes there.
+  const boardCols = wideBoard ? 5 : 4
+  const boardRows = round ? Math.ceil(round.cards.length / boardCols) : 1
+  const boardMaxWidth = `min(calc((100dvh - 15rem) / ${boardRows} * ${boardCols}), ${boardCols * 200}px)`
 
   // ── Setup ─────────────────────────────────────────────────────────────
   if (!round) {
@@ -287,7 +307,7 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
         </div>
       </div>
 
-      <div className={`grid ${cols} gap-2 -mx-2 sm:mx-0`}>
+      <div className={`grid ${cols} gap-2 -mx-2 sm:mx-auto`} style={{ maxWidth: boardMaxWidth }}>
         {round.cards.map((card) => {
           const isUp = flipped.includes(card.id) || matched.has(card.id)
           const isMatched = matched.has(card.id)
