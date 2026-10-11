@@ -22,6 +22,7 @@ import TeamFeed from '../components/feed/TeamFeed'
 import { useTeamsForSport } from '../hooks/useHotTakes'
 import ReceiptsTab from '../components/feed/ReceiptsTab'
 import UserFeedTab from '../components/feed/UserFeedTab'
+import ArcadeSection from '../components/arcade/ArcadeSection'
 import NewsFeed from '../components/feed/NewsFeed'
 import Avatar from '../components/ui/Avatar'
 import MyProfileBanner from '../components/hub/MyProfileBanner'
@@ -86,7 +87,7 @@ function FilterPanel({ filterSport, filterTeam, filterTeamSearch, onSelectSport,
   )
 }
 
-const VALID_SCOPES = new Set(['squad', 'all', 'highlights', 'polls', 'predictions', 'receipts', 'user_feeds', 'news'])
+const VALID_SCOPES = new Set(['squad', 'all', 'highlights', 'polls', 'predictions', 'receipts', 'user_feeds', 'news', 'arcade'])
 
 export default function HubPage() {
   const { session } = useAuth()
@@ -455,6 +456,7 @@ export default function HubPage() {
               { key: 'highlights', label: 'Me' },
               { key: 'user_feeds', label: 'User Feeds' },
               { key: 'receipts', label: 'Receipts' },
+              { key: 'arcade', label: 'Arcade' },
             ].filter((tab) => !tab.mobileOnly || !window.matchMedia('(min-width: 1024px)').matches).map((tab) => (
               <button
                 key={tab.key}
@@ -489,7 +491,9 @@ export default function HubPage() {
           </div>
         )}
 
-        {feedScope === 'receipts' ? (
+        {feedScope === 'arcade' ? (
+          <ArcadeSection />
+        ) : feedScope === 'receipts' ? (
           <ReceiptsTab onUserTap={setSelectedUserId} />
         ) : feedScope === 'user_feeds' ? (
           <UserFeedTab onUserTap={setSelectedUserId} initialUserId={initialFeedUserId} />
