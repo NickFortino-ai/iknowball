@@ -317,6 +317,57 @@ export default function HubPage() {
     )
   }
 
+  // The squad header, rendered in the banner row on desktop and above the
+  // list on mobile.
+  //
+  // All three controls cluster on the LEFT. They used to sit at opposite ends
+  // of a full-width row, which put the info icon and Filter in the arcade's
+  // column and reserved that whole vertical band for two small controls —
+  // the arcade could not grow into it. Together on the left they read as one
+  // group ("my squad, what it is, how to filter it") and the right of the
+  // row is free.
+  function renderSquadHeader() {
+    return (
+      <div className="flex items-center gap-2 mb-3">
+        <button
+          onClick={() => {
+            if (connections?.length) {
+              if (squadExpanded && filterMode) setFilterMode(false)
+              setSquadExpanded(!squadExpanded)
+            }
+          }}
+          className="flex items-center gap-1.5 text-xs text-text-muted uppercase tracking-wider"
+        >
+          My Squad {connections?.length > 0 && `(${connections.length})`}
+          {connections?.length > 0 && (
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`transition-transform ${squadExpanded ? 'rotate-180' : ''}`}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          )}
+        </button>
+        <InfoTooltip text="Your squad is your network on I KNOW BALL. Search for users by username and send connection requests, or enable auto-connect on a league to link up with leaguemates automatically. Your connections appear first when inviting people to leagues. The 🔥 indicates an active win streak." />
+        {squadExpanded && connections?.length > 0 && (
+          <button
+            onClick={toggleFilterMode}
+            className={`text-xs transition-colors ${filterMode ? 'text-accent font-semibold' : 'text-text-muted hover:text-accent'}`}
+          >
+            {filterMode ? 'Done' : 'Filter'}
+          </button>
+        )}
+      </div>
+    )
+  }
+
   // The arcade is a ROOM: it replaces the Hub, not the feed inside it.
   //
   // Scoping the takeover to the feed left the profile card, search and squad
@@ -344,19 +395,27 @@ export default function HubPage() {
 
           Stacks on mobile in the same order as before — banner, search —
           so the phone layout is unchanged for now. */}
-      <div className="lg:flex lg:items-stretch lg:gap-4 lg:mb-6">
-        {profile && (
-          <MyProfileBanner
-            profile={profile}
-            onTap={() => setSelectedUserId(session?.user?.id)}
-            layoutClassName="mb-6 lg:mb-0 lg:flex-1 lg:min-w-0"
-          />
-        )}
+      <div className="lg:flex lg:items-stretch lg:gap-4 lg:mb-3">
+        <div className="lg:flex-1 lg:min-w-0 lg:flex lg:flex-col">
+          {profile && (
+            <MyProfileBanner
+              profile={profile}
+              onTap={() => setSelectedUserId(session?.user?.id)}
+              layoutClassName="mb-6 lg:mb-0"
+            />
+          )}
+          {/* Desktop: the squad header shares this row, which is what lets
+              the arcade column extend down past the profile card. The list
+              itself stays full width below. Mobile renders its own copy in
+              document order instead — search and the arcade come first
+              there, so this one can't simply move. */}
+          <div className="hidden lg:block lg:mt-auto lg:pt-3">{renderSquadHeader()}</div>
+        </div>
         {/* Search and the arcade travel together: a row on mobile, a column
             on desktop. Grouping "things you do" costs no vertical space at
             either size and puts the arcade in thumb reach on a phone, rather
             than pinned to the end of a tab scroller nobody scrolls. */}
-        <div className="mb-6 lg:mb-0 flex gap-2 lg:flex-col lg:gap-3 lg:w-72 lg:shrink-0">
+        <div className="mb-6 lg:mb-0 flex gap-2 lg:flex-col lg:gap-3 lg:w-72 lg:shrink-0 lg:pb-3">
           <div className="flex-1 min-w-0">{renderSearch()}</div>
           {/* No border, no fill — the cabinet IS the button. A bordered box
               around art that already has its own outline and glow was two
@@ -426,45 +485,7 @@ export default function HubPage() {
 
       {/* My Squad */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <button
-            onClick={() => {
-              if (connections?.length) {
-                if (squadExpanded && filterMode) setFilterMode(false)
-                setSquadExpanded(!squadExpanded)
-              }
-            }}
-            className="flex items-center gap-1.5 text-xs text-text-muted uppercase tracking-wider"
-          >
-            My Squad {connections?.length > 0 && `(${connections.length})`}
-            {connections?.length > 0 && (
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`transition-transform ${squadExpanded ? 'rotate-180' : ''}`}
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            )}
-          </button>
-          <div className="flex items-center gap-2">
-            {squadExpanded && connections?.length > 0 && (
-              <button
-                onClick={toggleFilterMode}
-                className={`text-xs transition-colors ${filterMode ? 'text-accent font-semibold' : 'text-text-muted hover:text-accent'}`}
-              >
-                {filterMode ? 'Done' : 'Filter'}
-              </button>
-            )}
-            <InfoTooltip text="Your squad is your network on I KNOW BALL. Search for users by username and send connection requests, or enable auto-connect on a league to link up with leaguemates automatically. Your connections appear first when inviting people to leagues. The 🔥 indicates an active win streak." />
-          </div>
-        </div>
+        <div className="lg:hidden">{renderSquadHeader()}</div>
         {!connections?.length ? (
           <div className="bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-xl px-4 py-8 text-center text-text-muted text-sm">
             No connections yet. Join a league or search for friends above!
