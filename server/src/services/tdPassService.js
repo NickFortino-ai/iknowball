@@ -431,7 +431,7 @@ export async function getCurrentWeekMatchups() {
         // while starts_at is UTC, so a night game lands on the next UTC day.
         const { data: games } = await supabase
           .from('games')
-          .select('home_team, away_team, starts_at, status, home_score, away_score, live_home_score, live_away_score')
+          .select('home_team, away_team, starts_at, status, home_score, away_score, live_home_score, live_away_score, period, clock')
           .eq('sport_id', nflSport.id)
           .gte('starts_at', `${shift(dates[0], -1)}T00:00:00Z`)
           .lte('starts_at', `${shift(dates[dates.length - 1], 1)}T23:59:59Z`)
@@ -456,16 +456,22 @@ export async function getCurrentWeekMatchups() {
     const starts_at = g?.starts_at || (r.game_date ? `${r.game_date}T17:00:00Z` : null)
     const status = g?.status || null
 
+    // Quarter and clock ride along with the score. The badge has described
+    // itself as showing "Q3 · 17-20" since it was written, but these were
+    // never carried on the payload, so it only ever had the score.
+    const period = isLive ? (g?.period ?? null) : null
+    const clock = isLive ? (g?.clock ?? null) : null
+
     if (r.home_team) {
       byTeam[r.home_team] = {
         opponent: r.away_team, home_away: 'home', starts_at, game_status: status,
-        team_score: homeScore ?? null, opp_score: awayScore ?? null,
+        team_score: homeScore ?? null, opp_score: awayScore ?? null, period, clock,
       }
     }
     if (r.away_team) {
       byTeam[r.away_team] = {
         opponent: r.home_team, home_away: 'away', starts_at, game_status: status,
-        team_score: awayScore ?? null, opp_score: homeScore ?? null,
+        team_score: awayScore ?? null, opp_score: homeScore ?? null, period, clock,
       }
     }
   }

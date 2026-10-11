@@ -297,6 +297,8 @@ export default function IntsView({ league, tab = 'picks' }) {
                           gameStatus={player.game_status}
                           teamScore={player.team_score}
                           oppScore={player.opp_score}
+                          period={player.period}
+                          clock={player.clock}
                         />
                       </div>
                     </div>

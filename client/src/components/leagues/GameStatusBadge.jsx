@@ -7,17 +7,33 @@
 //
 // Three states:
 //   upcoming  "Sun 1:00 PM"     kickoff in the viewer's timezone
-//   live      "Q3 · 17-20"      score so far, the player's team first
+//   live      "Q3 8:42 17-20"   where the game is, then the score
 //   final     "Final 24-17"     result, the player's team first
 //
 // Before this it only ever rendered the kickoff time, so a game that finished
 // hours ago still advertised when it was going to start.
+/**
+ * "Q2" for a quarter, "OT" past regulation.
+ *
+ * Period arrives as a string because baseball sends "Top 5th" rather than a
+ * number — so anything non-numeric is already display-ready and passes
+ * through untouched.
+ */
+function periodLabel(period) {
+  if (!period) return null
+  const n = Number(period)
+  if (!Number.isFinite(n)) return String(period)
+  return n > 4 ? 'OT' : `Q${n}`
+}
+
 export default function GameStatusBadge({
   gameStartsAt,
   locked,
   gameStatus,
   teamScore,
   oppScore,
+  period,
+  clock,
 }) {
   const hasScore = teamScore != null && oppScore != null
 
@@ -30,12 +46,22 @@ export default function GameStatusBadge({
   }
 
   if (gameStatus === 'live') {
+    const q = periodLabel(period)
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-incorrect shrink-0">
         {/* Live games lead with a dot rather than the word, so the score is
             what the eye lands on. */}
         <span className="w-1.5 h-1.5 rounded-full bg-incorrect animate-pulse" />
-        {hasScore ? <span className="tabular-nums">{teamScore}-{oppScore}</span> : 'Live'}
+        {/* Where the game is, then what the score is. A score with no clock
+            can't tell you whether it's worth watching — 7-7 in the first is
+            a different fact from 7-7 in the fourth. Muted so it frames the
+            score rather than competing with it. */}
+        {q && (
+          <span className="text-text-muted tabular-nums normal-case">
+            {q}{clock ? ` ${clock}` : ''}
+          </span>
+        )}
+        {hasScore ? <span className="tabular-nums">{teamScore}-{oppScore}</span> : (!q && 'Live')}
       </span>
     )
   }
