@@ -254,9 +254,27 @@ export default function TriviaPanel() {
                 {s}
               </button>
             ))}
+            {/* Select-all, because the realistic review flow is reading
+                straight down a batch and publishing what survives — ticking
+                110 boxes to do that is not review, it is typing. */}
+            {rows.length > 0 && (
+              <button
+                onClick={() => setSelected(selected.size === rows.length ? new Set() : new Set(rows.map((r) => r.id)))}
+                className="rounded-lg border border-text-primary/20 px-3 py-1 text-xs font-semibold text-text-secondary hover:border-text-primary/40"
+              >
+                {selected.size === rows.length ? 'Clear' : `Select all ${rows.length}`}
+              </button>
+            )}
             {selected.size > 0 && (
               <div className="ml-auto flex gap-2">
-                <button onClick={() => setStatus([...selected], 'published')} className="rounded-lg bg-correct px-3 py-1 text-xs font-semibold text-white">
+                <button
+                  onClick={() => {
+                    // One tap can now move the whole batch live, so it asks.
+                    if (selected.size > 10 && !window.confirm(`Publish ${selected.size} questions? They go live to players immediately.`)) return
+                    setStatus([...selected], 'published')
+                  }}
+                  className="rounded-lg bg-correct px-3 py-1 text-xs font-semibold text-white"
+                >
                   Publish {selected.size}
                 </button>
                 <button onClick={() => setStatus([...selected], 'archived')} className="rounded-lg border border-text-primary/20 px-3 py-1 text-xs font-semibold text-text-secondary">
