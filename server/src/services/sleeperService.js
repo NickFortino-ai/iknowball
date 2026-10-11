@@ -89,7 +89,28 @@ export async function syncPlayers() {
         injury_body_part: p.injury_body_part || null,
         depth_chart_position: p.depth_chart_position || null,
         depth_chart_order: p.depth_chart_order || null,
-        espn_id: p.espn_id ? String(p.espn_id) : null,
+        // espn_id is deliberately NOT in this payload.
+        //
+        // This is an upsert of the whole row, and Sleeper has no ESPN id for
+        // roughly three quarters of rostered players — so writing
+        // `p.espn_id ? String(p.espn_id) : null` wiped every id that
+        // enrichEspnIds had resolved from ESPN's own rosters. Both jobs run
+        // in the same 3 AM block with syncPlayers first, so from 2026-09-14
+        // coverage was rebuilt and destroyed on a 24-hour cycle: enrichment
+        // reported ~1,537 updates nightly and still measured 26% the next
+        // morning. Enrichment was never broken; its work was being erased by
+        // the job immediately before it.
+        //
+        // Omitted from EVERY row rather than conditionally per row:
+        // PostgREST normalises the column set across a bulk upsert, so a key
+        // present on some rows and absent on others is sent as an explicit
+        // NULL for the ones that omitted it — the same trap that once wrote
+        // 0 of 870 DFS salary rows. Uniform absence leaves the column
+        // untouched; a per-row conditional would not.
+        //
+        // enrichEspnIds is now the sole writer. It matches ESPN's rosters
+        // directly, so it covers everything Sleeper would have supplied and
+        // more, and it runs in the same nightly block.
         search_rank: p.search_rank || 9999,
         headshot_url: headshotUrl,
         last_synced_at: new Date().toISOString(),
