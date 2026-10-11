@@ -27,6 +27,7 @@ import NewsFeed from '../components/feed/NewsFeed'
 import Avatar from '../components/ui/Avatar'
 import MyProfileBanner from '../components/hub/MyProfileBanner'
 import { useBackClosable } from '../hooks/useBackClosable'
+import { NewsIcon, FeedIcon, RoomButton } from '../components/hub/RoomIcons'
 
 const SPORT_OPTIONS = [
   { key: 'basketball_nba', label: 'NBA' },
@@ -88,7 +89,7 @@ function FilterPanel({ filterSport, filterTeam, filterTeamSearch, onSelectSport,
   )
 }
 
-const VALID_SCOPES = new Set(['squad', 'all', 'highlights', 'polls', 'predictions', 'receipts', 'user_feeds', 'news'])
+const VALID_SCOPES = new Set(['squad', 'all', 'highlights', 'polls', 'predictions', 'receipts', 'user_feeds'])
 
 export default function HubPage() {
   const { session } = useAuth()
@@ -110,7 +111,11 @@ export default function HubPage() {
   // is used rarely — you search for someone once, then they're in your squad
   // — and as a full-width input it was charging every visit for that.
   const [searchOpen, setSearchOpen] = useState(false)
-  const [arcadeOpen, setArcadeOpen] = useState(() => searchParams.get('tab') === 'arcade')
+  // Which ROOM the Hub is showing: the feed, the news list, or the arcade.
+  // These are places, not feed filters — each replaces the page rather than
+  // narrowing what is in it — so they are one piece of state, not a flag
+  // each. Seeded from ?tab=arcade so the old deep link still lands.
+  const [hubView, setHubView] = useState(() => (searchParams.get('tab') === 'arcade' ? 'arcade' : 'feed'))
   const hasManuallyToggled = useRef(false)
   // Where the feed was when the arcade opened, so closing it puts you back
   // rather than at the top of a page you'd already scrolled through.
@@ -134,9 +139,9 @@ export default function HubPage() {
     const scrollTo = searchParams.get('scrollTo')
     const team = searchParams.get('team')
     const user = searchParams.get('user')
-    if (tab === 'arcade') {
-      // Not a scope any more, but notifications and old links still use it.
-      setArcadeOpen(true)
+    if (tab === 'arcade' || tab === 'news') {
+      // Not scopes any more, but notifications and old links still use them.
+      setHubView(tab)
     } else if (tab && VALID_SCOPES.has(tab)) {
       hasManuallyToggled.current = true
       setFeedScope(tab)
@@ -169,10 +174,10 @@ export default function HubPage() {
 
   // Android's Back and iOS's edge swipe must close the room, not exit the
   // Hub. The room is state rather than a route, so it has to say so.
-  useBackClosable(arcadeOpen, () => setArcadeOpen(false))
+  useBackClosable(hubView !== 'feed', () => setHubView('feed'))
 
   useEffect(() => {
-    if (arcadeOpen) {
+    if (hubView !== 'feed') {
       scrollBeforeArcade.current = window.scrollY
       window.scrollTo(0, 0)
     } else if (scrollBeforeArcade.current) {
@@ -182,7 +187,7 @@ export default function HubPage() {
       scrollBeforeArcade.current = 0
       requestAnimationFrame(() => window.scrollTo(0, y))
     }
-  }, [arcadeOpen])
+  }, [hubView])
 
   const { data: connections, isLoading: connectionsLoading } = useConnections()
   const { data: pending } = usePendingConnectionRequests()
@@ -385,10 +390,36 @@ export default function HubPage() {
   // stacked above it — tolerable on desktop, where the arcade still fills the
   // wide column you're already looking at, but on a phone you tapped Arcade
   // and it landed below the fold. Nothing appeared to happen.
-  if (arcadeOpen) {
+  if (hubView === 'arcade') {
     return (
       <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 pt-6 pb-32">
-        <ArcadeRoom onExit={() => setArcadeOpen(false)} />
+        <ArcadeRoom onExit={() => setHubView('feed')} />
+      </div>
+    )
+  }
+
+  // News is a room on MOBILE only — on desktop it never left the sidebar, so
+  // there is nothing to open.
+  if (hubView === 'news') {
+    return (
+      <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 pt-6 pb-32">
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            onClick={() => setHubView('feed')}
+            aria-label="Back to feed"
+            className="-ml-2 flex min-h-[44px] shrink-0 items-center gap-1 rounded-lg px-2 text-text-muted hover:text-text-primary transition-colors"
+          >
+            <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor"
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            <span className="text-xs font-semibold">Feed</span>
+          </button>
+          <NewsIcon className="w-9 h-9 shrink-0" />
+          <h2 className="font-display text-xl text-text-primary leading-none">News</h2>
+        </div>
+        {/* NewsFeed brings its own sport tabs, so the room is just the list. */}
+        <NewsFeed />
       </div>
     )
   }
@@ -443,20 +474,24 @@ export default function HubPage() {
               there, so this one can't simply move. */}
           <div className="hidden lg:block lg:mt-auto lg:pt-3">{renderSquadHeader('mb-0')}</div>
         </div>
-        {/* With search moved to the title, this column is the arcade alone —
-            so it gets the whole height beside the profile card, and the
-            cabinet reads the same way at both sizes. */}
+        {/* Mobile gets all three rooms as a row of marks; desktop gets the
+            arcade alone, because news never leaves the sidebar there and the
+            feed is simply the page you are on. */}
         <div className="mb-6 lg:mb-0 lg:w-72 lg:shrink-0 lg:flex lg:pb-3">
+          <div className="grid w-full grid-cols-3 gap-1 lg:hidden">
+            <RoomButton icon={FeedIcon} label="Feed" active={hubView === 'feed'} onClick={() => setHubView('feed')} />
+            <RoomButton icon={NewsIcon} label="News" active={hubView === 'news'} onClick={() => setHubView('news')} />
+            <RoomButton icon={ArcadeIcon} label="Arcade" active={hubView === 'arcade'} onClick={() => setHubView('arcade')} />
+          </div>
           {/* No border, no fill — the cabinet IS the button. A bordered box
               around art that already has its own outline and glow was two
               frames competing; stripped back, the icon can grow into the
               whole space instead of sitting in the middle of a panel. */}
           <button
-            onClick={() => setArcadeOpen(true)}
+            onClick={() => setHubView('arcade')}
             aria-label="Arcade"
-            className="flex w-full lg:flex-1 flex-col items-center justify-center gap-1 min-h-0 text-accent transition-transform hover:scale-105 active:scale-95"
+            className="hidden lg:flex w-full lg:flex-1 flex-col items-center justify-center gap-1 min-h-0 text-accent transition-transform hover:scale-105 active:scale-95"
           >
-            <ArcadeIcon className="w-20 h-20 lg:hidden" />
             {/* The icon is positioned OUT OF FLOW on desktop. In flow its
                 intrinsic 256px height counts toward this column's content
                 height, which stretches the row — and the profile card with
@@ -602,7 +637,6 @@ export default function HubPage() {
           <div className="flex gap-1 overflow-x-auto flex-nowrap no-scrollbar min-w-0">
             {[
               { key: 'all', label: 'All of IKB' },
-              { key: 'news', label: 'News', mobileOnly: true },
               { key: 'squad', label: 'My Squad' },
               { key: 'posts', label: 'Posts' },
               { key: 'polls', label: 'Polls' },
@@ -682,8 +716,6 @@ export default function HubPage() {
             initialTeam={initialTeam}
             onTeamConsumed={() => setInitialTeam(null)}
           />
-        ) : feedScope === 'news' ? (
-          <NewsFeed />
         ) : (
           <ActivityFeed
             onUserTap={setSelectedUserId}
