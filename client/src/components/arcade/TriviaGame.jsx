@@ -23,6 +23,12 @@ function Timer({ startedAt }) {
   return <span className="tabular-nums">{Math.floor(s / 60)}:{String(s % 60).padStart(2, '0')}</span>
 }
 
+// Every screen holds a readable measure. The arcade room is wide because
+// tiles and a leaderboard want width; trivia is a question and four answers,
+// and at the room's full size a question ran most of a 2000px screen with a
+// Start button spanning the lot.
+const SCREEN = 'space-y-4 max-w-xl mx-auto'
+
 export default function TriviaGame({ variant = 'all', onExit }) {
   const [round, setRound] = useState(null)
   const [index, setIndex] = useState(0)
@@ -75,14 +81,15 @@ export default function TriviaGame({ variant = 'all', onExit }) {
   // ── Intro ─────────────────────────────────────────────────────────────
   if (!round) {
     return (
-      <div className="space-y-4">
+      <div className={SCREEN}>
         <div className="flex items-center gap-3">
           <ArcadeBack onClick={onExit} />
           <h3 className="font-display text-lg text-text-primary">Trivia</h3>
         </div>
         <p className="text-sm text-text-secondary">
-          Eight questions drawn from this season's real results. Answer fast for
-          a bonus — but a right answer is always worth more than a quick one.
+          Eight questions on sports history, easiest first. Harder ones are
+          worth more, and answering fast adds a bonus — but a right answer
+          always beats a quick one.
         </p>
         <button
           onClick={deal}
@@ -98,7 +105,7 @@ export default function TriviaGame({ variant = 'all', onExit }) {
   // ── Review ────────────────────────────────────────────────────────────
   if (result) {
     return (
-      <div className="space-y-4">
+      <div className={SCREEN}>
         <div className="text-center space-y-1">
           <h3 className="font-display text-2xl text-text-primary">
             {result.isPersonalBest ? 'New personal best' : 'Round complete'}
@@ -148,7 +155,7 @@ export default function TriviaGame({ variant = 'all', onExit }) {
   // ── Question ──────────────────────────────────────────────────────────
   const q = round.questions[index]
   return (
-    <div className="space-y-4">
+    <div className={SCREEN}>
       <div className="flex items-center justify-between text-sm text-text-secondary">
         <ArcadeBack onClick={onExit} label="Quit" />
         <div className="flex items-center gap-4">
