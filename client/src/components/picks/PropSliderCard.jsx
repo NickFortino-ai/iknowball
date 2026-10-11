@@ -141,8 +141,12 @@ export default function PropSliderCard({
           {/* Only once a side is actually chosen. While both are on offer,
               prefixing the number with "Over" picks a winner on the user's
               behalf — and the two buttons below name the sides anyway. */}
+          {/* Once a side is locked in, it is half the statement of the bet —
+              "over 195" is one fact, not a number with a qualifier — so it
+              carries the same weight as the line rather than sitting back in
+              muted grey. */}
           {pickedLine != null && (
-            <span className="text-text-muted text-sm capitalize">{shownSide}</span>
+            <span className="text-text-primary text-lg font-semibold capitalize">{shownSide}</span>
           )}
           <span className="font-display text-4xl tabular-nums text-text-primary">
             {isSettled || isLockedPick ? (pickedLine ?? current.line) : current.line}
