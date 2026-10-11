@@ -177,7 +177,9 @@ export default function HubPage() {
   useBackClosable(hubView !== 'feed', () => setHubView('feed'))
 
   useEffect(() => {
-    if (hubView !== 'feed') {
+    // Only the arcade. News swaps the feed region in place, so jumping to
+    // the top would move the page out from under the tap that opened it.
+    if (hubView === 'arcade') {
       scrollBeforeArcade.current = window.scrollY
       window.scrollTo(0, 0)
     } else if (scrollBeforeArcade.current) {
@@ -398,28 +400,67 @@ export default function HubPage() {
     )
   }
 
-  // News is a room on MOBILE only — on desktop it never left the sidebar, so
-  // there is nothing to open.
-  if (hubView === 'news') {
+  // The squad header, rendered in the banner row on desktop and above the
+  // list on mobile.
+  //
+  // All three controls cluster on the LEFT. They used to sit at opposite ends
+  // of a full-width row, which put the info icon and Filter in the arcade's
+  // column and reserved that whole vertical band for two small controls —
+  // the arcade could not grow into it. Together on the left they read as one
+  // group ("my squad, what it is, how to filter it") and the right of the
+  // row is free.
+  function renderSquadHeader(marginClass = 'mb-3') {
+    return (
+      <div className={`flex items-center gap-2 ${marginClass}`}>
+        <button
+          onClick={() => {
+            if (connections?.length) {
+              if (squadExpanded && filterMode) setFilterMode(false)
+              setSquadExpanded(!squadExpanded)
+            }
+          }}
+          className="flex items-center gap-1.5 text-xs text-text-muted uppercase tracking-wider"
+        >
+          My Squad {connections?.length > 0 && `(${connections.length})`}
+          {connections?.length > 0 && (
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`transition-transform ${squadExpanded ? 'rotate-180' : ''}`}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          )}
+        </button>
+        <InfoTooltip text="Your squad is your network on I KNOW BALL. Search for users by username and send connection requests, or enable auto-connect on a league to link up with leaguemates automatically. Your connections appear first when inviting people to leagues. The 🔥 indicates an active win streak." />
+        {squadExpanded && connections?.length > 0 && (
+          <button
+            onClick={toggleFilterMode}
+            className={`text-xs transition-colors ${filterMode ? 'text-accent font-semibold' : 'text-text-muted hover:text-accent'}`}
+          >
+            {filterMode ? 'Done' : 'Filter'}
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  // The arcade is a ROOM: it replaces the Hub, not the feed inside it.
+  //
+  // Scoping the takeover to the feed left the profile card, search and squad
+  // stacked above it — tolerable on desktop, where the arcade still fills the
+  // wide column you're already looking at, but on a phone you tapped Arcade
+  // and it landed below the fold. Nothing appeared to happen.
+  if (hubView === 'arcade') {
     return (
       <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 pt-6 pb-32">
-        <div className="flex items-center gap-2 mb-4">
-          <button
-            onClick={() => setHubView('feed')}
-            aria-label="Back to feed"
-            className="-ml-2 flex min-h-[44px] shrink-0 items-center gap-1 rounded-lg px-2 text-text-muted hover:text-text-primary transition-colors"
-          >
-            <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor"
-              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-            <span className="text-xs font-semibold">Feed</span>
-          </button>
-          <NewsIcon className="w-9 h-9 shrink-0" />
-          <h2 className="font-display text-xl text-text-primary leading-none">News</h2>
-        </div>
-        {/* NewsFeed brings its own sport tabs, so the room is just the list. */}
-        <NewsFeed />
+        <ArcadeRoom onExit={() => setHubView('feed')} />
       </div>
     )
   }
@@ -629,6 +670,24 @@ export default function HubPage() {
           (the div below) needs it too. */}
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
       <div className="min-w-0">
+        {hubView === 'news' ? (
+          /* News renders WHERE THE FEED WAS, not as its own page. Everything
+             above it — the profile card, the room marks, the squad — stays
+             put, so tapping News swaps one list for another instead of
+             throwing the page away and rebuilding it.
+
+             The feed's own tab row goes with the feed: those tabs filter
+             something that isn't on screen. NewsFeed brings its own sport
+             tabs, so the region is never without its controls. */
+          <>
+            <div className="flex items-center gap-2 mb-3">
+              <NewsIcon className="w-6 h-6 shrink-0" />
+              <h2 className="text-xs text-text-muted uppercase tracking-wider">News</h2>
+            </div>
+            <NewsFeed />
+          </>
+        ) : (
+          <>
         <div className="flex items-center gap-2 mb-3">
           <h2 className="text-xs text-text-muted uppercase tracking-wider flex-shrink-0">Feed</h2>
           {/* min-w-0 or the scroller claims its max-content width and the
@@ -723,6 +782,8 @@ export default function HubPage() {
             scrollToItemId={scrollToItem}
             onScrollComplete={() => setScrollToItem(null)}
           />
+        )}
+          </>
         )}
       </div>
 
