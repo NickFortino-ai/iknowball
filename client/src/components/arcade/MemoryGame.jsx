@@ -242,7 +242,7 @@ export default function MemoryGame({ variant, variantLabel, variantCount, onExit
         </div>
       </div>
 
-      <div className={`grid ${cols} gap-2`}>
+      <div className={`grid ${cols} gap-2 -mx-2 sm:mx-0`}>
         {round.cards.map((card) => {
           const isUp = flipped.includes(card.id) || matched.has(card.id)
           const isMatched = matched.has(card.id)

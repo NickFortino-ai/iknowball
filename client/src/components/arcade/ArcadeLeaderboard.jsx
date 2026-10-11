@@ -52,11 +52,20 @@ export default function ArcadeLeaderboard({ game = 'memory', variant }) {
             </div>
             {/* How the score was earned, not just the number — a 740 from 10
                 pairs is a different achievement than a 740 from 6. */}
+            {/* Four fields wrap to two lines at 375px and the row stops
+                scanning. Phones get the two that describe the achievement —
+                how big the board was and how fast — and desktop keeps the
+                full breakdown. */}
             {row.pairs != null && (
-              <div className="text-[11px] text-text-muted">
-                {row.pairs} pairs · {row.moves} moves · {formatDuration(row.duration_ms)}
-                {row.informed_misses ? ` · ${row.informed_misses} missed` : ''}
-              </div>
+              <>
+                <div className="sm:hidden text-[11px] text-text-muted">
+                  {row.pairs} pairs · {formatDuration(row.duration_ms)}
+                </div>
+                <div className="hidden sm:block text-[11px] text-text-muted">
+                  {row.pairs} pairs · {row.moves} moves · {formatDuration(row.duration_ms)}
+                  {row.informed_misses ? ` · ${row.informed_misses} missed` : ''}
+                </div>
+              </>
             )}
           </div>
           <span className="font-display text-lg tabular-nums text-accent">{row.score}</span>

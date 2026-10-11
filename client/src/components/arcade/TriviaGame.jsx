@@ -165,13 +165,13 @@ export default function TriviaGame({ variant, variantLabel, onExit }) {
 
       <p className="font-display text-xl text-text-primary leading-snug">{q.question}</p>
 
-      <div className="space-y-2">
+      <div className="space-y-2 pb-4 sm:pb-0">
         {q.choices.map((choice, i) => (
           <button
             key={i}
             onClick={() => choose(i)}
             disabled={busy}
-            className="w-full rounded-xl border border-text-primary/20 px-4 py-3 text-left text-sm text-text-primary hover:border-accent hover:bg-accent/5 transition-colors disabled:opacity-50"
+            className="w-full rounded-xl border border-text-primary/20 px-4 py-4 sm:py-3 text-left text-sm text-text-primary hover:border-accent hover:bg-accent/5 transition-colors disabled:opacity-50 active:bg-accent/10"
           >
             {choice}
           </button>

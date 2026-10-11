@@ -26,6 +26,7 @@ import ArcadeRoom, { ArcadeIcon } from '../components/arcade/ArcadeRoom'
 import NewsFeed from '../components/feed/NewsFeed'
 import Avatar from '../components/ui/Avatar'
 import MyProfileBanner from '../components/hub/MyProfileBanner'
+import { useBackClosable } from '../hooks/useBackClosable'
 
 const SPORT_OPTIONS = [
   { key: 'basketball_nba', label: 'NBA' },
@@ -107,6 +108,9 @@ export default function HubPage() {
   // from ?tab=arcade so the old deep link still lands somewhere sensible.
   const [arcadeOpen, setArcadeOpen] = useState(() => searchParams.get('tab') === 'arcade')
   const hasManuallyToggled = useRef(false)
+  // Where the feed was when the arcade opened, so closing it puts you back
+  // rather than at the top of a page you'd already scrolled through.
+  const scrollBeforeArcade = useRef(0)
 
   // Read tab + scrollTo + team from query params
   const tabParam = searchParams.get('tab')
@@ -158,6 +162,23 @@ export default function HubPage() {
       return () => clearTimeout(timer)
     }
   }, [searchParams])
+
+  // Android's Back and iOS's edge swipe must close the room, not exit the
+  // Hub. The room is state rather than a route, so it has to say so.
+  useBackClosable(arcadeOpen, () => setArcadeOpen(false))
+
+  useEffect(() => {
+    if (arcadeOpen) {
+      scrollBeforeArcade.current = window.scrollY
+      window.scrollTo(0, 0)
+    } else if (scrollBeforeArcade.current) {
+      // After paint, or the feed hasn't re-rendered to its full height yet
+      // and the browser clamps the restore to a shorter page.
+      const y = scrollBeforeArcade.current
+      scrollBeforeArcade.current = 0
+      requestAnimationFrame(() => window.scrollTo(0, y))
+    }
+  }, [arcadeOpen])
 
   const { data: connections, isLoading: connectionsLoading } = useConnections()
   const { data: pending } = usePendingConnectionRequests()
@@ -296,6 +317,20 @@ export default function HubPage() {
     )
   }
 
+  // The arcade is a ROOM: it replaces the Hub, not the feed inside it.
+  //
+  // Scoping the takeover to the feed left the profile card, search and squad
+  // stacked above it — tolerable on desktop, where the arcade still fills the
+  // wide column you're already looking at, but on a phone you tapped Arcade
+  // and it landed below the fold. Nothing appeared to happen.
+  if (arcadeOpen) {
+    return (
+      <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 pt-6 pb-32">
+        <ArcadeRoom onExit={() => setArcadeOpen(false)} />
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 pt-6 pb-32">
       <h1 className="font-display text-3xl mb-6">Hub</h1>
@@ -317,17 +352,19 @@ export default function HubPage() {
             layoutClassName="mb-6 lg:mb-0 lg:flex-1 lg:min-w-0"
           />
         )}
-        <div className="mb-6 lg:mb-0 lg:w-72 lg:shrink-0 lg:flex lg:flex-col lg:gap-3">
-          {renderSearch()}
-          {/* Desktop only: on a phone this would sit between the profile
-              card and the feed with nothing around it. Mobile placement is
-              its own question. */}
+        {/* Search and the arcade travel together: a row on mobile, a column
+            on desktop. Grouping "things you do" costs no vertical space at
+            either size and puts the arcade in thumb reach on a phone, rather
+            than pinned to the end of a tab scroller nobody scrolls. */}
+        <div className="mb-6 lg:mb-0 flex gap-2 lg:flex-col lg:gap-3 lg:w-72 lg:shrink-0">
+          <div className="flex-1 min-w-0">{renderSearch()}</div>
           <button
             onClick={() => setArcadeOpen(true)}
-            className="hidden lg:flex lg:flex-1 items-center justify-center gap-2 w-full rounded-xl border border-accent bg-accent/10 py-3 text-sm font-semibold text-accent hover:bg-accent/20 transition-colors"
+            aria-label="Arcade"
+            className="shrink-0 flex lg:flex-1 items-center justify-center gap-2 w-14 lg:w-full rounded-xl border border-accent bg-accent/10 text-sm font-semibold text-accent hover:bg-accent/20 transition-colors lg:py-3"
           >
             <ArcadeIcon className="w-8 h-8" />
-            Arcade
+            <span className="hidden lg:inline">Arcade</span>
           </button>
         </div>
       </div>
@@ -486,13 +523,6 @@ export default function HubPage() {
           instead of scrolling within its own box. min-w-0 on descendants
           can't fix that; the constraint is the track, and the grid ITEM
           (the div below) needs it too. */}
-      {arcadeOpen ? (
-        /* The arcade takes the whole region — feed column AND news rail. It
-           is somewhere you go, not something you read alongside the news, and
-           leaving the rail up would keep it looking like a panel inside the
-           feed rather than a room of its own. */
-        <ArcadeRoom onExit={() => setArcadeOpen(false)} />
-      ) : (
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
       <div className="min-w-0">
         <div className="flex items-center gap-2 mb-3">
@@ -523,16 +553,6 @@ export default function HubPage() {
               </button>
             ))}
           </div>
-          {/* Mobile only. On desktop the arcade lives beside the profile
-              card, where there's room for it; here it stays pinned outside
-              the scroller so it can't be scrolled off the end. */}
-          <button
-            onClick={() => setArcadeOpen(true)}
-            className="lg:hidden ml-auto shrink-0 flex items-center gap-1.5 rounded-lg border border-accent bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent hover:bg-accent/20 transition-colors"
-          >
-            <ArcadeIcon className="w-4 h-4" />
-            Arcade
-          </button>
         </div>
         {/* Filter toggle for All of IKB */}
         {feedScope === 'all' && (
@@ -615,7 +635,6 @@ export default function HubPage() {
         </div>
       </div>
       </div>
-      )}
 
       <UserProfileModal
         userId={selectedUserId}
