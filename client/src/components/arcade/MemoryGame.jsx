@@ -65,6 +65,19 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
   const seen = useRef(new Set())
   const lockUntil = useRef(0)
 
+  // RECALL. Score says how a round went; it does not say how good someone's
+  // memory is, because it mixes in speed, board size and luck on cards
+  // nobody had seen. This asks one question: the first time it is possible
+  // to know where a pair is, did they know?
+  //
+  // An opportunity is turning over a card whose partner has already been
+  // revealed. A hit is turning over that partner next. Only the FIRST
+  // opportunity per pair counts — a second attempt measures persistence, and
+  // counting it would let someone grind the percentage up by missing
+  // repeatedly until they finally land it.
+  const recallCounted = useRef(new Set())
+  const [recall, setRecall] = useState({ chances: 0, hits: 0 })
+
   const startRound = useStartMemoryRound()
   const finishRound = useFinishMemoryRound()
 
@@ -72,6 +85,8 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
     setRound(null); setFlipped([]); setMatched(new Set())
     setMoves(0); setInformedMisses(0); setStartedAt(null); setResult(null)
     seen.current = new Set()
+    recallCounted.current = new Set()
+    setRecall({ chances: 0, hits: 0 })
   }, [])
 
   async function deal(diff) {
@@ -79,6 +94,8 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
     try {
       const data = await startRound.mutateAsync({ difficulty: diff, variant })
       seen.current = new Set()
+      recallCounted.current = new Set()
+      setRecall({ chances: 0, hits: 0 })
       // Stamp the difficulty onto the round rather than reading the picker's
       // state at flip time: the peek belongs to the round being played, and
       // this stays correct if the picker ever becomes reachable mid-round.
@@ -93,10 +110,11 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
     }
   }
 
-  async function submit(finalMoves, finalMisses) {
+  async function submit(finalMoves, finalMisses, finalRecall) {
     try {
       const res = await finishRound.mutateAsync({
         roundId: round.roundId, moves: finalMoves, informedMisses: finalMisses,
+        recallChances: finalRecall.chances, recallHits: finalRecall.hits,
       })
       setResult(res)
     } catch (err) {
@@ -132,6 +150,21 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
     // has seen the second before, so they knew it would not match. Two
     // unseen cards is a legitimate gamble and costs nothing.
     const wasSeenBefore = seen.current.has(card.id)
+
+    // Was the answer knowable when they turned the first card over? Checked
+    // against the partner of the FIRST card, and before this card joins
+    // `seen`, so the question is "did you already know where it was".
+    const partner = round.cards.find((c) => c.pairKey === first?.pairKey && c.id !== firstId)
+    let nextRecall = recall
+    if (partner && seen.current.has(partner.id) && !recallCounted.current.has(first.pairKey)) {
+      recallCounted.current.add(first.pairKey)
+      nextRecall = {
+        chances: recall.chances + 1,
+        hits: recall.hits + (card.id === partner.id ? 1 : 0),
+      }
+      setRecall(nextRecall)
+    }
+
     seen.current.add(card.id)
 
     const nextMoves = moves + 1
@@ -142,7 +175,7 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
       setMatched(nextMatched)
       setFlipped([])
       if (nextMatched.size === round.cards.length) {
-        submit(nextMoves, informedMisses)
+        submit(nextMoves, informedMisses, nextRecall)
       }
       return
     }
@@ -223,6 +256,16 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
             <span>{b.elapsedSeconds}s {b.timeBonus > 0 ? `(under ${b.parSeconds}s par)` : `(par ${b.parSeconds}s)`}</span>
             <span className="tabular-nums text-correct">{b.timeBonus ? `+${b.timeBonus}` : '0'}</span>
           </div>
+          {/* Scores nothing, and that is the point: it measures recall on its
+              own, with speed and board size taken out. */}
+          {recall.chances > 0 && (
+            <div className="flex justify-between border-t border-text-primary/10 pt-1 mt-1">
+              <span>Knew it first chance</span>
+              <span className="tabular-nums text-text-primary">
+                {recall.hits}/{recall.chances} · {Math.round((recall.hits / recall.chances) * 100)}%
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex gap-2 justify-center pt-2">
           <button onClick={() => deal(difficulty)} className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white">Play again</button>

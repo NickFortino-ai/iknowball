@@ -27,8 +27,8 @@ export function useStartMemoryRound() {
 export function useFinishMemoryRound() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ roundId, moves, informedMisses }) =>
-      api.post('/arcade/memory/finish', { roundId, moves, informedMisses }),
+    mutationFn: ({ roundId, moves, informedMisses, recallChances, recallHits }) =>
+      api.post('/arcade/memory/finish', { roundId, moves, informedMisses, recallChances, recallHits }),
     onSuccess: () => {
       // The board the player just tried to climb.
       queryClient.invalidateQueries({ queryKey: ['arcade', 'leaderboard'] })

@@ -144,6 +144,10 @@ router.post('/memory/finish', async (req, res, next) => {
     const { roundId } = req.body || {}
     const moves = Number(req.body?.moves)
     const informedMisses = Number(req.body?.informedMisses)
+    // Optional: rounds from clients that predate recall tracking send
+    // nothing, and null is the honest value for those rather than 0/0.
+    const rawChances = req.body?.recallChances
+    const rawHits = req.body?.recallHits
     if (!roundId) return res.status(400).json({ error: 'roundId required' })
     if (!Number.isFinite(moves) || moves < 0) return res.status(400).json({ error: 'moves must be a number' })
     if (!Number.isFinite(informedMisses) || informedMisses < 0) {
@@ -170,6 +174,20 @@ router.post('/memory/finish', async (req, res, next) => {
       return res.status(400).json({ error: 'Miss count exceeds move count' })
     }
 
+    // Recall is bounded by the board: a pair can offer at most one first
+    // chance, and you cannot take more chances than you were given. Refuse
+    // rather than store a percentage above 100.
+    let recallChances = null
+    let recallHits = null
+    if (rawChances !== undefined && rawChances !== null) {
+      recallChances = Number(rawChances)
+      recallHits = Number(rawHits ?? 0)
+      const sane = Number.isInteger(recallChances) && Number.isInteger(recallHits)
+        && recallChances >= 0 && recallHits >= 0
+        && recallHits <= recallChances && recallChances <= round.pairs
+      if (!sane) return res.status(400).json({ error: 'Recall counts are out of range for this round' })
+    }
+
     const durationMs = Date.now() - new Date(round.started_at).getTime()
     const { score, breakdown } = scoreRound({ pairs: round.pairs, informedMisses, durationMs })
 
@@ -189,6 +207,8 @@ router.post('/memory/finish', async (req, res, next) => {
         pairs: round.pairs,
         moves,
         informed_misses: informedMisses,
+        recall_chances: recallChances,
+        recall_hits: recallHits,
         duration_ms: durationMs,
       })
       .select('id, score, created_at')
