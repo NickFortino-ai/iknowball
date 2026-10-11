@@ -24,7 +24,7 @@ function timeAgo(dateStr) {
   return `${days}d ago`
 }
 
-export default function NewsFeed({ compact }) {
+export default function NewsFeed({ compact, label }) {
   const { data: cfg } = useAppConfig()
   const sportTabs = useMemo(() => {
     const stored = Array.isArray(cfg?.news_tab_order) && cfg.news_tab_order.length
@@ -54,22 +54,30 @@ export default function NewsFeed({ compact }) {
 
   return (
     <div>
-      {/* Sport tabs */}
-      {/* Scrolls on its own. Without overflow handling here the row just
-          overflows its parent, so reaching the last tab dragged the whole
-          article column sideways with it. */}
-      <div className="flex gap-1.5 mb-3 overflow-x-auto scrollbar-hide -mx-1 px-1">
-        {sportTabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setSelectedSport(tab.key)}
-            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
-              sport === tab.key ? 'bg-bg-primary/50 border-accent text-accent' : 'bg-bg-primary/50 border-text-primary/20 text-text-secondary hover:border-text-primary/40'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Sport tabs, optionally prefixed by a section label so this row can
+          match the feed's — "News" flush left, then the tabs — rather than
+          sitting under a heading of its own. */}
+      <div className="flex items-center gap-2 mb-3">
+        {label && (
+          <h2 className="text-xs text-text-muted uppercase tracking-wider flex-shrink-0">{label}</h2>
+        )}
+        {/* Scrolls on its own, and min-w-0 so it shrinks rather than pushing
+            the label off the left edge. Without overflow handling here the
+            row just overflows its parent, and reaching the last tab dragged
+            the whole article column sideways with it. */}
+        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide min-w-0 -mx-1 px-1">
+          {sportTabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setSelectedSport(tab.key)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+                sport === tab.key ? 'bg-bg-primary/50 border-accent text-accent' : 'bg-bg-primary/50 border-text-primary/20 text-text-secondary hover:border-text-primary/40'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {isLoading ? (

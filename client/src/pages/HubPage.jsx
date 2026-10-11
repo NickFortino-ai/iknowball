@@ -679,13 +679,11 @@ export default function HubPage() {
              The feed's own tab row goes with the feed: those tabs filter
              something that isn't on screen. NewsFeed brings its own sport
              tabs, so the region is never without its controls. */
-          <>
-            <div className="flex items-center gap-2 mb-3">
-              <NewsIcon className="w-6 h-6 shrink-0" />
-              <h2 className="text-xs text-text-muted uppercase tracking-wider">News</h2>
-            </div>
-            <NewsFeed />
-          </>
+          /* The label rides in NewsFeed's own tab row, so this reads
+             exactly like the feed does: the word flush left, then the tabs.
+             A heading on its own line above them was a second row saying
+             what one row already said. */
+          <NewsFeed label="News" />
         ) : (
           <>
         <div className="flex items-center gap-2 mb-3">
