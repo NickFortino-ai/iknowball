@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStartTriviaRound, useFinishTriviaRound } from '../../hooks/useArcade'
 import { toast } from '../ui/Toast'
+import ArcadeBack from './ArcadeBack'
 
 /**
  * Arcade trivia.
@@ -76,7 +77,7 @@ export default function TriviaGame({ variant = 'all', onExit }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <button onClick={onExit} className="text-xs text-text-muted hover:text-text-primary">← Arcade</button>
+          <ArcadeBack onClick={onExit} />
           <h3 className="font-display text-lg text-text-primary">Trivia</h3>
         </div>
         <p className="text-sm text-text-secondary">
@@ -149,7 +150,7 @@ export default function TriviaGame({ variant = 'all', onExit }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between text-sm text-text-secondary">
-        <button onClick={onExit} className="text-xs text-text-muted hover:text-text-primary">← Quit</button>
+        <ArcadeBack onClick={onExit} label="Quit" />
         <div className="flex items-center gap-4">
           <span>{index + 1}/{round.questions.length}</span>
           <Timer startedAt={startedAt.current} />

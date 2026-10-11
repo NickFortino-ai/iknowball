@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import MemoryGame from './MemoryGame'
 import TriviaGame from './TriviaGame'
 import ArcadeLeaderboard from './ArcadeLeaderboard'
+import ArcadeBack from './ArcadeBack'
 import { getBackdropUrl } from '../../lib/backdropUrl'
 import { useMemoryVariants } from '../../hooks/useArcade'
 
@@ -138,20 +139,7 @@ export default function ArcadeRoom({ onExit }) {
   return (
     <div className="space-y-5 min-w-0">
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Back sits top-left at a 44px target: on a phone this is the
-            control people reach for, and the far corner is the one the thumb
-            can't comfortably reach. Desktop keeps the words. */}
-        <button
-          onClick={onExit}
-          aria-label="Back to feed"
-          className="shrink-0 -ml-2 flex items-center gap-1.5 rounded-lg px-2 min-w-[44px] min-h-[44px] justify-center sm:justify-start text-text-secondary hover:text-text-primary transition-colors"
-        >
-          <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor"
-            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-          <span className="hidden sm:inline text-xs font-semibold">Feed</span>
-        </button>
+        <ArcadeBack onClick={onExit} label="Feed" />
         <ArcadeIcon className="w-9 h-9 sm:w-10 sm:h-10 shrink-0" />
         <div className="min-w-0">
           <h2 className="font-display text-xl sm:text-2xl text-text-primary leading-none">Arcade</h2>

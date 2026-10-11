@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { getBackdropUrl } from '../../lib/backdropUrl'
 import { useStartMemoryRound, useFinishMemoryRound } from '../../hooks/useArcade'
 import { toast } from '../ui/Toast'
+import ArcadeBack from './ArcadeBack'
 
 /**
  * Memory, played on IKB's own backdrop library.
@@ -161,7 +162,7 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <button onClick={onExit} className="text-xs text-text-muted hover:text-text-primary">← Arcade</button>
+          <ArcadeBack onClick={onExit} />
           <h3 className="font-display text-lg text-text-primary">Memory</h3>
         </div>
         <p className="text-sm text-text-secondary">
@@ -204,11 +205,12 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
   if (result) {
     const b = result.breakdown
     return (
-      <div className="space-y-4 text-center">
-        <h3 className="font-display text-2xl text-text-primary">
+      <div className="space-y-4">
+        <ArcadeBack onClick={onExit} />
+        <h3 className="font-display text-2xl text-text-primary text-center">
           {result.isPersonalBest ? 'New personal best' : 'Round complete'}
         </h3>
-        <div className="font-display text-5xl text-accent tabular-nums">{result.score}</div>
+        <div className="font-display text-5xl text-accent tabular-nums text-center">{result.score}</div>
         {/* Shown as a breakdown, not a bare number — the scoring rule is the
             game's whole strategy, so hiding it would hide the strategy. */}
         <div className="mx-auto max-w-xs text-sm text-text-secondary space-y-1">
@@ -234,7 +236,7 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between text-sm">
-        <button onClick={reset} className="text-xs text-text-muted hover:text-text-primary">← Quit</button>
+        <ArcadeBack onClick={reset} label="Quit" />
         <div className="flex items-center gap-4 text-text-secondary">
           <span>{matched.size / 2}/{round.pairs}</span>
           <span className="text-text-muted">{moves} moves</span>
