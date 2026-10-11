@@ -9,6 +9,7 @@ import { useAuthStore } from '../stores/authStore'
 import GameCard from '../components/picks/GameCard'
 import ParlayCard from '../components/picks/ParlayCard'
 import PropCard from '../components/picks/PropCard'
+import PropLadderCard from '../components/picks/PropLadderCard'
 import FuturesPickCard from '../components/picks/FuturesPickCard'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
@@ -90,6 +91,32 @@ function loadCollapsed() {
   } catch {
     return {}
   }
+}
+
+
+// Several bets on the SAME prop belong on one card, as a ladder. Rendered
+// separately they repeat the player's face, name and market once per bet to
+// communicate one differing number each — and the thing a ladder actually
+// says, that he threw for 225 so the rungs below it cleared, is left for the
+// reader to assemble from five separate outcomes.
+//
+// A single bet stays on the ordinary card: there is no ladder in one rung.
+function groupPropsByProp(picks) {
+  const groups = new Map()
+  for (const p of picks || []) {
+    const key = p.prop_id
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(p)
+  }
+  return [...groups.values()]
+}
+
+function renderPropPicks(picks) {
+  return groupPropsByProp(picks).map((group) =>
+    group.length > 1
+      ? <PropLadderCard key={group[0].prop_id} picks={group} />
+      : <PropCard key={group[0].id} prop={group[0].player_props} pick={group[0]} />,
+  )
 }
 
 export default function ResultsPage() {
@@ -200,9 +227,7 @@ export default function ResultsPage() {
               {todayParlays.map((parlay) => (
                 <ParlayCard key={parlay.id} parlay={parlay} />
               ))}
-              {todayProps.map((pp) => (
-                <PropCard key={pp.id} prop={pp.player_props} pick={pp} />
-              ))}
+              {renderPropPicks(todayProps)}
               {liveFutures.map((fp) => (
                 <FuturesPickCard key={fp.id} pick={fp} />
               ))}
@@ -283,9 +308,7 @@ export default function ResultsPage() {
                     {groupByDate(olderSettledProps, (p) => p.player_props?.games?.starts_at || p.created_at).map(({ date, items }) => (
                       <Fragment key={date}>
                         <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
-                        {items.map((pp) => (
-                          <PropCard key={pp.id} prop={pp.player_props} pick={pp} />
-                        ))}
+                        {renderPropPicks(items)}
                       </Fragment>
                     ))}
                   </div>
