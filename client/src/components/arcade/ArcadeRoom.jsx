@@ -93,7 +93,7 @@ const GAMES = [
   {
     key: 'memory',
     name: 'Memory',
-    blurb: 'Match the pairs from IKB\'s backdrop library.',
+    blurb: 'Match the pairs of sports images.',
     detail: 'Only misses on cards you had already seen cost points.',
     art: MemoryArt,
   },
