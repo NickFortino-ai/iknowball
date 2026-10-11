@@ -137,24 +137,21 @@ export default function PropSliderCard({
         {/* The line being chosen, large, with the market under it. This is the
             number the slider moves, so it is the biggest thing on the card. */}
         <div className="mt-2 flex items-baseline gap-1.5">
-          <span className="text-text-muted text-sm capitalize">{shownSide}</span>
+          {/* Only once a side is actually chosen. While both are on offer,
+              prefixing the number with "Over" picks a winner on the user's
+              behalf — and the two buttons below name the sides anyway. */}
+          {pickedLine != null && (
+            <span className="text-text-muted text-sm capitalize">{shownSide}</span>
+          )}
           <span className="font-display text-4xl tabular-nums text-text-primary">
             {isSettled || isLockedPick ? (pickedLine ?? current.line) : current.line}
           </span>
         </div>
-        <div className="text-xs text-text-muted uppercase tracking-wider">{prop.market_label}</div>
-
-        {/* Risk/reward moves with the slider. Shown as the two numbers that
-            actually matter rather than as odds — the book's price is already
-            baked into where the stops sit. */}
-        <div className="mt-2 flex items-center gap-2 text-sm">
-          <span className="text-incorrect tabular-nums">−{slider.risk}</span>
-          <span className="text-text-muted">→</span>
-          <span className="text-correct tabular-nums font-semibold">
-            +{isSettled || isLockedPick
-              ? (pick?.reward_at_submission ?? rewardFor(shownSide))
-              : rewardFor(shownSide)}
-          </span>
+        {/* The stake is the same 10 on every slider prop and on both sides,
+            so it is stated once here rather than repeated on each button —
+            which is also what lets the buttons carry only their own payout. */}
+        <div className="text-xs text-text-muted uppercase tracking-wider">
+          {prop.market_label}{canPick ? ` · risk ${slider.risk}` : ''}
         </div>
 
         {isSettled && (
@@ -170,25 +167,6 @@ export default function PropSliderCard({
 
       {canPick && (
         <div className="mt-4">
-          <input
-            type="range"
-            min={0}
-            max={stops.length - 1}
-            step={1}
-            value={index}
-            onChange={(e) => setIndex(Number(e.target.value))}
-            disabled={isSubmitting}
-            className="w-full accent-accent"
-            aria-label={`Line for ${prop.player_name} ${prop.market_label}`}
-          />
-          {/* Just the bounds. "Safer" was an over-only idea — with both sides
-              on the table each end is the safe one for somebody, and the
-              buttons below carry the actual prices. */}
-          <div className="flex justify-between text-[10px] text-text-muted -mt-1">
-            <span>{stops[0].line}</span>
-            <span>{stops[stops.length - 1].line}</span>
-          </div>
-
           {/* Both sides, each carrying its own price, so the trade-off is
               visible without committing to see it. Under on the left and
               over on the right, matching the slider underneath: low numbers
@@ -197,7 +175,7 @@ export default function PropSliderCard({
               Tapping one places that bet. That is still an explicit,
               labelled commitment — the principle was that DRAGGING must not
               commit, not that a button press needs confirming twice. */}
-          <div className="mt-3 flex gap-2">
+          <div className="flex gap-2">
             {['under', 'over'].map((sideKey) => {
               const isThis = pickedLine === current.line && pick?.picked_side === sideKey
               return (
@@ -224,16 +202,35 @@ export default function PropSliderCard({
                 </button>
               )
             })}
-            {movedOffDefault && (
-              <button
-                onClick={() => setIndex(slider.defaultIndex)}
-                disabled={isSubmitting}
-                title="Back to the book's line"
-                className="shrink-0 rounded-xl border border-text-primary/20 px-3 text-xs font-semibold text-text-secondary"
-              >
-                Reset
-              </button>
-            )}
+          </div>
+          <div className="mt-4">
+          <input
+            type="range"
+            min={0}
+            max={stops.length - 1}
+            step={1}
+            value={index}
+            onChange={(e) => setIndex(Number(e.target.value))}
+            disabled={isSubmitting}
+            className="w-full accent-accent"
+            aria-label={`Line for ${prop.player_name} ${prop.market_label}`}
+          />
+            {/* Just the bounds. "Safer" was an over-only idea — with both
+                sides on the table each end is the safe one for somebody, and
+                the buttons above carry the actual prices. */}
+            <div className="flex items-center justify-between text-[10px] text-text-muted -mt-1">
+              <span>{stops[0].line}</span>
+              {movedOffDefault && (
+                <button
+                  onClick={() => setIndex(slider.defaultIndex)}
+                  disabled={isSubmitting}
+                  className="text-text-muted hover:text-text-primary underline underline-offset-2"
+                >
+                  back to {slider.baseLine}
+                </button>
+              )}
+              <span>{stops[stops.length - 1].line}</span>
+            </div>
           </div>
 
           {pickedLine != null && (
