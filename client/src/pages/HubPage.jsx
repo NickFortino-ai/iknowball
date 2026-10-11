@@ -326,9 +326,9 @@ export default function HubPage() {
   // the arcade could not grow into it. Together on the left they read as one
   // group ("my squad, what it is, how to filter it") and the right of the
   // row is free.
-  function renderSquadHeader() {
+  function renderSquadHeader(marginClass = 'mb-3') {
     return (
-      <div className="flex items-center gap-2 mb-3">
+      <div className={`flex items-center gap-2 ${marginClass}`}>
         <button
           onClick={() => {
             if (connections?.length) {
@@ -409,14 +409,14 @@ export default function HubPage() {
               itself stays full width below. Mobile renders its own copy in
               document order instead — search and the arcade come first
               there, so this one can't simply move. */}
-          <div className="hidden lg:block lg:mt-auto lg:pt-3">{renderSquadHeader()}</div>
+          <div className="hidden lg:block lg:mt-auto lg:pt-3">{renderSquadHeader('mb-0')}</div>
         </div>
         {/* Search and the arcade travel together: a row on mobile, a column
             on desktop. Grouping "things you do" costs no vertical space at
             either size and puts the arcade in thumb reach on a phone, rather
             than pinned to the end of a tab scroller nobody scrolls. */}
         <div className="mb-6 lg:mb-0 flex gap-2 lg:flex-col lg:gap-3 lg:w-72 lg:shrink-0 lg:pb-3">
-          <div className="flex-1 min-w-0">{renderSearch()}</div>
+          <div className="flex-1 lg:flex-none min-w-0">{renderSearch()}</div>
           {/* No border, no fill — the cabinet IS the button. A bordered box
               around art that already has its own outline and glow was two
               frames competing; stripped back, the icon can grow into the
@@ -484,14 +484,17 @@ export default function HubPage() {
       )}
 
       {/* My Squad */}
-      <div className="mb-6">
+      {/* mb-6 only on mobile, where this wrapper always holds the header. On
+          desktop the header lives in the banner row and this is empty
+          whenever the list is collapsed — the margin was spacing nothing. */}
+      <div className="mb-6 lg:mb-0">
         <div className="lg:hidden">{renderSquadHeader()}</div>
         {!connections?.length ? (
-          <div className="bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-xl px-4 py-8 text-center text-text-muted text-sm">
+          <div className="lg:mb-6 bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-xl px-4 py-8 text-center text-text-muted text-sm">
             No connections yet. Join a league or search for friends above!
           </div>
         ) : squadExpanded && (
-          <div className="bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-xl overflow-hidden">
+          <div className="lg:mb-6 bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-xl overflow-hidden">
             {(() => {
               const selfEntry = profile ? {
                 connection_id: 'self',
