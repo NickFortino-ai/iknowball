@@ -196,7 +196,9 @@ export async function getCurrentWeekLastKickoff() {
  * Used by every NFL pick-style contest (TD Pass, Sacks, Interceptions) to
  * lock players whose team has already kicked off.
  */
-const NFL_FULL_TO_ABBR_LOCK = {
+// Exported: the same mapping disambiguates a shared player name against the
+// two teams in a game (there are two Justin Jeffersons, on MIN and CLE).
+export const NFL_FULL_TO_ABBR_LOCK = {
   'Arizona Cardinals': 'ARI', 'Atlanta Falcons': 'ATL', 'Baltimore Ravens': 'BAL',
   'Buffalo Bills': 'BUF', 'Carolina Panthers': 'CAR', 'Chicago Bears': 'CHI',
   'Cincinnati Bengals': 'CIN', 'Cleveland Browns': 'CLE', 'Dallas Cowboys': 'DAL',

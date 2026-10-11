@@ -11,6 +11,7 @@ import { fetchCompletedGameStats as fetchMlbStatsFromEspn } from '../jobs/scoreM
 import { fetchCompletedWNBAGameStats as fetchWnbaStatsFromEspn } from '../jobs/scoreWNBADFS.js'
 import { normalizeName, stripAccents } from '../utils/name.js'
 import { fetchAll } from '../utils/fetchAll.js'
+import { buildPlayerIndex, resolvePlayer } from '../utils/playerResolver.js'
 import { todaySportsDay, yesterdaySportsDay, sportsDayBoundsUtc } from '../utils/sportsDay.js'
 import { getPlayerHeadshotUrl, refreshPlayerHeadshotCache } from './espnService.js'
 
@@ -1504,11 +1505,13 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
     // season, week) and matched to props by player name via nfl_players.
     // Separate from the daily/ESPN basketball+baseball path above (NFL is
     // weekly, not daily, and uses Sleeper ids rather than ESPN ids).
-    const nflByName = {}
+    let nflIndex = null
+    let nflTeamAbbr = {}
     const nflLockedPicks = lockedPicks.filter((p) => p.player_props?.games?.sports?.key === 'americanfootball_nfl')
     if (nflLockedPicks.length) {
       try {
-        const { getCurrentNflWeek } = await import('./tdPassService.js')
+        const { getCurrentNflWeek, NFL_FULL_TO_ABBR_LOCK } = await import('./tdPassService.js')
+        nflTeamAbbr = NFL_FULL_TO_ABBR_LOCK
         const { season, week } = await getCurrentNflWeek()
         // fetchAll, not a bare select: a full NFL week is ~1,150 stat rows and
         // Supabase silently caps an unpaginated query at 1,000. Ja'Marr Chase
@@ -1520,15 +1523,22 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
         const nflStats = await fetchAll(
           supabase
             .from('nfl_player_stats')
-            .select('player_id, pass_yd, pass_td, pass_cmp, pass_att, pass_int, rush_yd, rush_att, rec, rec_yd, rec_td, rush_td, return_td, nfl_players!inner(full_name)')
+            .select('player_id, pass_yd, pass_td, pass_cmp, pass_att, pass_int, rush_yd, rush_att, rec, rec_yd, rec_td, rush_td, return_td, nfl_players!inner(full_name, team)')
             .eq('season', season)
             .eq('week', week)
             .order('player_id', { ascending: true }),
         )
-        for (const s of nflStats || []) {
-          const name = s.nfl_players?.full_name
-          if (name) nflByName[normalizeName(name)] = s
-        }
+        // Indexed through the shared resolver rather than this file's local
+        // normalizeName, which keeps generational suffixes: the Odds API
+        // says "Mike Washington Jr." and nfl_players says "Mike Washington",
+        // so his locked prop showed no live stat all game. The resolver
+        // tries the exact name first and only falls back to the suffixless
+        // form when it is league-unique, so a father and son on two rosters
+        // still can't be confused for one another.
+        nflIndex = buildPlayerIndex(nflStats || [], {
+          getName: (r) => r.nfl_players?.full_name,
+          getTeam: (r) => r.nfl_players?.team,
+        })
         logger.info({ rows: (nflStats || []).length, season, week }, 'Live stat enrichment: NFL weekly stats loaded')
       } catch (err) {
         logger.error({ err }, 'Live stat enrichment: NFL weekly stats load failed')
@@ -1608,7 +1618,25 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
       const nba = (espnId && nbaById[espnId]) || nbaByName[normName]
       const mlb = (espnId && mlbById[espnId]) || mlbByName[normName]
       const wnba = (espnId && wnbaById[espnId]) || wnbaByName[normName]
-      const nfl = nflByName[normName]
+      // A prop carries no player team, but its GAME names two — and the
+      // player is on one of them. That is enough to disambiguate a shared
+      // name, which matters: there are two Justin Jeffersons, a Vikings
+      // receiver and a Browns linebacker. Resolving on name alone returns
+      // null for him by design, because the old map silently picked
+      // whichever row was written last — a coin flip on whose stats
+      // appeared on the receiving prop.
+      let nfl = null
+      if (nflIndex) {
+        const g = pick.player_props?.games
+        for (const side of [g?.home_team, g?.away_team]) {
+          const abbr = nflTeamAbbr[side]
+          if (!abbr) continue
+          nfl = resolvePlayer(nflIndex, { name: playerName, team: abbr })
+          if (nfl) break
+        }
+        // Falls back to name-only, which still refuses when ambiguous.
+        if (!nfl) nfl = resolvePlayer(nflIndex, { name: playerName })
+      }
       const ncaaf = ncaafByName[normName]
 
       if (nba) {
