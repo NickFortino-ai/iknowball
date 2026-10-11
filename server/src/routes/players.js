@@ -634,7 +634,14 @@ router.get('/player/lookup', async (req, res) => {
   // real players whose stored name keeps the suffix.
   const SUFFIX_RE = /\s+(?:jr|sr|ii|iii|iv|v)\.?$/i
   const desuffixed = name.replace(SUFFIX_RE, '').trim()
-  const nameVariants = [...new Set([name, normalized, dotified, desuffixed].filter(Boolean))]
+  // Apostrophes. The odds feed writes "Tre Harris" where nfl_players stores
+  // "Tre' Harris", so an ilike on the feed's spelling matched nothing and his
+  // prop headshot simply did nothing when tapped — the modal only renders
+  // once a lookup resolves, so the failure is silent. Both directions are
+  // covered: strip ours to match theirs, and search ours with a wildcard
+  // where the apostrophe would sit.
+  const deapostrophed = name.replace(/['\u2019]/g, '').trim()
+  const nameVariants = [...new Set([name, normalized, dotified, desuffixed, deapostrophed].filter(Boolean))]
 
   // NFL players live in nfl_players, not a DFS salaries table. When the
   // request is for NFL, look there first so the prop modal gets a real
@@ -644,17 +651,42 @@ router.get('/player/lookup', async (req, res) => {
     for (const variant of nameVariants) {
       const r = await supabase
         .from('nfl_players')
-        .select('espn_id, full_name, headshot_url, team, position')
+        .select('id, espn_id, full_name, headshot_url, team, position')
         .ilike('full_name', `%${variant}%`)
         .not('team', 'is', null)
         .limit(1)
         .maybeSingle()
       if (r.data) { data = r.data; break }
+      // Apostrophe the other way round: the feed's "Tre Harris" has to find
+      // our "Tre' Harris". A wildcard between every character would be far
+      // too loose, so this only tries it where a space sits in the feed name.
+      if (variant.includes(' ')) {
+        const loose = variant.replace(/ /g, '% ')
+        const r2 = await supabase
+          .from('nfl_players')
+          .select('id, espn_id, full_name, headshot_url, team, position')
+          .ilike('full_name', `%${loose}%`)
+          .not('team', 'is', null)
+          .limit(1)
+          .maybeSingle()
+        if (r2.data) { data = r2.data; break }
+      }
     }
 
     if (data) {
       return res.json({
         espn_player_id: data.espn_id,
+        // The SLEEPER id, which this did not return — and without it the
+        // modal had nothing to ask for a gamelog with whenever espn_id was
+        // null. That is 1,624 of 2,192 rostered players (74%), so three
+        // quarters of NFL prop modals opened on "No games available" despite
+        // us holding the player's team, schedule and stats all along.
+        //
+        // The gamelog route already understands a Sleeper id: it resolves
+        // espn_id where one exists, refuses to fetch ESPN with a Sleeper id
+        // where one doesn't (blank beats wrong), and still renders the
+        // schedule and our own stats either way.
+        sleeper_player_id: data.id,
         player_name: data.full_name,
         headshot_url: data.headshot_url,
         team: data.team,

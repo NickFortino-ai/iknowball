@@ -105,7 +105,7 @@ export default function ArcadeSection() {
 
   if (playing === 'memory') {
     return (
-      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/40 p-4">
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/40 p-4 min-w-0">
         <MemoryGame
           variant={variant}
           variantLabel={labelFor(variant)}
@@ -118,7 +118,7 @@ export default function ArcadeSection() {
 
   if (playing === 'trivia') {
     return (
-      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/40 p-4">
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/40 p-4 min-w-0">
         <TriviaGame
           variant={triviaVariant}
           variantLabel={labelFor(triviaVariant)}
@@ -129,8 +129,13 @@ export default function ArcadeSection() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/40 overflow-hidden">
+    // min-w-0 at every level down to the scroller. Hub renders this inside
+    // `lg:grid lg:grid-cols-[1fr_320px]`, and a grid child defaults to
+    // min-width:auto — so the image-set row, which is wider than the column,
+    // pushed the whole track wider instead of scrolling inside it and the
+    // card ran off the right of the screen.
+    <div className="space-y-4 min-w-0">
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/40 overflow-hidden min-w-0">
         <div className="px-4 py-3 border-b border-text-primary/10">
           <h3 className="font-display text-lg text-text-primary">Memory</h3>
           <p className="text-xs text-text-muted mt-0.5">
@@ -138,13 +143,13 @@ export default function ArcadeSection() {
           </p>
         </div>
 
-        <div className="p-4 space-y-3">
+        <div className="p-4 space-y-3 min-w-0">
           <div>
             <div className="text-[11px] uppercase tracking-wider text-text-muted mb-1.5">Image set</div>
             {isLoading ? (
               <p className="text-sm text-text-muted">Loading sets…</p>
             ) : (
-              <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+              <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 min-w-0">
                 {variants.map((v) => (
                   <button
                     key={v.key}
@@ -172,7 +177,7 @@ export default function ArcadeSection() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/40 overflow-hidden">
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/40 overflow-hidden min-w-0">
         <div className="px-4 py-3 border-b border-text-primary/10 flex items-baseline justify-between">
           <h3 className="font-display text-base text-text-primary">Leaderboard</h3>
           <span className="text-[11px] text-text-muted">{labelFor(variant)} · best round</span>
