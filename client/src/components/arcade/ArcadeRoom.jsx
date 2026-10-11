@@ -219,10 +219,10 @@ export default function ArcadeRoom({ onExit }) {
               <button
                 key={b.key}
                 onClick={() => setBoard(b.key)}
-                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                className={`rounded-lg border bg-bg-primary/50 backdrop-blur-sm px-3 py-1.5 text-xs font-semibold transition-colors ${
                   board === b.key
-                    ? 'border-accent bg-bg-primary/50 text-accent'
-                    : 'border-text-primary/20 bg-bg-primary/50 text-text-secondary hover:border-text-primary/40'
+                    ? 'border-accent text-accent'
+                    : 'border-text-primary/20 text-text-primary hover:border-text-primary/40'
                 }`}
               >
                 {b.label}
