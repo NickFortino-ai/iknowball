@@ -119,6 +119,11 @@ router.get('/players', async (req, res) => {
         game_status: m?.game_status || null,
         team_score: m?.team_score ?? null,
         opp_score: m?.opp_score ?? null,
+        // The POOL is what a saved pick renders from — the view prefers the
+        // pool entry over the pick itself — so the clock has to be here too,
+        // not only on /picks.
+        period: m?.period ?? null,
+        clock: m?.clock ?? null,
       }
     })
 
