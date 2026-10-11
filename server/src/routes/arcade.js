@@ -8,6 +8,7 @@ import { supabase } from '../config/supabase.js'
 import { requireAuth } from '../middleware/auth.js'
 import { logger } from '../utils/logger.js'
 import { buildRound } from '../services/triviaService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -365,11 +366,59 @@ router.post('/trivia/finish', async (req, res, next) => {
 
 // Leaderboard for one game + variant: each player's BEST round, not every
 // round they have ever played — otherwise one person fills the board.
+//
+// game='overall' instead ranks the arcade as a whole: a player's best round
+// in EACH game, added up.
+//
+// Best-per-game rather than every-point-ever on purpose. Summing all rounds
+// would rank by how much someone has played, which makes the board a
+// stopwatch rather than a scoreboard and is unbeatable for anyone arriving
+// late. Best-per-game rewards breadth — playing both beats grinding one —
+// and stays the same measure the per-game tabs use, so a player can see
+// exactly which number of theirs is carried up into the total.
 router.get('/leaderboard', async (req, res, next) => {
   try {
     const gameKey = String(req.query.game || MEMORY)
     const variant = String(req.query.variant || 'all')
     const limit = Math.min(parseInt(req.query.limit || '25', 10), 100)
+
+    if (gameKey === 'overall') {
+      // Across every game AND every variant: a memory best is a memory best
+      // whichever image set it was set on.
+      const rows = await fetchAll(
+        supabase
+          .from('arcade_scores')
+          .select('user_id, game_key, score, created_at, users(username, display_name, avatar_url, avatar_emoji)')
+          .order('user_id')
+      )
+
+      const byUser = new Map()
+      for (const r of rows) {
+        let u = byUser.get(r.user_id)
+        if (!u) {
+          u = { user: r.users, best: {} }
+          byUser.set(r.user_id, u)
+        }
+        if (!(u.best[r.game_key] >= r.score)) u.best[r.game_key] = r.score
+      }
+
+      const board = [...byUser.entries()]
+        .map(([userId, u]) => ({
+          user_id: userId,
+          username: u.user?.username,
+          display_name: u.user?.display_name,
+          avatar_url: u.user?.avatar_url,
+          avatar_emoji: u.user?.avatar_emoji,
+          score: Object.values(u.best).reduce((a, b) => a + b, 0),
+          breakdown: u.best,
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit)
+        .map((r, i) => ({ rank: i + 1, ...r }))
+
+      const mine = board.find((b) => b.user_id === req.user.id) || null
+      return res.json({ game: 'overall', variant: null, board, me: mine })
+    }
 
     const { data: rows, error } = await supabase
       .from('arcade_scores')

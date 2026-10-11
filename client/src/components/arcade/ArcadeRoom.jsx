@@ -96,8 +96,15 @@ const GAMES = [
   },
 ]
 
+const BOARDS = [
+  { key: 'overall', label: 'Overall' },
+  { key: 'memory', label: 'Memory' },
+  { key: 'trivia', label: 'Trivia' },
+]
+
 export default function ArcadeRoom({ onExit }) {
   const [playing, setPlaying] = useState(null)   // null | 'memory' | 'trivia'
+  const [board, setBoard] = useState('overall')
   const [variant, setVariant] = useState('all')
   const [picking, setPicking] = useState(null)   // game key whose set picker is open
   const { data: variantData, isLoading } = useMemoryVariants()
@@ -247,13 +254,38 @@ export default function ArcadeRoom({ onExit }) {
         </div>
       )}
 
+      {/* One board with tabs, not a board per game bolted on as games are
+          added. Overall leads because it's the arcade's own answer to "who
+          is winning"; the per-game tabs are where you go to see why. */}
       <div className="rounded-2xl border border-text-primary/20 bg-bg-primary/40 overflow-hidden min-w-0">
-        <div className="px-4 py-3 border-b border-text-primary/10 flex items-baseline justify-between gap-2">
-          <h3 className="font-display text-base text-text-primary">Memory leaderboard</h3>
-          <span className="text-[11px] text-text-muted truncate">{labelFor(variant)} · best round</span>
+        <div className="px-4 py-3 border-b border-text-primary/10 flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex gap-1">
+            {BOARDS.map((b) => (
+              <button
+                key={b.key}
+                onClick={() => setBoard(b.key)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  board === b.key
+                    ? 'bg-accent/15 text-accent'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
+          <span className="text-[11px] text-text-muted truncate">
+            {board === 'overall'
+              ? 'best round in each game, added up'
+              : board === 'memory'
+              ? `${labelFor(variant)} · best round`
+              : 'best round'}
+          </span>
         </div>
         <div className="px-4">
-          <ArcadeLeaderboard game="memory" variant={variant} />
+          {/* Memory is scored per image set, so its board follows whichever
+              set is selected. The other boards have no variant of their own. */}
+          <ArcadeLeaderboard game={board} variant={board === 'memory' ? variant : 'all'} />
         </div>
       </div>
     </div>
