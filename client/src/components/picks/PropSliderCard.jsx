@@ -242,13 +242,20 @@ export default function PropSliderCard({
                       today's. A pick is locked at submission, so if the book
                       moves the base line the ladder shifts underneath it and
                       the live number would be a quote nobody can buy. */}
-                  {/* The payout is the number the decision turns on — it is
-                      what differs between the two buttons and what changes as
-                      the slider moves — so it carries the weight, with "win"
-                      kept small as the label it is. */}
+                  {/* Stake and payout, in the same risk → reward idiom the
+                      results card uses. This replaces the word "win": at the
+                      size it had to be on a half-width phone button it was
+                      barely legible, and it was the one thing on the line
+                      carrying no information — while the stake, which the
+                      card stated nowhere, was missing entirely.
+
+                      Contrast is by weight and size rather than colour, so
+                      it reads the same on the outlined button and the filled
+                      one it becomes once picked. */}
                   <span className="block leading-tight">
-                    <span className="text-[11px] font-normal opacity-70">win </span>
-                    <span className="text-lg font-bold tabular-nums">
+                    <span className="text-sm font-normal tabular-nums opacity-60">{slider.risk}</span>
+                    <span className="text-sm font-normal opacity-60 mx-1">→</span>
+                    <span className="text-xl font-bold tabular-nums">
                       {isThis ? (pick?.reward_at_submission ?? rewardFor(sideKey)) : rewardFor(sideKey)}
                     </span>
                   </span>
