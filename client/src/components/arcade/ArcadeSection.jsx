@@ -106,6 +106,7 @@ export default function ArcadeSection() {
         <MemoryGame
           variant={variant}
           variantLabel={labelFor(variant)}
+          variantCount={variants.find((v) => v.key === variant)?.count}
           onExit={() => setPlaying(false)}
         />
       </div>
