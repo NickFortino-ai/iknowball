@@ -238,8 +238,15 @@ export default function PropSliderCard({
                       today's. A pick is locked at submission, so if the book
                       moves the base line the ladder shifts underneath it and
                       the live number would be a quote nobody can buy. */}
-                  <span className="block text-[11px] font-normal opacity-80">
-                    win {isThis ? (pick?.reward_at_submission ?? rewardFor(sideKey)) : rewardFor(sideKey)}
+                  {/* The payout is the number the decision turns on — it is
+                      what differs between the two buttons and what changes as
+                      the slider moves — so it carries the weight, with "win"
+                      kept small as the label it is. */}
+                  <span className="block leading-tight">
+                    <span className="text-[11px] font-normal opacity-70">win </span>
+                    <span className="text-lg font-bold tabular-nums">
+                      {isThis ? (pick?.reward_at_submission ?? rewardFor(sideKey)) : rewardFor(sideKey)}
+                    </span>
                   </span>
                 </button>
               )
