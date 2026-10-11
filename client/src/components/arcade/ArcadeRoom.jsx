@@ -4,7 +4,6 @@ import TriviaGame from './TriviaGame'
 import ArcadeLeaderboard from './ArcadeLeaderboard'
 import { getBackdropUrl } from '../../lib/backdropUrl'
 import { useMemoryVariants } from '../../hooks/useArcade'
-import { labelFor } from './variantLabels'
 
 /**
  * The arcade, as a room rather than a feed tab.
@@ -82,9 +81,6 @@ const GAMES = [
     blurb: 'Match the pairs from IKB\'s backdrop library.',
     detail: 'Only misses on cards you had already seen cost points.',
     art: MemoryArt,
-    // Memory is played against a chosen image set, so its tile opens a
-    // picker. Trivia has no equivalent choice yet.
-    hasVariants: true,
   },
   {
     key: 'trivia',
@@ -92,7 +88,6 @@ const GAMES = [
     blurb: 'Eight questions, easiest first.',
     detail: 'Harder questions are worth more. Answer fast for the time bonus.',
     art: TriviaArt,
-    hasVariants: false,
   },
 ]
 
@@ -105,23 +100,23 @@ const BOARDS = [
 export default function ArcadeRoom({ onExit }) {
   const [playing, setPlaying] = useState(null)   // null | 'memory' | 'trivia'
   const [board, setBoard] = useState('overall')
-  const [variant, setVariant] = useState('all')
-  const [picking, setPicking] = useState(null)   // game key whose set picker is open
   const { data: variantData, isLoading } = useMemoryVariants()
 
-  const variants = useMemo(() => variantData?.variants || [], [variantData])
-  const current = useMemo(
-    () => variants.find((v) => v.key === variant) || variants[0] || null,
-    [variants, variant],
+  // Every round draws from the whole library. There was a per-sport set
+  // picker; choosing one is a decision nobody asked to make before playing a
+  // memory game, and it fragmented the leaderboard into a board per set.
+  // One deck, one board, and the deal is random every time.
+  const allSet = useMemo(
+    () => (variantData?.variants || []).find((v) => v.key === 'all') || null,
+    [variantData],
   )
 
   if (playing === 'memory') {
     return (
       <div className="sm:rounded-2xl sm:border sm:border-text-primary/20 sm:bg-bg-primary/40 sm:p-4 min-w-0">
         <MemoryGame
-          variant={variant}
-          variantLabel={labelFor(variant)}
-          variantCount={current?.count}
+          variant="all"
+          variantCount={allSet?.count}
           onExit={() => setPlaying(null)}
         />
       </div>
@@ -135,7 +130,7 @@ export default function ArcadeRoom({ onExit }) {
             whole published pool, which is what the one variant we have
             means — a per-sport trivia picker waits until there are enough
             published questions per sport to fill a round from one. */}
-        <TriviaGame variant="all" variantLabel="All Sports" onExit={() => setPlaying(null)} />
+        <TriviaGame variant="all" onExit={() => setPlaying(null)} />
       </div>
     )
   }
@@ -169,7 +164,6 @@ export default function ArcadeRoom({ onExit }) {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
         {GAMES.map((g) => {
           const Art = g.art
-          const isPicking = picking === g.key
           // A round needs questions. Rather than let the tile launch into
           // "not enough questions available yet", it says so and doesn't
           // pretend to be playable.
@@ -181,10 +175,10 @@ export default function ArcadeRoom({ onExit }) {
                   item that happens to have a picture. */}
               <button
                 disabled={notReady}
-                onClick={() => (g.hasVariants ? setPicking(isPicking ? null : g.key) : setPlaying(g.key))}
+                onClick={() => setPlaying(g.key)}
                 className={`relative block w-full h-24 sm:h-28 lg:h-32 overflow-hidden bg-bg-secondary group ${notReady ? 'cursor-default' : ''}`}
               >
-                <Art samples={current?.samples} />
+                <Art samples={allSet?.samples} />
                 <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/20 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-1.5 p-2 sm:p-3">
                   <span className="font-display text-base sm:text-xl text-text-primary leading-none truncate">{g.name}</span>
@@ -194,7 +188,7 @@ export default function ArcadeRoom({ onExit }) {
                     </span>
                   ) : (
                     <span className="rounded-lg bg-accent px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-semibold text-white shrink-0 group-hover:brightness-110">
-                      {g.hasVariants && isPicking ? 'Close' : 'Play'}
+                      Play
                     </span>
                   )}
                 </div>
@@ -212,47 +206,6 @@ export default function ArcadeRoom({ onExit }) {
           )
         })}
       </div>
-
-      {/* The set picker is full width, below the grid — not inside the tile.
-          A tile is half a phone wide, which is no room for a scroller of set
-          names and a Play button, and the choice belongs to the round you're
-          about to start rather than to the tile you tapped. */}
-      {picking === 'memory' && (
-        <div className="rounded-2xl border border-accent/40 bg-bg-primary/40 p-4 space-y-3 min-w-0">
-          <div className="flex items-baseline justify-between gap-2">
-            <div className="text-[11px] uppercase tracking-wider text-text-muted">Image set</div>
-            <button onClick={() => setPicking(null)} className="text-[11px] text-text-muted hover:text-text-primary">
-              Close
-            </button>
-          </div>
-          {isLoading ? (
-            <p className="text-sm text-text-muted">Loading sets…</p>
-          ) : (
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 min-w-0">
-              {variants.map((v) => (
-                <button
-                  key={v.key}
-                  onClick={() => setVariant(v.key)}
-                  className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
-                    variant === v.key
-                      ? 'border-accent bg-accent/10 text-text-primary'
-                      : 'border-text-primary/20 text-text-secondary hover:border-text-primary/40'
-                  }`}
-                >
-                  {labelFor(v.key)}
-                  <span className="ml-1.5 text-text-muted font-normal">{v.count}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          <button
-            onClick={() => setPlaying('memory')}
-            className="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-white"
-          >
-            Play {labelFor(variant)}
-          </button>
-        </div>
-      )}
 
       {/* One board with tabs, not a board per game bolted on as games are
           added. Overall leads because it's the arcade's own answer to "who
@@ -275,17 +228,11 @@ export default function ArcadeRoom({ onExit }) {
             ))}
           </div>
           <span className="text-[11px] text-text-muted truncate">
-            {board === 'overall'
-              ? 'best round in each game, added up'
-              : board === 'memory'
-              ? `${labelFor(variant)} · best round`
-              : 'best round'}
+            {board === 'overall' ? 'best round in each game, added up' : 'best round'}
           </span>
         </div>
         <div className="px-4">
-          {/* Memory is scored per image set, so its board follows whichever
-              set is selected. The other boards have no variant of their own. */}
-          <ArcadeLeaderboard game={board} variant={board === 'memory' ? variant : 'all'} />
+          <ArcadeLeaderboard game={board} variant="all" />
         </div>
       </div>
     </div>

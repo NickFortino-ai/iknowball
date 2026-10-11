@@ -22,7 +22,7 @@ function Timer({ startedAt }) {
   return <span className="tabular-nums">{Math.floor(s / 60)}:{String(s % 60).padStart(2, '0')}</span>
 }
 
-export default function TriviaGame({ variant, variantLabel, onExit }) {
+export default function TriviaGame({ variant = 'all', onExit }) {
   const [round, setRound] = useState(null)
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState([])
@@ -77,7 +77,7 @@ export default function TriviaGame({ variant, variantLabel, onExit }) {
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <button onClick={onExit} className="text-xs text-text-muted hover:text-text-primary">← Arcade</button>
-          <h3 className="font-display text-lg text-text-primary">Trivia · {variantLabel}</h3>
+          <h3 className="font-display text-lg text-text-primary">Trivia</h3>
         </div>
         <p className="text-sm text-text-secondary">
           Eight questions drawn from this season's real results. Answer fast for

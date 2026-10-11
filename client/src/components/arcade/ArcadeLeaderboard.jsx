@@ -1,6 +1,5 @@
 import Avatar from '../ui/Avatar'
 import { useArcadeLeaderboard } from '../../hooks/useArcade'
-import { labelFor } from './variantLabels'
 
 // Stable order so a row reads the same way every time, rather than however
 // the object's keys happened to be inserted.
@@ -32,9 +31,7 @@ export default function ArcadeLeaderboard({ game = 'memory', variant }) {
   if (!board.length) {
     return (
       <p className="text-sm text-text-muted py-6 text-center">
-        {game === 'overall'
-          ? 'No scores in the arcade yet. Be first.'
-          : `No scores yet for ${labelFor(variant)}. Be first.`}
+        {game === 'overall' ? 'No scores in the arcade yet. Be first.' : 'No scores yet. Be first.'}
       </p>
     )
   }

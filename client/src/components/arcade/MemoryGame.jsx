@@ -47,7 +47,7 @@ function Timer({ startedAt, running }) {
   return <span className="tabular-nums">{m}:{String(s).padStart(2, '0')}</span>
 }
 
-export default function MemoryGame({ variant, variantLabel, variantCount, onExit }) {
+export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
   const [difficulty, setDifficulty] = useState('medium')
   const [round, setRound] = useState(null)      // { roundId, cards, pairs, parSeconds }
   const [flipped, setFlipped] = useState([])    // card ids currently face-up this turn (0-2)
@@ -162,17 +162,21 @@ export default function MemoryGame({ variant, variantLabel, variantCount, onExit
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <button onClick={onExit} className="text-xs text-text-muted hover:text-text-primary">← Arcade</button>
-          <h3 className="font-display text-lg text-text-primary">Memory · {variantLabel}</h3>
+          <h3 className="font-display text-lg text-text-primary">Memory</h3>
         </div>
         <p className="text-sm text-text-secondary">
           Match every pair. Flipping a card you have not seen before is free —
           you only lose points for missing a pair you had already uncovered.
         </p>
-        {/* A set only supports a difficulty it has enough distinct images
-            for. Eight of the fifteen sets hold fewer than 10 (Sack Legends
-            has 6), so without this, picking Hard on a small set dead-ends in
-            a "not enough images" toast — the server refuses, correctly, but
-            the player had no way to know before trying. */}
+        {/* Three equal START buttons, none pre-selected.
+            `difficulty` used to default to medium and highlight it, which
+            read as "medium is chosen, now confirm" — but tapping any of the
+            three deals immediately, so the highlight was describing a step
+            that doesn't exist. It is still tracked, purely so Play again can
+            repeat the tier you just played.
+
+            The guard stays in case a deck ever ships with fewer images than
+            Hard needs; the library has 220, so today it never fires. */}
         <div className="flex gap-2">
           {DIFFICULTIES.map((d) => {
             const fits = !variantCount || variantCount >= d.pairs
@@ -181,12 +185,8 @@ export default function MemoryGame({ variant, variantLabel, variantCount, onExit
                 key={d.key}
                 onClick={() => { setDifficulty(d.key); deal(d.key) }}
                 disabled={busy || !fits}
-                title={fits ? undefined : `${variantLabel} only has ${variantCount} images`}
-                className={`flex-1 rounded-xl border px-3 py-3 text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                  difficulty === d.key && fits
-                    ? 'border-accent bg-accent/10 text-text-primary'
-                    : 'border-text-primary/20 text-text-secondary hover:bg-bg-card-hover'
-                }`}
+                title={fits ? undefined : `Only ${variantCount} images available`}
+                className="flex-1 rounded-xl border border-text-primary/20 px-3 py-3 text-sm font-semibold text-text-secondary transition-colors hover:border-accent hover:bg-accent/10 hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {d.label}
                 <span className="block text-[11px] font-normal text-text-muted">
