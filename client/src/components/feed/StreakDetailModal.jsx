@@ -85,7 +85,8 @@ export default function StreakDetailModal({ streakId, onClose }) {
                 let primary, secondary
                 if (isProp) {
                   const marketLabel = (pick.player_props?.market_key || '').replace(/^player_/, '').replace(/_/g, ' ')
-                  const line = pick.player_props?.line
+                  // The user's line when they set one on a slider prop.
+                  const line = pick.chosen_line ?? pick.player_props?.line
                   const direction = pick.picked_side ? pick.picked_side.toUpperCase() : ''
                   primary = pick.player_props?.player_name || 'Player'
                   secondary = `${direction} ${line} ${marketLabel}`.trim()

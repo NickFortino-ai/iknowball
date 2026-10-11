@@ -23,7 +23,13 @@ export default function PropResultCard({ pick }) {
     : 'border-text-primary/20'
 
   const headshot = prop.player_headshot_url
-  const line = prop.line
+  // On a slider prop the line that matters is the one the USER set, not the
+  // book's. Everything below — the tracker, "needs N more", the win/lose
+  // colour — has to be measured against their line or the card describes a
+  // bet nobody made.
+  const customLine = pick.chosen_line != null ? Number(pick.chosen_line) : null
+  const line = customLine ?? prop.line
+  const isCustom = customLine != null && Number(prop.line) !== customLine
   const side = pick.picked_side
 
   // Live in-game stat (set server-side by enrichLockedPicksWithLiveStats when locked).
@@ -105,6 +111,11 @@ export default function PropResultCard({ pick }) {
           <div className="text-base font-semibold text-text-primary truncate">{prop.player_name}</div>
           <div className="text-sm text-text-secondary">
             {line} {prop.market_label}
+            {/* The book's number, kept visible — it's the reference that
+                explains why this pick paid what it paid. */}
+            {isCustom && (
+              <span className="text-xs text-text-muted ml-1.5">(line {prop.line})</span>
+            )}
           </div>
           {game.away_team && game.home_team && (
             <div className="text-xs text-text-muted truncate mt-0.5">
@@ -146,11 +157,21 @@ export default function PropResultCard({ pick }) {
               </span>
             )}
             <span className="text-sm text-text-secondary">Picked</span>
-            <span className="text-sm font-semibold text-text-primary capitalize">{side}</span>
+            <span className="text-sm font-semibold text-text-primary capitalize">
+              {side}{customLine != null ? ` ${customLine}` : ''}
+            </span>
           </div>
-          {pick.odds_at_pick != null && (
+          {/* On a slider pick the odds snapshot is the BOOK's price for the
+              book's line — not the price this pick was bought at. Showing it
+              would quote a number that was never the user's, so the actual
+              stake and payout go here instead. */}
+          {customLine != null ? (
+            <span className="text-xs text-text-muted shrink-0 tabular-nums">
+              {pick.risk_points ?? pick.risk_at_submission} → {pick.reward_points ?? pick.reward_at_submission}
+            </span>
+          ) : pick.odds_at_pick != null ? (
             <span className="text-xs text-text-muted shrink-0">{formatOdds(pick.odds_at_pick)}</span>
-          )}
+          ) : null}
         </div>
         {isSettled && pick.points_earned != null && (
           <div className={`text-center text-lg font-display font-bold mt-2 ${ptsColor}`}>
@@ -159,8 +180,12 @@ export default function PropResultCard({ pick }) {
         )}
       </div>
 
-      {/* All Picks consensus bar */}
-      {total > 0 && (
+      {/* All Picks consensus bar.
+          Suppressed on slider props: every pick there is an "over" at a line
+          of its own, so the bar would always read 100% / 0% and tell nobody
+          anything. A line-distribution view is the honest version of this and
+          it doesn't exist yet. */}
+      {total > 0 && customLine == null && (
         <div className="border-t border-text-primary/10 px-4 py-3">
           <div className="text-[10px] text-text-muted uppercase tracking-wider text-center mb-2">All Picks</div>
           <div className="flex justify-between text-xs font-semibold mb-1">

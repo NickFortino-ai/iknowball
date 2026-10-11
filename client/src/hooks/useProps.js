@@ -93,8 +93,14 @@ export function useSubmitPropPick() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ propId, pickedSide }) =>
-      api.post('/props/picks', { prop_id: propId, picked_side: pickedSide }),
+    // chosenLine is only sent for slider markets. Omitted entirely otherwise
+    // so flat markets keep posting exactly the body they posted before.
+    mutationFn: ({ propId, pickedSide, chosenLine }) =>
+      api.post('/props/picks', {
+        prop_id: propId,
+        picked_side: pickedSide,
+        ...(chosenLine != null ? { chosen_line: chosenLine } : {}),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['propPicks'] })
       const uid = useAuthStore.getState().session?.user?.id

@@ -4,6 +4,7 @@ import { formatOdds, calculateRiskPoints, calculateRewardPoints } from '../../li
 import { useNbaDfsPlayerLookup } from '../../hooks/useLeagues'
 import { getTeamAbbr } from '../../lib/teamLogos'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
+import PropSliderCard from './PropSliderCard'
 
 const sideStyles = {
   default: 'bg-bg-primary hover:bg-bg-card-hover border-border hover:border-border-hover',
@@ -80,6 +81,23 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
   const [showPlayerModal, setShowPlayerModal] = useState(false)
   const sportKey = prop.games?.sports?.key || prop.sport_key || 'basketball_nba'
 
+  // Markets the server could calibrate a line ladder for render as a slider
+  // instead of over/under. Everything else — anytime TD, every non-football
+  // sport, and any market whose hit rate we haven't measured — keeps this
+  // card unchanged. `compact` opts out too: the slider needs vertical room.
+  if (prop.slider?.stops?.length > 1 && !compact) {
+    return (
+      <PropSliderCard
+        prop={prop}
+        pick={pick}
+        onPickLine={(propId, line) => onPick?.(propId, 'over', line)}
+        onUndoPick={onUndoPick}
+        isSubmitting={isSubmitting}
+        sportKey={sportKey}
+      />
+    )
+  }
+
   // Anytime touchdown is a Yes/No market stored at line 0.5 (see
   // propService.normalizeOutcome). "Will X go over or under 0.5 Anytime TD?"
   // is a clumsy way to ask a question the sportsbook asks plainly, and the
@@ -131,6 +149,10 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
           <span className="font-semibold text-sm text-text-primary">
             {isYesNo
               ? `Will ${prop.player_name} score a touchdown?`
+              : pick?.chosen_line != null
+              // A slider pick rendered through this card (locked, or in a
+              // compact list) asks the question the user actually answered.
+              ? `Will ${prop.player_name} go over ${pick.chosen_line} ${prop.market_label}?`
               : `Will ${prop.player_name} go over or under ${prop.line} ${prop.market_label}?`}
           </span>
         </div>

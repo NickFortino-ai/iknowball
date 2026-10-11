@@ -374,11 +374,13 @@ function PropList({ props, isLoading, emptyText }) {
     return pick
   }
 
-  async function handlePick(propId, side) {
+  // `line` is set only by slider cards. A re-pick at a different line is the
+  // same submit — the server upserts on (user, prop) and re-prices.
+  async function handlePick(propId, side, line = null) {
     try {
-      await submitPick.mutateAsync({ propId, pickedSide: side })
+      await submitPick.mutateAsync({ propId, pickedSide: side, chosenLine: line })
       triggerHaptic('Light')
-      toast('Prop pick submitted!', 'success')
+      toast(line != null ? `Pick locked at ${line}` : 'Prop pick submitted!', 'success')
     } catch (err) {
       toast(err.message || 'Failed to submit prop pick', 'error')
     }

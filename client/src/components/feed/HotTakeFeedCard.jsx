@@ -78,7 +78,7 @@ function FlexTargetCard({ hot_take }) {
     return (
       <div className="bg-bg-primary/50 border border-correct rounded-xl p-4 mb-2">
         <div className="text-xs text-text-muted uppercase tracking-wider mb-1">{game?.sports?.name || ''}</div>
-        <div className="text-sm font-semibold text-text-primary mb-1">{player_prop?.player_name} — {player_prop?.line} {player_prop?.market_label}</div>
+        <div className="text-sm font-semibold text-text-primary mb-1">{player_prop?.player_name} — {prop.chosen_line ?? player_prop?.line} {player_prop?.market_label}</div>
         {game && (
           <div className="text-xs text-text-muted mb-2">{game.away_team} @ {game.home_team}</div>
         )}
