@@ -129,11 +129,15 @@ export default function ArcadeSection() {
   }
 
   return (
-    // min-w-0 at every level down to the scroller. Hub renders this inside
-    // `lg:grid lg:grid-cols-[1fr_320px]`, and a grid child defaults to
-    // min-width:auto — so the image-set row, which is wider than the column,
-    // pushed the whole track wider instead of scrolling inside it and the
-    // card ran off the right of the screen.
+    // min-w-0 at every level down to the scroller, so the image-set row —
+    // wider than the column by design — scrolls inside its own box.
+    //
+    // Necessary but NOT sufficient: Hub renders this inside a grid, and a
+    // `1fr` track is `minmax(auto, 1fr)`, whose minimum is its content's
+    // max-content width. No amount of min-w-0 on descendants constrains the
+    // TRACK. HubPage carries the other half of the fix (minmax(0,1fr) plus
+    // min-w-0 on the grid item); without it this section still ran off the
+    // right edge on desktop with every one of these classes in place.
     <div className="space-y-4 min-w-0">
       <div className="rounded-xl border border-text-primary/20 bg-bg-primary/40 overflow-hidden min-w-0">
         <div className="px-4 py-3 border-b border-text-primary/10">

@@ -441,8 +441,15 @@ export default function HubPage() {
       </div>
 
       {/* Activity Feed + News sidebar */}
-      <div className="lg:grid lg:grid-cols-[1fr_320px] lg:gap-6">
-      <div>
+      {/* minmax(0,1fr), not 1fr. A bare `1fr` track is `minmax(auto, 1fr)`,
+          so the column's MINIMUM is its content's max-content width — any
+          horizontal scroller inside (the feed tabs, the arcade's image-set
+          row) widens the whole track and runs the page off the right edge
+          instead of scrolling within its own box. min-w-0 on descendants
+          can't fix that; the constraint is the track, and the grid ITEM
+          (the div below) needs it too. */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
+      <div className="min-w-0">
         <div className="flex items-center gap-2 mb-3">
           <h2 className="text-xs text-text-muted uppercase tracking-wider flex-shrink-0">Feed</h2>
           <div className="flex gap-1 overflow-x-auto flex-nowrap no-scrollbar">
