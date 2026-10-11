@@ -48,7 +48,7 @@ function MemoryArt({ samples }) {
     return <div className="absolute inset-0 bg-gradient-to-br from-accent/30 to-bg-primary" />
   }
   return (
-    <div className="absolute inset-0 grid grid-cols-2 gap-0.5 p-0.5">
+    <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-0.5 p-0.5">
       {tiles.map((f, i) => (
         <img key={i} src={getBackdropUrl(f)} alt="" draggable={false}
           className="w-full h-full object-cover rounded-sm" />
@@ -65,9 +65,9 @@ function MemoryArt({ samples }) {
  */
 function TriviaArt() {
   return (
-    <div className="absolute inset-0 flex flex-col justify-center gap-1.5 px-4">
+    <div className="absolute inset-0 flex flex-col justify-center gap-1.5 px-3 sm:px-4">
       {[0, 1, 2, 3].map((i) => (
-        <div key={i} className={`h-3 rounded-full ${
+        <div key={i} className={`h-2 sm:h-2.5 rounded-full ${
           i === 2 ? 'bg-accent' : 'bg-text-primary/15'
         }`} style={{ width: `${[78, 62, 88, 54][i]}%` }} />
       ))}
@@ -159,7 +159,7 @@ export default function ArcadeRoom({ onExit }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
         {GAMES.map((g) => {
           const Art = g.art
           const isPicking = picking === g.key
@@ -175,7 +175,7 @@ export default function ArcadeRoom({ onExit }) {
               <button
                 disabled={notReady}
                 onClick={() => (g.hasVariants ? setPicking(isPicking ? null : g.key) : setPlaying(g.key))}
-                className={`relative block w-full h-24 sm:h-36 bg-bg-secondary group ${notReady ? 'cursor-default' : ''}`}
+                className={`relative block w-full h-24 sm:h-28 lg:h-32 overflow-hidden bg-bg-secondary group ${notReady ? 'cursor-default' : ''}`}
               >
                 <Art samples={current?.samples} />
                 <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/20 to-transparent" />
@@ -197,8 +197,8 @@ export default function ArcadeRoom({ onExit }) {
                 <p className="text-[11px] sm:text-xs text-text-secondary">{g.blurb}</p>
                 {/* The second line is detail, not identity — it's the first
                     thing to go when the tile is half a phone wide. */}
-                <p className="hidden sm:block text-[11px] text-text-muted">
-                  {notReady ? 'Questions are written and waiting on review.' : g.detail}
+                <p className="hidden xl:block text-[11px] text-text-muted">
+                  {notReady ? 'Written, waiting on review.' : g.detail}
                 </p>
               </div>
             </div>
