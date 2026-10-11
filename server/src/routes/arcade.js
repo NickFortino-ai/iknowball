@@ -19,14 +19,14 @@ const TRIVIA = 'trivia'
 // Questions per round, and what each is worth.
 const TRIVIA_QUESTIONS = 8
 // Harder questions pay more, so clearing a 5 isn't level with clearing a 1.
-// Kept a modest spread (100..200) — difficulty should tilt a close round, not
+// Kept a modest spread (10..20) — difficulty should tilt a close round, not
 // make the easy ones pointless to answer.
-const POINTS_FOR_DIFFICULTY = { 1: 100, 2: 125, 3: 150, 4: 175, 5: 200 }
-const POINTS_PER_CORRECT = 125 // used when a question carries no ranking
+const POINTS_FOR_DIFFICULTY = { 1: 10, 2: 13, 3: 15, 4: 18, 5: 20 }
+const POINTS_PER_CORRECT = 13 // used when a question carries no ranking
 // Answering fast is worth something, but not so much that it beats being
 // right — a perfect slow round still outscores a fast half-wrong one.
 const TRIVIA_PAR_SECONDS_PER_Q = 12
-const TRIVIA_BONUS_PER_SECOND = 2
+const TRIVIA_BONUS_PER_SECOND = 0.2
 
 // Pair counts we deal. Four columns is the mobile ceiling — at 375px wide a
 // fifth column puts cards under ~65px, too small to recognise a backdrop,
@@ -36,23 +36,31 @@ const TRIVIA_BONUS_PER_SECOND = 2
 const PAIR_COUNTS = { easy: 6, medium: 8, hard: 10 }
 
 // Scoring. Deliberately explainable on screen rather than a mystery number:
-//   +100  per matched pair
-//    -25  per INFORMED miss
-//     +3  per second under par, par = 6s per pair
+//    +10  per matched pair
+//   -2.5  per INFORMED miss
+//   +0.3  per second under par, par = 6s per pair
+//
+// A tenth of what it was. The old scale put a decent round at 775 and a
+// career total well into five figures, which is a lot of digits on a
+// leaderboard to say "better than 740". Every weight is divided equally, so
+// the strategy is untouched and only the units changed.
 //
 // An informed miss is one where the second card flipped had already been
 // revealed earlier in the round. At that moment the player knows what both
 // cards are, so they knew it wouldn't match. Flipping two cards you have
 // never seen is information gathering and costs nothing — exploring is free,
 // forgetting is not.
-const POINTS_PER_PAIR = 100
-const PENALTY_PER_INFORMED_MISS = 25
+const POINTS_PER_PAIR = 10
+const PENALTY_PER_INFORMED_MISS = 2.5
 const PAR_SECONDS_PER_PAIR = 6
-const TIME_BONUS_PER_SECOND = 3
+const TIME_BONUS_PER_SECOND = 0.3
 
 function scoreRound({ pairs, informedMisses, durationMs }) {
   const base = pairs * POINTS_PER_PAIR
-  const penalty = informedMisses * PENALTY_PER_INFORMED_MISS
+  // Rounded here, not just in the total: the breakdown is shown on the
+  // result screen and has to add up to the score, or the scoring reads as
+  // arbitrary the first time a half point disappears.
+  const penalty = Math.round(informedMisses * PENALTY_PER_INFORMED_MISS)
   const parSeconds = pairs * PAR_SECONDS_PER_PAIR
   const elapsedSeconds = durationMs / 1000
   const timeBonus = Math.max(0, Math.round((parSeconds - elapsedSeconds) * TIME_BONUS_PER_SECOND))
