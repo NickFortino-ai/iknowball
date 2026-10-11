@@ -479,7 +479,7 @@ export default function HubPage() {
             feed is simply the page you are on. */}
         <div className="mb-6 lg:mb-0 lg:w-72 lg:shrink-0 lg:flex lg:pb-3">
           <div className="grid w-full grid-cols-3 gap-1 lg:hidden">
-            <RoomButton icon={FeedIcon} label="Feed" active={hubView === 'feed'} onClick={() => setHubView('feed')} />
+            <RoomButton icon={FeedIcon} label="Feed" iconClass="w-11 h-11" active={hubView === 'feed'} onClick={() => setHubView('feed')} />
             <RoomButton icon={NewsIcon} label="News" active={hubView === 'news'} onClick={() => setHubView('news')} />
             <RoomButton icon={ArcadeIcon} label="Arcade" active={hubView === 'arcade'} onClick={() => setHubView('arcade')} />
           </div>
