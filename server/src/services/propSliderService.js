@@ -120,26 +120,31 @@ function stepFor(marketKey, baseLine) {
   return 0.5
 }
 
-// Outward rounding helpers. On counting markets the result is nudged to the
-// nearest .5 so a tie — actual exactly equal to the line — is impossible.
+// Outward rounding helpers. A stop is never a whole number, on ANY market,
+// so a tie — actual exactly equal to the line — cannot happen.
+//
+// This used to apply only to counting markets, where the step is 0.5 and a
+// whole number is obviously wrong. Yardage steps by 1 or 5, so its stops
+// were whole and tie-able: Sam Darnold threw for exactly 195 against a 195
+// line and the pick pushed. A push is a wasted pick — right about the
+// direction and paid nothing for it — and books end every line in .5 for
+// precisely this reason.
+//
+// The book's own line is left exactly as quoted, since it is the prop's real
+// number and the slider's default. Books quote .5 anyway.
 function floorToStep(value, step) {
   const v = Math.floor(value / step) * step
-  if (step === 0.5 && v % 1 === 0) return v - 0.5
-  return v
+  return v % 1 === 0 ? v - 0.5 : v
 }
 
 function ceilToStep(value, step) {
   const v = Math.ceil(value / step) * step
-  if (step === 0.5 && v % 1 === 0) return v + 0.5
-  return v
+  return v % 1 === 0 ? v + 0.5 : v
 }
 
 function roundToStep(value, step) {
   const rounded = Math.round(value / step) * step
-  // Keep .5 lines on counting markets so a tie is impossible; a whole-number
-  // line on receptions would let actual === line and force a push.
-  if (step === 0.5) return rounded % 1 === 0 ? rounded + 0.5 : rounded
-  return rounded
+  return rounded % 1 === 0 ? rounded + 0.5 : rounded
 }
 
 /**
