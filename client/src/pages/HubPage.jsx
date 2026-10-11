@@ -358,13 +358,19 @@ export default function HubPage() {
             than pinned to the end of a tab scroller nobody scrolls. */}
         <div className="mb-6 lg:mb-0 flex gap-2 lg:flex-col lg:gap-3 lg:w-72 lg:shrink-0">
           <div className="flex-1 min-w-0">{renderSearch()}</div>
+          {/* No border, no fill — the cabinet IS the button. A bordered box
+              around art that already has its own outline and glow was two
+              frames competing; stripped back, the icon can grow into the
+              whole space instead of sitting in the middle of a panel.
+              On desktop it fills the height left under the search bar, with
+              the label beneath; on mobile there's no room for a label. */}
           <button
             onClick={() => setArcadeOpen(true)}
             aria-label="Arcade"
-            className="shrink-0 flex lg:flex-1 items-center justify-center gap-2 w-14 lg:w-full rounded-xl border border-accent bg-accent/10 text-sm font-semibold text-accent hover:bg-accent/20 transition-colors lg:py-3"
+            className="shrink-0 flex lg:flex-1 flex-col items-center justify-center gap-1 w-14 lg:w-full min-h-0 lg:min-h-[96px] text-accent transition-transform hover:scale-105 active:scale-95"
           >
-            <ArcadeIcon className="w-8 h-8" />
-            <span className="hidden lg:inline">Arcade</span>
+            <ArcadeIcon className="w-12 h-12 lg:w-auto lg:h-auto lg:flex-1 lg:min-h-0 lg:max-w-full" />
+            <span className="hidden lg:block text-sm font-semibold leading-none">Arcade</span>
           </button>
         </div>
       </div>
