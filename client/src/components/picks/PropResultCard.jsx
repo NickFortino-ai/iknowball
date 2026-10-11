@@ -29,7 +29,10 @@ export default function PropResultCard({ pick }) {
   // bet nobody made.
   const customLine = pick.chosen_line != null ? Number(pick.chosen_line) : null
   const line = customLine ?? prop.line
-  const isCustom = customLine != null && Number(prop.line) !== customLine
+  // book_line is the server's copy of the book's number, set aside when it
+  // rewrote `line` to the user's. Only present on slider picks.
+  const bookLine = prop.book_line ?? null
+  const isCustom = customLine != null && bookLine != null && Number(bookLine) !== customLine
   const side = pick.picked_side
 
   // Live in-game stat (set server-side by enrichLockedPicksWithLiveStats when locked).
@@ -114,7 +117,7 @@ export default function PropResultCard({ pick }) {
             {/* The book's number, kept visible — it's the reference that
                 explains why this pick paid what it paid. */}
             {isCustom && (
-              <span className="text-xs text-text-muted ml-1.5">(line {prop.line})</span>
+              <span className="text-xs text-text-muted ml-1.5">(line {bookLine})</span>
             )}
           </div>
           {game.away_team && game.home_team && (

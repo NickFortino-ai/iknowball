@@ -395,6 +395,39 @@ async function withSliders(props) {
 }
 
 /**
+ * Make a pick's nested prop describe the line the USER took.
+ *
+ * Every shipped client — 1.2.19 and everything before it — renders a prop
+ * pick from `player_props.line`, because until now that WAS the user's line.
+ * On a slider pick it isn't: the book's number might be 222.5 while the pick
+ * is over 300. An app that hasn't updated would show the wrong threshold,
+ * compute "needs 12 more" against it, and can paint a ✓ on a pick the server
+ * correctly settled as a loss — display contradicting the points awarded.
+ *
+ * Rather than ship a client fix and wait on an App Store review, the server
+ * hands every client the line that is actually in play. The book's number
+ * moves to `book_line` for anything that wants to show it as context.
+ *
+ * Applies to the payloads a user reads their OWN or another user's picks
+ * from. The props BOARD is untouched — there `line` is the book's line and
+ * that is correct, since nobody has chosen anything yet.
+ */
+export function applyChosenLine(picks) {
+  const one = (pick) => {
+    if (!pick?.player_props || pick.chosen_line == null) return pick
+    return {
+      ...pick,
+      player_props: {
+        ...pick.player_props,
+        book_line: pick.player_props.line,
+        line: Number(pick.chosen_line),
+      },
+    }
+  }
+  return Array.isArray(picks) ? picks.map(one) : one(picks)
+}
+
+/**
  * One card per player, per market, per game.
  *
  * The odds feed re-quotes a line as the week goes on, and `line` is part of
@@ -1187,7 +1220,7 @@ export async function getPropPickById(propPickId) {
     data.totalCounts = { over: 0, under: 0 }
   }
 
-  return data
+  return applyChosenLine(data)
 }
 
 function mapNbaStatToMarket(stats, marketKey) {
@@ -1645,7 +1678,7 @@ export async function getUserPropPicks(userId, status) {
   // Live-stat enrichment is now served by a separate lightweight endpoint
   // (getUserLivePropStats) so this list query stays fast and ESPN round-trips
   // happen on their own cadence rather than on every picks refetch.
-  return data || []
+  return applyChosenLine(data || [])
 }
 
 export async function voidProp(propId) {
@@ -1749,7 +1782,7 @@ export async function getUserPropPickHistory(userId) {
   if (error) throw error
 
   // Live-stat enrichment is served by getUserLivePropStats on its own cadence.
-  return data || []
+  return applyChosenLine(data || [])
 }
 
 /**

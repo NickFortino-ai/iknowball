@@ -10,6 +10,7 @@ import {
   declineInvitation,
 } from '../services/invitationService.js'
 import { getPublicPickHistory } from '../services/pickService.js'
+import { applyChosenLine } from '../services/propService.js'
 import { getCrowns, getRecordHolders } from '../services/leaderboardService.js'
 
 const router = Router()
@@ -318,7 +319,7 @@ router.get('/:id/prop-picks', requireAuth, async (req, res) => {
     .order('updated_at', { ascending: false })
 
   if (error) throw error
-  res.json(data || [])
+  res.json(applyChosenLine(data || []))
 })
 
 // Get any user's bonus points history
