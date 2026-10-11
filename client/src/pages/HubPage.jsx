@@ -326,7 +326,7 @@ export default function HubPage() {
             onClick={() => setArcadeOpen(true)}
             className="hidden lg:flex lg:flex-1 items-center justify-center gap-2 w-full rounded-xl border border-accent bg-accent/10 py-3 text-sm font-semibold text-accent hover:bg-accent/20 transition-colors"
           >
-            <ArcadeIcon className="w-6 h-6" />
+            <ArcadeIcon className="w-8 h-8" />
             Arcade
           </button>
         </div>

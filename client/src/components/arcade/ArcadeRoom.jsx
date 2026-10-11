@@ -20,26 +20,22 @@ import { labelFor } from './variantLabels'
  * this grows into. A third tile costs one entry in GAMES.
  */
 
-// The arcade's own mark: a cabinet with a joystick. Inline rather than an
-// asset so it inherits currentColor and stays crisp at every size — this
-// shows up at 16px in the Hub's entry button and at 40px on a tile.
+/**
+ * The arcade's mark — Nick's cabinet art.
+ *
+ * Keyed off its flat background and trimmed to the cabinet, so it carries no
+ * dark box and sits on any surface. Shipped at 256px: the largest place it
+ * renders is the room header at ~40px, which leaves plenty of density, and
+ * the screen's gradient dithers visibly if the palette is reduced further.
+ *
+ * Square canvas with the cabinet centred, so `w-N h-N` sizes it correctly
+ * without distorting a subject that is much taller than it is wide.
+ *
+ * It brings its own colour rather than inheriting currentColor — worth
+ * knowing before placing it anywhere that isn't accent-orange or neutral.
+ */
 export function ArcadeIcon({ className = 'w-5 h-5' }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {/* cabinet */}
-      <rect x="4" y="3" width="16" height="14" rx="2" />
-      {/* screen */}
-      <rect x="7" y="6" width="10" height="5" rx="1" />
-      {/* joystick + two buttons */}
-      <path d="M9 14.5v-1" />
-      <circle cx="9" cy="13" r="1" />
-      <circle cx="13.5" cy="14.5" r=".6" fill="currentColor" />
-      <circle cx="15.5" cy="14.5" r=".6" fill="currentColor" />
-      {/* legs */}
-      <path d="M8 17v4M16 17v4" />
-    </svg>
-  )
+  return <img src="/arcade-icon.png" alt="" aria-hidden="true" draggable={false} className={`${className} object-contain`} />
 }
 
 /**
@@ -140,7 +136,7 @@ export default function ArcadeRoom({ onExit }) {
   return (
     <div className="space-y-5 min-w-0">
       <div className="flex items-center gap-3">
-        <span className="text-accent"><ArcadeIcon className="w-7 h-7" /></span>
+        <ArcadeIcon className="w-10 h-10 shrink-0" />
         <div className="min-w-0">
           <h2 className="font-display text-2xl text-text-primary leading-none">Arcade</h2>
           <p className="text-xs text-text-muted mt-1">
