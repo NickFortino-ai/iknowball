@@ -253,6 +253,10 @@ router.get('/picks', async (req, res) => {
     game_status: matchupByTeam[p.team]?.game_status || null,
     team_score: matchupByTeam[p.team]?.team_score ?? null,
     opp_score: matchupByTeam[p.team]?.opp_score ?? null,
+    // Quarter and clock. This payload is an explicit whitelist, so a
+    // field added upstream does not appear here until it is named.
+    period: matchupByTeam[p.team]?.period ?? null,
+    clock: matchupByTeam[p.team]?.clock ?? null,
     game_starts_at: matchupByTeam[p.team]?.starts_at || null,
     is_locked: lockedTeams.has(p.team),
   })))
