@@ -55,6 +55,10 @@ export default function PropSliderCard({
     }
     return slider?.defaultIndex >= 0 ? slider.defaultIndex : Math.floor(stops.length / 2)
   })
+  // A placed pick is READ-ONLY until you say otherwise. The slider is an
+  // inviting control and the buttons are one tap from re-submitting, so a
+  // card you had already decided was a stray drag away from a different bet.
+  const [editing, setEditing] = useState(false)
   const [showPlayerModal, setShowPlayerModal] = useState(false)
   const { data: playerLookup } = useNbaDfsPlayerLookup(showPlayerModal ? prop.player_name : null, sportKey)
 
@@ -85,6 +89,7 @@ export default function PropSliderCard({
   // Once a pick exists the card describes THAT bet, not whatever the
   // controls happen to be set to.
   const shownSide = pick?.picked_side || 'over'
+  const locked = pickedLine != null && !editing
   const resultTone = isSettled
     ? (pick.is_correct == null ? 'push' : pick.is_correct ? 'correct' : 'incorrect')
     : null
@@ -149,6 +154,18 @@ export default function PropSliderCard({
             that never changes. */}
         <div className="text-xs text-text-muted uppercase tracking-wider">{prop.market_label}</div>
 
+        {/* While the pick is locked there is only one side in play, so its
+            price belongs here with the line rather than on a button. */}
+        {locked && canPick && (
+          <div className="mt-2 text-sm">
+            <span className="text-incorrect tabular-nums">−{slider.risk}</span>
+            <span className="text-text-muted mx-1.5">→</span>
+            <span className="text-correct tabular-nums font-semibold">
+              +{pick.reward_at_submission}
+            </span>
+          </div>
+        )}
+
         {isSettled && (
           <div className={`mt-2 text-xs font-semibold ${
             resultTone === 'correct' ? 'text-correct' : resultTone === 'incorrect' ? 'text-incorrect' : 'text-yellow-500'
@@ -161,6 +178,30 @@ export default function PropSliderCard({
       </div>
 
       {canPick && (
+        <div className="mt-4">
+          {locked ? (
+            /* A decided pick is read-only. Editing is a deliberate act, the
+               same way confirming was — otherwise the slider sitting right
+               there makes a placed bet one stray drag from being a different
+               one, on something with no undo after kickoff. */
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEditing(true)}
+                disabled={isSubmitting}
+                className="flex-1 rounded-xl border border-accent/60 py-2.5 text-sm font-semibold text-accent hover:bg-accent/10"
+              >
+                Edit pick
+              </button>
+              <button
+                onClick={() => onUndoPick?.(prop.id)}
+                disabled={isSubmitting}
+                className="flex-1 rounded-xl border border-text-primary/20 py-2.5 text-sm font-semibold text-text-secondary hover:border-incorrect hover:text-incorrect"
+              >
+                Remove pick
+              </button>
+            </div>
+          ) : (
+            <>
         <div className="mt-4">
           {/* Both sides, each carrying its own price, so the trade-off is
               visible without committing to see it. Under on the left and
@@ -182,7 +223,7 @@ export default function PropSliderCard({
               return (
                 <button
                   key={sideKey}
-                  onClick={() => onPickLine?.(prop.id, current.line, sideKey)}
+                  onClick={() => { onPickLine?.(prop.id, current.line, sideKey); setEditing(false) }}
                   disabled={isSubmitting || isThis}
                   className={`flex-1 min-w-0 rounded-xl py-2.5 px-2 text-sm font-semibold disabled:opacity-60 ${
                     isThis
@@ -249,14 +290,23 @@ export default function PropSliderCard({
             </button>
           )}
 
+          {/* Backing out of an edit must not mean destroying the pick. The
+              slider returns to the line you actually hold. */}
           {pickedLine != null && (
             <button
-              onClick={() => onUndoPick?.(prop.id)}
+              onClick={() => {
+                const i = stops.findIndex((st) => Number(st.line) === pickedLine)
+                if (i >= 0) setIndex(i)
+                setEditing(false)
+              }}
               disabled={isSubmitting}
-              className="mt-2 w-full text-xs text-text-muted hover:text-incorrect"
+              className="mt-2 w-full text-xs text-text-muted hover:text-text-primary"
             >
-              Remove pick
+              Cancel
             </button>
+          )}
+        </div>
+            </>
           )}
         </div>
       )}
