@@ -24,6 +24,12 @@ function abbreviateTeam(name) {
   return getTeamAbbr(name) || name
 }
 
+// "12" not "12.0", "12.5" not "12.50" — these are gaps to a half-point line,
+// so one decimal is the most that can ever be meaningful.
+function fmt(n) {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1)
+}
+
 export default function PropSliderCard({
   prop,
   pick,
@@ -204,8 +210,31 @@ export default function PropSliderCard({
         </div>
       )}
 
+      {/* Live progress, measured against the USER's line rather than the
+          book's — the whole point of having chosen one. The old card shows a
+          bare number; here the number alone would be unreadable, because the
+          threshold it's being judged against isn't the one printed on the
+          prop. */}
       {isLockedPick && (
-        <div className="mt-3 text-center text-xs text-text-muted">Locked at kickoff</div>
+        <div className="mt-3 pt-3 border-t border-text-primary/10 text-center">
+          {pick.live_stat != null ? (
+            <>
+              <span className={`font-display text-2xl tabular-nums ${
+                Number(pick.live_stat) > Number(pickedLine) ? 'text-correct' : 'text-text-primary'
+              }`}>
+                {pick.live_stat}
+              </span>
+              <span className="text-xs text-text-muted ml-1.5">{prop.market_label}</span>
+              <div className="text-xs text-text-muted mt-0.5">
+                {Number(pick.live_stat) > Number(pickedLine)
+                  ? `past ${pickedLine} — winning`
+                  : `needs ${fmt(Number(pickedLine) - Number(pick.live_stat))} more`}
+              </div>
+            </>
+          ) : (
+            <span className="text-xs text-text-muted">Locked at {pickedLine} · wins {pick.reward_at_submission ?? '—'}</span>
+          )}
+        </div>
       )}
 
       {showPlayerModal && playerLookup && (
