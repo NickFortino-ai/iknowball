@@ -16,7 +16,17 @@ import { toast } from '../ui/Toast'
  */
 
 // How long a mismatched pair stays face-up before flipping back.
-const PEEK_MS = 900
+//
+// Scaled by difficulty, because the peek IS the difficulty lever here. Hard's
+// 900ms is the right speed — long enough to register two images, short enough
+// that you have to commit them rather than study them. Easy and medium get
+// more room, since the whole point of those tiers is that the game is helping
+// you rather than testing you.
+//
+// Not a huge spread: much past a second and a mismatch stops feeling like a
+// miss and starts feeling like the board is waiting on you.
+const PEEK_MS = { easy: 1400, medium: 1150, hard: 900 }
+const DEFAULT_PEEK_MS = 1150
 
 const DIFFICULTIES = [
   { key: 'easy', label: 'Easy', pairs: 6 },
@@ -68,7 +78,10 @@ export default function MemoryGame({ variant, variantLabel, variantCount, onExit
     try {
       const data = await startRound.mutateAsync({ difficulty: diff, variant })
       seen.current = new Set()
-      setRound(data)
+      // Stamp the difficulty onto the round rather than reading the picker's
+      // state at flip time: the peek belongs to the round being played, and
+      // this stays correct if the picker ever becomes reachable mid-round.
+      setRound({ ...data, difficulty: diff })
       setFlipped([]); setMatched(new Set()); setMoves(0); setInformedMisses(0)
       setResult(null)
       setStartedAt(Date.now())
@@ -136,8 +149,9 @@ export default function MemoryGame({ variant, variantLabel, variantCount, onExit
     const nextMisses = wasSeenBefore ? informedMisses + 1 : informedMisses
     if (wasSeenBefore) setInformedMisses(nextMisses)
 
-    lockUntil.current = Date.now() + PEEK_MS
-    setTimeout(() => { setFlipped([]) }, PEEK_MS)
+    const peekMs = PEEK_MS[round.difficulty] ?? DEFAULT_PEEK_MS
+    lockUntil.current = Date.now() + peekMs
+    setTimeout(() => { setFlipped([]) }, peekMs)
   }
 
   const cols = round && round.cards.length > 16 ? 'grid-cols-4 sm:grid-cols-5' : 'grid-cols-4 sm:grid-cols-4'
