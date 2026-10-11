@@ -38,14 +38,70 @@ export const SLIDER_RANGE = 0.33
 // because their line never moves off 0.5 or 1.5 — they are binary questions
 // wearing a threshold's clothing, and there is nothing to slide.
 const MULTIPLIERS = [0.5, 0.67, 1.0, 1.33, 1.5]
+
+// Markets absent from this table have no slider. anytime_td, pass_tds and
+// pass_interceptions all measured FLAT (14/14/14, 51/51/51, 52/52/52)
+// because their line never moves off 0.5 or 1.5 — they are binary questions
+// wearing a threshold's clothing, and there is nothing to slide.
+//
+// RATES ARE BANDED BY LINE SIZE, because the size of the line changes the
+// shape of the distribution and a single curve mispriced the ends badly.
+// A 2.5-reception line clears +33% by catching one more ball; a 7.5-line
+// needs two and a half more. Measured at 1.33x:
+//
+//   receptions      <=2.5  38%   <=3.5  29%    >3.5  28%
+//   rush yards     <=27.5  36%  <=55.5  28%   >55.5  26%
+//   reception yds  <=22.5  39%  <=40.5  39%   >40.5  29%
+//
+// One curve charged every receptions prop as if it were 34%. A low-line
+// receiver maxed out therefore paid 20 on a 38% shot, which is a standing
+// edge for anyone who noticed — and under-rewarded the same bet on a
+// high-line player, who was being asked for a genuinely harder thing.
+//
+// Bands are terciles of the observed line distribution, so each carries a
+// comparable sample (240-540 rows). Three markets are NOT banded —
+// pass attempts, completions and rush attempts have 130-250 settled props
+// in total, and splitting those three ways would be fitting noise.
 const HIT_RATES = {
-  player_pass_yds:         [0.94, 0.84, 0.50, 0.16, 0.08],
-  player_pass_attempts:    [0.96, 0.91, 0.48, 0.13, 0.08],
-  player_pass_completions: [0.97, 0.92, 0.52, 0.14, 0.05],
-  player_rush_attempts:    [0.89, 0.77, 0.48, 0.20, 0.10],
-  player_rush_yds:         [0.74, 0.63, 0.44, 0.30, 0.23],
-  player_receptions:       [0.78, 0.64, 0.47, 0.34, 0.22],
-  player_reception_yds:    [0.72, 0.65, 0.50, 0.36, 0.30],
+  player_pass_yds: [
+    { maxLine: 212.5, rates: [0.92, 0.83, 0.54, 0.19, 0.10] }, // n=396
+    { maxLine: 236.5, rates: [0.92, 0.81, 0.47, 0.15, 0.07] }, // n=394
+    { maxLine: Infinity, rates: [0.98, 0.89, 0.49, 0.15, 0.09] }, // n=386
+  ],
+  player_rush_yds: [
+    { maxLine: 27.5, rates: [0.61, 0.53, 0.42, 0.36, 0.32] }, // n=397
+    { maxLine: 55.5, rates: [0.79, 0.65, 0.44, 0.28, 0.20] }, // n=383
+    { maxLine: Infinity, rates: [0.83, 0.73, 0.46, 0.26, 0.16] }, // n=381
+  ],
+  player_receptions: [
+    { maxLine: 2.5, rates: [0.74, 0.61, 0.48, 0.38, 0.26] }, // n=545
+    { maxLine: 3.5, rates: [0.86, 0.67, 0.44, 0.29, 0.19] }, // n=248
+    { maxLine: Infinity, rates: [0.82, 0.67, 0.51, 0.28, 0.17] }, // n=242
+  ],
+  player_reception_yds: [
+    { maxLine: 22.5, rates: [0.65, 0.59, 0.48, 0.39, 0.34] }, // n=537
+    { maxLine: 40.5, rates: [0.80, 0.71, 0.54, 0.39, 0.32] }, // n=502
+    { maxLine: Infinity, rates: [0.73, 0.65, 0.46, 0.29, 0.23] }, // n=498
+  ],
+  // Single curve: too few settled props to band without inventing precision.
+  player_pass_attempts: [
+    { maxLine: Infinity, rates: [0.96, 0.91, 0.48, 0.13, 0.08] },
+  ],
+  player_pass_completions: [
+    { maxLine: Infinity, rates: [0.97, 0.92, 0.52, 0.14, 0.05] },
+  ],
+  player_rush_attempts: [
+    { maxLine: Infinity, rates: [0.89, 0.77, 0.48, 0.20, 0.10] },
+  ],
+}
+
+// The band a prop belongs to, chosen on the BOOK's line — the prop's own
+// size — not on whichever stop the slider is sitting at. Moving the slider
+// must not move you into a different pricing regime.
+function ratesFor(marketKey, baseLine) {
+  const bands = HIT_RATES[marketKey]
+  if (!bands) return null
+  return (bands.find((b) => baseLine <= b.maxLine) || bands[bands.length - 1]).rates
 }
 
 export function isSlideable(marketKey) {
@@ -126,7 +182,7 @@ export function sliderLines(marketKey, baseLine) {
  * inventing precision we did not measure.
  */
 export function hitProbability(marketKey, baseLine, line) {
-  const anchors = HIT_RATES[marketKey]
+  const anchors = ratesFor(marketKey, baseLine)
   if (!anchors || !(baseLine > 0)) return null
   const m = line / baseLine
 
