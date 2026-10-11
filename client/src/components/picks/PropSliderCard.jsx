@@ -55,10 +55,6 @@ export default function PropSliderCard({
     }
     return slider?.defaultIndex >= 0 ? slider.defaultIndex : Math.floor(stops.length / 2)
   })
-  // Which way you're betting the threshold. The slider says WHERE the line
-  // is; this says which side of it you want — and because under is the
-  // complement, the same stop pays opposite amounts on each side.
-  const [side, setSide] = useState(() => (pick?.picked_side === 'under' ? 'under' : 'over'))
   const [showPlayerModal, setShowPlayerModal] = useState(false)
   const { data: playerLookup } = useNbaDfsPlayerLookup(showPlayerModal ? prop.player_name : null, sportKey)
 
@@ -88,7 +84,7 @@ export default function PropSliderCard({
   const rewardFor = (s) => (s === 'under' ? current.under : current.over)
   // Once a pick exists the card describes THAT bet, not whatever the
   // controls happen to be set to.
-  const shownSide = pickedLine != null ? (pick.picked_side || side) : side
+  const shownSide = pick?.picked_side || 'over'
   const resultTone = isSettled
     ? (pick.is_correct == null ? 'push' : pick.is_correct ? 'correct' : 'incorrect')
     : null
@@ -174,16 +170,20 @@ export default function PropSliderCard({
 
               Tapping one places that bet. That is still an explicit,
               labelled commitment — the principle was that DRAGGING must not
-              commit, not that a button press needs confirming twice. */}
+              commit, not that a button press needs confirming twice.
+
+              Both numbers are ALWAYS shown rather than revealed on hover.
+              An earlier version previewed the hovered side's payout in a row
+              above the slider, which was pleasant on a desktop and invisible
+              on a phone — where most of this gets played. Anything a decision
+              depends on has to be on screen without a pointer. */}
           <div className="flex gap-2">
             {['under', 'over'].map((sideKey) => {
               const isThis = pickedLine === current.line && pick?.picked_side === sideKey
               return (
                 <button
                   key={sideKey}
-                  onPointerEnter={() => setSide(sideKey)}
-                  onFocus={() => setSide(sideKey)}
-                  onClick={() => { setSide(sideKey); onPickLine?.(prop.id, current.line, sideKey) }}
+                  onClick={() => onPickLine?.(prop.id, current.line, sideKey)}
                   disabled={isSubmitting || isThis}
                   className={`flex-1 min-w-0 rounded-xl py-2.5 px-2 text-sm font-semibold disabled:opacity-60 ${
                     isThis
