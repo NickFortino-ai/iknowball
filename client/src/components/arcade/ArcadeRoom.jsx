@@ -163,7 +163,11 @@ export default function ArcadeRoom({ onExit }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      {/* Stacked on a phone, two across on desktop. With two games a tighter
+          grid only shrinks the art — and the memory tile is a six-cell board
+          now, which needs the width to be legible at all. Worth revisiting
+          as a wall once there are more than three or four. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         {GAMES.map((g) => {
           const Art = g.art
           // A round needs questions. Rather than let the tile launch into
@@ -178,7 +182,7 @@ export default function ArcadeRoom({ onExit }) {
               <button
                 disabled={notReady}
                 onClick={() => setPlaying(g.key)}
-                className={`relative block w-full h-40 sm:h-44 lg:h-48 overflow-hidden bg-bg-secondary group ${notReady ? 'cursor-default' : ''}`}
+                className={`relative block w-full h-44 sm:h-48 lg:h-56 overflow-hidden bg-bg-secondary group ${notReady ? 'cursor-default' : ''}`}
               >
                 <Art samples={allSet?.samples} />
                 <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/20 to-transparent" />
