@@ -284,8 +284,16 @@ export default function PropCard({ prop, picks, pick: pickProp, onPick, onUndoPi
       {pick?.status === 'settled' && pick.is_correct == null ? (
         // "0 pts" alone read as a loss. Name the outcome and the reason —
         // the stake came back, nothing was lost.
+        //
+        // TWO different pushes, and the copy claimed the wrong one. A null
+        // actual_value means the player never took the field; an actual
+        // equal to the line means he played and landed exactly on it. Sam
+        // Darnold threw for 195 against a 195 line and the card said he
+        // didn't play.
         <div className="mt-3 text-center text-sm font-semibold text-yellow-500">
-          Push — {prop.player_name} didn't play · stake returned
+          {prop.actual_value != null
+            ? `Push — landed exactly on ${pick.chosen_line ?? prop.line} · stake returned`
+            : `Push — ${prop.player_name} didn't play · stake returned`}
         </div>
       ) : pick?.status === 'settled' && pick.points_earned !== null && (
         <div className={`mt-3 text-center text-sm font-semibold ${pick.points_earned > 0 ? 'text-correct' : pick.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'}`}>

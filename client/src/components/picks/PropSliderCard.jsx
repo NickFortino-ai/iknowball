@@ -149,7 +149,7 @@ export default function PropSliderCard({
           <div className={`mt-2 text-xs font-semibold ${
             resultTone === 'correct' ? 'text-correct' : resultTone === 'incorrect' ? 'text-incorrect' : 'text-yellow-500'
           }`}>
-            {prop.actual_value != null ? `Actual ${prop.actual_value}` : 'Push — did not play'}
+            {prop.actual_value != null ? `Actual ${prop.actual_value}` : 'Push — did not play · stake returned'}
           </div>
         )}
       </div>
