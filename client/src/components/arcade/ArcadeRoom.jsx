@@ -154,7 +154,8 @@ export default function ArcadeRoom({ onExit }) {
     <div className="space-y-5 min-w-0">
       <div className="flex items-center gap-2 sm:gap-3">
         <ArcadeBack onClick={onExit} label="Hub" />
-        <ArcadeIcon className="w-9 h-9 sm:w-10 sm:h-10 shrink-0" />
+        {/* No mark here. You tapped the cabinet to arrive and the heading
+            says Arcade — a miniature of it is the third time in a row. */}
         <div className="min-w-0">
           <h2 className="font-display text-xl sm:text-2xl text-text-primary leading-none">Arcade</h2>
           <p className="hidden sm:block text-xs text-text-muted mt-1">
