@@ -393,8 +393,13 @@ export default function HubPage() {
   // wide column you're already looking at, but on a phone you tapped Arcade
   // and it landed below the fold. Nothing appeared to happen.
   if (hubView === 'arcade') {
+    // Wider than the rest of the Hub. The feed is a column of text and caps
+    // at a readable measure; the arcade is tiles and a leaderboard, which
+    // have no reason to be narrow — at the Hub's width the room sat in the
+    // middle of the screen with a third of the page empty either side, back
+    // arrow and title marooned.
     return (
-      <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 pt-6 pb-32">
+      <div className="max-w-2xl lg:max-w-7xl mx-auto px-4 lg:px-8 pt-6 pb-32">
         <ArcadeRoom onExit={() => setHubView('feed')} />
       </div>
     )
@@ -447,20 +452,6 @@ export default function HubPage() {
             {filterMode ? 'Done' : 'Filter'}
           </button>
         )}
-      </div>
-    )
-  }
-
-  // The arcade is a ROOM: it replaces the Hub, not the feed inside it.
-  //
-  // Scoping the takeover to the feed left the profile card, search and squad
-  // stacked above it — tolerable on desktop, where the arcade still fills the
-  // wide column you're already looking at, but on a phone you tapped Arcade
-  // and it landed below the fold. Nothing appeared to happen.
-  if (hubView === 'arcade') {
-    return (
-      <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 pt-6 pb-32">
-        <ArcadeRoom onExit={() => setHubView('feed')} />
       </div>
     )
   }
