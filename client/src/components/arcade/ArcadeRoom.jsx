@@ -100,7 +100,7 @@ const GAMES = [
   {
     key: 'trivia',
     name: 'Trivia',
-    blurb: 'Eight questions, easiest first.',
+    blurb: 'Sports history, easiest first.',
     detail: 'Harder questions are worth more. Answer fast for the time bonus.',
     art: TriviaArt,
   },

@@ -98,9 +98,9 @@ export default function TriviaGame({ variant = 'all', onExit }) {
           <h3 className="font-display text-lg text-text-primary">Trivia</h3>
         </div>
         <p className="text-sm text-text-secondary">
-          Eight questions on sports history, easiest first. Harder ones are
-          worth more, and answering fast adds a bonus — but a right answer
-          always beats a quick one.
+          Sports history, easiest first. Harder questions are worth more, and
+          answering fast adds a bonus — but a right answer always beats a
+          quick one.
         </p>
         <div className="flex gap-2">
           {COUNTS.map((n) => (
