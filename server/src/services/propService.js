@@ -844,7 +844,33 @@ export async function settleProps(settlements) {
         stakeBackfill = { odds_at_pick: pick.odds_at_pick ?? odds, risk_points: risk, reward_points: reward }
       }
 
-      if (outcome === 'push') {
+      // A slider pick carries its own threshold, so the prop-level outcome
+      // does not describe it: two users on this same prop can be holding
+      // different numbers, and one can win while the other loses. Judge those
+      // against actual_value directly.
+      //
+      // The DNP case still pushes — actualValue null means the player was
+      // never in the box score, which is no more the fault of someone who
+      // moved the line than of someone who didn't.
+      const hasCustomLine = pick.chosen_line !== null && pick.chosen_line !== undefined
+      const actualForPick = actualValue !== undefined ? actualValue : prop.actual_value
+
+      if (hasCustomLine && actualForPick !== null && actualForPick !== undefined) {
+        const line = Number(pick.chosen_line)
+        const actual = Number(actualForPick)
+        if (actual === line) {
+          // Only reachable on whole-number lines; the stepping keeps counting
+          // markets on .5 precisely to avoid it.
+          isCorrect = null
+          pointsEarned = 0
+        } else if (actual > line) {
+          isCorrect = true
+          pointsEarned = pick.reward_points || 0
+        } else {
+          isCorrect = false
+          pointsEarned = -(pick.risk_points || 0)
+        }
+      } else if (outcome === 'push') {
         isCorrect = null
         pointsEarned = 0
       } else if (pick.picked_side === outcome) {
@@ -930,10 +956,10 @@ export async function settleProps(settlements) {
   return results
 }
 
-export async function submitPropPick(userId, propId, pickedSide) {
+export async function submitPropPick(userId, propId, pickedSide, chosenLine = null) {
   const { data: prop, error: propError } = await supabase
     .from('player_props')
-    .select('id, status, game_id, over_odds, under_odds, games(starts_at, status)')
+    .select('id, status, game_id, market_key, line, over_odds, under_odds, games(starts_at, status)')
     .eq('id', propId)
     .single()
 
@@ -958,8 +984,30 @@ export async function submitPropPick(userId, propId, pickedSide) {
   // Snapshot odds at submission time
   const odds = pickedSide === 'over' ? prop.over_odds : prop.under_odds
   const oddsAtSubmission = odds || null
-  const riskAtSubmission = odds ? calculateRiskPoints(odds) : null
-  const rewardAtSubmission = odds ? calculateRewardPoints(odds) : null
+  let riskAtSubmission = odds ? calculateRiskPoints(odds) : null
+  let rewardAtSubmission = odds ? calculateRewardPoints(odds) : null
+
+  // Custom line. The client sends only the NUMBER it wants; the payout is
+  // recomputed here from the measured hit-rate table, so a tampered request
+  // buys exactly the same price as an honest one. A line that isn't an
+  // offered stop is refused rather than priced.
+  //
+  // A slider pick is always "over" — the slider replaced the over/under
+  // choice, and the threshold IS the opinion.
+  let storedLine = null
+  if (chosenLine !== null && chosenLine !== undefined) {
+    const { priceChosenLine } = await import('./propSliderService.js')
+    const priced = priceChosenLine(prop.market_key, Number(prop.line), chosenLine)
+    if (!priced.ok) {
+      const err = new Error(priced.error)
+      err.status = 400
+      throw err
+    }
+    storedLine = priced.line
+    riskAtSubmission = priced.risk
+    rewardAtSubmission = priced.reward
+    pickedSide = 'over'
+  }
 
   const { data, error } = await supabase
     .from('prop_picks')
@@ -968,6 +1016,7 @@ export async function submitPropPick(userId, propId, pickedSide) {
         user_id: userId,
         prop_id: propId,
         picked_side: pickedSide,
+        chosen_line: storedLine,
         status: 'pending',
         updated_at: new Date().toISOString(),
         odds_at_submission: oddsAtSubmission,

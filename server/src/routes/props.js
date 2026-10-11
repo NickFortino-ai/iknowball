@@ -57,14 +57,43 @@ router.get('/load', async (req, res) => {
   }
 })
 
-// Submit a prop pick
+// Submit a prop pick.
+//
+// chosen_line is optional: when present the pick is a SLIDER pick, always
+// "over" that threshold, and the payout is recomputed server-side from the
+// measured hit-rate table rather than taken from the request.
 router.post('/picks', async (req, res) => {
-  const { prop_id, picked_side } = req.body
+  const { prop_id, picked_side, chosen_line } = req.body
   if (!prop_id || !picked_side) {
     return res.status(400).json({ error: 'prop_id and picked_side are required' })
   }
-  const pick = await submitPropPick(req.user.id, prop_id, picked_side)
+  const pick = await submitPropPick(req.user.id, prop_id, picked_side, chosen_line ?? null)
   res.json(pick)
+})
+
+// The ladder of lines a prop can be picked at, with what each pays.
+//
+// Served rather than computed in the browser so the price the slider shows is
+// the same one the submit path will charge — a client-side table would drift
+// the moment the measured rates are updated.
+router.get('/:id/slider', async (req, res, next) => {
+  try {
+    const { data: prop, error } = await supabase
+      .from('player_props')
+      .select('id, market_key, line')
+      .eq('id', req.params.id)
+      .maybeSingle()
+    if (error) throw error
+    if (!prop) return res.status(404).json({ error: 'Prop not found' })
+
+    const { buildSlider } = await import('../services/propSliderService.js')
+    const slider = buildSlider(prop.market_key, Number(prop.line))
+    // null for the flat markets — anytime TD and friends, whose line never
+    // moves. The client renders today's over/under card for those.
+    res.json({ slider })
+  } catch (err) {
+    next(err)
+  }
 })
 
 // Delete a pending prop pick
