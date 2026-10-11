@@ -367,9 +367,20 @@ export default function HubPage() {
           <button
             onClick={() => setArcadeOpen(true)}
             aria-label="Arcade"
-            className="shrink-0 flex lg:flex-1 flex-col items-center justify-center gap-1 w-14 lg:w-full min-h-0 lg:min-h-[96px] text-accent transition-transform hover:scale-105 active:scale-95"
+            className="shrink-0 flex lg:flex-1 flex-col items-center justify-center gap-1 w-14 lg:w-full min-h-0 text-accent transition-transform hover:scale-105 active:scale-95"
           >
-            <ArcadeIcon className="w-12 h-12 lg:w-auto lg:h-auto lg:flex-1 lg:min-h-0 lg:max-w-full" />
+            <ArcadeIcon className="w-12 h-12 lg:hidden" />
+            {/* The icon is positioned OUT OF FLOW on desktop. In flow its
+                intrinsic 256px height counts toward this column's content
+                height, which stretches the row — and the profile card with
+                it — to nearly twice its size. Absolute inside a flex-1 box,
+                it fills whatever height is left over instead of asking for
+                any. The small floor only matters for accounts with no
+                backdrop, whose banner is short enough that there is barely
+                any left over. */}
+            <span className="relative hidden lg:block lg:flex-1 w-full min-h-[56px]">
+              <ArcadeIcon className="absolute inset-0 w-full h-full" />
+            </span>
             <span className="hidden lg:block text-sm font-semibold leading-none">Arcade</span>
           </button>
         </div>
