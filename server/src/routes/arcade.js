@@ -413,17 +413,38 @@ router.get('/leaderboard', async (req, res, next) => {
 // count, so the client can disable difficulties that don't fit.
 router.get('/memory/variants', async (_req, res, next) => {
   try {
-    const { data, error } = await supabase.from('league_backdrops').select('formats')
+    const { data, error } = await supabase.from('league_backdrops').select('filename, formats')
     if (error) throw error
     const counts = new Map()
+    // A few filenames per variant so the arcade tile can show the actual
+    // images a round would deal, rather than a generic illustration of a
+    // game we already own 220 pictures for.
+    const samples = new Map()
     for (const row of data || []) {
-      for (const f of row.formats || []) counts.set(f, (counts.get(f) || 0) + 1)
+      for (const f of row.formats || []) {
+        counts.set(f, (counts.get(f) || 0) + 1)
+        const s = samples.get(f) || []
+        if (s.length < 4) { s.push(row.filename); samples.set(f, s) }
+      }
     }
-    const variants = [{ key: 'all', count: (data || []).length }]
+    const variants = [{
+      key: 'all',
+      count: (data || []).length,
+      samples: (data || []).slice(0, 4).map((r) => r.filename),
+    }]
     for (const [key, count] of [...counts.entries()].sort((a, b) => b[1] - a[1])) {
-      if (count >= PAIR_COUNTS.easy) variants.push({ key, count })
+      if (count >= PAIR_COUNTS.easy) variants.push({ key, count, samples: samples.get(key) || [] })
     }
-    res.json({ variants, pairCounts: PAIR_COUNTS })
+    // Trivia's readiness rides along on this request rather than getting its
+    // own endpoint: the arcade room fetches this once to build its tiles, and
+    // a tile that launches into "not enough questions yet" is worse than a
+    // tile that says so up front. One integer, one extra count, no round trip.
+    const { count: triviaPublished } = await supabase
+      .from('trivia_questions')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'published')
+
+    res.json({ variants, pairCounts: PAIR_COUNTS, trivia: { published: triviaPublished || 0 } })
   } catch (err) {
     next(err)
   }

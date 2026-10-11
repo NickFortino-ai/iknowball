@@ -22,7 +22,7 @@ import TeamFeed from '../components/feed/TeamFeed'
 import { useTeamsForSport } from '../hooks/useHotTakes'
 import ReceiptsTab from '../components/feed/ReceiptsTab'
 import UserFeedTab from '../components/feed/UserFeedTab'
-import ArcadeSection from '../components/arcade/ArcadeSection'
+import ArcadeRoom, { ArcadeIcon } from '../components/arcade/ArcadeRoom'
 import NewsFeed from '../components/feed/NewsFeed'
 import Avatar from '../components/ui/Avatar'
 import MyProfileBanner from '../components/hub/MyProfileBanner'
@@ -87,7 +87,7 @@ function FilterPanel({ filterSport, filterTeam, filterTeamSearch, onSelectSport,
   )
 }
 
-const VALID_SCOPES = new Set(['squad', 'all', 'highlights', 'polls', 'predictions', 'receipts', 'user_feeds', 'news', 'arcade'])
+const VALID_SCOPES = new Set(['squad', 'all', 'highlights', 'polls', 'predictions', 'receipts', 'user_feeds', 'news'])
 
 export default function HubPage() {
   const { session } = useAuth()
@@ -102,6 +102,10 @@ export default function HubPage() {
   const [filterTeam, setFilterTeam] = useState(null)
   const [filterTeamSearch, setFilterTeamSearch] = useState('')
   const [highlightsFilter, setHighlightsFilter] = useState('all')
+  // The arcade is a room, not a feed scope — it replaces the feed and the
+  // news rail rather than filtering them, so it gets its own flag. Seeded
+  // from ?tab=arcade so the old deep link still lands somewhere sensible.
+  const [arcadeOpen, setArcadeOpen] = useState(() => searchParams.get('tab') === 'arcade')
   const hasManuallyToggled = useRef(false)
 
   // Read tab + scrollTo + team from query params
@@ -122,7 +126,10 @@ export default function HubPage() {
     const scrollTo = searchParams.get('scrollTo')
     const team = searchParams.get('team')
     const user = searchParams.get('user')
-    if (tab && VALID_SCOPES.has(tab)) {
+    if (tab === 'arcade') {
+      // Not a scope any more, but notifications and old links still use it.
+      setArcadeOpen(true)
+    } else if (tab && VALID_SCOPES.has(tab)) {
       hasManuallyToggled.current = true
       setFeedScope(tab)
     } else if (tab === 'team_feed') {
@@ -448,6 +455,13 @@ export default function HubPage() {
           instead of scrolling within its own box. min-w-0 on descendants
           can't fix that; the constraint is the track, and the grid ITEM
           (the div below) needs it too. */}
+      {arcadeOpen ? (
+        /* The arcade takes the whole region — feed column AND news rail. It
+           is somewhere you go, not something you read alongside the news, and
+           leaving the rail up would keep it looking like a panel inside the
+           feed rather than a room of its own. */
+        <ArcadeRoom onExit={() => setArcadeOpen(false)} />
+      ) : (
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
       <div className="min-w-0">
         <div className="flex items-center gap-2 mb-3">
@@ -463,7 +477,6 @@ export default function HubPage() {
               { key: 'highlights', label: 'Me' },
               { key: 'user_feeds', label: 'User Feeds' },
               { key: 'receipts', label: 'Receipts' },
-              { key: 'arcade', label: 'Arcade' },
             ].filter((tab) => !tab.mobileOnly || !window.matchMedia('(min-width: 1024px)').matches).map((tab) => (
               <button
                 key={tab.key}
@@ -476,6 +489,18 @@ export default function HubPage() {
               </button>
             ))}
           </div>
+          {/* The arcade is not a feed scope, so it does not sit in the feed
+              scroller. It's pinned outside it — always reachable at any width
+              instead of scrolled off the end — and styled as its own thing:
+              accent border and the cabinet mark, so it reads as a place you
+              go rather than another way to filter posts. */}
+          <button
+            onClick={() => setArcadeOpen(true)}
+            className="ml-auto shrink-0 flex items-center gap-1.5 rounded-lg border border-accent bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent hover:bg-accent/20 transition-colors"
+          >
+            <ArcadeIcon className="w-4 h-4" />
+            Arcade
+          </button>
         </div>
         {/* Filter toggle for All of IKB */}
         {feedScope === 'all' && (
@@ -498,9 +523,7 @@ export default function HubPage() {
           </div>
         )}
 
-        {feedScope === 'arcade' ? (
-          <ArcadeSection />
-        ) : feedScope === 'receipts' ? (
+        {feedScope === 'receipts' ? (
           <ReceiptsTab onUserTap={setSelectedUserId} />
         ) : feedScope === 'user_feeds' ? (
           <UserFeedTab onUserTap={setSelectedUserId} initialUserId={initialFeedUserId} />
@@ -560,6 +583,7 @@ export default function HubPage() {
         </div>
       </div>
       </div>
+      )}
 
       <UserProfileModal
         userId={selectedUserId}
