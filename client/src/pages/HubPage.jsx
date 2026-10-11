@@ -716,26 +716,13 @@ export default function HubPage() {
             ))}
           </div>
         </div>
-        {/* Filter toggle for All of IKB */}
-        {feedScope === 'all' && (
-          <div className="mb-3">
-            <button
-              onClick={() => setShowFilterPanel(!showFilterPanel)}
-              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
-                showFilterPanel ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-              }`}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" />
-                <line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" />
-                <line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" />
-                <line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" />
-                <line x1="17" y1="16" x2="23" y2="16" />
-              </svg>
-              {showFilterPanel ? 'Show All' : 'Filter by Sport'}
-            </button>
-          </div>
-        )}
+        {/* The Filter-by-Sport toggle is hidden for now, not removed.
+            Too few posts carry a sport tag for it to return much, so it was
+            a control that mostly produced an empty feed — busy for no
+            payoff. Everything behind it is intact: showFilterPanel, the
+            FilterPanel component and the TeamFeed branch below all still
+            work, and ?tab=team_feed still opens straight into it. Restore
+            by rendering the button again when tagging picks up. */}
 
         {feedScope === 'receipts' ? (
           <ReceiptsTab onUserTap={setSelectedUserId} />
