@@ -143,12 +143,11 @@ export default function PropSliderCard({
             {isSettled || isLockedPick ? (pickedLine ?? current.line) : current.line}
           </span>
         </div>
-        {/* The stake is the same 10 on every slider prop and on both sides,
-            so it is stated once here rather than repeated on each button —
-            which is also what lets the buttons carry only their own payout. */}
-        <div className="text-xs text-text-muted uppercase tracking-wider">
-          {prop.market_label}{canPick ? ` · risk ${slider.risk}` : ''}
-        </div>
+        {/* Just the market. The stake is 10 on every slider prop and on both
+            sides — a constant rule rather than a fact about THIS prop — so
+            hanging it off the market label made every card carry a number
+            that never changes. */}
+        <div className="text-xs text-text-muted uppercase tracking-wider">{prop.market_label}</div>
 
         {isSettled && (
           <div className={`mt-2 text-xs font-semibold ${
@@ -194,11 +193,13 @@ export default function PropSliderCard({
                   <span className="block truncate capitalize">
                     {isThis ? 'Picked ' : ''}{sideKey} {current.line}
                   </span>
-                  {!isThis && (
-                    <span className="block text-[11px] font-normal opacity-80">
-                      win {rewardFor(sideKey)}
-                    </span>
-                  )}
+                  {/* The side you hold shows the price it was SOLD at, not
+                      today's. A pick is locked at submission, so if the book
+                      moves the base line the ladder shifts underneath it and
+                      the live number would be a quote nobody can buy. */}
+                  <span className="block text-[11px] font-normal opacity-80">
+                    win {isThis ? (pick?.reward_at_submission ?? rewardFor(sideKey)) : rewardFor(sideKey)}
+                  </span>
                 </button>
               )
             })}
@@ -232,6 +233,21 @@ export default function PropSliderCard({
               <span>{stops[stops.length - 1].line}</span>
             </div>
           </div>
+
+          {/* Drag away from your own line and both buttons start quoting the
+              stop under the handle, so without this the bet you actually
+              hold is nowhere on the card. */}
+          {pickedLine != null && pickedLine !== current.line && (
+            <button
+              onClick={() => {
+                const i = stops.findIndex((st) => Number(st.line) === pickedLine)
+                if (i >= 0) setIndex(i)
+              }}
+              className="mt-2 w-full text-[11px] text-accent hover:underline"
+            >
+              Your pick: {pick.picked_side} {pickedLine} · win {pick.reward_at_submission}
+            </button>
+          )}
 
           {pickedLine != null && (
             <button
