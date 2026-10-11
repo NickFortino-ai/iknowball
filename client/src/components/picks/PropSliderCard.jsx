@@ -37,7 +37,7 @@ function fmt(n) {
 
 export default function PropSliderCard({
   prop,
-  pick,
+  picks = [],
   onPickLine,
   onUndoPick,
   isSubmitting,
@@ -46,30 +46,31 @@ export default function PropSliderCard({
   const slider = prop.slider
   const stops = slider?.stops || []
 
+  // Every bet held on this prop, newest line first. The card is the PLAYER;
+  // these are your positions on them.
+  const held = useMemo(
+    () => [...picks].sort((a, b) => Number(a.chosen_line ?? 0) - Number(b.chosen_line ?? 0)),
+    [picks],
+  )
+  const settled = held.find((p) => p.status === 'settled')
+  const anyLocked = held.some((p) => p.status === 'locked')
+
   const [index, setIndex] = useState(() => {
-    // An existing pick reopens on the line it was made at, not the default —
-    // otherwise revisiting your own card silently shows someone else's bet.
-    if (pick?.chosen_line != null) {
-      const i = stops.findIndex((s) => Number(s.line) === Number(pick.chosen_line))
+    const first = picks[0]
+    if (first?.chosen_line != null) {
+      const i = stops.findIndex((s) => Number(s.line) === Number(first.chosen_line))
       if (i >= 0) return i
     }
     return slider?.defaultIndex >= 0 ? slider.defaultIndex : Math.floor(stops.length / 2)
   })
-  // A placed pick is READ-ONLY until you say otherwise. The slider is an
-  // inviting control and the buttons are one tap from re-submitting, so a
-  // card you had already decided was a stray drag away from a different bet.
-  const [editing, setEditing] = useState(false)
   const [showPlayerModal, setShowPlayerModal] = useState(false)
   const { data: playerLookup } = useNbaDfsPlayerLookup(showPlayerModal ? prop.player_name : null, sportKey)
 
   const current = stops[index] || stops[slider?.defaultIndex] || null
-  const isPicked = !!pick && pick.status !== 'settled'
-  const isLockedPick = pick?.status === 'locked'
-  const isSettled = pick?.status === 'settled'
-  const canPick = prop.status === 'published' && !isLockedPick && !isSettled
+  const isSettled = !!settled
+  const canPick = prop.status === 'published' && !anyLocked && !isSettled
 
-  // Has the player moved off the book's number? Used for the reset affordance
-  // and to word the confirm button.
+  // Has the player moved off the book's number?
   const movedOffDefault = slider && index !== slider.defaultIndex
 
   const kickoffLabel = useMemo(() => {
@@ -84,14 +85,15 @@ export default function PropSliderCard({
 
   if (!current) return null
 
-  const pickedLine = pick?.chosen_line != null ? Number(pick.chosen_line) : null
   const rewardFor = (s) => (s === 'under' ? current.under : current.over)
-  // Once a pick exists the card describes THAT bet, not whatever the
-  // controls happen to be set to.
-  const shownSide = pick?.picked_side || 'over'
-  const locked = pickedLine != null && !editing
-  const resultTone = isSettled
-    ? (pick.is_correct == null ? 'push' : pick.is_correct ? 'correct' : 'incorrect')
+  // Does the user already hold this exact side at this exact line? That
+  // combination is an edit rather than a new bet, so its button says so and
+  // does nothing.
+  const holds = (side) => held.some(
+    (p) => p.picked_side === side && Number(p.chosen_line) === Number(current.line),
+  )
+  const resultTone = settled
+    ? (settled.is_correct == null ? 'push' : settled.is_correct ? 'correct' : 'incorrect')
     : null
 
   return (
@@ -100,7 +102,7 @@ export default function PropSliderCard({
         resultTone === 'correct' ? 'border-correct'
         : resultTone === 'incorrect' ? 'border-incorrect'
         : resultTone === 'push' ? 'border-yellow-500/60'
-        : isPicked ? 'border-accent' : 'border-text-primary/20'
+        : held.length ? 'border-accent' : 'border-text-primary/20'
       }`}
     >
       {/* Matchup sits top-right, out of the centred column */}
@@ -135,149 +137,70 @@ export default function PropSliderCard({
 
         <div className="mt-2 font-semibold text-text-primary">{prop.player_name}</div>
 
-        {/* The line being chosen, large, with the market under it. This is the
-            number the slider moves, so it is the biggest thing on the card. */}
-        <div className="mt-2 flex items-baseline gap-1.5">
-          {/* Only once a side is actually chosen. While both are on offer,
-              prefixing the number with "Over" picks a winner on the user's
-              behalf — and the two buttons below name the sides anyway. */}
-          {/* Once a side is locked in, it is half the statement of the bet —
-              "over 195" is one fact, not a number with a qualifier — so it
-              carries the same weight as the line rather than sitting back in
-              muted grey. */}
-          {pickedLine != null && (
-            <span className="text-text-primary text-lg font-semibold capitalize">{shownSide}</span>
-          )}
-          <span className="font-display text-4xl tabular-nums text-text-primary">
-            {isSettled || isLockedPick ? (pickedLine ?? current.line) : current.line}
-          </span>
+        {/* The number the slider moves, so it is the biggest thing here. No
+            side prefix: both are on offer and several may already be held,
+            so naming one would describe a bet rather than the control. */}
+        <div className="mt-2">
+          <span className="font-display text-4xl tabular-nums text-text-primary">{current.line}</span>
         </div>
-        {/* Just the market. The stake is 10 on every slider prop and on both
-            sides — a constant rule rather than a fact about THIS prop — so
-            hanging it off the market label made every card carry a number
-            that never changes. */}
         <div className="text-xs text-text-muted uppercase tracking-wider">{prop.market_label}</div>
-
-        {/* While the pick is locked there is only one side in play, so its
-            price belongs here with the line rather than on a button. */}
-        {locked && canPick && (
-          <div className="mt-2 text-sm">
-            <span className="text-incorrect tabular-nums">−{slider.risk}</span>
-            <span className="text-text-muted mx-1.5">→</span>
-            <span className="text-correct tabular-nums font-semibold">
-              +{pick.reward_at_submission}
-            </span>
-          </div>
-        )}
 
         {isSettled && (
           <div className={`mt-2 text-xs font-semibold ${
             resultTone === 'correct' ? 'text-correct' : resultTone === 'incorrect' ? 'text-incorrect' : 'text-yellow-500'
           }`}>
-            {prop.actual_value != null
-              ? `Actual ${prop.actual_value} · ${resultTone === 'push' ? 'Push' : resultTone === 'correct' ? `+${pick.points_earned}` : pick.points_earned}`
-              : 'Push — did not play'}
+            {prop.actual_value != null ? `Actual ${prop.actual_value}` : 'Push — did not play'}
           </div>
         )}
       </div>
 
       {canPick && (
         <div className="mt-4">
-          {locked ? (
-            /* A decided pick is read-only. Editing is a deliberate act, the
-               same way confirming was — otherwise the slider sitting right
-               there makes a placed bet one stray drag from being a different
-               one, on something with no undo after kickoff. */
-            <div className="flex gap-2">
-              <button
-                onClick={() => setEditing(true)}
-                disabled={isSubmitting}
-                className="flex-1 rounded-xl border border-accent/60 py-2.5 text-sm font-semibold text-accent hover:bg-accent/10"
-              >
-                Edit pick
-              </button>
-              <button
-                onClick={() => onUndoPick?.(prop.id)}
-                disabled={isSubmitting}
-                className="flex-1 rounded-xl border border-text-primary/20 py-2.5 text-sm font-semibold text-text-secondary hover:border-incorrect hover:text-incorrect"
-              >
-                Remove pick
-              </button>
-            </div>
-          ) : (
-            <>
-        <div className="mt-4">
-          {/* Both sides, each carrying its own price, so the trade-off is
-              visible without committing to see it. Under on the left and
+          {/* Both sides, each carrying its own price. Under on the left and
               over on the right, matching the slider underneath: low numbers
               are to the left, and under is the bet that wants them.
 
-              Tapping one places that bet. That is still an explicit,
-              labelled commitment — the principle was that DRAGGING must not
-              commit, not that a button press needs confirming twice.
-
-              Both numbers are ALWAYS shown rather than revealed on hover.
-              An earlier version previewed the hovered side's payout in a row
-              above the slider, which was pleasant on a desktop and invisible
-              on a phone — where most of this gets played. Anything a decision
-              depends on has to be on screen without a pointer. */}
+              The card stays LIVE even once you hold bets on it, because a
+              tap now ADDS a position rather than altering one — and a side
+              you already hold at this line is disabled, so a stray tap on a
+              line you have is a no-op rather than a duplicate. */}
           <div className="flex gap-2">
             {['under', 'over'].map((sideKey) => {
-              const isThis = pickedLine === current.line && pick?.picked_side === sideKey
+              const already = holds(sideKey)
               return (
                 <button
                   key={sideKey}
-                  onClick={() => { onPickLine?.(prop.id, current.line, sideKey); setEditing(false) }}
-                  disabled={isSubmitting || isThis}
+                  onClick={() => onPickLine?.(prop.id, current.line, sideKey)}
+                  disabled={isSubmitting || already}
                   className={`flex-1 min-w-0 rounded-xl py-2.5 px-2 text-sm font-semibold disabled:opacity-60 ${
-                    isThis
-                      ? 'bg-accent text-white'
-                      : 'border border-accent/60 text-accent hover:bg-accent/10'
+                    already ? 'bg-accent text-white' : 'border border-accent/60 text-accent hover:bg-accent/10'
                   }`}
                 >
                   <span className="block truncate capitalize">
-                    {isThis ? 'Picked ' : ''}{sideKey} {current.line}
+                    {already ? 'Picked ' : ''}{sideKey} {current.line}
                   </span>
-                  {/* The side you hold shows the price it was SOLD at, not
-                      today's. A pick is locked at submission, so if the book
-                      moves the base line the ladder shifts underneath it and
-                      the live number would be a quote nobody can buy. */}
-                  {/* Stake and payout, in the same risk → reward idiom the
-                      results card uses. This replaces the word "win": at the
-                      size it had to be on a half-width phone button it was
-                      barely legible, and it was the one thing on the line
-                      carrying no information — while the stake, which the
-                      card stated nowhere, was missing entirely.
-
-                      Contrast is by weight and size rather than colour, so
-                      it reads the same on the outlined button and the filled
-                      one it becomes once picked. */}
                   <span className="block leading-tight">
                     <span className="text-sm font-normal tabular-nums opacity-60">{slider.risk}</span>
                     <span className="text-sm font-normal opacity-60 mx-1">→</span>
-                    <span className="text-xl font-bold tabular-nums">
-                      {isThis ? (pick?.reward_at_submission ?? rewardFor(sideKey)) : rewardFor(sideKey)}
-                    </span>
+                    <span className="text-xl font-bold tabular-nums">{rewardFor(sideKey)}</span>
                   </span>
                 </button>
               )
             })}
           </div>
+
           <div className="mt-4">
-          <input
-            type="range"
-            min={0}
-            max={stops.length - 1}
-            step={1}
-            value={index}
-            onChange={(e) => setIndex(Number(e.target.value))}
-            disabled={isSubmitting}
-            className="w-full accent-accent"
-            aria-label={`Line for ${prop.player_name} ${prop.market_label}`}
-          />
-            {/* Just the bounds. "Safer" was an over-only idea — with both
-                sides on the table each end is the safe one for somebody, and
-                the buttons above carry the actual prices. */}
+            <input
+              type="range"
+              min={0}
+              max={stops.length - 1}
+              step={1}
+              value={index}
+              onChange={(e) => setIndex(Number(e.target.value))}
+              disabled={isSubmitting}
+              className="w-full accent-accent"
+              aria-label={`Line for ${prop.player_name} ${prop.market_label}`}
+            />
             <div className="flex items-center justify-between text-[10px] text-text-muted -mt-1">
               <span>{stops[0].line}</span>
               {movedOffDefault && (
@@ -292,68 +215,65 @@ export default function PropSliderCard({
               <span>{stops[stops.length - 1].line}</span>
             </div>
           </div>
-
-          {/* Drag away from your own line and both buttons start quoting the
-              stop under the handle, so without this the bet you actually
-              hold is nowhere on the card. */}
-          {pickedLine != null && pickedLine !== current.line && (
-            <button
-              onClick={() => {
-                const i = stops.findIndex((st) => Number(st.line) === pickedLine)
-                if (i >= 0) setIndex(i)
-              }}
-              className="mt-2 w-full text-[11px] text-accent hover:underline"
-            >
-              Your pick: {pick.picked_side} {pickedLine} · win {pick.reward_at_submission}
-            </button>
-          )}
-
-          {/* Backing out of an edit must not mean destroying the pick. The
-              slider returns to the line you actually hold. */}
-          {pickedLine != null && (
-            <button
-              onClick={() => {
-                const i = stops.findIndex((st) => Number(st.line) === pickedLine)
-                if (i >= 0) setIndex(i)
-                setEditing(false)
-              }}
-              disabled={isSubmitting}
-              className="mt-2 w-full text-xs text-text-muted hover:text-text-primary"
-            >
-              Cancel
-            </button>
-          )}
-        </div>
-            </>
-          )}
         </div>
       )}
 
-      {/* Live progress, measured against the USER's line rather than the
-          book's — the whole point of having chosen one. The old card shows a
-          bare number; here the number alone would be unreadable, because the
-          threshold it's being judged against isn't the one printed on the
-          prop. */}
-      {isLockedPick && (
-        <div className="mt-3 pt-3 border-t border-text-primary/10 text-center">
-          {pick.live_stat != null ? (
-            <>
-              <span className={`font-display text-2xl tabular-nums ${
-                Number(pick.live_stat) > Number(pickedLine) ? 'text-correct' : 'text-text-primary'
-              }`}>
-                {pick.live_stat}
-              </span>
-              <span className="text-xs text-text-muted ml-1.5">{prop.market_label}</span>
-              <div className="text-xs text-text-muted mt-0.5">
-                {Number(pick.live_stat) > Number(pickedLine)
-                  ? `past ${pickedLine} — winning`
-                  : `needs ${fmt(Number(pickedLine) - Number(pick.live_stat))} more`}
-              </div>
-            </>
-          ) : (
-            <span className="text-xs text-text-muted">Locked at {pickedLine} · wins {pick.reward_at_submission ?? '—'}</span>
-          )}
+      {/* The bets you are holding on this player. Each is its own position
+          with its own price and its own remove — which is the whole point of
+          letting a prop carry more than one. Tapping a row puts the slider
+          back on that line. */}
+      {held.length > 0 && (
+        <div className="mt-4 border-t border-text-primary/10 pt-3">
+          <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">
+            {held.length === 1 ? 'Your bet' : `Your ${held.length} bets`}
+          </div>
+          <div className="space-y-1">
+            {held.map((p) => {
+              const lineOf = p.chosen_line ?? prop.line
+              const tone = p.status === 'settled'
+                ? (p.is_correct == null ? 'text-yellow-500' : p.is_correct ? 'text-correct' : 'text-incorrect')
+                : 'text-text-primary'
+              return (
+                <div key={p.id} className="flex items-center gap-2 text-sm">
+                  <button
+                    onClick={() => {
+                      const i = stops.findIndex((st) => Number(st.line) === Number(lineOf))
+                      if (i >= 0) setIndex(i)
+                    }}
+                    className={`flex-1 min-w-0 text-left capitalize ${tone}`}
+                  >
+                    {p.picked_side} {lineOf}
+                  </button>
+                  {/* Live progress against THIS bet's line, not the book's. */}
+                  {p.live_stat != null && (
+                    <span className={`text-xs tabular-nums ${
+                      Number(p.live_stat) > Number(lineOf) ? 'text-correct' : 'text-text-muted'
+                    }`}>
+                      {p.live_stat}
+                    </span>
+                  )}
+                  <span className="text-xs tabular-nums text-text-muted shrink-0">
+                    {p.risk_at_submission} → {p.reward_at_submission}
+                  </span>
+                  {p.status === 'pending' && (
+                    <button
+                      onClick={() => onUndoPick?.(prop.id, p.id)}
+                      disabled={isSubmitting}
+                      aria-label={`Remove ${p.picked_side} ${lineOf}`}
+                      className="shrink-0 px-1 text-text-muted hover:text-incorrect"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
+      )}
+
+      {anyLocked && !isSettled && (
+        <div className="mt-3 text-center text-xs text-text-muted">Locked at kickoff</div>
       )}
 
       {showPlayerModal && playerLookup && (

@@ -75,7 +75,11 @@ function lockedOddsFor(pick, side, liveOdds) {
   return { odds: liveOdds, risk: calculateRiskPoints(liveOdds), reward: calculateRewardPoints(liveOdds) }
 }
 
-export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting, compact }) {
+export default function PropCard({ prop, picks, pick: pickProp, onPick, onUndoPick, isSubmitting, compact }) {
+  // A prop can carry several bets now. The over/under card below only ever
+  // shows one, so it takes the first; the slider card takes the whole list.
+  // `pick` is still accepted for the callers that pass a single one.
+  const pick = pickProp ?? (picks || [])[0] ?? null
   const isLocked = prop.status !== 'published'
   const isSettled = prop.status === 'settled'
   const [showPlayerModal, setShowPlayerModal] = useState(false)
@@ -89,7 +93,7 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
     return (
       <PropSliderCard
         prop={prop}
-        pick={pick}
+        picks={picks || (pick ? [pick] : [])}
         onPickLine={(propId, line, side) => onPick?.(propId, side || 'over', line)}
         onUndoPick={onUndoPick}
         isSubmitting={isSubmitting}

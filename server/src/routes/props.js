@@ -96,9 +96,14 @@ router.get('/:id/slider', async (req, res, next) => {
   }
 })
 
-// Delete a pending prop pick
+// Delete a pending prop pick.
+//
+// ?pickId names ONE bet, now that a prop can carry several. Without it every
+// pending pick on the prop goes, which is what the shipped clients mean —
+// they were written when a prop could only hold one and send no id. A query
+// param rather than a new route so those clients keep working untouched.
 router.delete('/picks/:propId', async (req, res) => {
-  await deletePropPick(req.user.id, req.params.propId)
+  await deletePropPick(req.user.id, req.params.propId, req.query.pickId || null)
   res.status(204).end()
 })
 

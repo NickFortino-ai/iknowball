@@ -366,16 +366,18 @@ function PropList({ props, isLoading, emptyText }) {
   const submitPick = useSubmitPropPick()
   const deletePick = useDeletePropPick()
 
-  function getPick(propId) {
-    if (!myPropPicks) return null
-    const pick = myPropPicks.find((p) => p.prop_id === propId)
-    if (!pick) return null
-    if (liveStatsMap?.[pick.id] != null) return { ...pick, live_stat: liveStatsMap[pick.id] }
-    return pick
+  // Every bet the user holds on a prop, not just the first. A prop can now
+  // carry several: over 195 and over 220 on the same player are two
+  // positions, and the card lists them.
+  function getPicks(propId) {
+    if (!myPropPicks) return []
+    return myPropPicks
+      .filter((p) => p.prop_id === propId)
+      .map((p) => (liveStatsMap?.[p.id] != null ? { ...p, live_stat: liveStatsMap[p.id] } : p))
   }
 
-  // `line` is set only by slider cards. A re-pick at a different line is the
-  // same submit — the server upserts on (user, prop) and re-prices.
+  // `line` is set only by slider cards. The server keys on (user, prop, side,
+  // line), so a different line is a NEW bet and the same one is an edit.
   async function handlePick(propId, side, line = null) {
     try {
       await submitPick.mutateAsync({ propId, pickedSide: side, chosenLine: line })
@@ -386,9 +388,12 @@ function PropList({ props, isLoading, emptyText }) {
     }
   }
 
-  async function handleUndoPick(propId) {
+  // pickId names one bet. Omitted, every pending pick on the prop goes —
+  // which is what the over/under card means by "undo", since it only ever
+  // shows one.
+  async function handleUndoPick(propId, pickId = null) {
     try {
-      await deletePick.mutateAsync(propId)
+      await deletePick.mutateAsync({ propId, pickId })
       toast('Prop pick removed', 'info')
     } catch (err) {
       toast(err.message || 'Failed to undo prop pick', 'error')
@@ -404,7 +409,7 @@ function PropList({ props, isLoading, emptyText }) {
         <PropCard
           key={p.id}
           prop={p}
-          pick={getPick(p.id)}
+          picks={getPicks(p.id)}
           onPick={handlePick}
           onUndoPick={handleUndoPick}
           isSubmitting={submitPick.isPending || deletePick.isPending}

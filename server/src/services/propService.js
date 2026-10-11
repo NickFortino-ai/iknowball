@@ -1141,7 +1141,9 @@ export async function submitPropPick(userId, propId, pickedSide, chosenLine = nu
         risk_at_submission: riskAtSubmission,
         reward_at_submission: rewardAtSubmission,
       },
-      { onConflict: 'user_id,prop_id' }
+      // Keyed on side AND line, so over 195 and over 220 on one prop are two
+      // bets while over 195 twice is an edit of the first.
+      { onConflict: 'user_id,prop_id,picked_side,chosen_line' }
     )
     .select()
     .single()
@@ -1154,21 +1156,34 @@ export async function submitPropPick(userId, propId, pickedSide, chosenLine = nu
   return data
 }
 
-export async function deletePropPick(userId, propId) {
-  const { data: pick } = await supabase
+/**
+ * Remove picks on a prop.
+ *
+ * `pickId` names one bet. Without it this removes EVERY pending pick the user
+ * holds on the prop, which is what the shipped clients mean when they call
+ * DELETE /props/picks/:propId — they were written when a prop could only
+ * carry one, and they pass no id. Keeping that behaviour means an old app's
+ * remove button still removes what its card is showing.
+ */
+export async function deletePropPick(userId, propId, pickId = null) {
+  let query = supabase
     .from('prop_picks')
     .select('id, status')
     .eq('user_id', userId)
     .eq('prop_id', propId)
-    .single()
+  if (pickId) query = query.eq('id', pickId)
+  const { data: picks } = await query
 
-  if (!pick) {
+  if (!picks?.length) {
     const err = new Error('Prop pick not found')
     err.status = 404
     throw err
   }
 
-  if (pick.status !== 'pending') {
+  // Locked and settled picks are history — refuse the whole call rather than
+  // silently removing the half that is still pending.
+  const stuck = picks.find((p) => p.status !== 'pending')
+  if (stuck) {
     const err = new Error('Cannot undo a locked or settled prop pick')
     err.status = 400
     throw err
@@ -1177,7 +1192,7 @@ export async function deletePropPick(userId, propId) {
   const { error } = await supabase
     .from('prop_picks')
     .delete()
-    .eq('id', pick.id)
+    .in('id', picks.map((p) => p.id))
 
   if (error) {
     logger.error({ error }, 'Failed to delete prop pick')

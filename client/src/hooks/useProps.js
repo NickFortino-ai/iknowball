@@ -113,7 +113,12 @@ export function useDeletePropPick() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (propId) => api.delete(`/props/picks/${propId}`),
+    // Accepts a bare propId (every pending pick on it) or { propId, pickId }
+    // for one bet. The bare form is what the over/under card still sends.
+    mutationFn: (arg) => {
+      const { propId, pickId } = typeof arg === 'object' && arg !== null ? arg : { propId: arg }
+      return api.delete(`/props/picks/${propId}${pickId ? `?pickId=${pickId}` : ''}`)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['propPicks'] })
     },
