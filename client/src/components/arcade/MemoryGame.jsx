@@ -182,13 +182,13 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
       setMatched(nextMatched)
       setFlipped([])
       if (nextMatched.size === round.cards.length) {
-        // Board cleared. Hold it on screen for a moment first — a haptic and
-        // the whole grid lit up — then show the score. Long enough to register
-        // that you finished, short enough not to be waiting for a screen you
-        // have already earned.
+        // Board cleared. Hold it on screen — a haptic and the whole grid lit
+        // up — before the score replaces it. 1.4s read as an interruption on
+        // the way to somewhere else; at 3s the finished board is its own
+        // moment, which is what someone who just cleared it wants to look at.
         setCelebrating(true)
         triggerHaptic('Heavy')
-        setTimeout(() => submit(nextMoves, informedMisses, nextRecall), 1400)
+        setTimeout(() => submit(nextMoves, informedMisses, nextRecall), 3000)
       }
       return
     }
