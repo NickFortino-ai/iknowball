@@ -161,7 +161,7 @@ export default function TriviaGame({ variant = 'all', onExit }) {
              a round isn't listed — but they aren't shown. How many questions
              we happen to hold is our business, not a fact the player needs
              in order to choose a category. */
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3">
             {[{ key: 'all' }, ...orderSports(arcadeMeta.trivia.sports)].map((s) => {
               const bg = sportBackdrop(s.key)
               const picked = sport === s.key
@@ -169,7 +169,7 @@ export default function TriviaGame({ variant = 'all', onExit }) {
                 <button
                   key={s.key}
                   onClick={() => setSport(s.key)}
-                  className={`relative overflow-hidden rounded-xl border px-3 py-5 text-sm font-semibold transition-all hover:scale-[1.02] ${
+                  className={`relative overflow-hidden rounded-2xl border px-6 py-10 transition-all hover:scale-[1.02] hover:shadow-lg ${
                     bg ? '' : 'bg-bg-primary/50 backdrop-blur-sm'
                   } ${
                     picked
@@ -194,7 +194,12 @@ export default function TriviaGame({ variant = 'all', onExit }) {
                         : 'from-black/80 via-black/55 to-black/35'
                     }`} />
                   )}
-                  <span className={`relative block leading-tight ${
+                  {/* font-display text-3xl matches the Props tiles. "College
+                      Football" is far longer than anything Props carries and
+                      wraps to two lines at this size; leading-tight keeps that
+                      readable, and the grid row stretches so its neighbour
+                      matches height rather than the row going ragged. */}
+                  <span className={`relative block font-display text-3xl leading-tight ${
                     bg ? 'text-white drop-shadow-lg' : picked ? 'text-accent' : 'text-text-primary'
                   }`}>
                     {sportLabel(s.key)}
