@@ -512,16 +512,21 @@ export default function HubPage() {
         <div className="mb-6 lg:mb-0 lg:w-72 lg:shrink-0 lg:flex lg:pb-3">
           <div className="grid w-full grid-cols-3 gap-1 lg:hidden">
             <RoomButton icon={FeedIcon} label="Feed" iconClass="w-11 h-11" active={hubView === 'feed'} onClick={() => setHubView('feed')} />
-            <RoomButton icon={ArcadeIcon} label="Arcade" active={hubView === 'arcade'} onClick={() => setHubView('arcade')} />
+            <RoomButton icon={ArcadeIcon} label="Arcade" data-onboarding="arcade" active={hubView === 'arcade'} onClick={() => setHubView('arcade')} />
             <RoomButton icon={NewsIcon} label="News" active={hubView === 'news'} onClick={() => setHubView('news')} />
           </div>
           {/* No border, no fill — the cabinet IS the button. A bordered box
               around art that already has its own outline and glow was two
               frames competing; stripped back, the icon can grow into the
               whole space instead of sitting in the middle of a panel. */}
+          {/* Anchored for the tutorial alongside the mobile mark above. Only
+              one of the two is ever visible, and the tutorial measures
+              candidates and takes the first with real dimensions, so the
+              pair resolves to whichever layout the player is actually on. */}
           <button
             onClick={() => setHubView('arcade')}
             aria-label="Arcade"
+            data-onboarding="arcade"
             className="hidden lg:flex w-full lg:flex-1 flex-col items-center justify-center gap-1 min-h-0 text-accent transition-transform hover:scale-105 active:scale-95"
           >
             {/* The icon is positioned OUT OF FLOW on desktop. In flow its

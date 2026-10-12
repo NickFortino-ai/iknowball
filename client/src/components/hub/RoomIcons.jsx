@@ -30,13 +30,14 @@ export function FeedIcon({ className = 'w-5 h-5' }) {
  * square — so one size makes them look like three different sizes. These
  * are tuned to look equal, not to be equal.
  */
-export function RoomButton({ icon: Icon, label, active, onClick, iconClass = 'w-14 h-14' }) {
+export function RoomButton({ icon: Icon, label, active, onClick, iconClass = 'w-14 h-14', ...rest }) {
   return (
     <button
       onClick={onClick}
       aria-label={label}
       aria-current={active ? 'page' : undefined}
       className="flex flex-col items-center justify-end gap-1 rounded-xl py-1 transition-transform active:scale-95"
+      {...rest}
     >
       <Icon className={iconClass} />
       <span className={`text-xs font-semibold leading-none ${active ? 'text-accent' : 'text-text-secondary'}`}>

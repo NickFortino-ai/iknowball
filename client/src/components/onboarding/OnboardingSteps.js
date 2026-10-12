@@ -23,6 +23,13 @@ const ONBOARDING_STEPS = [
     freeScroll: true,
   },
   {
+    page: '/picks',
+    targetSelector: '[data-onboarding="props-tab"]',
+    title: 'Set Your Own Line',
+    body: "Open Props and you don't just take the number the book is offering — you move it. Slide the line to where you think the player lands, pick over or under, and the payout scales with how far you went: the bolder the call, the bigger the return. You can stack several bets on the same player at different lines, and the results page shows them as a ladder so you can see exactly where the night actually finished.",
+    position: 'bottom',
+  },
+  {
     page: '/',
     targetSelector: '[data-onboarding="open-leagues"]',
     title: 'Join an Open League',
@@ -42,7 +49,7 @@ const ONBOARDING_STEPS = [
     page: '/leagues/create',
     targetSelector: null,
     title: 'Create Leagues',
-    body: "Commissioners love this app. Create Fantasy Football, Daily Fantasy (NBA & MLB), Survivor Pools, Brackets, Pick'em, Squares, and more. Customize everything — scoring, duration, visibility — and invite your friends.",
+    body: "Commissioners love this app. Create Fantasy Football, Daily Fantasy (NFL, NBA, WNBA & MLB), Survivor Pools, Brackets, Pick'em, Squares, and more. Customize everything — scoring, duration, visibility — and invite your friends.",
     position: 'center',
     freeScroll: true,
   },
@@ -66,7 +73,7 @@ const ONBOARDING_STEPS = [
     page: '/hub?tab=all',
     targetSelector: null,
     title: 'Your Hub',
-    body: "IKB is complete with a sportscentric social hub. View your profile, browse the activity feed, and create posts, predictions, and polls. \"All of IKB\" shows what everyone across the platform is up to, plus a live ESPN news feed to stay on top of what\u2019s happening in sports.",
+    body: "IKB is complete with a sportscentric social hub. View your profile, browse the activity feed, and create posts, predictions, and polls. \"All of IKB\" shows what everyone across the platform is up to. The Hub has three rooms \u2014 Feed, Arcade and News \u2014 and News carries a live ESPN wire so you can stay on top of what\u2019s happening in sports.",
     position: 'center',
     freeScroll: true,
   },
@@ -77,6 +84,19 @@ const ONBOARDING_STEPS = [
     body: "Your squad is your circle on IKB — the people you connect with. Send connection requests from anyone\u2019s profile, and once they accept, you\u2019re in each other\u2019s squad. Your squad sees your picks, posts, and streaks in their feed, and you\u2019ll see theirs. You can also join leagues together and auto-connect with leaguemates at the end of a season.",
     position: 'center',
     freeScroll: true,
+  },
+  // Deliberately stays on the FEED view rather than deep-linking
+  // ?tab=arcade: the arcade room replaces this part of the Hub, marks and
+  // all, so opening it would spotlight an element that no longer exists and
+  // time out to a fullscreen card. Pointing at the door is also the more
+  // useful lesson — where the arcade lives is the thing a new player
+  // doesn't know.
+  {
+    page: '/hub',
+    targetSelector: '[data-onboarding="arcade"]',
+    title: 'The Arcade',
+    body: "Sports games you can play right now. Memory, played on IKB's own image library, and Trivia — pick a sport or take all of them, in 10 or 20 question rounds or Streak mode, where you keep answering until you miss one. Every game keeps high scores and a leaderboard for each sport, so the board is the thing to chase.",
+    position: 'bottom',
   },
   {
     page: null,

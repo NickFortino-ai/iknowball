@@ -278,6 +278,7 @@ export default function PicksPage() {
             self-serve prop loading (replaces the old admin-featured flow) */}
         <button
           onClick={() => { setIsPropsMode(true); setIsFuturesMode(false) }}
+          data-onboarding="props-tab"
           className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
             isPropsMode
               ? 'bg-accent text-white'
