@@ -3,10 +3,19 @@ import { useAuth } from '../../hooks/useAuth'
 
 const REACTIONS = [
   { type: 'fire', emoji: '\uD83D\uDD25' },
-  { type: 'clown', emoji: '\uD83E\uDD21' },
   { type: 'goat', emoji: '\uD83D\uDC10' },
   { type: 'clap', emoji: '\uD83D\uDC4F' },
 ]
+
+// Clown is retired: it can no longer be ADDED, but 18 of them already exist
+// and are still shown. Dropping it from the list outright would have made
+// those silently disappear from posts people had already reacted to — and
+// left whoever placed one unable to take it back.
+const RETIRED = [
+  { type: 'clown', emoji: '\uD83E\uDD21' },
+]
+// Everything that can appear on screen; REACTIONS is what you can pick.
+const DISPLAYABLE = [...REACTIONS, ...RETIRED]
 
 export default function PickReactions({ pickId, compact = false, reactions: externalReactions }) {
   const { session } = useAuth()
@@ -32,7 +41,7 @@ export default function PickReactions({ pickId, compact = false, reactions: exte
 
   if (compact) {
     // Only show reactions that have counts
-    const active = REACTIONS.filter((r) => reactionMap[r.type]?.count > 0)
+    const active = DISPLAYABLE.filter((r) => reactionMap[r.type]?.count > 0)
     if (!active.length) return null
 
     return (

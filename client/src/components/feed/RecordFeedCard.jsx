@@ -14,16 +14,26 @@ export default function RecordFeedCard({ item, reactions, onUserTap, onRecordTap
       onUserTap={onUserTap}
       commentCount={item.commentCount}
       headerLayout="centered"
+      /* The headline goes ABOVE the avatar, not buried between the username
+         and the record name. It is what the card is — who broke it is the
+         second question, not the first — and at that size it was smaller
+         than the handle beneath it.
+
+         The trophy goes with it. A gold left border, gold heading and gold
+         figure already say "record"; a fourth signal in the same two inches
+         is decoration rather than information. */
+      topBanner={(
+        <div className="text-center pt-1 pb-3">
+          <span className="font-display text-2xl font-bold text-yellow-500 tracking-tight">
+            Record Broken
+          </span>
+        </div>
+      )}
     >
       <div
         className="text-center cursor-pointer"
         onClick={() => onRecordTap?.(record.id)}
       >
-        <div className="inline-flex items-center gap-2 mb-4">
-          <span className="text-xl">{'🏆'}</span>
-          <span className="font-bold text-sm text-yellow-500">Record Broken!</span>
-        </div>
-
         <div className="font-semibold text-base text-text-primary mb-2">{record.display_name}</div>
 
         <div className="font-display text-4xl text-yellow-500 font-bold mb-2">
