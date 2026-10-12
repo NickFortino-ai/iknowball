@@ -15,6 +15,14 @@ router.use(requireAuth)
 
 const MEMORY = 'memory'
 const TRIVIA = 'trivia'
+// Streak keeps its OWN board. A streak score and a 20-question score are
+// different units — one measures how far you got, the other how well you did
+// over a fixed set — and putting them on one table would rank the mode
+// rather than the player.
+const TRIVIA_STREAK = 'trivia_streak'
+// The queue a streak draws from. Long enough that reaching the end is a real
+// achievement rather than a ceiling people bump into.
+const STREAK_QUEUE = 40
 
 // Round lengths on offer. A short round is the default commitment and a
 // long one is for someone who wants to sit with it; this list is the single
@@ -302,6 +310,236 @@ router.post('/trivia/start', async (req, res, next) => {
   }
 })
 
+// Deal a STREAK round: answer until you miss one.
+//
+// The whole queue is dealt up front and held server-side, with questions
+// handed out one at a time by /trivia/answer — the client never holds a
+// question it has not reached, let alone an answer.
+//
+// Ordered easiest-first like the fixed round, which here means the run gets
+// harder the longer it goes. That is the shape of the mode: it should end
+// because the questions beat you, not because the list ran out.
+router.post('/trivia/streak/start', async (req, res, next) => {
+  try {
+    const variant = String(req.body?.variant || 'all')
+    const questions = await buildRound({ sport: variant, count: STREAK_QUEUE })
+    if (questions.length < 2) {
+      return res.status(503).json({ error: 'Not enough questions available for that sport yet.' })
+    }
+
+    const { data: round, error } = await supabase
+      .from('arcade_rounds')
+      .insert({
+        user_id: req.user.id,
+        game_key: TRIVIA_STREAK,
+        variant,
+        pairs: questions.length,
+        payload: {
+          answers: questions.map((q) => q.answerIndex),
+          explanations: questions.map((q) => q.explanation || null),
+          questionIds: questions.map((q) => q.id || null),
+          difficulties: questions.map((q) => q.difficulty ?? 2),
+          given: [],
+          // The dealt queue, WITHOUT the answers. buildRound shuffles each
+          // question's choices per round and the stored answer index refers
+          // to that shuffled order — so re-reading the question from the
+          // table later would hand back the original order and point the
+          // answer at the wrong choice.
+          queue: questions.map((q) => ({
+            question: q.question, choices: q.choices, sport: q.sport, difficulty: q.difficulty ?? 2,
+          })),
+        },
+      })
+      .select('id')
+      .single()
+    if (error) throw error
+
+    res.json({
+      roundId: round.id,
+      variant,
+      total: questions.length,
+      // One question. The next arrives only after this one is answered.
+      question: {
+        question: questions[0].question,
+        choices: questions[0].choices,
+        sport: questions[0].sport,
+        difficulty: questions[0].difficulty ?? 2,
+      },
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// The next question in a streak round, or null when the run is over.
+router.post('/trivia/streak/next', async (req, res, next) => {
+  try {
+    const { roundId } = req.body || {}
+    const index = Number(req.body?.index)
+    if (!roundId || !Number.isInteger(index)) return res.status(400).json({ error: 'roundId and index required' })
+
+    const { data: round } = await supabase
+      .from('arcade_rounds')
+      .select('id, user_id, game_key, payload, finished_at')
+      .eq('id', roundId)
+      .maybeSingle()
+    if (!round) return res.status(404).json({ error: 'Round not found' })
+    if (round.user_id !== req.user.id) return res.status(403).json({ error: 'Not your round' })
+
+    // Served from the queue dealt at start, so the choices are in the order
+    // the stored answer index refers to. One question at a time: the client
+    // never holds one it has not reached.
+    const queue = round.payload?.queue || []
+    if (index >= queue.length) return res.json({ question: null })
+    res.json({ question: queue[index] })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// Check ONE answer, mid-round.
+//
+// The answer key stays on the server — the start payload never ships it —
+// so telling a player they were right requires asking. That round trip is
+// what makes immediate feedback possible at all, and it is what streak mode
+// is built on: the server has to know the run is over before it can say so.
+//
+// The choice is recorded in the round payload as it is made, so finish
+// scores what was actually answered rather than what the client reports at
+// the end, and a question cannot be answered twice.
+router.post('/trivia/answer', async (req, res, next) => {
+  try {
+    const { roundId } = req.body || {}
+    const index = Number(req.body?.index)
+    const choice = Number(req.body?.choice)
+    if (!roundId) return res.status(400).json({ error: 'roundId required' })
+    if (!Number.isInteger(index) || index < 0) return res.status(400).json({ error: 'index required' })
+
+    const { data: round } = await supabase
+      .from('arcade_rounds')
+      .select('id, user_id, game_key, started_at, finished_at, payload')
+      .eq('id', roundId)
+      .maybeSingle()
+
+    if (!round) return res.status(404).json({ error: 'Round not found' })
+    if (round.user_id !== req.user.id) return res.status(403).json({ error: 'Not your round' })
+    if (round.finished_at) return res.status(409).json({ error: 'Round already finished' })
+
+    const answers = round.payload?.answers || []
+    if (index >= answers.length) return res.status(400).json({ error: 'No such question in this round' })
+
+    const given = round.payload?.given || []
+    if (given[index] != null) return res.status(409).json({ error: 'That question is already answered' })
+
+    const correctIndex = answers[index]
+    const wasRight = choice === correctIndex
+    given[index] = Number.isInteger(choice) ? choice : -1
+
+    await supabase
+      .from('arcade_rounds')
+      .update({ payload: { ...round.payload, given } })
+      .eq('id', round.id)
+
+    res.json({
+      wasRight,
+      correctIndex,
+      explanation: round.payload?.explanations?.[index] || null,
+      // How far they have got without a miss — streak mode ends on the
+      // first false, and the ordinary mode simply ignores it.
+      streak: given.reduce((n, g, i) => (g === answers[i] ? n + 1 : n), 0),
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// End a streak run and record it.
+//
+// Scored on the questions CLEARED, by difficulty — so surviving deep into
+// the hard end is worth more than a long run through easy ones, which is
+// the only way the mode rewards what it is actually testing.
+//
+// No time bonus. A streak ends when you are wrong, not when you are slow,
+// and paying for speed would push people to guess fast on a question they
+// could have reasoned out.
+router.post('/trivia/streak/finish', async (req, res, next) => {
+  try {
+    const { roundId } = req.body || {}
+    if (!roundId) return res.status(400).json({ error: 'roundId required' })
+
+    const { data: round } = await supabase
+      .from('arcade_rounds')
+      .select('id, user_id, game_key, variant, started_at, finished_at, payload')
+      .eq('id', roundId)
+      .maybeSingle()
+    if (!round) return res.status(404).json({ error: 'Round not found' })
+    if (round.user_id !== req.user.id) return res.status(403).json({ error: 'Not your round' })
+    if (round.finished_at) return res.status(409).json({ error: 'Round already finished' })
+
+    const answers = round.payload?.answers || []
+    const given = round.payload?.given || []
+    const difficulties = round.payload?.difficulties || []
+
+    // Correct answers from the start until the first miss. Counted here
+    // rather than taken from the client: the run's length IS the score.
+    let streak = 0
+    for (let i = 0; i < answers.length; i++) {
+      if (given[i] == null || given[i] !== answers[i]) break
+      streak++
+    }
+    const score = Array.from({ length: streak }, (_, i) =>
+      POINTS_FOR_DIFFICULTY[difficulties[i]] ?? POINTS_PER_CORRECT).reduce((a, b) => a + b, 0)
+
+    const durationMs = Date.now() - new Date(round.started_at).getTime()
+    await supabase.from('arcade_rounds').update({ finished_at: new Date().toISOString() }).eq('id', round.id)
+
+    const { error: saveErr } = await supabase.from('arcade_scores').insert({
+      user_id: req.user.id,
+      round_id: round.id,
+      game_key: TRIVIA_STREAK,
+      variant: round.variant,
+      score,
+      // `pairs` is the generic "size of the round" column; here it is the
+      // run itself, which is what the board's sub-line shows.
+      pairs: streak,
+      moves: streak,
+      duration_ms: durationMs,
+    })
+    if (saveErr) throw saveErr
+
+    // Per-question stats on the authored pool, same read-then-write the
+    // fixed mode uses — PostgREST can't express `col = col + 1` without a
+    // database function, and a lost count under concurrency is fine for a
+    // curation hint. Only questions actually REACHED are counted: a streak
+    // deals 40 and most runs never see half of them, so counting the whole
+    // queue as "served" would make every question look unanswerable.
+    const ids = round.payload?.questionIds || []
+    const reached = ids.map((id, i) => (id && given[i] != null ? id : null)).filter(Boolean)
+    if (reached.length) {
+      const { data: current } = await supabase
+        .from('trivia_questions')
+        .select('id, times_served, times_correct')
+        .in('id', reached)
+      const byId = Object.fromEntries((current || []).map((r) => [r.id, r]))
+      for (let i = 0; i < ids.length; i++) {
+        const row = ids[i] && given[i] != null && byId[ids[i]]
+        if (!row) continue
+        await supabase
+          .from('trivia_questions')
+          .update({
+            times_served: (row.times_served || 0) + 1,
+            times_correct: (row.times_correct || 0) + (given[i] === answers[i] ? 1 : 0),
+          })
+          .eq('id', row.id)
+      }
+    }
+
+    res.json({ streak, score, durationMs, total: answers.length })
+  } catch (err) {
+    next(err)
+  }
+})
+
 // Score a trivia round. The client sends only its chosen indexes.
 router.post('/trivia/finish', async (req, res, next) => {
   try {
@@ -322,10 +560,15 @@ router.post('/trivia/finish', async (req, res, next) => {
 
     const correctAnswers = round.payload?.answers || []
     const explanations = round.payload?.explanations || []
+    // Prefer what the server recorded as each answer was given. The client's
+    // array is a fallback for rounds played before per-answer checking, and
+    // it is the thing a tampered request would lie about.
+    const given = round.payload?.given || []
+    const chosenAt = (i) => (given[i] != null ? given[i] : (Number.isInteger(answers[i]) ? answers[i] : null))
     const results = correctAnswers.map((correct, i) => ({
       correct,
-      chosen: Number.isInteger(answers[i]) ? answers[i] : null,
-      wasRight: answers[i] === correct,
+      chosen: chosenAt(i),
+      wasRight: chosenAt(i) === correct,
       explanation: explanations[i] || null,
     }))
     const correctCount = results.filter((r) => r.wasRight).length

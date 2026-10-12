@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useStartTriviaRound, useFinishTriviaRound } from '../../hooks/useArcade'
+import { useStartTriviaRound, useFinishTriviaRound, useAnswerTrivia } from '../../hooks/useArcade'
 import { toast } from '../ui/Toast'
 import ArcadeBack from './ArcadeBack'
 
@@ -41,9 +41,13 @@ export default function TriviaGame({ variant = 'all', onExit }) {
   const [answers, setAnswers] = useState([])
   const [result, setResult] = useState(null)
   const [busy, setBusy] = useState(false)
+  // { chosen, wasRight, correctIndex } while the result of an answer is
+  // being shown, null the rest of the time.
+  const [feedback, setFeedback] = useState(null)
   const startedAt = useRef(null)
 
   const startTrivia = useStartTriviaRound()
+  const answerTrivia = useAnswerTrivia()
   const finishTrivia = useFinishTriviaRound()
 
   // Remembered so "Play again" repeats the length you just played rather
@@ -67,14 +71,36 @@ export default function TriviaGame({ variant = 'all', onExit }) {
     }
   }
 
+  // Answering is a server round trip now, because the answer key never ships
+  // with the questions. It buys the thing worth having: you find out you
+  // were right while the question is still in front of you, instead of
+  // eight questions later in a summary.
   async function choose(choiceIndex) {
-    if (!round || busy) return
+    if (!round || busy || feedback) return
     const next = [...answers]
     next[index] = choiceIndex
     setAnswers(next)
+    setBusy(true)
+
+    let verdict = null
+    try {
+      verdict = await answerTrivia.mutateAsync({ roundId: round.roundId, index, choice: choiceIndex })
+      setFeedback({ chosen: choiceIndex, ...verdict })
+    } catch {
+      // A failed check must not swallow the round — fall through and let
+      // finish score it from what the server recorded.
+      setBusy(false)
+    }
+
+    // Long enough to register the colour, short enough not to feel like a
+    // wait. Longer when they were wrong, since the right answer is only
+    // worth showing if there is time to read it.
+    if (verdict) await new Promise((r) => setTimeout(r, verdict.wasRight ? 650 : 1400))
+    setFeedback(null)
 
     if (index + 1 < round.questions.length) {
       setIndex(index + 1)
+      setBusy(false)
       return
     }
 
@@ -190,16 +216,27 @@ export default function TriviaGame({ variant = 'all', onExit }) {
       <p className="font-display text-xl text-text-primary leading-snug">{q.question}</p>
 
       <div className="space-y-2 pb-4 sm:pb-0">
-        {q.choices.map((choice, i) => (
+        {q.choices.map((choice, i) => {
+          // Green on the right answer, red on a wrong one you picked. When
+          // you miss, the right answer lights up too — otherwise the only
+          // thing the moment teaches is that you were wrong.
+          const isChosen = feedback?.chosen === i
+          const isAnswer = feedback && feedback.correctIndex === i
+          const tone = !feedback ? 'border-text-primary/20 text-text-primary hover:border-accent hover:bg-accent/5'
+            : isAnswer ? 'border-correct bg-correct/15 text-text-primary'
+            : isChosen ? 'border-incorrect bg-incorrect/15 text-text-primary'
+            : 'border-text-primary/10 text-text-muted'
+          return (
           <button
             key={i}
             onClick={() => choose(i)}
             disabled={busy}
-            className="w-full rounded-xl border border-text-primary/20 px-4 py-4 sm:py-3 text-left text-sm text-text-primary hover:border-accent hover:bg-accent/5 transition-colors disabled:opacity-50 active:bg-accent/10"
+            className={`w-full rounded-xl border px-4 py-4 sm:py-3 text-left text-sm transition-colors disabled:opacity-100 active:bg-accent/10 ${tone}`}
           >
             {choice}
           </button>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

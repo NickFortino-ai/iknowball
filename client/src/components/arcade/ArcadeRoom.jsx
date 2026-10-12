@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import MemoryGame from './MemoryGame'
 import TriviaGame from './TriviaGame'
+import TriviaStreak from './TriviaStreak'
 import ArcadeLeaderboard from './ArcadeLeaderboard'
 import ArcadeBack from './ArcadeBack'
 import { getBackdropUrl } from '../../lib/backdropUrl'
@@ -89,6 +90,25 @@ function TriviaArt() {
   )
 }
 
+/**
+ * Tile art for Streak: a run of cleared rungs and the one that ends it.
+ *
+ * The same four-bar shape as Trivia, because it is the same game underneath
+ * — but read as a run rather than a question, which is the difference the
+ * mode actually makes.
+ */
+function StreakArt() {
+  return (
+    <div className="absolute inset-0 flex flex-col justify-center gap-2 px-4 sm:px-6">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className={`h-2.5 sm:h-3 rounded-full ${
+          i < 3 ? 'bg-correct/70' : 'bg-incorrect/70'
+        }`} style={{ width: `${[64, 78, 58, 86][i]}%` }} />
+      ))}
+    </div>
+  )
+}
+
 const GAMES = [
   {
     key: 'memory',
@@ -104,6 +124,13 @@ const GAMES = [
     detail: 'Harder questions are worth more. Answer fast for the time bonus.',
     art: TriviaArt,
   },
+  {
+    key: 'streak',
+    name: 'Streak',
+    blurb: 'Answer until you miss one.',
+    detail: 'They get harder the longer you last.',
+    art: StreakArt,
+  },
 ]
 
 // One board per game. No aggregate: a high-score table is a record of the
@@ -112,6 +139,9 @@ const GAMES = [
 const BOARDS = [
   { key: 'memory', label: 'Memory' },
   { key: 'trivia', label: 'Trivia' },
+  // Its own table: a streak score and a 20-question score are different
+  // units, so one board would rank the mode rather than the player.
+  { key: 'trivia_streak', label: 'Streak' },
 ]
 
 export default function ArcadeRoom({ onExit }) {
@@ -136,6 +166,14 @@ export default function ArcadeRoom({ onExit }) {
           variantCount={allSet?.count}
           onExit={() => setPlaying(null)}
         />
+      </div>
+    )
+  }
+
+  if (playing === 'streak') {
+    return (
+      <div className="sm:rounded-2xl sm:border sm:border-text-primary/20 sm:bg-bg-primary/40 sm:p-4 min-w-0">
+        <TriviaStreak variant="all" onExit={() => setPlaying(null)} />
       </div>
     )
   }
@@ -176,7 +214,7 @@ export default function ArcadeRoom({ onExit }) {
           // A round needs questions. Rather than let the tile launch into
           // "not enough questions available yet", it says so and doesn't
           // pretend to be playable.
-          const notReady = g.key === 'trivia' && !isLoading && (variantData?.trivia?.published || 0) < 2
+          const notReady = (g.key === 'trivia' || g.key === 'streak') && !isLoading && (variantData?.trivia?.published || 0) < 2
           return (
             <div key={g.key} className="rounded-2xl border border-text-primary/20 bg-bg-primary/40 overflow-hidden min-w-0">
               {/* The art is the button. A tile you can tap anywhere reads as

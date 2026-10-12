@@ -42,6 +42,36 @@ export function useStartTriviaRound() {
   })
 }
 
+// One answer, checked server-side. The key never ships with the questions,
+// so saying "right" requires asking — which is also what lets streak mode
+// know the run is over.
+export function useAnswerTrivia() {
+  return useMutation({
+    mutationFn: ({ roundId, index, choice }) =>
+      api.post('/arcade/trivia/answer', { roundId, index, choice }),
+  })
+}
+
+export function useStartTriviaStreak() {
+  return useMutation({
+    mutationFn: ({ variant }) => api.post('/arcade/trivia/streak/start', { variant }),
+  })
+}
+
+export function useNextStreakQuestion() {
+  return useMutation({
+    mutationFn: ({ roundId, index }) => api.post('/arcade/trivia/streak/next', { roundId, index }),
+  })
+}
+
+export function useFinishTriviaStreak() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ roundId }) => api.post('/arcade/trivia/streak/finish', { roundId }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['arcade', 'leaderboard'] }),
+  })
+}
+
 export function useFinishTriviaRound() {
   const queryClient = useQueryClient()
   return useMutation({

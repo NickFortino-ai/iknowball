@@ -1,0 +1,191 @@
+import { useState, useRef } from 'react'
+import ArcadeBack from './ArcadeBack'
+import { toast } from '../ui/Toast'
+import {
+  useStartTriviaStreak,
+  useNextStreakQuestion,
+  useAnswerTrivia,
+  useFinishTriviaStreak,
+} from '../../hooks/useArcade'
+
+/**
+ * Trivia streak: answer until you miss one.
+ *
+ * Questions arrive ONE AT A TIME from the server, which already had to be
+ * true — the answer key never ships with a question, so checking an answer
+ * is a round trip either way. That is what makes this mode possible at all:
+ * the server knows the run is over before the player does.
+ *
+ * The queue is dealt easiest-first, so the run gets harder the longer it
+ * lasts. It should end because the questions beat you, not because the list
+ * ran out.
+ */
+const SCREEN = 'space-y-4 max-w-xl mx-auto'
+
+export default function TriviaStreak({ variant = 'all', onExit }) {
+  const [round, setRound] = useState(null)      // { roundId, total }
+  const [question, setQuestion] = useState(null)
+  const [index, setIndex] = useState(0)
+  const [streak, setStreak] = useState(0)
+  const [feedback, setFeedback] = useState(null)
+  const [result, setResult] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const startedAt = useRef(null)
+
+  const startStreak = useStartTriviaStreak()
+  const nextQuestion = useNextStreakQuestion()
+  const answerTrivia = useAnswerTrivia()
+  const finishStreak = useFinishTriviaStreak()
+
+  async function deal() {
+    setBusy(true)
+    try {
+      const data = await startStreak.mutateAsync({ variant })
+      setRound({ roundId: data.roundId, total: data.total })
+      setQuestion(data.question)
+      setIndex(0)
+      setStreak(0)
+      setResult(null)
+      startedAt.current = Date.now()
+    } catch (err) {
+      toast(err.message || 'Could not start a streak', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function end(roundId) {
+    try {
+      setResult(await finishStreak.mutateAsync({ roundId }))
+    } catch (err) {
+      toast(err.message || 'Could not save your streak', 'error')
+    }
+  }
+
+  async function choose(choiceIndex) {
+    if (!round || busy || feedback) return
+    setBusy(true)
+    let verdict
+    try {
+      verdict = await answerTrivia.mutateAsync({ roundId: round.roundId, index, choice: choiceIndex })
+    } catch (err) {
+      toast(err.message || 'Could not check that answer', 'error')
+      setBusy(false)
+      return
+    }
+    setFeedback({ chosen: choiceIndex, ...verdict })
+    if (verdict.wasRight) setStreak((n) => n + 1)
+
+    // A miss gets longer, because the right answer is only worth showing if
+    // there is time to read it — and it is the last thing you see this run.
+    await new Promise((r) => setTimeout(r, verdict.wasRight ? 700 : 1600))
+    setFeedback(null)
+
+    if (!verdict.wasRight) {
+      await end(round.roundId)
+      setBusy(false)
+      return
+    }
+
+    const nextIndex = index + 1
+    try {
+      const { question: q } = await nextQuestion.mutateAsync({ roundId: round.roundId, index: nextIndex })
+      if (!q) {
+        // Cleared the whole queue — the run ends undefeated.
+        await end(round.roundId)
+      } else {
+        setQuestion(q)
+        setIndex(nextIndex)
+      }
+    } catch (err) {
+      toast(err.message || 'Could not load the next question', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // ── Result ────────────────────────────────────────────────────────────
+  if (result) {
+    const perfect = result.streak === result.total
+    return (
+      <div className={`${SCREEN} text-center`}>
+        <ArcadeBack onClick={onExit} />
+        <h3 className="font-display text-2xl text-text-primary">
+          {perfect ? 'Cleared the board' : result.streak === 0 ? 'No streak' : 'Streak over'}
+        </h3>
+        <div className="font-display text-6xl text-accent tabular-nums">{result.streak}</div>
+        <p className="text-sm text-text-secondary">
+          {result.streak === 1 ? '1 in a row' : `${result.streak} in a row`} · {result.score} points
+        </p>
+        <div className="flex gap-2 justify-center pt-2">
+          <button onClick={deal} disabled={busy} className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+            {busy ? 'Dealing…' : 'Again'}
+          </button>
+          <button onClick={onExit} className="rounded-xl border border-text-primary/20 px-5 py-2.5 text-sm font-semibold text-text-secondary">Done</button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Intro ─────────────────────────────────────────────────────────────
+  if (!round) {
+    return (
+      <div className={SCREEN}>
+        <div className="flex items-center gap-3">
+          <ArcadeBack onClick={onExit} />
+          <h3 className="font-display text-lg text-text-primary">Streak</h3>
+        </div>
+        <p className="text-sm text-text-secondary">
+          Keep answering until you get one wrong. They start easy and get
+          harder the longer you last, and harder questions are worth more.
+        </p>
+        <button
+          onClick={deal}
+          disabled={busy}
+          className="w-full rounded-xl border border-text-primary/20 bg-bg-primary/50 backdrop-blur-sm py-3 text-sm font-semibold text-text-primary transition-colors hover:border-accent hover:bg-accent/10 disabled:opacity-40"
+        >
+          {busy ? 'Dealing…' : 'Start'}
+        </button>
+      </div>
+    )
+  }
+
+  // ── Question ──────────────────────────────────────────────────────────
+  return (
+    <div className={SCREEN}>
+      <div className="flex items-center justify-between text-sm text-text-secondary">
+        <ArcadeBack onClick={onExit} label="Quit" />
+        {/* The streak IS the score here, so it is the thing on screen —
+            there is no question count to show, because there is no end. */}
+        <span className="font-display text-xl text-accent tabular-nums">{streak}</span>
+      </div>
+
+      <p className="font-display text-xl text-text-primary leading-snug">{question?.question}</p>
+
+      <div className="space-y-2 pb-4 sm:pb-0">
+        {(question?.choices || []).map((choice, i) => {
+          const isChosen = feedback?.chosen === i
+          const isAnswer = feedback && feedback.correctIndex === i
+          const tone = !feedback ? 'border-text-primary/20 text-text-primary hover:border-accent hover:bg-accent/5'
+            : isAnswer ? 'border-correct bg-correct/15 text-text-primary'
+            : isChosen ? 'border-incorrect bg-incorrect/15 text-text-primary'
+            : 'border-text-primary/10 text-text-muted'
+          return (
+            <button
+              key={i}
+              onClick={() => choose(i)}
+              disabled={busy}
+              className={`w-full rounded-xl border px-4 py-4 sm:py-3 text-left text-sm transition-colors disabled:opacity-100 active:bg-accent/10 ${tone}`}
+            >
+              {choice}
+            </button>
+          )
+        })}
+      </div>
+
+      {feedback && !feedback.wasRight && feedback.explanation && (
+        <p className="text-xs text-text-muted text-center">{feedback.explanation}</p>
+      )}
+    </div>
+  )
+}
