@@ -43,30 +43,46 @@ export function ArcadeIcon({ className = 'w-5 h-5' }) {
  *
  * Four backdrops laid flat said "we have pictures". This says what the game
  * IS — one matched pair face up, the rest face down with the same question
- * mark the real board uses. The pair is the same image twice, because that
- * is what a match looks like, and the eye reads it before the caption does.
+ * mark the real board uses.
+ *
+ * THE CARDS ARE SQUARE, because the real ones are. Stretching a 3x2 grid
+ * across a wide tile made them landscape rectangles, so a photo cropped to
+ * fill one looked like it was bleeding past its edges rather than sitting
+ * inside a card. Fixing the aspect fixes the bleed: the grid is sized from
+ * the available HEIGHT (3:2 for three columns and two rows) and centred,
+ * which leaves honest margins instead of distorted cells.
+ *
+ * Borders are `border`, not `ring`. A ring paints outside the element box,
+ * so the top-left card's was clipped by the tile's own rounded corner and
+ * only showed on two sides.
+ *
+ * It sits above the caption strip rather than behind it — the gradient that
+ * keeps the title readable was washing out the bottom row, which is the
+ * other half of why the cards looked like they had no edges.
  */
 function MemoryArt({ samples }) {
   const face = (samples || [])[0]
   if (!face) {
     return <div className="absolute inset-0 bg-gradient-to-br from-accent/30 to-bg-primary" />
   }
-  // Positions of the matched pair in a 3x2 board. Diagonal on purpose —
-  // adjacent cards would read as one wide photo rather than two cards.
+  // Positions of the matched pair. Diagonal on purpose — adjacent, two
+  // copies of one photo read as a single wide image rather than two cards.
   const MATCHED = [0, 4]
   return (
-    <div className="absolute inset-0 grid grid-cols-3 grid-rows-2 gap-1 p-1">
-      {[0, 1, 2, 3, 4, 5].map((i) =>
-        MATCHED.includes(i) ? (
-          <img key={i} src={getBackdropUrl(face)} alt="" draggable={false}
-            className="h-full w-full rounded object-cover ring-1 ring-accent/70" />
-        ) : (
-          <span key={i}
-            className="flex h-full w-full items-center justify-center rounded bg-bg-primary/80 font-display text-base text-text-muted">
-            ?
-          </span>
-        ),
-      )}
+    <div className="absolute inset-0 flex items-center justify-center p-3 pb-12">
+      <div className="grid aspect-[3/2] h-full grid-cols-3 grid-rows-2 gap-1.5">
+        {[0, 1, 2, 3, 4, 5].map((i) =>
+          MATCHED.includes(i) ? (
+            <img key={i} src={getBackdropUrl(face)} alt="" draggable={false}
+              className="h-full w-full rounded-md border-2 border-accent object-cover" />
+          ) : (
+            <span key={i}
+              className="flex h-full w-full items-center justify-center rounded-md border border-text-primary/20 bg-bg-primary/60 font-display text-sm text-text-muted">
+              ?
+            </span>
+          ),
+        )}
+      </div>
     </div>
   )
 }
@@ -79,7 +95,7 @@ function MemoryArt({ samples }) {
  */
 function TriviaArt() {
   return (
-    <div className="absolute inset-0 flex flex-col justify-center gap-2 px-4 sm:px-6">
+    <div className="absolute inset-0 flex flex-col justify-center gap-2 px-4 pb-12 sm:px-6">
       {[0, 1, 2, 3].map((i) => (
         <div key={i} className={`h-2.5 sm:h-3 rounded-full ${
           i === 2 ? 'bg-accent' : 'bg-text-primary/15'
@@ -189,10 +205,10 @@ export default function ArcadeRoom({ onExit }) {
               <button
                 disabled={notReady}
                 onClick={() => setPlaying(g.key)}
-                className={`relative block w-full h-44 sm:h-48 lg:h-56 overflow-hidden bg-bg-secondary group ${notReady ? 'cursor-default' : ''}`}
+                className={`relative block w-full h-52 sm:h-52 lg:h-56 overflow-hidden bg-bg-secondary group ${notReady ? 'cursor-default' : ''}`}
               >
                 <Art samples={allSet?.samples} />
-                <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/20 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-bg-primary via-bg-primary/70 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-1.5 p-2 sm:p-3">
                   <span className="font-display text-lg sm:text-2xl text-text-primary leading-tight truncate">{g.name}</span>
                   {notReady ? (
