@@ -289,7 +289,7 @@ export default function ArcadeRoom({ onExit }) {
               <button
                 key={f.key || 'any'}
                 onClick={() => setBoardSport(f.key)}
-                className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                   boardSport === f.key ? 'bg-accent/15 text-accent' : 'text-text-secondary hover:text-text-primary'
                 }`}
               >
