@@ -729,8 +729,11 @@ router.get('/leaderboard', async (req, res, next) => {
     // change, and a memory best is a memory best.
     const { data: rows, error } = await supabase
       .from('arcade_scores')
-      .select('user_id, score, pairs, moves, informed_misses, duration_ms, created_at, users(username, display_name, avatar_url, avatar_emoji)')
+      .select('id, user_id, score, pairs, moves, informed_misses, duration_ms, created_at, users(username, display_name, avatar_url, avatar_emoji)')
       .eq('game_key', gameKey)
+      // A streak board ranks the RUN: 15 in a row beats 14, whatever
+      // difficulties each happened to draw. Points break the tie.
+      .order(gameKey === TRIVIA_STREAK ? 'pairs' : 'score', { ascending: false })
       .order('score', { ascending: false })
       .order('duration_ms', { ascending: true })
       .limit(500)
@@ -739,6 +742,10 @@ router.get('/leaderboard', async (req, res, next) => {
     // Every round stands on its own — no per-user dedupe.
     const board = (rows || []).slice(0, limit).map((r, i) => ({
       rank: i + 1,
+      // The SCORE row's id, not the user's. One player can hold several
+      // slots now that the per-user dedupe is gone, so user_id is not a
+      // unique identifier for a row and never was a safe React key.
+      id: r.id,
       user_id: r.user_id,
       username: r.users?.username,
       display_name: r.users?.display_name,

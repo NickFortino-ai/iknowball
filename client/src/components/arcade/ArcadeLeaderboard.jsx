@@ -17,7 +17,8 @@ function formatDuration(ms) {
 function subLine(game, row) {
   const time = formatDuration(row.duration_ms)
   if (game === 'trivia_streak') {
-    return row.pairs === 1 ? '1 in a row' : `${row.pairs} in a row`
+    // The headline is the run itself, so the sub-line carries the points.
+    return `${row.pairs === 1 ? '1 in a row' : `${row.pairs} in a row`} · ${row.score} pts`
   }
   if (game === 'trivia') {
     return `${row.moves} of ${row.pairs} correct · ${time}`
@@ -55,8 +56,14 @@ export default function ArcadeLeaderboard({ game = 'memory', variant }) {
     <div className="divide-y divide-text-primary/10">
       {board.map((row) => (
         <div
-          key={row.user_id}
-          className={`flex items-center gap-3 py-2.5 ${data?.me?.user_id === row.user_id ? 'bg-accent/5' : ''}`}
+          // The score row's id. Keying on user_id broke the moment the
+          // per-user dedupe went: one player holds seven of the eight
+          // streak slots, so React saw seven rows claiming the same key and
+          // rendered them unpredictably.
+          key={row.id}
+          // Highlights the caller's BEST row, not every row they own —
+          // otherwise someone holding most of the board lights up all of it.
+          className={`flex items-center gap-3 py-2.5 ${data?.me?.id === row.id ? 'bg-accent/5' : ''}`}
         >
           <span className="w-6 text-center font-mono text-sm text-text-muted">{row.rank}</span>
           <Avatar
@@ -84,7 +91,12 @@ export default function ArcadeLeaderboard({ game = 'memory', variant }) {
               <div className="text-[11px] text-text-muted">{subLine(game, row)}</div>
             )}
           </div>
-          <span className="font-display text-lg tabular-nums text-accent">{row.score}</span>
+          {/* What the board is ABOUT. On a streak board that is the run:
+              showing 150 next to "15 in a row" invites the question of why
+              the two numbers disagree, when one is just the other scored. */}
+          <span className="font-display text-lg tabular-nums text-accent">
+            {game === 'trivia_streak' ? row.pairs : row.score}
+          </span>
         </div>
       ))}
     </div>
