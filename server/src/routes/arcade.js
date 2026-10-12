@@ -20,9 +20,12 @@ const TRIVIA = 'trivia'
 // over a fixed set — and putting them on one table would rank the mode
 // rather than the player.
 const TRIVIA_STREAK = 'trivia_streak'
-// The queue a streak draws from. Long enough that reaching the end is a real
-// achievement rather than a ceiling people bump into.
-const STREAK_QUEUE = 40
+// A streak draws from the WHOLE published pool, not a slice of it. 40 was an
+// arbitrary number of mine, and an arbitrary number is a cap: with 110
+// questions published, "cleared the board" at 40 would have ended a run that
+// could have kept going. buildRound deals what exists and no more, so this
+// ceiling only binds once the pool passes it.
+const STREAK_QUEUE = 500
 
 // Round lengths on offer. A short round is the default commitment and a
 // long one is for someone who wants to sit with it; this list is the single
