@@ -23,7 +23,7 @@ export default function RecordFeedCard({ item, reactions, onUserTap, onRecordTap
          figure already say "record"; a fourth signal in the same two inches
          is decoration rather than information. */
       topBanner={(
-        <div className="text-center pt-1 pb-3">
+        <div className="text-center pt-4 pb-3">
           <span className="font-display text-2xl font-bold text-yellow-500 tracking-tight">
             Record Broken
           </span>
