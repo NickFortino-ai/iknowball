@@ -512,8 +512,8 @@ export default function HubPage() {
         <div className="mb-6 lg:mb-0 lg:w-72 lg:shrink-0 lg:flex lg:pb-3">
           <div className="grid w-full grid-cols-3 gap-1 lg:hidden">
             <RoomButton icon={FeedIcon} label="Feed" iconClass="w-11 h-11" active={hubView === 'feed'} onClick={() => setHubView('feed')} />
-            <RoomButton icon={NewsIcon} label="News" active={hubView === 'news'} onClick={() => setHubView('news')} />
             <RoomButton icon={ArcadeIcon} label="Arcade" active={hubView === 'arcade'} onClick={() => setHubView('arcade')} />
+            <RoomButton icon={NewsIcon} label="News" active={hubView === 'news'} onClick={() => setHubView('news')} />
           </div>
           {/* No border, no fill — the cabinet IS the button. A bordered box
               around art that already has its own outline and glow was two
