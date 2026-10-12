@@ -4,7 +4,7 @@ import { toast } from '../ui/Toast'
 import ArcadeBack from './ArcadeBack'
 import ResultBoard from './ResultBoard'
 import TriviaStreak from './TriviaStreak'
-import { sportLabel, orderSports } from './sports'
+import { sportLabel, orderSports, sportBackdrop } from './sports'
 import { useMemoryVariants } from '../../hooks/useArcade'
 
 /**
@@ -162,20 +162,55 @@ export default function TriviaGame({ variant = 'all', onExit }) {
              we happen to hold is our business, not a fact the player needs
              in order to choose a category. */
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {[{ key: 'all' }, ...orderSports(arcadeMeta.trivia.sports)].map((s) => (
-              <button
-                key={s.key}
-                onClick={() => setSport(s.key)}
-                className={`rounded-xl border bg-bg-primary/50 backdrop-blur-sm px-3 py-3 text-sm font-semibold transition-colors ${
-                  sport === s.key ? 'border-accent text-accent' : 'border-text-primary/20 text-text-primary hover:border-text-primary/40'
-                }`}
-              >
-                {sportLabel(s.key)}
-              </button>
-            ))}
+            {[{ key: 'all' }, ...orderSports(arcadeMeta.trivia.sports)].map((s) => {
+              const bg = sportBackdrop(s.key)
+              const picked = sport === s.key
+              return (
+                <button
+                  key={s.key}
+                  onClick={() => setSport(s.key)}
+                  className={`relative overflow-hidden rounded-xl border px-3 py-5 text-sm font-semibold transition-all hover:scale-[1.02] ${
+                    bg ? '' : 'bg-bg-primary/50 backdrop-blur-sm'
+                  } ${
+                    picked
+                      ? 'border-accent ring-1 ring-accent'
+                      : 'border-text-primary/20 hover:border-text-primary/40'
+                  }`}
+                  style={bg ? {
+                    backgroundImage: `url(${bg})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  } : undefined}
+                >
+                  {/* Scrim, as on the Props tiles — the art is photographic
+                      and the label has to stay readable over any of it. The
+                      chosen tile lifts its scrim so the picture reads
+                      brighter, which is the selection cue doing a second job
+                      rather than relying on the ring alone. */}
+                  {bg && (
+                    <div className={`absolute inset-0 pointer-events-none bg-gradient-to-t transition-opacity ${
+                      picked
+                        ? 'from-black/55 via-black/25 to-black/10'
+                        : 'from-black/80 via-black/55 to-black/35'
+                    }`} />
+                  )}
+                  <span className={`relative block leading-tight ${
+                    bg ? 'text-white drop-shadow-lg' : picked ? 'text-accent' : 'text-text-primary'
+                  }`}>
+                    {sportLabel(s.key)}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         )}
-        <div className="flex gap-2">
+
+        {/* Two different questions are being asked on this screen — WHICH
+            sport, then WHICH KIND of round — and without a break they read
+            as one run of six interchangeable buttons. A hairline is enough
+            to separate them; a heading each would be louder than the
+            distinction deserves. */}
+        <div className="border-t border-text-primary/10 pt-4 flex gap-2">
           {COUNTS.map((n) => (
             <button
               key={n}
@@ -188,16 +223,18 @@ export default function TriviaGame({ variant = 'all', onExit }) {
           ))}
         </div>
 
-        {/* The third way to play, set apart because it is a different shape
-            of round rather than a different length — and it carries its own
-            rules, which a bare "Streak" next to two numbers would hide. */}
+        {/* The third way to play. It used to wear the accent, which on THIS
+            screen already means "selected" — the chosen sport is bordered
+            and lettered in accent — so one colour was saying two things and
+            Streak read as though it were already picked. It is a button like
+            the other two; its second line is what makes it different. */}
         <button
           onClick={() => setMode('streak')}
           disabled={busy}
-          className="w-full rounded-xl border border-accent/60 py-3 text-accent transition-colors hover:bg-accent/10 disabled:opacity-40"
+          className="w-full rounded-xl border border-text-primary/20 bg-bg-primary/50 backdrop-blur-sm py-3 text-text-primary transition-colors hover:border-accent hover:bg-accent/10 disabled:opacity-40"
         >
           <span className="block text-sm font-semibold">Streak</span>
-          <span className="block text-[11px] font-normal opacity-80">
+          <span className="block text-[11px] font-normal text-text-muted">
             Until you miss one · 20 seconds a question
           </span>
         </button>
