@@ -713,24 +713,24 @@ router.post('/trivia/finish', async (req, res, next) => {
 router.get('/leaderboard', async (req, res, next) => {
   try {
     const gameKey = String(req.query.game || MEMORY)
-    const variant = String(req.query.variant || 'all')
     const limit = Math.min(parseInt(req.query.limit || '20', 10), 100)
 
-    // ONE board per game, whatever variant the round was played on.
+    // OMITTING `variant` means every round of this game, whatever sport it
+    // drew from. Naming one filters to it.
     //
-    // A round stores the sport it drew from, so filtering on it would put an
-    // NBA trivia score on a table nobody looks at and leave the main board
-    // showing only all-sports rounds. The sport is a filter on the
-    // QUESTIONS, not a separate competition — and with a player base this
-    // size, splitting the table four ways would leave four tables of one.
-    //
-    // Memory has nothing to lose here either: it deals from one deck now, so
-    // the only rows this surfaces are per-sport-set scores from before that
-    // change, and a memory best is a memory best.
-    const { data: rows, error } = await supabase
+    // Note 'all' is a real stored variant, not a wildcard — it is what a
+    // round played on the All Sports pool records. So "every round" has to
+    // be the ABSENCE of the parameter; passing variant=all would return
+    // only the mixed-pool rounds and quietly hide every NBA score.
+    const variant = req.query.variant ? String(req.query.variant) : null
+
+    let query = supabase
       .from('arcade_scores')
       .select('id, user_id, score, pairs, moves, informed_misses, duration_ms, created_at, users(username, display_name, avatar_url, avatar_emoji)')
       .eq('game_key', gameKey)
+    if (variant) query = query.eq('variant', variant)
+
+    const { data: rows, error } = await query
       // A streak board ranks the RUN: 15 in a row beats 14, whatever
       // difficulties each happened to draw. Points break the tie.
       .order(gameKey === TRIVIA_STREAK ? 'pairs' : 'score', { ascending: false })

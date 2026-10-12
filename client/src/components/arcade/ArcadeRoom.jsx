@@ -125,6 +125,19 @@ const GAMES = [
 // One board per game. No aggregate: a high-score table is a record of the
 // best rounds anyone has played, and summing across games only raised the
 // question of how rounds of different lengths and difficulties combine.
+// Sport keys are the app's own; these are what a person calls them.
+const SPORT_LABELS = {
+  americanfootball_nfl: 'NFL',
+  americanfootball_ncaaf: 'NCAAF',
+  basketball_nba: 'NBA',
+  basketball_wnba: 'WNBA',
+  basketball_ncaab: 'NCAAB',
+  baseball_mlb: 'MLB',
+  icehockey_nhl: 'NHL',
+  soccer_usa_mls: 'MLS',
+  all: 'All Sports',
+}
+
 const BOARDS = [
   { key: 'memory', label: 'Memory' },
   { key: 'trivia', label: 'Trivia' },
@@ -137,12 +150,23 @@ const BOARDS = [
 export default function ArcadeRoom({ onExit }) {
   const [playing, setPlaying] = useState(null)   // null | 'memory' | 'trivia'
   const [board, setBoard] = useState('memory')
+  // null means "every round", which is the default view. A sport key filters
+  // to it. Reset when the board changes, or switching from an NBA trivia
+  // board to Streak would silently keep filtering to NBA.
+  const [boardSport, setBoardSport] = useState(null)
   const { data: variantData, isLoading } = useMemoryVariants()
 
   // Every round draws from the whole library. There was a per-sport set
   // picker; choosing one is a decision nobody asked to make before playing a
   // memory game, and it fragmented the leaderboard into a board per set.
   // One deck, one board, and the deal is random every time.
+  // Only trivia is played per sport; memory deals from one deck.
+  const boardHasSports = board === 'trivia' || board === 'trivia_streak'
+  const sportFilters = useMemo(
+    () => (variantData?.trivia?.sports || []).map((s) => ({ key: s.key, label: SPORT_LABELS[s.key] || s.key })),
+    [variantData],
+  )
+
   const allSet = useMemo(
     () => (variantData?.variants || []).find((v) => v.key === 'all') || null,
     [variantData],
@@ -241,15 +265,19 @@ export default function ArcadeRoom({ onExit }) {
       </div>
 
       {/* One board with tabs, not a board per game bolted on as games are
-          added. Overall leads because it's the arcade's own answer to "who
-          is winning"; the per-game tabs are where you go to see why. */}
+          added. The trivia boards take a second row of SPORT filters,
+          because "who knows the most about the NBA" is a more interesting
+          claim than "who is good at trivia" — and in a sports app it is the
+          one people actually want to settle.
+
+          Memory has no sport: it deals from one deck. */}
       <div className="rounded-2xl border border-text-primary/20 bg-bg-primary/40 overflow-hidden min-w-0">
         <div className="px-4 py-3 border-b border-text-primary/10 flex items-center justify-between gap-2 flex-wrap">
           <div className="flex gap-1">
             {BOARDS.map((b) => (
               <button
                 key={b.key}
-                onClick={() => setBoard(b.key)}
+                onClick={() => { setBoard(b.key); setBoardSport(null) }}
                 className={`rounded-lg border bg-bg-primary/50 backdrop-blur-sm px-3 py-1.5 text-xs font-semibold transition-colors ${
                   board === b.key
                     ? 'border-accent text-accent'
@@ -262,8 +290,29 @@ export default function ArcadeRoom({ onExit }) {
           </div>
           <span className="text-[11px] text-text-muted truncate">top 20 scores</span>
         </div>
+
+        {/* Sport filter. "All" is the absence of a filter, NOT the stored
+            variant 'all' — that one is a real value meaning a round played
+            on the mixed pool, so selecting it would hide every NBA score
+            rather than show everything. */}
+        {boardHasSports && sportFilters.length > 1 && (
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar border-b border-text-primary/10 px-4 py-2">
+            {[{ key: null, label: 'All' }, ...sportFilters].map((f) => (
+              <button
+                key={f.key || 'any'}
+                onClick={() => setBoardSport(f.key)}
+                className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                  boardSport === f.key ? 'bg-accent/15 text-accent' : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="px-4">
-          <ArcadeLeaderboard game={board} variant="all" />
+          <ArcadeLeaderboard game={board} variant={boardHasSports ? boardSport : null} />
         </div>
       </div>
     </div>

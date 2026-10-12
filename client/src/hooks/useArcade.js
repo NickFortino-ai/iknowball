@@ -9,11 +9,17 @@ export function useMemoryVariants() {
   })
 }
 
+// `variant` is optional: omit it for every round of the game, pass a sport
+// to filter to it. Note the query is enabled on `game` alone — gating it on
+// variant too would have silently disabled the unfiltered board, which is
+// the default view.
 export function useArcadeLeaderboard(game, variant) {
   return useQuery({
-    queryKey: ['arcade', 'leaderboard', game, variant],
-    queryFn: () => api.get(`/arcade/leaderboard?game=${game}&variant=${encodeURIComponent(variant)}`),
-    enabled: !!game && !!variant,
+    queryKey: ['arcade', 'leaderboard', game, variant ?? 'any'],
+    queryFn: () => api.get(
+      `/arcade/leaderboard?game=${game}${variant ? `&variant=${encodeURIComponent(variant)}` : ''}`,
+    ),
+    enabled: !!game,
     staleTime: 30 * 1000,
   })
 }

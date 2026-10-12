@@ -39,7 +39,7 @@ function subLine(game, row) {
  * game: pairs and time for memory, nothing for trivia, which has no such
  * fields to show.
  */
-export default function ArcadeLeaderboard({ game = 'memory', variant }) {
+export default function ArcadeLeaderboard({ game = 'memory', variant = null }) {
   const { data, isLoading } = useArcadeLeaderboard(game, variant)
   const board = data?.board || []
 
@@ -47,7 +47,7 @@ export default function ArcadeLeaderboard({ game = 'memory', variant }) {
   if (!board.length) {
     return (
       <p className="text-sm text-text-muted py-6 text-center">
-        No scores yet. Be first.
+        {variant ? 'No scores for that sport yet. Be first.' : 'No scores yet. Be first.'}
       </p>
     )
   }
