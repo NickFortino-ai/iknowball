@@ -26,7 +26,7 @@ const ONBOARDING_STEPS = [
     page: '/picks',
     targetSelector: '[data-onboarding="props-tab"]',
     title: 'Set Your Own Line',
-    body: "Open Props and you don't just take the number the book is offering — you move it. Slide the line to where you think the player lands, pick over or under, and the payout scales with how far you went: the bolder the call, the bigger the return. You can stack several bets on the same player at different lines, and the results page shows them as a ladder so you can see exactly where the night actually finished.",
+    body: "Open Props and you don't just take the number the book is offering — you move it. Slide the line to where you think the player lands, pick over or under, and the payout scales with how far you went: the bolder the call, the bigger the return. You can stack several predictions on the same player at different lines, and the results page shows them as a ladder so you can see exactly where the night actually finished.",
     position: 'bottom',
   },
   {

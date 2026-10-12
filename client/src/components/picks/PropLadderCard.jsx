@@ -144,7 +144,7 @@ export default function PropLadderCard({ picks }) {
 
         {settledCount === picks.length && picks.length > 1 && (
           <div className="flex justify-between border-t border-text-primary/10 pt-2 mt-2 text-sm">
-            <span className="text-text-secondary">{picks.length} bets</span>
+            <span className="text-text-secondary">{picks.length} predictions</span>
             <span className={`font-semibold tabular-nums ${
               netPoints > 0 ? 'text-correct' : netPoints < 0 ? 'text-incorrect' : 'text-text-muted'
             }`}>

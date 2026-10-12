@@ -225,7 +225,7 @@ export default function PropSliderCard({
       {held.length > 0 && (
         <div className="mt-4 border-t border-text-primary/10 pt-3">
           <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">
-            {held.length === 1 ? 'Your bet' : `Your ${held.length} bets`}
+            {held.length === 1 ? 'Your prediction' : `Your ${held.length} predictions`}
           </div>
           <div className="space-y-1">
             {held.map((p) => {
