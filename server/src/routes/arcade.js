@@ -43,6 +43,11 @@ const STREAK_QUEUE = 500
 // Timed from when the SERVER handed the question over, because a
 // client-reported clock is the first thing someone looking up an answer
 // would fake. A couple of seconds of slack absorbs the round trip.
+// A sport is only worth offering if it can fill the longest fixed round
+// without repeating itself. Below that it is a category that deals the same
+// handful every time, which is worse than not having it.
+const TRIVIA_MIN_FOR_SPORT = 20
+
 const QUESTION_SECONDS = 20
 const QUESTION_GRACE_MS = 2500
 
@@ -711,11 +716,21 @@ router.get('/leaderboard', async (req, res, next) => {
     const variant = String(req.query.variant || 'all')
     const limit = Math.min(parseInt(req.query.limit || '20', 10), 100)
 
+    // ONE board per game, whatever variant the round was played on.
+    //
+    // A round stores the sport it drew from, so filtering on it would put an
+    // NBA trivia score on a table nobody looks at and leave the main board
+    // showing only all-sports rounds. The sport is a filter on the
+    // QUESTIONS, not a separate competition — and with a player base this
+    // size, splitting the table four ways would leave four tables of one.
+    //
+    // Memory has nothing to lose here either: it deals from one deck now, so
+    // the only rows this surfaces are per-sport-set scores from before that
+    // change, and a memory best is a memory best.
     const { data: rows, error } = await supabase
       .from('arcade_scores')
       .select('user_id, score, pairs, moves, informed_misses, duration_ms, created_at, users(username, display_name, avatar_url, avatar_emoji)')
       .eq('game_key', gameKey)
-      .eq('variant', variant)
       .order('score', { ascending: false })
       .order('duration_ms', { ascending: true })
       .limit(500)
@@ -777,12 +792,31 @@ router.get('/memory/variants', async (_req, res, next) => {
     // own endpoint: the arcade room fetches this once to build its tiles, and
     // a tile that launches into "not enough questions yet" is worse than a
     // tile that says so up front. One integer, one extra count, no round trip.
-    const { count: triviaPublished } = await supabase
+    // Trivia's readiness and its SPORTS ride along on this request rather
+    // than getting their own endpoint: the arcade room fetches this once to
+    // build its tiles, and a sport with four questions in it is a category
+    // that deals the same four every time.
+    const { data: triviaRows } = await supabase
       .from('trivia_questions')
-      .select('id', { count: 'exact', head: true })
+      .select('sport')
       .eq('status', 'published')
 
-    res.json({ variants, pairCounts: PAIR_COUNTS, trivia: { published: triviaPublished || 0 } })
+    const bySport = {}
+    for (const r of triviaRows || []) bySport[r.sport] = (bySport[r.sport] || 0) + 1
+    // A sport is offered only if it can fill the longest round on its own.
+    // Questions tagged 'all' count toward every sport, which is what
+    // buildRound does when it deals.
+    const universal = bySport.all || 0
+    const triviaSports = Object.entries(bySport)
+      .filter(([key, n]) => key !== 'all' && n + universal >= TRIVIA_MIN_FOR_SPORT)
+      .map(([key, n]) => ({ key, count: n + universal }))
+      .sort((a, b) => b.count - a.count)
+
+    res.json({
+      variants,
+      pairCounts: PAIR_COUNTS,
+      trivia: { published: (triviaRows || []).length, sports: triviaSports },
+    })
   } catch (err) {
     next(err)
   }
