@@ -27,6 +27,25 @@ const TRIVIA_STREAK = 'trivia_streak'
 // ceiling only binds once the pool passes it.
 const STREAK_QUEUE = 500
 
+// Seconds to answer one question.
+//
+// You cannot stop someone searching for the answer on a web app — tab-blur
+// detection is beaten by a second phone and punishes an honest person taking
+// a call. A deadline is the instrument that actually works: twenty seconds
+// is comfortable for a fact you know and impractical for a search, read and
+// return.
+//
+// A DEADLINE, not a speed bonus. A bonus rewards haste and pushes people to
+// guess quickly at a question they could have reasoned out; this only bounds
+// the window. The fixed round keeps its separate time bonus, which is scored
+// over the whole round rather than per question.
+//
+// Timed from when the SERVER handed the question over, because a
+// client-reported clock is the first thing someone looking up an answer
+// would fake. A couple of seconds of slack absorbs the round trip.
+const QUESTION_SECONDS = 20
+const QUESTION_GRACE_MS = 2500
+
 // Round lengths on offer. A short round is the default commitment and a
 // long one is for someone who wants to sit with it; this list is the single
 // source of truth, so a third length is one entry here and one more button
@@ -357,9 +376,15 @@ router.post('/trivia/streak/start', async (req, res, next) => {
       .single()
     if (error) throw error
 
+    await supabase.from('arcade_rounds')
+      .update({ payload: { ...round.payload, servedAt: { 0: Date.now() } } })
+      .eq('id', round.id)
+      .then(() => {}, () => {})
+
     res.json({
       roundId: round.id,
       variant,
+      seconds: QUESTION_SECONDS,
       total: questions.length,
       // One question. The next arrives only after this one is answered.
       question: {
@@ -394,7 +419,14 @@ router.post('/trivia/streak/next', async (req, res, next) => {
     // never holds one it has not reached.
     const queue = round.payload?.queue || []
     if (index >= queue.length) return res.json({ question: null })
-    res.json({ question: queue[index] })
+
+    // The clock starts when the question leaves the server.
+    const servedAt = { ...(round.payload?.servedAt || {}), [index]: Date.now() }
+    await supabase.from('arcade_rounds')
+      .update({ payload: { ...round.payload, servedAt } })
+      .eq('id', round.id)
+
+    res.json({ question: queue[index], seconds: QUESTION_SECONDS })
   } catch (err) {
     next(err)
   }
@@ -434,9 +466,19 @@ router.post('/trivia/answer', async (req, res, next) => {
     const given = round.payload?.given || []
     if (given[index] != null) return res.status(409).json({ error: 'That question is already answered' })
 
+    // Out of time counts as wrong, judged on the server's own stamp. A
+    // round with no stamp is one started before the clock existed, or the
+    // fixed mode, which deals every question at once and has no per-question
+    // serve time to measure against — those are untimed.
+    const servedAt = round.payload?.servedAt?.[index]
+    const expired = servedAt != null
+      && Date.now() - servedAt > QUESTION_SECONDS * 1000 + QUESTION_GRACE_MS
+
     const correctIndex = answers[index]
-    const wasRight = choice === correctIndex
-    given[index] = Number.isInteger(choice) ? choice : -1
+    const wasRight = !expired && choice === correctIndex
+    // -1 marks "answered wrongly" for a timeout, so the slot is filled and
+    // the question cannot be retried.
+    given[index] = expired ? -1 : (Number.isInteger(choice) ? choice : -1)
 
     await supabase
       .from('arcade_rounds')
@@ -445,6 +487,7 @@ router.post('/trivia/answer', async (req, res, next) => {
 
     res.json({
       wasRight,
+      expired,
       correctIndex,
       explanation: round.payload?.explanations?.[index] || null,
       // How far they have got without a miss — streak mode ends on the

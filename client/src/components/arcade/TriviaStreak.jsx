@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import ArcadeBack from './ArcadeBack'
 import { toast } from '../ui/Toast'
 import {
@@ -30,6 +30,11 @@ export default function TriviaStreak({ variant = 'all', onExit }) {
   const [feedback, setFeedback] = useState(null)
   const [result, setResult] = useState(null)
   const [busy, setBusy] = useState(false)
+  // Seconds left on the current question. The server is the authority — it
+  // timed the question from when it handed it over — so this is the display
+  // of that clock, not the clock itself.
+  const [secondsLeft, setSecondsLeft] = useState(null)
+  const limit = useRef(20)
   const startedAt = useRef(null)
 
   const startStreak = useStartTriviaStreak()
@@ -37,12 +42,25 @@ export default function TriviaStreak({ variant = 'all', onExit }) {
   const answerTrivia = useAnswerTrivia()
   const finishStreak = useFinishTriviaStreak()
 
+  // Ticks the visible clock and fires one timeout answer when it runs out.
+  // Sending -1 rather than nothing keeps a single code path: the server
+  // judges expiry on its own stamp either way.
+  useEffect(() => {
+    if (!question || feedback || busy) return
+    if (secondsLeft == null) return
+    if (secondsLeft <= 0) { choose(-1); return }
+    const t = setTimeout(() => setSecondsLeft((n) => (n == null ? null : n - 1)), 1000)
+    return () => clearTimeout(t)
+  }, [question, feedback, busy, secondsLeft])
+
   async function deal() {
     setBusy(true)
     try {
       const data = await startStreak.mutateAsync({ variant })
       setRound({ roundId: data.roundId, total: data.total })
+      limit.current = data.seconds || 20
       setQuestion(data.question)
+      setSecondsLeft(limit.current)
       setIndex(0)
       setStreak(0)
       setResult(null)
@@ -65,6 +83,7 @@ export default function TriviaStreak({ variant = 'all', onExit }) {
   async function choose(choiceIndex) {
     if (!round || busy || feedback) return
     setBusy(true)
+    setSecondsLeft(null)
     let verdict
     try {
       verdict = await answerTrivia.mutateAsync({ roundId: round.roundId, index, choice: choiceIndex })
@@ -96,6 +115,7 @@ export default function TriviaStreak({ variant = 'all', onExit }) {
       } else {
         setQuestion(q)
         setIndex(nextIndex)
+        setSecondsLeft(limit.current)
       }
     } catch (err) {
       toast(err.message || 'Could not load the next question', 'error')
@@ -139,6 +159,7 @@ export default function TriviaStreak({ variant = 'all', onExit }) {
           Keep answering until you get one wrong. They start easy and get
           harder the longer you last, and harder questions are worth more.
         </p>
+        <p className="text-xs text-text-muted">20 seconds a question.</p>
         <button
           onClick={deal}
           disabled={busy}
@@ -157,7 +178,19 @@ export default function TriviaStreak({ variant = 'all', onExit }) {
         <ArcadeBack onClick={onExit} label="Quit" />
         {/* The streak IS the score here, so it is the thing on screen —
             there is no question count to show, because there is no end. */}
-        <span className="font-display text-xl text-accent tabular-nums">{streak}</span>
+        <div className="flex items-center gap-3">
+          {secondsLeft != null && (
+            // Red in the last five seconds. Before that the number alone is
+            // enough — a bar that drains the whole time is pressure applied
+            // to someone who is simply reading.
+            <span className={`font-display text-xl tabular-nums ${
+              secondsLeft <= 5 ? 'text-incorrect' : 'text-text-muted'
+            }`}>
+              {secondsLeft}
+            </span>
+          )}
+          <span className="font-display text-xl text-accent tabular-nums">{streak}</span>
+        </div>
       </div>
 
       <p className="font-display text-xl text-text-primary leading-snug">{question?.question}</p>
@@ -183,8 +216,10 @@ export default function TriviaStreak({ variant = 'all', onExit }) {
         })}
       </div>
 
-      {feedback && !feedback.wasRight && feedback.explanation && (
-        <p className="text-xs text-text-muted text-center">{feedback.explanation}</p>
+      {feedback && !feedback.wasRight && (
+        <p className="text-xs text-text-muted text-center">
+          {feedback.expired ? "Out of time. " : ''}{feedback.explanation || ''}
+        </p>
       )}
     </div>
   )
