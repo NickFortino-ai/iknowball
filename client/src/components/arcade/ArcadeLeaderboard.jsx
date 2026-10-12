@@ -7,6 +7,26 @@ function formatDuration(ms) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
+
+/**
+ * The one-line description under a name, in the game's own terms.
+ *
+ * `pairs` is "how big was the round" and `moves` is "how well did it go" for
+ * every game — generic columns that mean something different each time.
+ */
+function subLine(game, row) {
+  const time = formatDuration(row.duration_ms)
+  if (game === 'trivia_streak') {
+    return row.pairs === 1 ? '1 in a row' : `${row.pairs} in a row`
+  }
+  if (game === 'trivia') {
+    return `${row.moves} of ${row.pairs} correct · ${time}`
+  }
+  // Memory. The miss count only appears when there was one.
+  return `${row.pairs} pairs · ${row.moves} moves · ${time}`
+    + (row.informed_misses ? ` · ${row.informed_misses} missed` : '')
+}
+
 /**
  * One game's high scores: the top 20 ROUNDS, not the top 20 players.
  *
@@ -53,20 +73,15 @@ export default function ArcadeLeaderboard({ game = 'memory', variant }) {
               {row.display_name || row.username}
             </div>
             {/* How the score was earned, not just the number — a 740 from 10
-                pairs is a different achievement than a 740 from 6. Four
-                fields wrap to two lines at 375px and the row stops scanning,
-                so phones get the two that describe the achievement and
-                desktop keeps the full breakdown. */}
+                pairs is a different achievement than a 740 from 6.
+
+                Worded per GAME. arcade_scores stores a round's size in
+                `pairs` and its quality in `moves` whatever the game is, so
+                reading them literally described a trivia round as "10 pairs
+                · 5 moves". The columns are generic; the sentence must not
+                be. */}
             {row.pairs != null && (
-              <>
-                <div className="sm:hidden text-[11px] text-text-muted">
-                  {row.pairs} pairs · {formatDuration(row.duration_ms)}
-                </div>
-                <div className="hidden sm:block text-[11px] text-text-muted">
-                  {row.pairs} pairs · {row.moves} moves · {formatDuration(row.duration_ms)}
-                  {row.informed_misses ? ` · ${row.informed_misses} missed` : ''}
-                </div>
-              </>
+              <div className="text-[11px] text-text-muted">{subLine(game, row)}</div>
             )}
           </div>
           <span className="font-display text-lg tabular-nums text-accent">{row.score}</span>

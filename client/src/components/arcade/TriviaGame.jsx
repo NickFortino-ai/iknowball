@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useStartTriviaRound, useFinishTriviaRound, useAnswerTrivia } from '../../hooks/useArcade'
 import { toast } from '../ui/Toast'
 import ArcadeBack from './ArcadeBack'
+import TriviaStreak from './TriviaStreak'
 
 /**
  * Arcade trivia.
@@ -53,6 +54,10 @@ export default function TriviaGame({ variant = 'all', onExit }) {
   // Remembered so "Play again" repeats the length you just played rather
   // than silently dropping you back to the default.
   const [count, setCount] = useState(COUNTS[0])
+  // 'streak' hands the whole screen to the streak component. It is the same
+  // questions in a different shape, so it belongs behind Trivia rather than
+  // as a tile of its own.
+  const [mode, setMode] = useState(null)
 
   async function deal(n = count) {
     setCount(n)
@@ -115,6 +120,10 @@ export default function TriviaGame({ variant = 'all', onExit }) {
     }
   }
 
+  if (mode === 'streak') {
+    return <TriviaStreak variant={variant} autoStart onExit={() => setMode(null)} />
+  }
+
   // ── Intro ─────────────────────────────────────────────────────────────
   if (!round) {
     return (
@@ -140,6 +149,20 @@ export default function TriviaGame({ variant = 'all', onExit }) {
             </button>
           ))}
         </div>
+
+        {/* The third way to play, set apart because it is a different shape
+            of round rather than a different length — and it carries its own
+            rules, which a bare "Streak" next to two numbers would hide. */}
+        <button
+          onClick={() => setMode('streak')}
+          disabled={busy}
+          className="w-full rounded-xl border border-accent/60 py-3 text-accent transition-colors hover:bg-accent/10 disabled:opacity-40"
+        >
+          <span className="block text-sm font-semibold">Streak</span>
+          <span className="block text-[11px] font-normal opacity-80">
+            Until you miss one · 20 seconds a question
+          </span>
+        </button>
       </div>
     )
   }

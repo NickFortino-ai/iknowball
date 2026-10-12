@@ -22,7 +22,7 @@ import {
  */
 const SCREEN = 'space-y-4 max-w-xl mx-auto'
 
-export default function TriviaStreak({ variant = 'all', onExit }) {
+export default function TriviaStreak({ variant = 'all', autoStart = false, onExit }) {
   const [round, setRound] = useState(null)      // { roundId, total }
   const [question, setQuestion] = useState(null)
   const [index, setIndex] = useState(0)
@@ -36,6 +36,9 @@ export default function TriviaStreak({ variant = 'all', onExit }) {
   const [secondsLeft, setSecondsLeft] = useState(null)
   const limit = useRef(20)
   const startedAt = useRef(null)
+  // Guards the auto-deal against StrictMode's double-invoke in development,
+  // which would otherwise open two rounds and abandon one.
+  const dealt = useRef(false)
 
   const startStreak = useStartTriviaStreak()
   const nextQuestion = useNextStreakQuestion()
@@ -52,6 +55,14 @@ export default function TriviaStreak({ variant = 'all', onExit }) {
     const t = setTimeout(() => setSecondsLeft((n) => (n == null ? null : n - 1)), 1000)
     return () => clearTimeout(t)
   }, [question, feedback, busy, secondsLeft])
+
+  // Reached from Trivia's own intro, where the mode was already chosen — so
+  // a second intro would ask the same question twice.
+  useEffect(() => {
+    if (!autoStart || dealt.current || round) return
+    dealt.current = true
+    deal()
+  }, [autoStart, round])
 
   async function deal() {
     setBusy(true)
@@ -149,6 +160,7 @@ export default function TriviaStreak({ variant = 'all', onExit }) {
 
   // ── Intro ─────────────────────────────────────────────────────────────
   if (!round) {
+    if (autoStart) return <p className="text-sm text-text-muted text-center py-8">Dealing…</p>
     return (
       <div className={SCREEN}>
         <div className="flex items-center gap-3">
