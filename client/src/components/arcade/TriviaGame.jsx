@@ -4,6 +4,7 @@ import { toast } from '../ui/Toast'
 import ArcadeBack from './ArcadeBack'
 import ResultBoard from './ResultBoard'
 import TriviaStreak from './TriviaStreak'
+import { sportLabel, orderSports } from './sports'
 import { useMemoryVariants } from '../../hooks/useArcade'
 
 /**
@@ -37,19 +38,6 @@ const SCREEN = 'space-y-4 max-w-xl mx-auto'
 // difficulties are: tapping one deals immediately, so highlighting a
 // default would describe a confirm step that doesn't exist.
 const COUNTS = [10, 20]
-
-// Sport keys are the app's own; these are what a person calls them.
-const SPORT_LABELS = {
-  all: 'All Sports',
-  americanfootball_nfl: 'NFL',
-  americanfootball_ncaaf: 'NCAAF',
-  basketball_nba: 'NBA',
-  basketball_wnba: 'WNBA',
-  basketball_ncaab: 'NCAAB',
-  baseball_mlb: 'MLB',
-  icehockey_nhl: 'NHL',
-  soccer_usa_mls: 'MLS',
-}
 
 export default function TriviaGame({ variant = 'all', onExit }) {
   const [round, setRound] = useState(null)
@@ -174,7 +162,7 @@ export default function TriviaGame({ variant = 'all', onExit }) {
              we happen to hold is our business, not a fact the player needs
              in order to choose a category. */
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {[{ key: 'all' }, ...arcadeMeta.trivia.sports].map((s) => (
+            {[{ key: 'all' }, ...orderSports(arcadeMeta.trivia.sports)].map((s) => (
               <button
                 key={s.key}
                 onClick={() => setSport(s.key)}
@@ -182,7 +170,7 @@ export default function TriviaGame({ variant = 'all', onExit }) {
                   sport === s.key ? 'border-accent text-accent' : 'border-text-primary/20 text-text-primary hover:border-text-primary/40'
                 }`}
               >
-                {SPORT_LABELS[s.key] || s.key}
+                {sportLabel(s.key)}
               </button>
             ))}
           </div>

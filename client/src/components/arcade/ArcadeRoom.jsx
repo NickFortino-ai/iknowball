@@ -3,6 +3,7 @@ import MemoryGame from './MemoryGame'
 import TriviaGame from './TriviaGame'
 import ArcadeLeaderboard from './ArcadeLeaderboard'
 import ArcadeBack from './ArcadeBack'
+import { sportLabel, orderSports } from './sports'
 import { getBackdropUrl } from '../../lib/backdropUrl'
 import { useMemoryVariants } from '../../hooks/useArcade'
 
@@ -125,19 +126,6 @@ const GAMES = [
 // One board per game. No aggregate: a high-score table is a record of the
 // best rounds anyone has played, and summing across games only raised the
 // question of how rounds of different lengths and difficulties combine.
-// Sport keys are the app's own; these are what a person calls them.
-const SPORT_LABELS = {
-  americanfootball_nfl: 'NFL',
-  americanfootball_ncaaf: 'NCAAF',
-  basketball_nba: 'NBA',
-  basketball_wnba: 'WNBA',
-  basketball_ncaab: 'NCAAB',
-  baseball_mlb: 'MLB',
-  icehockey_nhl: 'NHL',
-  soccer_usa_mls: 'MLS',
-  all: 'All Sports',
-}
-
 const BOARDS = [
   { key: 'memory', label: 'Memory' },
   { key: 'trivia', label: 'Trivia' },
@@ -163,7 +151,7 @@ export default function ArcadeRoom({ onExit }) {
   // Only trivia is played per sport; memory deals from one deck.
   const boardHasSports = board === 'trivia' || board === 'trivia_streak'
   const sportFilters = useMemo(
-    () => (variantData?.trivia?.sports || []).map((s) => ({ key: s.key, label: SPORT_LABELS[s.key] || s.key })),
+    () => orderSports(variantData?.trivia?.sports).map((s) => ({ key: s.key, label: sportLabel(s.key) })),
     [variantData],
   )
 
