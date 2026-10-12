@@ -198,30 +198,34 @@ export default function ArcadeRoom({ onExit }) {
           // pretend to be playable.
           const notReady = g.key === 'trivia' && !isLoading && (variantData?.trivia?.published || 0) < 2
           return (
-            <div key={g.key} className="rounded-2xl border border-text-primary/20 bg-bg-primary/40 overflow-hidden min-w-0">
-              {/* The art is the button. A tile you can tap anywhere reads as
-                  an activity; a tile with a small Play link reads as a list
-                  item that happens to have a picture. */}
-              <button
-                disabled={notReady}
-                onClick={() => setPlaying(g.key)}
-                className={`relative block w-full h-52 sm:h-52 lg:h-56 overflow-hidden bg-bg-secondary group ${notReady ? 'cursor-default' : ''}`}
-              >
+            /* The WHOLE card is the button — art, name and copy. A Play pill
+               in the corner was a smaller target inside a bigger one that
+               already worked, and it made the tile read as a list item that
+               happens to have a picture rather than as a thing you press.
+               "Soon" stays: that is information about availability, not an
+               action, and it is the one case where the card does nothing. */
+            <button
+              key={g.key}
+              disabled={notReady}
+              onClick={() => setPlaying(g.key)}
+              className={`group block w-full overflow-hidden rounded-2xl border bg-bg-primary/40 text-left min-w-0 transition-colors ${
+                notReady
+                  ? 'border-text-primary/20 cursor-default'
+                  : 'border-text-primary/20 hover:border-accent/60'
+              }`}
+            >
+              <div className="relative h-52 sm:h-52 lg:h-56 overflow-hidden bg-bg-secondary">
                 <Art samples={allSet?.samples} />
                 <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-bg-primary via-bg-primary/70 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-1.5 p-2 sm:p-3">
-                  <span className="font-display text-lg sm:text-2xl text-text-primary leading-tight truncate">{g.name}</span>
-                  {notReady ? (
+                  <span className="font-display text-xl sm:text-2xl text-text-primary leading-tight truncate">{g.name}</span>
+                  {notReady && (
                     <span className="rounded-lg border border-text-primary/20 px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-semibold text-text-muted shrink-0">
                       Soon
                     </span>
-                  ) : (
-                    <span className="rounded-lg bg-accent px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-semibold text-white shrink-0 group-hover:brightness-110">
-                      Play
-                    </span>
                   )}
                 </div>
-              </button>
+              </div>
 
               <div className="p-2.5 sm:p-3 space-y-2 min-w-0">
                 <p className="text-[11px] sm:text-xs text-text-secondary">{g.blurb}</p>
@@ -231,7 +235,7 @@ export default function ArcadeRoom({ onExit }) {
                   {notReady ? 'Written, waiting on review.' : g.detail}
                 </p>
               </div>
-            </div>
+            </button>
           )
         })}
       </div>

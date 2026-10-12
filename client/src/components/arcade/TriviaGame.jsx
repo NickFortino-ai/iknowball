@@ -165,7 +165,11 @@ export default function TriviaGame({ variant = 'all', onExit }) {
             enough questions to fill a round. */}
         {(arcadeMeta?.trivia?.sports?.length || 0) > 1 && (
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-            {[{ key: 'all', count: arcadeMeta.trivia.published }, ...arcadeMeta.trivia.sports].map((s) => (
+            {/* Counts decide which sports are OFFERED — a sport that can't
+                fill a round isn't listed — but they aren't shown. How many
+                questions we happen to hold is our business, not a fact the
+                player needs to choose a category. */}
+            {[{ key: 'all' }, ...arcadeMeta.trivia.sports].map((s) => (
               <button
                 key={s.key}
                 onClick={() => setSport(s.key)}
@@ -174,7 +178,6 @@ export default function TriviaGame({ variant = 'all', onExit }) {
                 }`}
               >
                 {SPORT_LABELS[s.key] || s.key}
-                <span className="ml-1.5 font-normal text-text-muted">{s.count}</span>
               </button>
             ))}
           </div>
