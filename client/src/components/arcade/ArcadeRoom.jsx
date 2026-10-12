@@ -106,15 +106,17 @@ const GAMES = [
   },
 ]
 
+// One board per game. No aggregate: a high-score table is a record of the
+// best rounds anyone has played, and summing across games only raised the
+// question of how rounds of different lengths and difficulties combine.
 const BOARDS = [
-  { key: 'overall', label: 'Overall' },
   { key: 'memory', label: 'Memory' },
   { key: 'trivia', label: 'Trivia' },
 ]
 
 export default function ArcadeRoom({ onExit }) {
   const [playing, setPlaying] = useState(null)   // null | 'memory' | 'trivia'
-  const [board, setBoard] = useState('overall')
+  const [board, setBoard] = useState('memory')
   const { data: variantData, isLoading } = useMemoryVariants()
 
   // Every round draws from the whole library. There was a per-sport set
@@ -234,9 +236,7 @@ export default function ArcadeRoom({ onExit }) {
               </button>
             ))}
           </div>
-          <span className="text-[11px] text-text-muted truncate">
-            {board === 'overall' ? 'best round in each game, added up' : 'best round'}
-          </span>
+          <span className="text-[11px] text-text-muted truncate">top 20 scores</span>
         </div>
         <div className="px-4">
           <ArcadeLeaderboard game={board} variant="all" />

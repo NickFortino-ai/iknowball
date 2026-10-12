@@ -406,61 +406,19 @@ router.post('/trivia/finish', async (req, res, next) => {
   }
 })
 
-// Leaderboard for one game + variant: each player's BEST round, not every
-// round they have ever played — otherwise one person fills the board.
+// High scores for one game: the top 20 ROUNDS, arcade-cabinet style.
 //
-// game='overall' instead ranks the arcade as a whole: a player's best round
-// in EACH game, added up.
-//
-// Best-per-game rather than every-point-ever on purpose. Summing all rounds
-// would rank by how much someone has played, which makes the board a
-// stopwatch rather than a scoreboard and is unbeatable for anyone arriving
-// late. Best-per-game rewards breadth — playing both beats grinding one —
-// and stays the same measure the per-game tabs use, so a player can see
-// exactly which number of theirs is carried up into the total.
+// Not the top 20 PLAYERS. The same person can hold several slots, because
+// that is what a high-score table is — a record of the best games anyone has
+// played, not a ranking of who is best on average. It also sidesteps the
+// question that made cumulative scoring awkward: with no aggregation there
+// is nothing to decide about how rounds of different lengths or difficulties
+// combine. One round, one score, one row.
 router.get('/leaderboard', async (req, res, next) => {
   try {
     const gameKey = String(req.query.game || MEMORY)
     const variant = String(req.query.variant || 'all')
-    const limit = Math.min(parseInt(req.query.limit || '25', 10), 100)
-
-    if (gameKey === 'overall') {
-      // Across every game AND every variant: a memory best is a memory best
-      // whichever image set it was set on.
-      const rows = await fetchAll(
-        supabase
-          .from('arcade_scores')
-          .select('user_id, game_key, score, created_at, users(username, display_name, avatar_url, avatar_emoji)')
-          .order('user_id')
-      )
-
-      const byUser = new Map()
-      for (const r of rows) {
-        let u = byUser.get(r.user_id)
-        if (!u) {
-          u = { user: r.users, best: {} }
-          byUser.set(r.user_id, u)
-        }
-        if (!(u.best[r.game_key] >= r.score)) u.best[r.game_key] = r.score
-      }
-
-      const board = [...byUser.entries()]
-        .map(([userId, u]) => ({
-          user_id: userId,
-          username: u.user?.username,
-          display_name: u.user?.display_name,
-          avatar_url: u.user?.avatar_url,
-          avatar_emoji: u.user?.avatar_emoji,
-          score: Object.values(u.best).reduce((a, b) => a + b, 0),
-          breakdown: u.best,
-        }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, limit)
-        .map((r, i) => ({ rank: i + 1, ...r }))
-
-      const mine = board.find((b) => b.user_id === req.user.id) || null
-      return res.json({ game: 'overall', variant: null, board, me: mine })
-    }
+    const limit = Math.min(parseInt(req.query.limit || '20', 10), 100)
 
     const { data: rows, error } = await supabase
       .from('arcade_scores')
@@ -472,12 +430,8 @@ router.get('/leaderboard', async (req, res, next) => {
       .limit(500)
     if (error) throw error
 
-    // Best per user. Rows arrive best-first, so the first one seen wins.
-    const bestByUser = new Map()
-    for (const r of rows || []) {
-      if (!bestByUser.has(r.user_id)) bestByUser.set(r.user_id, r)
-    }
-    const board = [...bestByUser.values()].slice(0, limit).map((r, i) => ({
+    // Every round stands on its own — no per-user dedupe.
+    const board = (rows || []).slice(0, limit).map((r, i) => ({
       rank: i + 1,
       user_id: r.user_id,
       username: r.users?.username,
@@ -492,6 +446,8 @@ router.get('/leaderboard', async (req, res, next) => {
       created_at: r.created_at,
     }))
 
+    // The caller's best entry ON this board, so the UI can highlight where
+    // they sit when they hold more than one slot.
     const mine = board.find((b) => b.user_id === req.user.id) || null
     res.json({ game: gameKey, variant, board, me: mine })
   } catch (err) {
