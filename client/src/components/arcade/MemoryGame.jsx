@@ -3,6 +3,7 @@ import { getBackdropUrl } from '../../lib/backdropUrl'
 import { useStartMemoryRound, useFinishMemoryRound } from '../../hooks/useArcade'
 import { toast } from '../ui/Toast'
 import ArcadeBack from './ArcadeBack'
+import ResultBoard from './ResultBoard'
 
 /**
  * Memory, played on IKB's own backdrop library.
@@ -291,6 +292,8 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
           <button onClick={() => deal(difficulty)} className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white">Play again</button>
           <button onClick={reset} className="rounded-xl border border-text-primary/20 px-5 py-2.5 text-sm font-semibold text-text-secondary">Change difficulty</button>
         </div>
+
+        <ResultBoard game="memory" />
       </div>
     )
   }

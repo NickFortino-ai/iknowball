@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import ArcadeBack from './ArcadeBack'
+import ResultBoard from './ResultBoard'
 import { toast } from '../ui/Toast'
 import {
   useStartTriviaStreak,
@@ -154,6 +155,8 @@ export default function TriviaStreak({ variant = 'all', autoStart = false, onExi
           </button>
           <button onClick={onExit} className="rounded-xl border border-text-primary/20 px-5 py-2.5 text-sm font-semibold text-text-secondary">Done</button>
         </div>
+
+        <ResultBoard game="trivia_streak" />
       </div>
     )
   }

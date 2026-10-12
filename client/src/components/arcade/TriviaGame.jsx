@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useStartTriviaRound, useFinishTriviaRound, useAnswerTrivia } from '../../hooks/useArcade'
 import { toast } from '../ui/Toast'
 import ArcadeBack from './ArcadeBack'
+import ResultBoard from './ResultBoard'
 import TriviaStreak from './TriviaStreak'
 
 /**
@@ -213,6 +214,8 @@ export default function TriviaGame({ variant = 'all', onExit }) {
           <button onClick={() => deal(count)} className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white">Play again</button>
           <button onClick={onExit} className="rounded-xl border border-text-primary/20 px-5 py-2.5 text-sm font-semibold text-text-secondary">Done</button>
         </div>
+
+        <ResultBoard game="trivia" />
       </div>
     )
   }
