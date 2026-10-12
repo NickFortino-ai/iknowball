@@ -362,6 +362,13 @@ router.post('/trivia/streak/start', async (req, res, next) => {
           questionIds: questions.map((q) => q.id || null),
           difficulties: questions.map((q) => q.difficulty ?? 2),
           given: [],
+          // The clock on the first question starts here, with the insert.
+          // It used to be a follow-up update spreading `round.payload` — but
+          // the insert selects only `id`, so that spread was undefined and
+          // the update replaced the whole payload with a lone timestamp.
+          // Every answer and the entire queue were wiped, and the first
+          // answer came back "No such question in this round".
+          servedAt: { 0: Date.now() },
           // The dealt queue, WITHOUT the answers. buildRound shuffles each
           // question's choices per round and the stored answer index refers
           // to that shuffled order — so re-reading the question from the
@@ -375,11 +382,6 @@ router.post('/trivia/streak/start', async (req, res, next) => {
       .select('id')
       .single()
     if (error) throw error
-
-    await supabase.from('arcade_rounds')
-      .update({ payload: { ...round.payload, servedAt: { 0: Date.now() } } })
-      .eq('id', round.id)
-      .then(() => {}, () => {})
 
     res.json({
       roundId: round.id,
