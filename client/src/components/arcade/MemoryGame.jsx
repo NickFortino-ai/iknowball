@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { getBackdropUrl } from '../../lib/backdropUrl'
 import { useStartMemoryRound, useFinishMemoryRound } from '../../hooks/useArcade'
 import { toast } from '../ui/Toast'
+import { triggerHaptic } from '../../lib/haptics'
 import ArcadeBack from './ArcadeBack'
 import ResultBoard from './ResultBoard'
 
@@ -59,6 +60,10 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
   const [startedAt, setStartedAt] = useState(null)
   const [result, setResult] = useState(null)
   const [busy, setBusy] = useState(false)
+  // The beat between clearing the board and seeing the score. Without it the
+  // result screen replaced the board on the same frame as the final match —
+  // the moment you won was the moment the thing you won at vanished.
+  const [celebrating, setCelebrating] = useState(false)
 
   // Every card id the player has ever had face-up. This is what makes a miss
   // "informed": flipping a card you have never seen is information gathering,
@@ -85,6 +90,7 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
   const reset = useCallback(() => {
     setRound(null); setFlipped([]); setMatched(new Set())
     setMoves(0); setInformedMisses(0); setStartedAt(null); setResult(null)
+    setCelebrating(false)
     seen.current = new Set()
     recallCounted.current = new Set()
     setRecall({ chances: 0, hits: 0 })
@@ -102,7 +108,7 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
       // this stays correct if the picker ever becomes reachable mid-round.
       setRound({ ...data, difficulty: diff })
       setFlipped([]); setMatched(new Set()); setMoves(0); setInformedMisses(0)
-      setResult(null)
+      setResult(null); setCelebrating(false)
       setStartedAt(Date.now())
     } catch (err) {
       toast(err.message || 'Could not start a round', 'error')
@@ -124,7 +130,7 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
   }
 
   function handleFlip(card) {
-    if (!round || result) return
+    if (!round || result || celebrating) return
     if (Date.now() < lockUntil.current) return          // mid-peek
     if (matched.has(card.id)) return
     if (flipped.includes(card.id)) return
@@ -176,7 +182,13 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
       setMatched(nextMatched)
       setFlipped([])
       if (nextMatched.size === round.cards.length) {
-        submit(nextMoves, informedMisses, nextRecall)
+        // Board cleared. Hold it on screen for a moment first — a haptic and
+        // the whole grid lit up — then show the score. Long enough to register
+        // that you finished, short enough not to be waiting for a screen you
+        // have already earned.
+        setCelebrating(true)
+        triggerHaptic('Heavy')
+        setTimeout(() => submit(nextMoves, informedMisses, nextRecall), 1400)
       }
       return
     }
@@ -303,11 +315,18 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between text-sm">
         <ArcadeBack onClick={reset} label="Quit" />
-        <div className="flex items-center gap-4 text-text-secondary">
-          <span>{matched.size / 2}/{round.pairs}</span>
-          <span className="text-text-muted">{moves} moves</span>
-          <Timer startedAt={startedAt} running={!result} />
-        </div>
+        {celebrating ? (
+          // Says the thing out loud for the second the board is held. The
+          // clock stops here too — it stopped when the last pair matched,
+          // and watching it keep running would undercut the moment.
+          <span className="font-display text-lg text-correct">Board cleared</span>
+        ) : (
+          <div className="flex items-center gap-4 text-text-secondary">
+            <span>{matched.size / 2}/{round.pairs}</span>
+            <span className="text-text-muted">{moves} moves</span>
+            <Timer startedAt={startedAt} running={!result} />
+          </div>
+        )}
       </div>
 
       <div className={`grid ${cols} gap-2 -mx-2 sm:mx-auto`} style={{ maxWidth: boardMaxWidth }}>
@@ -320,7 +339,9 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
               onClick={() => handleFlip(card)}
               aria-label={isUp ? card.label : 'Hidden card'}
               className={`relative aspect-square rounded-lg overflow-hidden border transition-all ${
-                isMatched
+                celebrating
+                  ? 'border-correct scale-[0.97] opacity-100'
+                  : isMatched
                   ? 'border-correct/60 opacity-60'
                   : isUp
                   ? 'border-accent'
