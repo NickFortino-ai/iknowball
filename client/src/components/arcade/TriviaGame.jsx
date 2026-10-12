@@ -164,16 +164,21 @@ export default function TriviaGame({ variant = 'all', onExit }) {
             would be. It appears on its own the moment a second sport has
             enough questions to fill a round. */}
         {(arcadeMeta?.trivia?.sports?.length || 0) > 1 && (
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-            {/* Counts decide which sports are OFFERED — a sport that can't
-                fill a round isn't listed — but they aren't shown. How many
-                questions we happen to hold is our business, not a fact the
-                player needs to choose a category. */}
+          {/* A grid that WRAPS, not a scroller. This screen is an intro with
+              nothing under it, so there is no reason to hide half the sports
+              off the right edge and make someone drag to find them — the
+              page has the room to show every choice at once.
+
+              Counts decide which sports are OFFERED — a sport that can't
+              fill a round isn't listed — but they aren't shown. How many
+              questions we happen to hold is our business, not a fact the
+              player needs in order to choose a category. */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {[{ key: 'all' }, ...arcadeMeta.trivia.sports].map((s) => (
               <button
                 key={s.key}
                 onClick={() => setSport(s.key)}
-                className={`shrink-0 rounded-lg border bg-bg-primary/50 backdrop-blur-sm px-3 py-1.5 text-xs font-semibold transition-colors ${
+                className={`rounded-xl border bg-bg-primary/50 backdrop-blur-sm px-3 py-3 text-sm font-semibold transition-colors ${
                   sport === s.key ? 'border-accent text-accent' : 'border-text-primary/20 text-text-primary hover:border-text-primary/40'
                 }`}
               >
