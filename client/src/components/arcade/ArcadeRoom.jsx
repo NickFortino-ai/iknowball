@@ -117,8 +117,13 @@ const GAMES = [
   {
     key: 'trivia',
     name: 'Trivia',
-    blurb: 'Sports history, easiest first.',
-    detail: 'Keep answering until you miss one.',
+    // The blurb carries the hook, because `detail` below is hidden until xl —
+    // on a phone this line is the whole pitch. It used to describe the
+    // library ("Sports history, easiest first"), which said what the
+    // questions are rather than what you do with them. Now that a streak is
+    // the only way to play, the thing to ask is how far you can get.
+    blurb: 'How long can you keep a streak of right answers going?',
+    detail: 'Sports history, easiest first — and harder the longer you last.',
     art: TriviaArt,
   },
 ]
