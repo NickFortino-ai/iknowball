@@ -292,7 +292,23 @@ export async function buildRound({ sport = 'all', count = 8, includeGenerated = 
     .select('id, sport, question, choices, answer_index, explanation, difficulty')
     .eq('status', 'published')
   if (sport !== 'all') q = q.in('sport', [sport, 'all'])
-  const { data: authored } = await q.limit(400)
+  // Paged, not capped. This was `.limit(400)` with no .order(), which was
+  // fine at 440 questions and stops being fine the moment the library grows:
+  // at 550 the "All Sports" pool would quietly draw from 400 of them, and
+  // without an ORDER BY the 150 left out are whichever rows Postgres returns
+  // last — the same ones every time, so they would simply never be asked.
+  // Per-sport variants never hit it, so the mode most people play would have
+  // been the only one affected.
+  //
+  // An explicit .order('id') makes the paging deterministic; the shuffle
+  // below is what makes the round random, not the read.
+  const authored = []
+  for (let from = 0; ; from += 1000) {
+    const { data: page, error } = await q.order('id').range(from, from + 999)
+    if (error) { logger.error({ error }, 'Trivia pool read failed'); break }
+    authored.push(...(page || []))
+    if (!page || page.length < 1000) break
+  }
 
   for (const a of shuffle(authored || [])) {
     if (questions.length >= count) break
