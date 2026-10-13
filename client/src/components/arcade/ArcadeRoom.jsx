@@ -118,7 +118,7 @@ const GAMES = [
     key: 'trivia',
     name: 'Trivia',
     blurb: 'Sports history, easiest first.',
-    detail: '10, 20, or go until you miss one.',
+    detail: 'Keep answering until you miss one.',
     art: TriviaArt,
   },
 ]
@@ -126,13 +126,19 @@ const GAMES = [
 // One board per game. No aggregate: a high-score table is a record of the
 // best rounds anyone has played, and summing across games only raised the
 // question of how rounds of different lengths and difficulties combine.
+//
+// Trivia reads the trivia_streak table because a streak
+// is now the only way trivia is played — the 10 and 20 question rounds are
+// gone, so "longest streak" IS the trivia leaderboard and a second tab would
+// name a mode that no longer has an alternative.
+//
+// The seven old `trivia` rows are deleted separately
+// (docs/delete-fixed-length-trivia-scores.sql). They were set under rules
+// nobody can play under any more, so leaving them would be a board with a
+// closed entry list.
 const BOARDS = [
   { key: 'memory', label: 'Memory' },
-  { key: 'trivia', label: 'Trivia' },
-  // Streak is a MODE of trivia, not a separate game — but it keeps its own
-  // table, because "how far you got" and "how well you did over 20" are
-  // different units and one board would rank the mode rather than the player.
-  { key: 'trivia_streak', label: 'Streak' },
+  { key: 'trivia_streak', label: 'Trivia' },
 ]
 
 export default function ArcadeRoom({ onExit }) {
@@ -149,7 +155,7 @@ export default function ArcadeRoom({ onExit }) {
   // memory game, and it fragmented the leaderboard into a board per set.
   // One deck, one board, and the deal is random every time.
   // Only trivia is played per sport; memory deals from one deck.
-  const boardHasSports = board === 'trivia' || board === 'trivia_streak'
+  const boardHasSports = board === 'trivia_streak'
   const sportFilters = useMemo(
     () => orderSports(variantData?.trivia?.sports).map((s) => ({ key: s.key, label: sportLabel(s.key) })),
     [variantData],

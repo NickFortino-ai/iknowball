@@ -141,41 +141,37 @@ export default function TriviaGame({ variant = 'all', onExit }) {
           <h3 className="font-display text-lg text-text-primary">Trivia</h3>
         </div>
         <p className="text-sm text-text-secondary">
-          Sports history, easiest first. Harder questions are worth more, and
-          answering fast adds a bonus — but a right answer always beats a
-          quick one.
+          Pick a sport and keep answering until you miss one. They start easy
+          and get harder the longer you last. Harder questions are worth more,
+          and answering fast adds a bonus — but a right answer always beats a
+          quick one. 20 seconds a question.
         </p>
 
-        {/* Only shown when there is a choice to make. A lone "All Sports"
-            chip beside one sport is a control that does nothing, and with
-            every question currently tagged NFL that is exactly what it
-            would be. It appears on its own the moment a second sport has
-            enough questions to fill a round. */}
-        {(arcadeMeta?.trivia?.sports?.length || 0) > 1 && (
-          /* A grid that WRAPS, not a scroller. This screen is an intro with
-             nothing under it, so there is no reason to hide half the sports
-             off the right edge and make someone drag to find them — the page
-             has the room to show every choice at once.
+        {/* Tapping a tile DEALS — there is no second step. Trivia used to ask
+            twice, once for the sport and again for the length, and with the
+            fixed-length rounds gone the only thing left to choose is the
+            sport. So the sport tile is the Start button.
 
-             Counts decide which sports are OFFERED — a sport that can't fill
-             a round isn't listed — but they aren't shown. How many questions
-             we happen to hold is our business, not a fact the player needs
-             in order to choose a category. */
+            'all' is always offered even when it is the only tile. The grid
+            used to be hidden below two sports, on the grounds that a lone
+            "All Sports" chip beside one sport is a control that does nothing
+            — true when something else started the round, but now hiding it
+            would leave no way to start at all. */}
+        {(
           <div className="grid grid-cols-2 gap-3">
-            {[{ key: 'all' }, ...orderSports(arcadeMeta.trivia.sports)].map((s) => {
+            {(
+              (arcadeMeta?.trivia?.sports?.length || 0) > 1
+                ? [{ key: 'all' }, ...orderSports(arcadeMeta.trivia.sports)]
+                : [{ key: 'all' }]
+            ).map((s) => {
               const bg = sportBackdrop(s.key)
-              const picked = sport === s.key
               return (
                 <button
                   key={s.key}
-                  onClick={() => setSport(s.key)}
+                  onClick={() => { setSport(s.key); setMode('streak') }}
                   className={`relative overflow-hidden rounded-2xl border px-6 py-10 transition-all hover:scale-[1.02] hover:shadow-lg ${
                     bg ? '' : 'bg-bg-primary/50 backdrop-blur-sm'
-                  } ${
-                    picked
-                      ? 'border-accent ring-1 ring-accent'
-                      : 'border-text-primary/20 hover:border-text-primary/40'
-                  }`}
+                  } border-text-primary/20 hover:border-accent`}
                   style={bg ? {
                     backgroundImage: `url(${bg})`,
                     backgroundSize: 'cover',
@@ -188,11 +184,7 @@ export default function TriviaGame({ variant = 'all', onExit }) {
                       brighter, which is the selection cue doing a second job
                       rather than relying on the ring alone. */}
                   {bg && (
-                    <div className={`absolute inset-0 pointer-events-none bg-gradient-to-t transition-opacity ${
-                      picked
-                        ? 'from-black/55 via-black/25 to-black/10'
-                        : 'from-black/80 via-black/55 to-black/35'
-                    }`} />
+                    <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/75 via-black/45 to-black/25" />
                   )}
                   {/* font-display text-3xl matches the Props tiles. "College
                       Football" is far longer than anything Props carries and
@@ -200,7 +192,7 @@ export default function TriviaGame({ variant = 'all', onExit }) {
                       readable, and the grid row stretches so its neighbour
                       matches height rather than the row going ragged. */}
                   <span className={`relative block font-display text-3xl leading-tight ${
-                    bg ? 'text-white drop-shadow-lg' : picked ? 'text-accent' : 'text-text-primary'
+                    bg ? 'text-white drop-shadow-lg' : 'text-text-primary'
                   }`}>
                     {sportLabel(s.key)}
                   </span>
@@ -210,39 +202,6 @@ export default function TriviaGame({ variant = 'all', onExit }) {
           </div>
         )}
 
-        {/* Two different questions are being asked on this screen — WHICH
-            sport, then WHICH KIND of round — and without a break they read
-            as one run of six interchangeable buttons. A hairline is enough
-            to separate them; a heading each would be louder than the
-            distinction deserves. */}
-        <div className="border-t border-text-primary/10 pt-4 flex gap-2">
-          {COUNTS.map((n) => (
-            <button
-              key={n}
-              onClick={() => deal(n)}
-              disabled={busy}
-              className="flex-1 rounded-xl border border-text-primary/20 bg-bg-primary/50 backdrop-blur-sm py-3 text-sm font-semibold text-text-primary transition-colors hover:border-accent hover:bg-accent/10 disabled:opacity-40"
-            >
-              {busy ? 'Dealing…' : `${n} questions`}
-            </button>
-          ))}
-        </div>
-
-        {/* The third way to play. It used to wear the accent, which on THIS
-            screen already means "selected" — the chosen sport is bordered
-            and lettered in accent — so one colour was saying two things and
-            Streak read as though it were already picked. It is a button like
-            the other two; its second line is what makes it different. */}
-        <button
-          onClick={() => setMode('streak')}
-          disabled={busy}
-          className="w-full rounded-xl border border-text-primary/20 bg-bg-primary/50 backdrop-blur-sm py-3 text-text-primary transition-colors hover:border-accent hover:bg-accent/10 disabled:opacity-40"
-        >
-          <span className="block text-sm font-semibold">Streak</span>
-          <span className="block text-[11px] font-normal text-text-muted">
-            Until you miss one · 20 seconds a question
-          </span>
-        </button>
       </div>
     )
   }
