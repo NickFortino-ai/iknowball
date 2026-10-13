@@ -185,7 +185,7 @@ export default function ArcadeRoom({ onExit }) {
             whole published pool, which is what the one variant we have
             means — a per-sport trivia picker waits until there are enough
             published questions per sport to fill a round from one. */}
-        <TriviaGame variant="all" onExit={() => setPlaying(null)} />
+        <TriviaGame onExit={() => setPlaying(null)} />
       </div>
     )
   }

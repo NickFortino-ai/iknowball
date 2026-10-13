@@ -1,304 +1,92 @@
-import { useState, useEffect, useRef } from 'react'
-import { useStartTriviaRound, useFinishTriviaRound, useAnswerTrivia } from '../../hooks/useArcade'
-import { toast } from '../ui/Toast'
+import { useState } from 'react'
 import ArcadeBack from './ArcadeBack'
-import ResultBoard from './ResultBoard'
 import TriviaStreak from './TriviaStreak'
 import { sportLabel, orderSports, sportBackdrop } from './sports'
 import { useMemoryVariants } from '../../hooks/useArcade'
 
 /**
- * Arcade trivia.
+ * Trivia: pick a sport, play a streak.
  *
- * Questions arrive WITHOUT their answers — the server holds those and scores
- * the round, so the answer key is never in the browser.
+ * This component used to BE the game — deal N questions, render them one at a
+ * time, collect answers, score the round, show a review. All of that moved to
+ * TriviaStreak when the 10 and 20 question rounds were removed, and what was
+ * left here could no longer be reached: the only entry point handed the screen
+ * straight to the streak. Around eighty lines of round state, an answer
+ * handler, a timer and a review screen sat behind a condition that was always
+ * false. They are gone; git has them.
  *
- * No per-question reveal. Answers are collected and the whole round is marked
- * at the end, which keeps the clock honest (a reveal pause would otherwise be
- * timed as thinking) and lets the review screen show every question at once.
+ * The server's fixed-length routes are deliberately still live. Clients that
+ * have not updated past the build offering 10 and 20 question rounds keep
+ * calling them.
  */
-function Timer({ startedAt }) {
-  const [, tick] = useState(0)
-  useEffect(() => {
-    const id = setInterval(() => tick((n) => n + 1), 500)
-    return () => clearInterval(id)
-  }, [])
-  const s = Math.floor((Date.now() - startedAt) / 1000)
-  return <span className="tabular-nums">{Math.floor(s / 60)}:{String(s % 60).padStart(2, '0')}</span>
-}
-
-// Every screen holds a readable measure. The arcade room is wide because
-// tiles and a leaderboard want width; trivia is a question and four answers,
-// and at the room's full size a question ran most of a 2000px screen with a
-// Start button spanning the lot.
 const SCREEN = 'space-y-4 max-w-xl mx-auto'
 
-// Round lengths, mirroring the server's TRIVIA_COUNTS. Offered as equal
-// start buttons with none pre-selected — the same reason memory's
-// difficulties are: tapping one deals immediately, so highlighting a
-// default would describe a confirm step that doesn't exist.
-const COUNTS = [10, 20]
-
-export default function TriviaGame({ variant = 'all', onExit }) {
-  const [round, setRound] = useState(null)
-  const [index, setIndex] = useState(0)
-  const [answers, setAnswers] = useState([])
-  const [result, setResult] = useState(null)
-  const [busy, setBusy] = useState(false)
-  // { chosen, wasRight, correctIndex } while the result of an answer is
-  // being shown, null the rest of the time.
-  const [feedback, setFeedback] = useState(null)
-  const startedAt = useRef(null)
-
-  const startTrivia = useStartTriviaRound()
-  const answerTrivia = useAnswerTrivia()
-  const finishTrivia = useFinishTriviaRound()
-
-  // Remembered so "Play again" repeats the length you just played rather
-  // than silently dropping you back to the default.
-  const [count, setCount] = useState(COUNTS[0])
-  // 'streak' hands the whole screen to the streak component. It is the same
-  // questions in a different shape, so it belongs behind Trivia rather than
-  // as a tile of its own.
-  const [mode, setMode] = useState(null)
-  // Which sport's questions to draw from. Threaded through as the round's
-  // `variant`, which the server already uses to filter the pool — the
-  // category existed in the data before it existed on screen.
-  const [sport, setSport] = useState('all')
+export default function TriviaGame({ onExit }) {
+  // One piece of state, because "which sport" and "am I playing" stopped
+  // being different questions the moment a tile became the start button.
+  // null is the picker; a sport key is a streak in progress.
+  const [sport, setSport] = useState(null)
   const { data: arcadeMeta } = useMemoryVariants()
 
-  async function deal(n = count) {
-    setCount(n)
-    setBusy(true)
-    try {
-      const data = await startTrivia.mutateAsync({ variant: sport, count: n })
-      setRound(data)
-      setIndex(0)
-      setAnswers([])
-      setResult(null)
-      startedAt.current = Date.now()
-    } catch (err) {
-      toast(err.message || 'Could not start a round', 'error')
-    } finally {
-      setBusy(false)
-    }
+  if (sport) {
+    return <TriviaStreak variant={sport} autoStart onExit={() => setSport(null)} />
   }
 
-  // Answering is a server round trip now, because the answer key never ships
-  // with the questions. It buys the thing worth having: you find out you
-  // were right while the question is still in front of you, instead of
-  // eight questions later in a summary.
-  async function choose(choiceIndex) {
-    if (!round || busy || feedback) return
-    const next = [...answers]
-    next[index] = choiceIndex
-    setAnswers(next)
-    setBusy(true)
+  // 'all' is always offered, even as the only tile. The grid used to hide
+  // below two sports, on the grounds that a lone "All Sports" tile beside one
+  // sport is a control that does nothing — true when something else started
+  // the round, but now hiding it would leave no way to start at all.
+  const tiles = (arcadeMeta?.trivia?.sports?.length || 0) > 1
+    ? [{ key: 'all' }, ...orderSports(arcadeMeta.trivia.sports)]
+    : [{ key: 'all' }]
 
-    let verdict = null
-    try {
-      verdict = await answerTrivia.mutateAsync({ roundId: round.roundId, index, choice: choiceIndex })
-      setFeedback({ chosen: choiceIndex, ...verdict })
-    } catch {
-      // A failed check must not swallow the round — fall through and let
-      // finish score it from what the server recorded.
-      setBusy(false)
-    }
-
-    // Long enough to register the colour, short enough not to feel like a
-    // wait. Longer when they were wrong, since the right answer is only
-    // worth showing if there is time to read it.
-    if (verdict) await new Promise((r) => setTimeout(r, verdict.wasRight ? 650 : 1400))
-    setFeedback(null)
-
-    if (index + 1 < round.questions.length) {
-      setIndex(index + 1)
-      setBusy(false)
-      return
-    }
-
-    setBusy(true)
-    try {
-      const res = await finishTrivia.mutateAsync({ roundId: round.roundId, answers: next })
-      setResult(res)
-    } catch (err) {
-      toast(err.message || 'Could not save your score', 'error')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  if (mode === 'streak') {
-    return <TriviaStreak variant={sport} autoStart onExit={() => setMode(null)} />
-  }
-
-  // ── Intro ─────────────────────────────────────────────────────────────
-  if (!round) {
-    return (
-      <div className={SCREEN}>
-        <div className="flex items-center gap-3">
-          <ArcadeBack onClick={onExit} />
-          <h3 className="font-display text-lg text-text-primary">Trivia</h3>
-        </div>
-        <p className="text-sm text-text-secondary">
-          Pick a sport and keep answering until you miss one. They start easy
-          and get harder the longer you last. Harder questions are worth more,
-          and answering fast adds a bonus — but a right answer always beats a
-          quick one. 20 seconds a question.
-        </p>
-
-        {/* Tapping a tile DEALS — there is no second step. Trivia used to ask
-            twice, once for the sport and again for the length, and with the
-            fixed-length rounds gone the only thing left to choose is the
-            sport. So the sport tile is the Start button.
-
-            'all' is always offered even when it is the only tile. The grid
-            used to be hidden below two sports, on the grounds that a lone
-            "All Sports" chip beside one sport is a control that does nothing
-            — true when something else started the round, but now hiding it
-            would leave no way to start at all. */}
-        {(
-          <div className="grid grid-cols-2 gap-3">
-            {(
-              (arcadeMeta?.trivia?.sports?.length || 0) > 1
-                ? [{ key: 'all' }, ...orderSports(arcadeMeta.trivia.sports)]
-                : [{ key: 'all' }]
-            ).map((s) => {
-              const bg = sportBackdrop(s.key)
-              return (
-                <button
-                  key={s.key}
-                  onClick={() => { setSport(s.key); setMode('streak') }}
-                  className={`relative overflow-hidden rounded-2xl border px-6 py-10 transition-all hover:scale-[1.02] hover:shadow-lg ${
-                    bg ? '' : 'bg-bg-primary/50 backdrop-blur-sm'
-                  } border-text-primary/20 hover:border-accent`}
-                  style={bg ? {
-                    backgroundImage: `url(${bg})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                  } : undefined}
-                >
-                  {/* Scrim, as on the Props tiles — the art is photographic
-                      and the label has to stay readable over any of it. The
-                      chosen tile lifts its scrim so the picture reads
-                      brighter, which is the selection cue doing a second job
-                      rather than relying on the ring alone. */}
-                  {bg && (
-                    <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/75 via-black/45 to-black/25" />
-                  )}
-                  {/* font-display text-3xl matches the Props tiles. "College
-                      Football" is far longer than anything Props carries and
-                      wraps to two lines at this size; leading-tight keeps that
-                      readable, and the grid row stretches so its neighbour
-                      matches height rather than the row going ragged. */}
-                  <span className={`relative block font-display text-3xl leading-tight ${
-                    bg ? 'text-white drop-shadow-lg' : 'text-text-primary'
-                  }`}>
-                    {sportLabel(s.key)}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-      </div>
-    )
-  }
-
-  // ── Review ────────────────────────────────────────────────────────────
-  if (result) {
-    return (
-      <div className={SCREEN}>
-        <div className="text-center space-y-1">
-          <h3 className="font-display text-2xl text-text-primary">
-            {result.isPersonalBest ? 'New personal best' : 'Round complete'}
-          </h3>
-          <div className="font-display text-5xl text-accent tabular-nums">{result.score}</div>
-          <p className="text-sm text-text-secondary">
-            {result.correctCount}/{result.total} correct
-            {result.breakdown.timeBonus > 0 && ` · +${result.breakdown.timeBonus} for speed`}
-          </p>
-        </div>
-
-        <div className="divide-y divide-text-primary/10">
-          {round.questions.map((q, i) => {
-            const r = result.results[i]
-            return (
-              <div key={i} className="py-3">
-                <div className="flex gap-2">
-                  <span className={`shrink-0 font-bold ${r?.wasRight ? 'text-correct' : 'text-incorrect'}`}>
-                    {r?.wasRight ? '✓' : '✕'}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm text-text-primary">{q.question}</p>
-                    {!r?.wasRight && (
-                      <p className="text-xs text-text-muted mt-1">
-                        You said <span className="text-incorrect">{q.choices[r?.chosen] ?? '—'}</span>
-                        {' · '}Answer: <span className="text-correct">{q.choices[r?.correct]}</span>
-                      </p>
-                    )}
-                    {r?.explanation && (
-                      <p className="text-xs text-text-muted mt-0.5">{r.explanation}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        <div className="flex gap-2 justify-center">
-          <button onClick={() => deal(count)} className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white">Play again</button>
-          <button onClick={onExit} className="rounded-xl border border-text-primary/20 px-5 py-2.5 text-sm font-semibold text-text-secondary">Done</button>
-        </div>
-
-        <ResultBoard game="trivia" />
-      </div>
-    )
-  }
-
-  // ── Question ──────────────────────────────────────────────────────────
-  const q = round.questions[index]
   return (
     <div className={SCREEN}>
-      <div className="flex items-center justify-between text-sm text-text-secondary">
-        <ArcadeBack onClick={onExit} label="Quit" />
-        <div className="flex items-center gap-4">
-          <span>{index + 1}/{round.questions.length}</span>
-          <Timer startedAt={startedAt.current} />
-        </div>
+      <div className="flex items-center gap-3">
+        <ArcadeBack onClick={onExit} />
+        <h3 className="font-display text-lg text-text-primary">Trivia</h3>
       </div>
+      <p className="text-sm text-text-secondary">
+        Pick a sport and keep answering until you miss one. They start easy and
+        get harder the longer you last. Harder questions are worth more, and
+        answering fast adds a bonus — but a right answer always beats a quick
+        one. 20 seconds a question.
+      </p>
 
-      <div className="h-1 rounded-full bg-bg-card overflow-hidden">
-        <div
-          className="h-full bg-accent transition-all"
-          style={{ width: `${((index) / round.questions.length) * 100}%` }}
-        />
-      </div>
-
-      <p className="font-display text-xl text-text-primary leading-snug">{q.question}</p>
-
-      <div className="space-y-2 pb-4 sm:pb-0">
-        {q.choices.map((choice, i) => {
-          // Green on the right answer, red on a wrong one you picked. When
-          // you miss, the right answer lights up too — otherwise the only
-          // thing the moment teaches is that you were wrong.
-          const isChosen = feedback?.chosen === i
-          const isAnswer = feedback && feedback.correctIndex === i
-          const tone = !feedback ? 'border-text-primary/20 text-text-primary hover:border-accent hover:bg-accent/5'
-            : isAnswer ? 'border-correct bg-correct/15 text-text-primary'
-            : isChosen ? 'border-incorrect bg-incorrect/15 text-text-primary'
-            : 'border-text-primary/10 text-text-muted'
+      {/* Tapping a tile DEALS. There is no second step and nothing to confirm,
+          so the tiles carry no selected state. */}
+      <div className="grid grid-cols-2 gap-3">
+        {tiles.map((s) => {
+          const bg = sportBackdrop(s.key)
           return (
-          <button
-            key={i}
-            onClick={() => choose(i)}
-            disabled={busy}
-            className={`w-full rounded-xl border px-4 py-4 sm:py-3 text-left text-sm transition-colors disabled:opacity-100 active:bg-accent/10 ${tone}`}
-          >
-            {choice}
-          </button>
+            <button
+              key={s.key}
+              onClick={() => setSport(s.key)}
+              className={`relative overflow-hidden rounded-2xl border border-text-primary/20 px-6 py-10 transition-all hover:scale-[1.02] hover:border-accent hover:shadow-lg ${
+                bg ? '' : 'bg-bg-primary/50 backdrop-blur-sm'
+              }`}
+              style={bg ? {
+                backgroundImage: `url(${bg})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              } : undefined}
+            >
+              {/* Scrim, as on the Props tiles — the art is photographic and
+                  the label has to stay readable over any of it. */}
+              {bg && (
+                <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/75 via-black/45 to-black/25" />
+              )}
+              {/* font-display text-3xl matches the Props tiles. "College
+                  Football" is longer than anything Props carries and wraps to
+                  two lines at this size; leading-tight keeps that readable and
+                  the grid row stretches, so its neighbour matches height
+                  rather than the row going ragged. */}
+              <span className={`relative block font-display text-3xl leading-tight ${
+                bg ? 'text-white drop-shadow-lg' : 'text-text-primary'
+              }`}>
+                {sportLabel(s.key)}
+              </span>
+            </button>
           )
         })}
       </div>
