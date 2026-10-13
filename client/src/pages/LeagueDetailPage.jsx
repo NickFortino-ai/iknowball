@@ -629,6 +629,19 @@ function GlobalPointsTable({ memberCount, bonusForRank, footnote }) {
 function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournament, bracketEntries, fantasySettings: parentFantasySettings }) {
   const [editingNarrative, setEditingNarrative] = useState(false)
   const [narrativeText, setNarrativeText] = useState('')
+  const [editingName, setEditingName] = useState(false)
+  const [nameText, setNameText] = useState('')
+  // Mirrors what updateLeague will actually ACCEPT, not just who is allowed
+  // to ask. Once a league leaves 'open' the server throws "Cannot update a
+  // league that has already started" for every format except survivor and
+  // pickem, whose name-only edits fall through a permissive branch. Showing
+  // the control anywhere else would be a button that types a new name and
+  // then fails on save.
+  const canRename = isCommissioner && (
+    league.status === 'open' ||
+    league.format === 'survivor' ||
+    league.format === 'pickem'
+  )
   const settings = league.settings || {}
   const isDaily = settings.pick_frequency === 'daily'
   const toggleAutoConnect = useToggleAutoConnect()
@@ -941,6 +954,65 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
 
   return (
     <div className="rounded-xl border border-text-primary/20 p-4 mb-6">
+        {/* Rename. PATCH /leagues/:id has always accepted `name` and
+            updateLeague has always written it — the field simply existed
+            nowhere after creation, so a typo in a league name was permanent
+            without a hand-written UPDATE. Commissioner only, and it sits
+            above the conditions because the name is the first thing anyone
+            reads about a league. */}
+        {canRename && (
+          <div className="mb-4 pb-4 border-b border-text-primary/10">
+            {editingName ? (
+              <div className="space-y-2">
+                <label className="block text-xs text-text-muted">League Name</label>
+                <input
+                  value={nameText}
+                  onChange={(e) => setNameText(e.target.value)}
+                  maxLength={50}
+                  autoFocus
+                  className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+                />
+                {/* The server caps this at 50 (updateLeagueSchema). Showing
+                    the remaining count beats letting a save fail validation
+                    on a name the field happily accepted. */}
+                <p className="text-[10px] text-text-muted">{50 - nameText.length} characters left</p>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => setEditingName(false)} className="text-xs text-text-muted hover:text-text-secondary">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const next = nameText.trim()
+                      if (!next) { toast('A league needs a name', 'error'); return }
+                      if (next === league.name) { setEditingName(false); return }
+                      try {
+                        await updateLeague.mutateAsync({ leagueId: league.id, name: next })
+                        setEditingName(false)
+                        toast('League renamed', 'success')
+                      } catch (err) { toast(err.message || 'Failed', 'error') }
+                    }}
+                    className="text-xs font-semibold text-accent"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-text-muted mb-0.5">League Name</div>
+                  <div className="text-sm text-text-primary break-words">{league.name}</div>
+                </div>
+                <button
+                  onClick={() => { setNameText(league.name || ''); setEditingName(true) }}
+                  className="shrink-0 text-xs font-semibold text-accent hover:text-accent-hover"
+                >
+                  Edit
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         <div>
           <button onClick={toggleCollapsed} className="flex items-center justify-between w-full">
             <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">How this league works</span>
