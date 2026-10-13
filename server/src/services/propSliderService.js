@@ -39,6 +39,17 @@ export const SLIDER_RANGE = 0.33
 // wearing a threshold's clothing, and there is nothing to slide.
 const MULTIPLIERS = [0.5, 0.67, 1.0, 1.33, 1.5]
 
+// NBA markets whose lines carry a points component, and so run in the 15-40
+// range where a half-point step is false precision. See stepFor.
+// rebounds_assists is absent on purpose: its lines sit around 5-12, where a
+// whole-number step would leave too few stops to slide.
+const POINTS_SCALE_MARKETS = new Set([
+  'player_points',
+  'player_points_rebounds_assists',
+  'player_points_rebounds',
+  'player_points_assists',
+])
+
 // Markets absent from this table have no slider. anytime_td, pass_tds and
 // pass_interceptions all measured FLAT (14/14/14, 51/51/51, 52/52/52)
 // because their line never moves off 0.5 or 1.5 — they are binary questions
@@ -93,6 +104,74 @@ const HIT_RATES = {
   player_rush_attempts: [
     { maxLine: Infinity, rates: [0.89, 0.77, 0.48, 0.20, 0.10] },
   ],
+
+  // ── NBA ──────────────────────────────────────────────────────────────
+  //
+  // Measured differently from the NFL markets above, and the difference
+  // matters when reading these numbers.
+  //
+  // The NFL rates come from SETTLED PROPS — real quoted lines with real
+  // outcomes. NBA had only 202 of those, 146 of them points, which is not
+  // enough to cut into three bands without fitting noise. These instead come
+  // from 4,123 player-games in nba_dfs_player_stats, with each player's own
+  // season average standing in for the book's line. Roughly 1,350 rows per
+  // band — more than the NFL markets carry.
+  //
+  // Why the proxy is defensible: every band lands at 0.42-0.46 on the 1.0
+  // anchor, which is the coin flip a book line is supposed to produce. The
+  // 146 real settled points props went over 49%, and the gap to 44% is well
+  // inside the noise on that sample (±8% at 95%). Using each player's median
+  // instead moved the centre further from 0.50, not closer, so the mean is
+  // the better stand-in.
+  //
+  // Games where the player did not appear are excluded: settlement pushes
+  // those and returns the stake, so a DNP is not an under and must not be
+  // counted as one.
+  //
+  // REPLACE THESE with settled-prop measurements once a few weeks of the
+  // 2026-27 season have accumulated, the way the NFL table was built.
+  player_points: [
+    { maxLine: 6.6, rates: [0.63, 0.53, 0.41, 0.29, 0.23] }, // n=1356
+    { maxLine: 13.1, rates: [0.79, 0.68, 0.45, 0.26, 0.19] }, // n=1404
+    { maxLine: Infinity, rates: [0.91, 0.83, 0.47, 0.18, 0.10] }, // n=1363
+  ],
+  player_rebounds: [
+    { maxLine: 2.8, rates: [0.63, 0.58, 0.41, 0.30, 0.25] }, // n=1341
+    { maxLine: 4.7, rates: [0.79, 0.65, 0.44, 0.27, 0.19] }, // n=1345
+    { maxLine: Infinity, rates: [0.88, 0.76, 0.48, 0.20, 0.13] }, // n=1437
+  ],
+  player_assists: [
+    { maxLine: 1.3, rates: [0.50, 0.50, 0.35, 0.28, 0.27] }, // n=1404
+    { maxLine: 2.8, rates: [0.72, 0.59, 0.44, 0.29, 0.23] }, // n=1329
+    { maxLine: Infinity, rates: [0.84, 0.72, 0.46, 0.24, 0.16] }, // n=1365
+  ],
+  player_points_rebounds_assists: [
+    { maxLine: 11.8, rates: [0.68, 0.58, 0.41, 0.27, 0.22] }, // n=1356
+    { maxLine: 21.3, rates: [0.86, 0.76, 0.47, 0.23, 0.14] }, // n=1407
+    { maxLine: Infinity, rates: [0.95, 0.87, 0.49, 0.13, 0.06] }, // n=1360
+  ],
+  player_points_rebounds: [
+    { maxLine: 10.2, rates: [0.67, 0.58, 0.41, 0.28, 0.23] }, // n=1362
+    { maxLine: 18.4, rates: [0.85, 0.74, 0.46, 0.24, 0.14] }, // n=1372
+    { maxLine: Infinity, rates: [0.94, 0.85, 0.49, 0.15, 0.08] }, // n=1389
+  ],
+  player_points_assists: [
+    { maxLine: 8.3, rates: [0.65, 0.55, 0.41, 0.29, 0.23] }, // n=1353
+    { maxLine: 16.4, rates: [0.82, 0.71, 0.46, 0.25, 0.16] }, // n=1418
+    { maxLine: Infinity, rates: [0.93, 0.85, 0.48, 0.16, 0.07] }, // n=1352
+  ],
+  player_rebounds_assists: [
+    { maxLine: 4.6, rates: [0.66, 0.58, 0.42, 0.27, 0.23] }, // n=1342
+    { maxLine: 7.9, rates: [0.84, 0.71, 0.45, 0.24, 0.16] }, // n=1361
+    { maxLine: Infinity, rates: [0.92, 0.81, 0.48, 0.17, 0.09] }, // n=1420
+  ],
+  // player_threes, player_blocks and player_steals are deliberately ABSENT.
+  // All three measured FLAT in their lower bands — threes [0.31, 0.31,
+  // 0.31, ...], blocks [0.13 x5], steals [0.26 x5] — and correctly so: for
+  // a player averaging 0.8 threes, "more than 0.4" and "more than 0.8" are
+  // the same event, made at least one. The price is right and the slider is
+  // pointless, which is exactly why anytime_td is excluded above. The Props
+  // tab still offers all three as ordinary over/under cards.
 }
 
 // The band a prop belongs to, chosen on the BOOK's line — the prop's own
@@ -117,6 +196,23 @@ export function isSlideable(marketKey) {
  */
 function stepFor(marketKey, baseLine) {
   if (/_yds$/.test(marketKey)) return baseLine >= 100 ? 5 : 1
+  // NBA points and points+rebounds+assists step by whole numbers, for the
+  // same reason yardage steps by 5: nobody holds an opinion at half-a-point
+  // resolution on a 25.5 scorer, and at 0.5 the ±33% range offers 34 stops
+  // to drag through. At 1 it offers 17, the same order as a pass-yards
+  // slider.
+  //
+  // Named explicitly rather than keyed off line size. A `baseLine >= 10`
+  // rule reads as the same idea but would also re-step every shipped NFL
+  // attempts market — all 179 pass_attempts lines, all 173 pass_completions
+  // and 178 of 316 rush_attempts sit at 10 or above — moving the stops
+  // under picks already placed against them. Whether those markets want a
+  // coarser step is a fair question, and a separate one.
+  //
+  // Rebounds and assists stay on halves: their lines sit between 2 and 10,
+  // where a whole-number step would leave three or four stops and no real
+  // slider.
+  if (POINTS_SCALE_MARKETS.has(marketKey)) return 1
   return 0.5
 }
 
