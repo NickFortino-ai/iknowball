@@ -122,15 +122,22 @@ export function buildPreStartBlurb(format, fantasySettings, leagueSettings) {
     const livesLine = lives > 1
       ? `You start with ${lives} lives — a miss costs one, and you're out when they're gone.`
       : "One miss and you're out."
+    // Survivor runs daily or weekly, and this blurb is the FIRST thing a
+    // member reads — it was telling a daily pool to pick once a week, which
+    // is not a wording nit but the wrong rules. Every other surface already
+    // branches on pick_frequency (SurvivorView, LeagueInfoModal,
+    // JoinLeagueModal); this module was the one that never got it, which is
+    // why the gear icon read correctly while the rules block did not.
+    const period = leagueSettings?.pick_frequency === 'daily' ? 'day' : 'week'
     return isTouchdown
       ? [
-          'Pick one player each week you think will score a touchdown.',
+          `Pick one player each ${period} you think will score a touchdown.`,
           livesLine,
           'You can only use a player once, so plan ahead.',
           'Last one standing wins.',
         ]
       : [
-          'Pick one team each week you think will win.',
+          `Pick one team each ${period} you think will win.`,
           livesLine,
           'You can only use a team once all season, so plan ahead.',
           'Last one standing wins.',
