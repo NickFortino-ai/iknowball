@@ -15,7 +15,14 @@ import ArcadeLeaderboard from './ArcadeLeaderboard'
  * The finish mutations already invalidate the leaderboard query, so the
  * round that just ended is in the table by the time this paints.
  */
-export default function ResultBoard({ game, variant = 'all' }) {
+// variant defaults to NULL — no filter, every round on the board.
+//
+// It used to default to the string 'all', which for trivia is not "no
+// filter" but a REAL variant: the All Sports pool. TriviaStreak never passed
+// one, so finishing a 12-streak on NFL showed the All Sports board, where
+// the best run was 4. The board looked stale; it was answering a different
+// question.
+export default function ResultBoard({ game, variant = null }) {
   return (
     <div className="mt-6 border-t border-text-primary/10 pt-4 text-left">
       <div className="mb-1 text-[11px] uppercase tracking-wider text-text-muted">High scores</div>

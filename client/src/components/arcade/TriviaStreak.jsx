@@ -140,14 +140,23 @@ export default function TriviaStreak({ variant = 'all', autoStart = false, onExi
   if (result) {
     const perfect = result.streak === result.total
     return (
-      <div className={`${SCREEN} text-center`}>
-        <ArcadeBack onClick={onExit} />
-        <h3 className="font-display text-2xl text-text-primary">
+      // Wider than SCREEN. That measure exists to stop a question and four
+      // answers stretching across a 2000px desktop — this screen is a
+      // number, two buttons and a leaderboard, none of which are prose, and
+      // at max-w-xl the board was a narrow strip down the middle of an empty
+      // page. The back control also sits left rather than centred with
+      // everything else.
+      <div className="space-y-5 max-w-3xl mx-auto text-center">
+        <div className="text-left"><ArcadeBack onClick={onExit} /></div>
+        <h3 className="font-display text-2xl sm:text-3xl text-text-primary">
           {perfect ? 'Cleared the board' : result.streak === 0 ? 'No streak' : 'Streak over'}
         </h3>
-        <div className="font-display text-6xl text-accent tabular-nums">{result.streak}</div>
+        <div className="font-display text-6xl sm:text-7xl text-accent tabular-nums">{result.streak}</div>
+        {/* The streak IS the score — it is what the board ranks and what the
+            big number above already says. Points were a second, quieter
+            number measuring something nobody competes on. */}
         <p className="text-sm text-text-secondary">
-          {result.streak === 1 ? '1 in a row' : `${result.streak} in a row`} · {result.score} points
+          {result.streak === 1 ? '1 in a row' : `${result.streak} in a row`}
         </p>
         <div className="flex gap-2 justify-center pt-2">
           <button onClick={deal} disabled={busy} className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
@@ -156,7 +165,7 @@ export default function TriviaStreak({ variant = 'all', autoStart = false, onExi
           <button onClick={onExit} className="rounded-xl border border-text-primary/20 px-5 py-2.5 text-sm font-semibold text-text-secondary">Done</button>
         </div>
 
-        <ResultBoard game="trivia_streak" />
+        <ResultBoard game="trivia_streak" variant={variant} />
       </div>
     )
   }

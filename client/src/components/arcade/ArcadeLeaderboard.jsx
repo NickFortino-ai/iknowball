@@ -17,8 +17,11 @@ function formatDuration(ms) {
 function subLine(game, row) {
   const time = formatDuration(row.duration_ms)
   if (game === 'trivia_streak') {
-    // The headline is the run itself, so the sub-line carries the points.
-    return `${row.pairs === 1 ? '1 in a row' : `${row.pairs} in a row`} · ${row.score} pts`
+    // Points are gone from the streak screens entirely — the streak is what
+    // the board ranks and what players compete on, and a second number
+    // measuring something nobody chases only invited the question of which
+    // one mattered. The headline is the run; this spells it out in words.
+    return row.pairs === 1 ? '1 in a row' : `${row.pairs} in a row`
   }
   if (game === 'trivia') {
     return `${row.moves} of ${row.pairs} correct · ${time}`
