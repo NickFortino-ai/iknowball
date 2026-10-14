@@ -826,6 +826,13 @@ router.get('/matchup-live', async (req, res) => {
       game_clock: gs.clock || null,
       game_starts_at: gs.kickoff || null,
       opponent: gs.oppAbbrev || null,
+      // Computed sixty lines up and used for the projection, but never sent
+      // until now. The client has always rendered 'BYE' off this flag, and
+      // without it a player on bye fell through to the `!opponent` branch and
+      // got a BLANK line — a row that looked like missing data rather than a
+      // team with no game. The future-week builder below has always included
+      // it, so BYE showed for later weeks and vanished for the current one.
+      on_bye: onBye,
       team_score: gs.teamScore ?? null,
       opp_score: gs.oppScore ?? null,
       is_home: gs.isHome ?? null,
