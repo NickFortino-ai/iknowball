@@ -36,21 +36,28 @@ const SPORT_ORDER = [
   'soccer_usa_mls',
 ]
 
-// The same art the Props tiles use, keyed by the arcade's full sport key
-// rather than the short one Props carries. Shared rather than copied so a
-// sport looks like itself wherever it appears; the files live in
-// client/public/backdrops/props/.
+// Tile art, keyed by the arcade's full sport key. The per-sport images are
+// the same files the Props tiles use — shared rather than copied, so a sport
+// looks like itself wherever it appears.
 //
-// Sports with no entry fall back to a plain bordered tile, which is also
-// the right answer for 'all' — it is a catch-all, not a sport, and has no
-// image that could honestly stand for it.
+// 'all' has its own art rather than a Props file, because it is a catch-all
+// and no single sport's photograph can stand for it. Nick's illustration of
+// the three balls does. It lives under backdrops/trivia/ since nothing in
+// Props has an "every sport" tile to use it.
+//
+// Full paths rather than bare filenames: these no longer all come from one
+// folder, and a helper that silently assumes one would send the next entry
+// to the wrong place.
+//
+// Sports with no entry fall back to a plain bordered tile.
 const SPORT_BACKDROPS = {
-  americanfootball_nfl: 'nfl.jpg',
-  basketball_nba: 'nba.webp',
-  baseball_mlb: 'mlb.jpg',
-  americanfootball_ncaaf: 'ncaaf.jpg',
-  basketball_ncaab: 'ncaab.webp',
-  basketball_wnba: 'wnba.jpg',
+  all: '/backdrops/trivia/all-sports.webp',
+  americanfootball_nfl: '/backdrops/props/nfl.jpg',
+  basketball_nba: '/backdrops/props/nba.webp',
+  baseball_mlb: '/backdrops/props/mlb.jpg',
+  americanfootball_ncaaf: '/backdrops/props/ncaaf.jpg',
+  basketball_ncaab: '/backdrops/props/ncaab.webp',
+  basketball_wnba: '/backdrops/props/wnba.jpg',
 }
 
 export function sportLabel(key) {
@@ -59,8 +66,7 @@ export function sportLabel(key) {
 
 /** Public URL of a sport's backdrop, or null when we have no art for it. */
 export function sportBackdrop(key) {
-  const file = SPORT_BACKDROPS[key]
-  return file ? `/backdrops/props/${file}` : null
+  return SPORT_BACKDROPS[key] || null
 }
 
 /** Sort a list of `{ key }` into display order. */
