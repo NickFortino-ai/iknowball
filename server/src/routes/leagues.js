@@ -250,7 +250,15 @@ router.get('/open', requireAuth, async (req, res) => {
     .select('id, name, format, sport, status, max_members, commissioner_id, starts_at, ends_at, joins_locked_at, duration, settings, backdrop_image, backdrop_y, created_at, users!leagues_commissioner_id_fkey(display_name, username)')
     .eq('visibility', 'open')
     .in('status', ['open', 'active'])
-    .or(`joins_locked_at.is.null,joins_locked_at.gt.${now}`)
+    // Survivor is exempt from the joins_locked_at gate here and filtered
+    // below instead. For football survivor the server sets joins_locked_at
+    // to the FIRST KICKOFF of the opening period, which on a Tuesday-anchored
+    // college week is Monday night — five days before the Saturday slate the
+    // week is actually about. assertLeagueJoinable has never used that date:
+    // it asks whether any game in the first period is still upcoming, so the
+    // league stayed joinable by invite link while vanishing from the list
+    // that exists to advertise it.
+    .or(`joins_locked_at.is.null,joins_locked_at.gt.${now},format.eq.survivor`)
     .or(`ends_at.is.null,ends_at.gt.${now}`)
     .order('created_at', { ascending: false })
     .limit(100)
@@ -284,7 +292,58 @@ router.get('/open', requireAuth, async (req, res) => {
     }
   }
 
+  // Survivor: joinable while any game in the FIRST period is still ahead.
+  // That is exactly the question assertLeagueJoinable asks, so the list can
+  // never advertise a Join button the join endpoint will refuse — the failure
+  // the salary-cap comment above describes.
+  //
+  // Batched into three reads for the whole candidate set rather than calling
+  // the helper per league: this runs on the home page for up to 50 leagues,
+  // and the helper costs two or three queries each.
+  const survivorLeagues = (rawLeagues || []).filter((l) => l.format === 'survivor')
+  const survivorOpen = {}
+  if (survivorLeagues.length) {
+    const nowMs = Date.now()
+    const { data: periods } = await supabase
+      .from('league_weeks')
+      .select('league_id, starts_at, ends_at')
+      .in('league_id', survivorLeagues.map((l) => l.id))
+      .eq('week_number', 1)
+    const firstPeriod = {}
+    for (const p of periods || []) firstPeriod[p.league_id] = p
+
+    // One games read covering every candidate's first-period window.
+    const horizon = (periods || []).reduce(
+      (max, p) => Math.max(max, new Date(p.ends_at).getTime()), nowMs,
+    )
+    const { data: upcoming } = await supabase
+      .from('games')
+      .select('sport_id, starts_at')
+      .gt('starts_at', now)
+      .lt('starts_at', new Date(horizon).toISOString())
+    const { data: sportRows } = await supabase.from('sports').select('id, key')
+    const sportKeyById = Object.fromEntries((sportRows || []).map((s) => [s.id, s.key]))
+
+    for (const l of survivorLeagues) {
+      const p = firstPeriod[l.id]
+      if (!p) { survivorOpen[l.id] = false; continue }
+      // First period hasn't opened yet — joinable, no game lookup needed.
+      if (new Date(p.starts_at).getTime() > nowMs) { survivorOpen[l.id] = true; continue }
+      const endMs = new Date(p.ends_at).getTime()
+      // 'all' is a synthetic multi-sport pool with no sports row, so it
+      // counts a game from any sport.
+      survivorOpen[l.id] = (upcoming || []).some((g) => (
+        new Date(g.starts_at).getTime() < endMs
+        && (l.sport === 'all' || sportKeyById[g.sport_id] === l.sport)
+      ))
+    }
+  }
+
   const leagues = (rawLeagues || []).filter((l) => {
+    // Checked before the generic starts_at gate below, which would otherwise
+    // drop every running survivor pool regardless of whether it still takes
+    // members.
+    if (l.format === 'survivor') return survivorOpen[l.id] === true
     if (l.format === 'fantasy') {
       // Traditional fantasy: joinable until the draft leaves 'pending'.
       const fs = fantasyStatusForFilter[l.id]
@@ -547,13 +606,19 @@ router.post('/:id/join', requireAuth, validate(joinLeagueSchema), async (req, re
 router.post('/:id/join-open', requireAuth, async (req, res) => {
   const { data: league } = await supabase
     .from('leagues')
-    .select('invite_code, visibility, joins_locked_at, status')
+    .select('invite_code, visibility, joins_locked_at, status, format')
     .eq('id', req.params.id)
     .single()
 
   if (!league) return res.status(404).json({ error: 'League not found' })
   if (league.visibility !== 'open') return res.status(403).json({ error: 'This league is not open for public joining' })
-  if (league.joins_locked_at && new Date(league.joins_locked_at) < new Date()) {
+  // Survivor is exempt: joinLeague below calls assertLeagueJoinable, which
+  // decides a survivor pool on whether any game in the first period is still
+  // ahead. joins_locked_at for football survivor is the first kickoff, which
+  // is Monday night for a week-long college period — applying it here made
+  // the public Join button refuse people the invite link let straight in.
+  if (league.format !== 'survivor'
+    && league.joins_locked_at && new Date(league.joins_locked_at) < new Date()) {
     return res.status(400).json({ error: 'This league is no longer accepting new members' })
   }
 
