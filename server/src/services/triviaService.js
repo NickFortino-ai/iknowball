@@ -362,11 +362,9 @@ export async function buildRound({ sport = 'all', count = 8, includeGenerated = 
   return orderByDifficulty(questions).slice(0, count)
 }
 
-// How far a question can drift from its difficulty when the queue is built.
-// Difficulties are 1 / 3 / 5, so levels sit 2 apart; a centred jitter of 4
-// (±2) lets a medium outrank an easy while leaving a hard unable to reach
-// the front — its floor is 3, which is an easy question's ceiling.
-const DIFFICULTY_JITTER = 4
+// Over how many questions the difficulty climbs from "all easy" to "mostly
+// hard". Positions past this draw from the hard end.
+const RAMP_LENGTH = 30
 
 /**
  * A round opens easy and ends hard — but SOFTLY.
@@ -390,13 +388,48 @@ const DIFFICULTY_JITTER = 4
  * the draw; more written questions is still the real answer.
  */
 function orderByDifficulty(questions) {
-  return questions
-    .map((q) => ({
-      q,
-      key: (q.difficulty ?? 2) + (Math.random() - 0.5) * DIFFICULTY_JITTER,
-    }))
-    .sort((a, b) => a.key - b.key)
-    .map((x) => x.q)
+  // Bucket by level, each internally shuffled so membership varies run to run.
+  const byLevel = new Map()
+  for (const q of questions) {
+    const d = q.difficulty ?? 3
+    if (!byLevel.has(d)) byLevel.set(d, [])
+    byLevel.get(d).push(q)
+  }
+  for (const [, list] of byLevel) shuffle(list)
+  const levels = [...byLevel.keys()].sort((a, b) => a - b)
+
+  // Deal by POSITION. At each slot, how likely each level is depends on how
+  // far into the run we are — easy at the start, hard at the end, the middle
+  // mixed. Empty buckets simply drop out of the draw, so a sport with no
+  // hard questions still fills a queue.
+  const out = []
+  const total = questions.length
+  for (let i = 0; i < total; i++) {
+    const t = Math.min(1, i / RAMP_LENGTH)
+    const live = levels.filter((d) => byLevel.get(d).length > 0)
+    if (!live.length) break
+    // Weights floor at ZERO, not at a small epsilon. A 2% floor on hard reads
+    // as negligible per slot and is not: across ten draws it put a hard in the
+    // opening of a quarter of all runs, which is the one thing the ramp is
+    // supposed to prevent.
+    const weights = live.map((d) => {
+      if (d <= 1) return Math.max(0, 1 - 1.8 * t)         // easy: owns the open, gone by ~q17
+      if (d >= 5) return Math.max(0, 2.2 * t - 1.0)       // hard: nothing before ~q14
+      return Math.max(0, 1 - Math.abs(t - 0.55) * 2.2)    // medium: arrives ~q8, peaks ~q17
+    })
+    let sum = weights.reduce((a, b) => a + b, 0)
+    // Every live level weighted out — only reachable past the ramp when the
+    // hard bucket has run dry. Take the hardest level still holding anything.
+    if (sum <= 0) { out.push(byLevel.get(live[live.length - 1]).pop()); continue }
+    let r = Math.random() * sum
+    let pick = live.length - 1
+    for (let j = 0; j < live.length; j++) {
+      r -= weights[j]
+      if (r <= 0) { pick = j; break }
+    }
+    out.push(byLevel.get(live[pick]).pop())
+  }
+  return out
 }
 
 /** How many published questions exist per sport — the admin needs to know
