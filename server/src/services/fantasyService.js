@@ -6012,7 +6012,7 @@ export async function getPlayerDetail(leagueId, playerId) {
 
   const { data: weeks } = await supabase
     .from('nfl_player_stats')
-    .select(`week, season, ${SCORING_STAT_COLUMNS}`)
+    .select(`week, season, ${SCORING_STAT_COLUMNS}, off_snp, def_snp, tm_off_snp, tm_def_snp`)
     .eq('player_id', playerId)
     .eq('season', season)
     .order('week', { ascending: true })
@@ -6049,6 +6049,21 @@ export async function getPlayerDetail(leagueId, playerId) {
       opponent: sched.opponent || null,
       is_home: sched.is_home ?? null,
       pts: applyScoringRules(w, leagueRules),
+      // Share of his team's snaps THAT WEEK — per-week here, unlike the pool
+      // list's season figure, because the question this table answers is
+      // "what happened in week 6", and a season average would flatten exactly
+      // the change in role someone opens a game log to find.
+      //
+      // null when unreported, never 0: weeks before snap capture began have
+      // none, and 0% would claim he never took the field. Offence and defence
+      // stay separate — a safety on every defensive snap is 100%, not half
+      // that against a combined total.
+      snap_pct: (() => {
+        const off = w.tm_off_snp > 0 && w.off_snp != null ? w.off_snp / w.tm_off_snp : null
+        const def = w.tm_def_snp > 0 && w.def_snp != null ? w.def_snp / w.tm_def_snp : null
+        const share = off == null ? def : def == null ? off : Math.max(off, def)
+        return share == null ? null : Math.round(share * 100)
+      })(),
       pass_att: w.pass_att || 0,
       pass_cmp: w.pass_cmp || 0,
       pass_yd: Number(w.pass_yd) || 0,

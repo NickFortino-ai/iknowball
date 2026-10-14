@@ -72,7 +72,17 @@ function columnsFor(position, weeks) {
   const produced = (key) => (weeks || []).some((w) => (Number(w[key]) || 0) !== 0)
   const extras = IDP_COLUMN_DEFS.filter((c) => !seen.has(c.key) && produced(c.key))
 
-  return extras.length ? [...base, ...extras] : base
+  const cols = extras.length ? [...base, ...extras] : base
+
+  // Snap share goes LAST, after the IDP extras, so it is the far-right
+  // column in every position's table — context you scroll to, not something
+  // competing with the yards and touchdowns.
+  //
+  // Only shown when at least one week actually reports it. Weeks before snap
+  // capture began have none, and a column of dashes for a 2025 player would
+  // read as broken rather than as absent data.
+  const hasSnaps = (weeks || []).some((w) => w.snap_pct != null)
+  return hasSnaps ? [...cols, { key: 'snap_pct', label: 'SNP%' }] : cols
 }
 
 /**
@@ -354,7 +364,9 @@ function PreviousGamesTable({ position, weeks, currentWeek, hideFantasyPoints = 
                     ? (projForCell ?? '—')
                     : val == null
                       ? '—'
-                      : isPtsCol ? Number(val).toFixed(1) : val
+                      : isPtsCol ? Number(val).toFixed(1)
+                      : c.key === 'snap_pct' ? `${val}%`
+                      : val
                   return (
                     <td
                       key={c.key}
