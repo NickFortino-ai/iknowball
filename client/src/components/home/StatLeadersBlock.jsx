@@ -102,18 +102,22 @@ export default function StatLeadersBlock({ sport, mode = 'full' }) {
 
   return (
     <div>
-      {mode === 'full' && (
-        <h2 className="font-display text-xl text-text-primary mb-3">{headingText}</h2>
-      )}
-      {/* Search any player in this sport, not just the ten on the list.
-          Full mode only: the compact block is the homepage card, where a
-          text input would be a second thing to tap past.
+      {/* Heading and search share a row. Stacked, the box took a full line of
+          its own and pushed the leaders — the thing the section is named
+          after — further down the page. Beside the title it costs no height.
 
-          Shown only for sports whose player modal actually resolves — the
-          same TAPPABLE_SPORTS gate the leader rows use. Offering a box that
-          finds names nobody can open would be worse than no box. */}
-      {mode === 'full' && tappable && (
-        <PlayerSearch sport={sport} value={search} onChange={setSearch} onPick={setSelected} />
+          Search is full mode only: the compact block is the homepage card,
+          where a text input is one more thing to tap past. And only for
+          sports whose player modal resolves — the same TAPPABLE_SPORTS gate
+          the leader rows use, because a box that finds names nobody can open
+          is worse than no box. */}
+      {mode === 'full' && (
+        <div className="mb-3 flex items-center gap-3">
+          <h2 className="shrink-0 font-display text-xl text-text-primary">{headingText}</h2>
+          {tappable && (
+            <PlayerSearch sport={sport} value={search} onChange={setSearch} onPick={setSelected} />
+          )}
+        </div>
       )}
       {mode === 'compact' && (
         <div className="mb-1.5 flex items-center gap-2">
@@ -214,12 +218,12 @@ function PlayerSearch({ sport, value, onChange, onPick }) {
   const open = value.trim().length >= 2
 
   return (
-    <div className="relative mb-3">
+    <div className="relative min-w-0 flex-1">
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Search any player"
-        className="w-full rounded-xl border border-text-primary/20 bg-bg-primary/50 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+        className="w-full rounded-xl border border-text-primary/20 bg-bg-primary/50 px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
       />
       {open && (
         <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-text-primary/20 bg-bg-primary shadow-2xl">
