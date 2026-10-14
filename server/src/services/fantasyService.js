@@ -3821,6 +3821,11 @@ const STAT_COLUMNS = [
   // IDP stat columns for sort support in IDP leagues
   'idp_tkl_solo', 'idp_tkl_ast', 'idp_tkl_loss', 'idp_sack', 'idp_int',
   'idp_pass_def', 'idp_ff', 'idp_fum_rec',
+  // Snap share. A DERIVED percentage rather than a counting stat, which is
+  // fine to sort on and would be meaningless to total — percentages do not
+  // add. Nothing sums these columns today; if a totals row is ever added,
+  // this one has to be excluded from it.
+  'snap_pct',
 ]
 
 // Roll granular NFL position codes up into fantasy-slot families so
@@ -4181,7 +4186,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
     fetchAll(
       supabase
         .from('nfl_player_stats')
-        .select(`player_id, ${SCORING_STAT_COLUMNS}`)
+        .select(`player_id, ${SCORING_STAT_COLUMNS}, off_snp, def_snp, tm_off_snp, tm_def_snp`)
         .eq('season', statSeason)
         .order('player_id')
     )
@@ -4225,8 +4230,31 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
     acc.idp_ff += Number(r.idp_ff) || 0
     acc.idp_fum_rec += Number(r.idp_fum_rec) || 0
     acc.idp_qb_hit += Number(r.idp_qb_hit) || 0
+    // Snaps accumulate ONLY from weeks that reported them, and stay
+    // undefined when none did. Every counter above starts at 0 because a
+    // missing counting stat means none happened; a missing snap count means
+    // Sleeper did not report it, and summing it as 0 would turn "unknown"
+    // into "never on the field" — the opposite answer, on the one column
+    // people would consult precisely to find out.
+    for (const k of ['off_snp', 'def_snp', 'tm_off_snp', 'tm_def_snp']) {
+      if (r[k] != null) acc[k] = (acc[k] || 0) + Number(r[k])
+    }
     statsByPlayer[r.player_id] = acc
   }
+
+  // Share of his team's snaps, season to date. Offence and defence are kept
+  // apart rather than pooled: a safety who plays every defensive snap and no
+  // offensive ones is a 100% player, and dividing his defensive snaps by the
+  // combined total would report him at half that.
+  for (const acc of Object.values(statsByPlayer)) {
+    const off = acc.tm_off_snp > 0 && acc.off_snp != null ? acc.off_snp / acc.tm_off_snp : null
+    const def = acc.tm_def_snp > 0 && acc.def_snp != null ? acc.def_snp / acc.tm_def_snp : null
+    // Whichever side he actually plays. A two-way contributor is vanishingly
+    // rare, so the larger share is the honest headline.
+    const share = off == null ? def : def == null ? off : Math.max(off, def)
+    acc.snap_pct = share == null ? null : Math.round(share * 100)
+  }
+
   function ytd(id) { return statsByPlayer[id] || {} }
 
   // Weekly Sleeper projection for the CURRENT (season, week) — surfaces

@@ -55,6 +55,10 @@ const OFFENSE_STAT_COLUMNS = [
   { key: 'fum_lost', label: 'FUM' },
   { key: 'fgm', label: 'FGM' },
   { key: 'xpm', label: 'XPM' },
+  // Snap share sits LAST in every set, so it is reached by scrolling
+  // rather than competing with the yards and catches people came for.
+  // Season to date, like every other column here.
+  { key: 'snap_pct', label: 'SNP%' },
 ]
 
 const DEF_STAT_COLUMNS = [
@@ -66,6 +70,10 @@ const DEF_STAT_COLUMNS = [
   { key: 'def_td', label: 'TD' },
   { key: 'def_safety', label: 'SAF' },
   { key: 'def_pts_allowed', label: 'PA' },
+  // Snap share sits LAST in every set, so it is reached by scrolling
+  // rather than competing with the yards and catches people came for.
+  // Season to date, like every other column here.
+  { key: 'snap_pct', label: 'SNP%' },
 ]
 
 const IDP_STAT_COLUMNS = [
@@ -79,6 +87,10 @@ const IDP_STAT_COLUMNS = [
   { key: 'idp_pass_def', label: 'PD' },
   { key: 'idp_ff', label: 'FF' },
   { key: 'idp_fum_rec', label: 'FR' },
+  // Snap share sits LAST in every set, so it is reached by scrolling
+  // rather than competing with the yards and catches people came for.
+  // Season to date, like every other column here.
+  { key: 'snap_pct', label: 'SNP%' },
 ]
 
 // InjuryBadge now imported from ui/InjuryBadge — the local copy
@@ -533,9 +545,17 @@ export default function FantasyPlayerBrowser({ league }) {
                 </div>
                 <div className="flex gap-0.5 items-center">
                   {statColumns.map((col) => {
+                    // Snap share must fall back to a DASH, not to 0 like the
+                    // counting stats. A missing snap count means Sleeper did
+                    // not report it — weeks before we started capturing them
+                    // have none — and "0%" would say the player never took
+                    // the field, which is the opposite claim and the exact
+                    // thing someone checks this column to learn.
                     const value = col.key === 'weekly_proj'
                       ? (player.weekly_projection != null ? player.weekly_projection.toFixed(1) : '—')
-                      : (pStats[col.key] ?? 0)
+                      : col.key === 'snap_pct'
+                        ? (pStats.snap_pct != null ? `${pStats.snap_pct}%` : '—')
+                        : (pStats[col.key] ?? 0)
                     return (
                       <div
                         key={col.key}
