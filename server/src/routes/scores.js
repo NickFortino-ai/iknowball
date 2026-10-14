@@ -9,6 +9,7 @@
 
 import { Router } from 'express'
 import { supabase } from '../config/supabase.js'
+import { throwIfInfra } from '../utils/dbError.js'
 import { expandSportFamily } from '../utils/nflFamily.js'
 import { sportsDayBoundsUtc, toSportsDay } from '../utils/sportsDay.js'
 import { getTeamRecords, lookupRecord, lookupShortName } from '../services/teamRecordsService.js'
@@ -575,6 +576,90 @@ router.get('/leaders', async (req, res) => {
   const data = await getStatLeaders(full)
   res.set('Cache-Control', 'public, max-age=300')
   res.json(data)
+})
+
+// Player search for a sport's drill-in page, so the stat leaders list is a
+// starting point rather than the only way in. Returns just enough to open
+// PlayerDetailModal, which takes an ESPN athlete id and fetches the rest
+// itself — name, id, and a team hint for the cases where the id is null.
+//
+// Where the names come from differs by sport, and so does how good the
+// result looks:
+//
+//   NFL   nfl_players — a real roster table, so position, team and headshot
+//         all come along.
+//   rest  the DFS stat tables, which are the only per-player record we keep
+//         for those sports. They are PER-GAME rows (69k for MLB), so the
+//         distinct-player collapse happens here, and they carry no team or
+//         position — names only.
+//
+// Not a free-text search over everything: a bare prefix with no sport would
+// have to scan four tables, and the drill-in always knows its sport.
+router.get('/players/search', async (req, res) => {
+  const shortSport = String(req.query.sport || '').toLowerCase()
+  const q = String(req.query.q || '').trim()
+  const full = SHORT_TO_FULL[shortSport]
+  if (!full) return res.status(400).json({ error: 'sport must be one of nfl/nba/mlb/wnba/mls/ncaaf/ncaab' })
+  // Two characters is where a prefix stops matching half the league. Below
+  // that the list is noise and the query is expensive for nothing.
+  if (q.length < 2) return res.json([])
+
+  const like = `%${q}%`
+
+  if (full === 'americanfootball_nfl') {
+    const { data, error } = await supabase
+      .from('nfl_players')
+      .select('espn_id, full_name, position, team, headshot_url')
+      .ilike('full_name', like)
+      .not('team', 'is', null)   // free agents and retired rows are noise here
+      .limit(20)
+    throwIfInfra(error)
+    return res.json((data || []).map((p) => ({
+      espn_player_id: p.espn_id ? String(p.espn_id) : null,
+      player_name: p.full_name,
+      position: p.position || null,
+      team: p.team || null,
+      headshot_url: p.headshot_url || null,
+    })))
+  }
+
+  const STAT_TABLE = {
+    basketball_nba: 'nba_dfs_player_stats',
+    baseball_mlb: 'mlb_dfs_player_stats',
+    basketball_wnba: 'wnba_dfs_player_stats',
+  }
+  const table = STAT_TABLE[full]
+  // MLS, NCAAF and NCAAB keep no per-player table of ours. Empty beats a
+  // 500, and the search box simply finds nothing there.
+  if (!table) return res.json([])
+
+  // Over-fetch because these are per-game rows: one player owns dozens of
+  // them, so 20 rows could be a single name. Newest first so an active
+  // player beats someone who last appeared two seasons ago.
+  const { data, error } = await supabase
+    .from(table)
+    .select('espn_player_id, player_name, game_date')
+    .ilike('player_name', like)
+    .order('game_date', { ascending: false })
+    .limit(400)
+  throwIfInfra(error)
+
+  const seen = new Set()
+  const out = []
+  for (const r of data || []) {
+    const key = r.espn_player_id || r.player_name
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push({
+      espn_player_id: r.espn_player_id ? String(r.espn_player_id) : null,
+      player_name: r.player_name,
+      position: null,
+      team: null,
+      headshot_url: null,
+    })
+    if (out.length >= 20) break
+  }
+  res.json(out)
 })
 
 // Per-sport historical finals for a given PT calendar date. Powers

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSportLeaders } from '../../hooks/useScoresStrip'
+import { useSportLeaders, useSportPlayerSearch } from '../../hooks/useScoresStrip'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
 
@@ -71,6 +71,7 @@ export default function StatLeadersBlock({ sport, mode = 'full' }) {
   const { data, isLoading } = useSportLeaders(sport)
   const [activeIdx, setActiveIdx] = useState(0)
   const [selected, setSelected] = useState(null)
+  const [search, setSearch] = useState('')
 
   const fullSport = SHORT_TO_FULL[sport] || sport
   const tappable = TAPPABLE_SPORTS.has(fullSport)
@@ -103,6 +104,16 @@ export default function StatLeadersBlock({ sport, mode = 'full' }) {
     <div>
       {mode === 'full' && (
         <h2 className="font-display text-xl text-text-primary mb-3">{headingText}</h2>
+      )}
+      {/* Search any player in this sport, not just the ten on the list.
+          Full mode only: the compact block is the homepage card, where a
+          text input would be a second thing to tap past.
+
+          Shown only for sports whose player modal actually resolves — the
+          same TAPPABLE_SPORTS gate the leader rows use. Offering a box that
+          finds names nobody can open would be worse than no box. */}
+      {mode === 'full' && tappable && (
+        <PlayerSearch sport={sport} value={search} onChange={setSearch} onPick={setSelected} />
       )}
       {mode === 'compact' && (
         <div className="mb-1.5 flex items-center gap-2">
@@ -181,6 +192,56 @@ export default function StatLeadersBlock({ sport, mode = 'full' }) {
           sport={fullSport}
           onClose={() => setSelected(null)}
         />
+      )}
+    </div>
+  )
+}
+
+/**
+ * Find any player in this sport and open his modal.
+ *
+ * The result rows hand PlayerDetailModal the same shape the leader rows do —
+ * it only needs an ESPN athlete id and a name, and fetches everything else
+ * itself.
+ *
+ * Only NFL carries position, team and a headshot, because nfl_players is a
+ * real roster table. The other sports are searched out of their DFS stat
+ * tables, which hold names and ids and nothing else, so those rows show the
+ * name alone rather than a row of empty fields pretending to be data.
+ */
+function PlayerSearch({ sport, value, onChange, onPick }) {
+  const { data: results, isFetching } = useSportPlayerSearch(sport, value)
+  const open = value.trim().length >= 2
+
+  return (
+    <div className="relative mb-3">
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Search any player"
+        className="w-full rounded-xl border border-text-primary/20 bg-bg-primary/50 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+      />
+      {open && (
+        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-text-primary/20 bg-bg-primary shadow-2xl">
+          {isFetching && !results ? (
+            <div className="px-3 py-2 text-xs text-text-muted">Searching…</div>
+          ) : !results?.length ? (
+            <div className="px-3 py-2 text-xs text-text-muted">No players found</div>
+          ) : results.map((p, i) => (
+            <button
+              key={`${p.espn_player_id || p.player_name}-${i}`}
+              onClick={() => { onPick({ ...p }); onChange('') }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-accent/10"
+            >
+              <span className="flex-1 truncate text-sm text-text-primary">{p.player_name}</span>
+              {(p.position || p.team) && (
+                <span className="shrink-0 text-[10px] uppercase tracking-wider text-text-muted">
+                  {[p.position, p.team].filter(Boolean).join(' · ')}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   )

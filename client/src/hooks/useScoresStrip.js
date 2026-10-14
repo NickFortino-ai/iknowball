@@ -164,3 +164,22 @@ export function useBoxScore(gameId) {
     retry: false,
   })
 }
+
+// Player search for a sport's drill-in page. Backs the box beside Stat
+// Leaders, so the leaders list is a starting point rather than the only way
+// to reach a player.
+//
+// Short queries return [] from the server, and this stays disabled below two
+// characters so a single keystroke never leaves the device. Results are
+// cached per (sport, query) — a user backspacing through a name re-renders
+// from cache instead of re-querying each deletion.
+export function useSportPlayerSearch(sport, query) {
+  const q = (query || '').trim()
+  return useQuery({
+    queryKey: ['sportPlayerSearch', sport, q],
+    queryFn: () => api.get(`/scores/players/search?sport=${sport}&q=${encodeURIComponent(q)}`),
+    enabled: !!sport && q.length >= 2,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  })
+}
