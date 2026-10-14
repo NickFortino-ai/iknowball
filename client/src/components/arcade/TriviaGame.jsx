@@ -19,7 +19,11 @@ import { useMemoryVariants } from '../../hooks/useArcade'
  * have not updated past the build offering 10 and 20 question rounds keep
  * calling them.
  */
-const SCREEN = 'space-y-4 max-w-xl mx-auto'
+// The picker is art, not prose, so it spans the room's full width rather
+// than the reading measure a question needs. TriviaStreak keeps its own
+// narrow SCREEN for the questions themselves — a four-answer list stretched
+// across 2000px is the thing that measure exists to prevent.
+const SCREEN = 'space-y-5'
 
 export default function TriviaGame({ onExit }) {
   // One piece of state, because "which sport" and "am I playing" stopped
@@ -42,31 +46,47 @@ export default function TriviaGame({ onExit }) {
 
   return (
     <div className={SCREEN}>
-      <div className="flex items-center gap-3">
+      {/* Back pinned left, title centred on the ROOM rather than beside the
+          control. Both used to sit in one left-aligned group inside a
+          max-w-xl column, which on a wide screen floated the whole header
+          into the middle of the page with the back arrow nowhere near the
+          corner you reach for.
+
+          The title is centred absolutely so it is centred on the page, not
+          on the space left over after the back control — those differ by the
+          width of the control, which is visible at this size. */}
+      <div className="relative flex items-center">
         <ArcadeBack onClick={onExit} />
-        <h3 className="font-display text-lg text-text-primary">Trivia</h3>
+        <h3 className="pointer-events-none absolute left-1/2 -translate-x-1/2 font-display text-2xl sm:text-3xl text-text-primary">
+          Trivia
+        </h3>
       </div>
       {/* Describes the STREAK, because that is now the whole game and what
           the board ranks. The old copy explained the scoring of a
           fixed-length round — harder questions worth more, a speed bonus —
           which is still true of the points but no longer the thing anyone is
           playing for, so it was explaining the tiebreak and not the game. */}
-      <p className="text-sm text-text-secondary">
+      <p className="mx-auto max-w-2xl text-center text-sm text-text-secondary">
         Pick a sport and keep answering until you miss one. Questions start
         easy and get harder the longer you last, and you get 20 seconds each.
         Longest streak takes the board.
       </p>
 
-      {/* Tapping a tile DEALS. There is no second step and nothing to confirm,
-          so the tiles carry no selected state. */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Tapping a tile DEALS. There is no second step and nothing to
+          confirm, so the tiles carry no selected state.
+
+          Three across once there is room. Five tiles over two columns left a
+          lone College Football tile on its own row with half the page empty
+          beside it; at three it sits in a row of three with one pair under
+          it, and the art gets bigger rather than the margins. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4">
         {tiles.map((s) => {
           const bg = sportBackdrop(s.key)
           return (
             <button
               key={s.key}
               onClick={() => setSport(s.key)}
-              className={`relative overflow-hidden rounded-2xl border border-text-primary/20 px-6 py-10 transition-all hover:scale-[1.02] hover:border-accent hover:shadow-lg ${
+              className={`relative overflow-hidden rounded-2xl border border-text-primary/20 px-6 py-10 lg:py-16 transition-all hover:scale-[1.02] hover:border-accent hover:shadow-lg ${
                 bg ? '' : 'bg-bg-primary/50 backdrop-blur-sm'
               }`}
               style={bg ? {
