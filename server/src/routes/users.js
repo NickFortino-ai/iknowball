@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { throwIfInfra } from '../utils/dbError.js'
 import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
 import {
@@ -59,11 +60,24 @@ router.post('/resolve', async (req, res) => {
     return res.status(400).json({ error: 'username is required' })
   }
 
-  const { data: user } = await supabase
+  // Both lookups below discarded their error, so a database or auth-service
+  // blip arrived at the LOGIN SCREEN as "User not found" — the app telling
+  // someone their account does not exist because a connection dropped. Same
+  // bug the 2026-09-04 draft outage produced ("you are not a member of your
+  // own league"), on the one screen where it is most alarming and least
+  // recoverable: there is nothing to retry into, so people reasonably
+  // conclude they have been deleted and go looking for a signup button.
+  //
+  // throwIfInfra rethrows transport and capacity failures as a 503 the client
+  // can retry, and stays silent on PGRST116 (no rows) so a genuine typo in a
+  // username still reaches the 404 below.
+  const { data: user, error: lookupError } = await supabase
     .from('users')
     .select('id')
     .ilike('username', username)
     .single()
+
+  throwIfInfra(lookupError)
 
   if (!user) {
     return res.status(404).json({ error: 'User not found' })
@@ -71,7 +85,13 @@ router.post('/resolve', async (req, res) => {
 
   const { data: authUser, error } = await supabase.auth.admin.getUserById(user.id)
 
-  if (error || !authUser?.user?.email) {
+  // A reachable users row whose auth record cannot be fetched is far more
+  // likely to be the auth service being unreachable than an account that
+  // genuinely has no login — isInfraError catches 'fetch failed' for exactly
+  // this. Only a successful lookup that returns no email is a real 404.
+  throwIfInfra(error)
+
+  if (!authUser?.user?.email) {
     return res.status(404).json({ error: 'User not found' })
   }
 
