@@ -65,7 +65,19 @@ const SHORT_TO_FULL = {
 // Only these have a gamelog behind them (players.js ESPN_SPORT_PATHS).
 // Rows stay inert for the rest rather than opening a modal with nothing in
 // it — NCAAF, NCAAB and MLS leaders are display-only.
-const TAPPABLE_SPORTS = new Set(['americanfootball_nfl', 'basketball_nba', 'basketball_wnba', 'baseball_mlb', 'icehockey_nhl'])
+// Sports whose player modal actually resolves — an ESPN gamelog path plus a
+// parser that reads their labels. NCAAF joined once both existed; its
+// leaders already carried ESPN athlete ids and headshots, so only the server
+// side was missing.
+const TAPPABLE_SPORTS = new Set(['americanfootball_nfl', 'americanfootball_ncaaf', 'basketball_nba', 'basketball_wnba', 'baseball_mlb', 'icehockey_nhl'])
+
+// Searchable is a SMALLER set than tappable, and deliberately so. Opening a
+// player needs only an ESPN id, which the leaders rows already carry —
+// searching needs a list of every player in the sport, which means a table
+// of our own. NCAAF is tappable and not searchable: ESPN serves its
+// gamelogs, but we hold no college roster to search, and a box that always
+// answers "No players found" is worse than no box.
+const SEARCHABLE_SPORTS = new Set(['americanfootball_nfl', 'basketball_nba', 'basketball_wnba', 'baseball_mlb'])
 
 export default function StatLeadersBlock({ sport, mode = 'full' }) {
   const { data, isLoading } = useSportLeaders(sport)
@@ -75,6 +87,7 @@ export default function StatLeadersBlock({ sport, mode = 'full' }) {
 
   const fullSport = SHORT_TO_FULL[sport] || sport
   const tappable = TAPPABLE_SPORTS.has(fullSport)
+  const searchable = SEARCHABLE_SPORTS.has(fullSport)
   // Map a leaders row onto the shape PlayerDetailModal reads. athlete_id is
   // an ESPN athlete id, which is exactly the lookup key it prefers.
   const openPlayer = (r) => setSelected({
@@ -114,7 +127,7 @@ export default function StatLeadersBlock({ sport, mode = 'full' }) {
       {mode === 'full' && (
         <div className="mb-3 flex items-center gap-3">
           <h2 className="shrink-0 font-display text-xl text-text-primary">{headingText}</h2>
-          {tappable && (
+          {searchable && (
             <PlayerSearch sport={sport} value={search} onChange={setSearch} onPick={setSelected} />
           )}
         </div>

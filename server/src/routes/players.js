@@ -745,6 +745,7 @@ const ESPN_SPORT_PATHS = {
   basketball_wnba: 'basketball/wnba',
   baseball_mlb: 'baseball/mlb',
   americanfootball_nfl: 'football/nfl',
+  americanfootball_ncaaf: 'football/college-football',
   icehockey_nhl: 'hockey/nhl',
 }
 
@@ -1096,10 +1097,20 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     // gamelog labels — ESPN uses pitching columns for pitchers, batting for
     // everyone else.
     const isPitcher = isMLB && labels.includes('IP')
+    // College football parses with the SAME columns as the NFL — ESPN's
+    // labels are near-identical (CMP ATT YDS CMP% TD INT LNG SACK RTG QBR
+    // CAR YDS AVG TD LNG; college merely omits passing AVG), and the
+    // section-anchor logic below keys off CMP/ATT/CAR, which both carry.
+    //
+    // Without this an NCAAF player fell through to NBA_GAME_COLS and his
+    // passing yards were read as points — the modal would have opened and
+    // rendered confidently wrong basketball stats, which is worse than not
+    // opening at all.
+    const isFootball = isNFL || sport === 'americanfootball_ncaaf'
     const colParser = isPitcher
       ? MLB_PITCHER_GAME_COLS
       : isMLB ? MLB_GAME_COLS
-      : isNFL ? NFL_GAME_COLS
+      : isFootball ? NFL_GAME_COLS
       : NBA_GAME_COLS
 
     // Sort by date descending so traded players show most recent games first

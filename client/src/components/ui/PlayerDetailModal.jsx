@@ -387,7 +387,10 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
 
   const detectedSport = data?.sport || sport
   const isMLB = detectedSport === 'baseball_mlb'
-  const isNFL = detectedSport === 'americanfootball_nfl'
+  // College football renders with the football column set, not the NBA
+  // fallback the other branches drop into. ESPN's college labels match the
+  // NFL's, and the server parses them with the same NFL_GAME_COLS.
+  const isNFL = detectedSport === 'americanfootball_nfl' || detectedSport === 'americanfootball_ncaaf'
   const isPitcher = !!data?.isPitcher
   const teamColor = getTeamColor(detectedSport, player.team)
 
