@@ -46,11 +46,15 @@ export default function TriviaGame({ onExit }) {
         <ArcadeBack onClick={onExit} />
         <h3 className="font-display text-lg text-text-primary">Trivia</h3>
       </div>
+      {/* Describes the STREAK, because that is now the whole game and what
+          the board ranks. The old copy explained the scoring of a
+          fixed-length round — harder questions worth more, a speed bonus —
+          which is still true of the points but no longer the thing anyone is
+          playing for, so it was explaining the tiebreak and not the game. */}
       <p className="text-sm text-text-secondary">
-        Pick a sport and keep answering until you miss one. They start easy and
-        get harder the longer you last. Harder questions are worth more, and
-        answering fast adds a bonus — but a right answer always beats a quick
-        one. 20 seconds a question.
+        Pick a sport and keep answering until you miss one. Questions start
+        easy and get harder the longer you last, and you get 20 seconds each.
+        Longest streak takes the board.
       </p>
 
       {/* Tapping a tile DEALS. There is no second step and nothing to confirm,

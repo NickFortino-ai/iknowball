@@ -162,28 +162,14 @@ export default function TriviaStreak({ variant = 'all', autoStart = false, onExi
   }
 
   // ── Intro ─────────────────────────────────────────────────────────────
+  // Only ever reached with autoStart. TriviaGame is the sole caller and a
+  // sport tile deals on tap, so there is no second screen to ask again.
+  // There used to be a Start screen here for the non-autoStart case; it was
+  // unreachable and still carried the fixed-round scoring pitch ("harder
+  // questions are worth more") that the trivia intro just dropped — stale
+  // copy is no better for being invisible.
   if (!round) {
-    if (autoStart) return <p className="text-sm text-text-muted text-center py-8">Dealing…</p>
-    return (
-      <div className={SCREEN}>
-        <div className="flex items-center gap-3">
-          <ArcadeBack onClick={onExit} />
-          <h3 className="font-display text-lg text-text-primary">Streak</h3>
-        </div>
-        <p className="text-sm text-text-secondary">
-          Keep answering until you get one wrong. They start easy and get
-          harder the longer you last, and harder questions are worth more.
-        </p>
-        <p className="text-xs text-text-muted">20 seconds a question.</p>
-        <button
-          onClick={deal}
-          disabled={busy}
-          className="w-full rounded-xl border border-text-primary/20 bg-bg-primary/50 backdrop-blur-sm py-3 text-sm font-semibold text-text-primary transition-colors hover:border-accent hover:bg-accent/10 disabled:opacity-40"
-        >
-          {busy ? 'Dealing…' : 'Start'}
-        </button>
-      </div>
-    )
+    return <p className="text-sm text-text-muted text-center py-8">Dealing…</p>
   }
 
   // ── Question ──────────────────────────────────────────────────────────
