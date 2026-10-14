@@ -743,6 +743,10 @@ router.get('/player/lookup', async (req, res) => {
 const ESPN_SPORT_PATHS = {
   basketball_nba: 'basketball/nba',
   basketball_wnba: 'basketball/wnba',
+  // College basketball parses on the NBA fallback already — ESPN's labels
+  // are byte-identical (MIN FG FG% 3PT 3P% FT FT% REB AST BLK STL PF TO
+  // PTS), so unlike college football this needed no parser fork.
+  basketball_ncaab: 'basketball/mens-college-basketball',
   baseball_mlb: 'baseball/mlb',
   americanfootball_nfl: 'football/nfl',
   americanfootball_ncaaf: 'football/college-football',

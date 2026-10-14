@@ -69,7 +69,7 @@ const SHORT_TO_FULL = {
 // parser that reads their labels. NCAAF joined once both existed; its
 // leaders already carried ESPN athlete ids and headshots, so only the server
 // side was missing.
-const TAPPABLE_SPORTS = new Set(['americanfootball_nfl', 'americanfootball_ncaaf', 'basketball_nba', 'basketball_wnba', 'baseball_mlb', 'icehockey_nhl'])
+const TAPPABLE_SPORTS = new Set(['americanfootball_nfl', 'americanfootball_ncaaf', 'basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'baseball_mlb', 'icehockey_nhl'])
 
 // Searchable is a SMALLER set than tappable, and deliberately so. Opening a
 // player needs only an ESPN id, which the leaders rows already carry —
