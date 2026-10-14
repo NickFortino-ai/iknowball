@@ -362,25 +362,41 @@ export async function buildRound({ sport = 'all', count = 8, includeGenerated = 
   return orderByDifficulty(questions).slice(0, count)
 }
 
+// How far a question can drift from its difficulty when the queue is built.
+// Difficulties are 1 / 3 / 5, so levels sit 2 apart; a centred jitter of 4
+// (±2) lets a medium outrank an easy while leaving a hard unable to reach
+// the front — its floor is 3, which is an easy question's ceiling.
+const DIFFICULTY_JITTER = 4
+
 /**
- * A round opens easy and ends hard.
+ * A round opens easy and ends hard — but SOFTLY.
  *
- * Shuffled WITHIN each difficulty so the same ranking doesn't produce the
- * same running order every time, then sorted across them — a ramp, not a
- * random walk, so the last question is the one worth bragging about.
+ * This used to bucket by difficulty and concatenate: every difficulty-1
+ * question, shuffled, then every difficulty-3, then every 5. Shuffling
+ * inside a bucket varies the ORDER but never the MEMBERSHIP, so the opening
+ * of every run was drawn from the same small set — 19 questions for NCAAF,
+ * 23 for MLB. Reach 25 and you had seen the entire easy pool, every time.
+ * Nick reported it as "the same set of questions in the first 25 or so",
+ * which is what a hard partition guarantees.
+ *
+ * Now each question sorts on its difficulty plus a random offset, so the
+ * levels overlap at their edges. Expected position still rises with
+ * difficulty — the ramp survives, and the last question is still the one
+ * worth bragging about — but which questions open a run changes between
+ * runs, and the early pool widens from "the easies" to "the easies and some
+ * mediums".
+ *
+ * This cannot manufacture variety that the library does not have. It widens
+ * the draw; more written questions is still the real answer.
  */
 function orderByDifficulty(questions) {
-  const byLevel = new Map()
-  for (const q of questions) {
-    const d = q.difficulty ?? 2
-    if (!byLevel.has(d)) byLevel.set(d, [])
-    byLevel.get(d).push(q)
-  }
-  const out = []
-  for (const level of [...byLevel.keys()].sort((a, b) => a - b)) {
-    out.push(...shuffle(byLevel.get(level)))
-  }
-  return out
+  return questions
+    .map((q) => ({
+      q,
+      key: (q.difficulty ?? 2) + (Math.random() - 0.5) * DIFFICULTY_JITTER,
+    }))
+    .sort((a, b) => a.key - b.key)
+    .map((x) => x.q)
 }
 
 /** How many published questions exist per sport — the admin needs to know
