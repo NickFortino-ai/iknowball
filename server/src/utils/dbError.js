@@ -37,6 +37,27 @@ export function isInfraError(err) {
   if (!err) return false
   if (INFRA_CODES.has(err.code)) return true
   const msg = String(err.message || '').toLowerCase()
+
+  // An HTML body is NEVER a data answer. PostgREST and GoTrue speak JSON, so
+  // a message containing a markup document came from a proxy sitting in front
+  // of them rather than from the database itself.
+  //
+  // Added after the 2026-10-13 Supabase outage, which this function did not
+  // catch. Queries came back carrying Cloudflare's "502 Bad Gateway" page as
+  // their message, and because none of the string tests below matched, every
+  // call site read the failure as a data answer — including the login
+  // resolver, which told Nick his own account did not exist.
+  if (msg.includes('<html')) return true
+  if (msg.includes('bad gateway')
+    || msg.includes('gateway time-out')
+    || msg.includes('gateway timeout')
+    || msg.includes('service unavailable')) return true
+
+  // Supabase's edge returns this when it cannot route to the project at all —
+  // seen on /users/me/invitations during the same outage. It reads like a
+  // configuration mistake and is not one.
+  if (msg.includes('project not specified')) return true
+
   return msg.includes('connection pool')
     || msg.includes('statement timeout')
     || msg.includes('fetch failed')
