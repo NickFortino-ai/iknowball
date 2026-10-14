@@ -527,6 +527,25 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
         rec: s.rec || 0,
         rec_yd: s.rec_yd || 0,
         rec_td: s.rec_td || 0,
+        // Snap counts. Sleeper has always sent these on this very response
+        // and we were dropping them. Verified against the live endpoint
+        // before adding, not assumed from the key names — see migration 292.
+        //
+        // `?? null`, NOT `|| 0`. Every other field here defaults to 0
+        // because a missing counting stat genuinely means none, but a
+        // missing snap count means Sleeper did not report it, and zero
+        // would assert the player was on the field for nothing. The two are
+        // different answers and only one of them is ours to give.
+        //
+        // Positions split the keys: offensive rows carry off_snp, defensive
+        // rows carry def_snp. Team totals arrive on every row, which is what
+        // lets a share be computed without a second lookup.
+        off_snp: s.off_snp ?? null,
+        def_snp: s.def_snp ?? null,
+        st_snp: s.st_snp ?? null,
+        tm_off_snp: s.tm_off_snp ?? null,
+        tm_def_snp: s.tm_def_snp ?? null,
+        tm_st_snp: s.tm_st_snp ?? null,
         // Special-teams TD a player scored (kick or punt return). Books
         // grade player_anytime_td on ANY touchdown, so leaving this out
         // silently under-grades a WR who scored on a punt return.
