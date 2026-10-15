@@ -27,7 +27,20 @@ export default function AppShell({ children }) {
     // innerHeight, NOT visualViewport.height: the latter shrinks while the
     // keyboard is up, which would pin the shell to the shortened height and
     // leave it there after the keyboard closes — the very bug being fixed.
+    // NEVER re-pin while pinch-zoomed. Zooming fires visualViewport resize,
+    // and innerHeight then reports the shrunken zoomed viewport — so the
+    // shell was being pinned SHORTER than the screen, the tab bar (a
+    // flex child at its end, not a fixed element) rode up with it, and the
+    // page below the shell showed as a void. The bar never moved on its own;
+    // the box it lives in got smaller.
+    //
+    // Skipping is safe in both zoom regimes: under HTML zoom scale leaves 1
+    // and this guards correctly, and under native WKWebView scrollView zoom
+    // scale stays 1 and this is a no-op. The height is re-applied on the
+    // next trigger once the user returns to 1x.
+    const zoomed = () => (window.visualViewport?.scale ?? 1) !== 1
     const apply = () => {
+      if (zoomed()) return
       if (shellRef.current) shellRef.current.style.height = `${window.innerHeight}px`
     }
     // Re-reads for ~1s because the correct height can arrive well after the
@@ -43,6 +56,7 @@ export default function AppShell({ children }) {
     // real one, the next touch puts it right. Costs a comparison per touch
     // and only writes when they actually disagree.
     const onTouch = () => {
+      if (zoomed()) return
       if (shellRef.current && shellRef.current.style.height !== `${window.innerHeight}px`) apply()
     }
 
