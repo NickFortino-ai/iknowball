@@ -46,7 +46,30 @@ export default function AppShell({ children }) {
       if (shellRef.current && shellRef.current.style.height !== `${window.innerHeight}px`) apply()
     }
 
+    // --kb-inset: how far the VISIBLE bottom sits above the layout bottom.
+    // Non-zero when the keyboard is up (and whenever the visual viewport is
+    // otherwise offset).
+    //
+    // WKWebView re-anchors position:fixed to the VISUAL viewport, so the
+    // summary bars ride the keyboard upward and leave page content showing
+    // in the strip beneath them. The bars translate back down by exactly
+    // this much, which puts them at the layout bottom again — covered by the
+    // keyboard rather than floating above it.
+    //
+    // Deliberately separate from the height logic above, which must keep
+    // using innerHeight: pinning the SHELL to visualViewport.height would
+    // shrink it to the keyboard-sized viewport and strand it there after the
+    // keyboard closed, which is the bug that logic exists to prevent.
+    const applyInset = () => {
+      const vv = window.visualViewport
+      const inset = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0
+      document.documentElement.style.setProperty('--kb-inset', `${Math.round(inset)}px`)
+    }
+
     applySoon()
+    applyInset()
+    window.visualViewport?.addEventListener('resize', applyInset)
+    window.visualViewport?.addEventListener('scroll', applyInset)
     window.addEventListener('resize', apply)
     window.addEventListener('orientationchange', applySoon)
     window.addEventListener('pageshow', applySoon)
@@ -66,6 +89,8 @@ export default function AppShell({ children }) {
       document.removeEventListener('visibilitychange', onVisible)
       document.removeEventListener('touchstart', onTouch)
       window.visualViewport?.removeEventListener('resize', apply)
+      window.visualViewport?.removeEventListener('resize', applyInset)
+      window.visualViewport?.removeEventListener('scroll', applyInset)
     }
   }, [])
 
