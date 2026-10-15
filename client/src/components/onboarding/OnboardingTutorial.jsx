@@ -22,7 +22,20 @@ export default function OnboardingTutorial() {
 
   // Trigger logic
   useEffect(() => {
-    if (profile && !profile.has_seen_onboarding && profile.is_paid) {
+    // Trial users must get the tutorial too. This read profile.is_paid,
+    // which is FALSE for a trial — the trial grants access through
+    // subscription_expires_at instead, deliberately, so that it can lapse.
+    // So the people who most need the walkthrough, on their first paid-for
+    // look at the app, would have been the only ones not shown it.
+    //
+    // Same test ProtectedRoute uses to decide they may be here at all.
+    const hasAccess = !!profile && (
+      profile.is_lifetime
+      || profile.is_paid
+      || profile.subscription_status === 'active'
+      || (profile.subscription_expires_at && new Date(profile.subscription_expires_at) > new Date())
+    )
+    if (profile && !profile.has_seen_onboarding && hasAccess) {
       // Remember where the user was so we can return them after the tutorial
       returnPathRef.current = location.pathname
       setActive(true)
