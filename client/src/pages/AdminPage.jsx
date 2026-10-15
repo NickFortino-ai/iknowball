@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSyncNflPlayers, useSyncNBASalaries, useSyncMLBSalaries, useSyncWNBASalaries, useSyncNFLSalaries, useEnrichEspnIds, useSyncWeeklyProjections, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps, useAdminPendingCounts, useAdminLeagueSearch } from '../hooks/useAdmin'
+import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSyncNflPlayers, useSyncNBASalaries, useSyncMLBSalaries, useSyncWNBASalaries, useSyncNFLSalaries, useEnrichEspnIds, useSyncWeeklyProjections, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminPendingCounts, useAdminLeagueSearch } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import { useSearchUsers } from '../hooks/useInvitations'
-import PropSyncPanel from '../components/admin/PropSyncPanel'
 import BracketTemplateManager from '../components/admin/BracketTemplateManager'
 import FuturesAdminPanel from '../components/admin/FuturesAdminPanel'
 import ReportsPanel from '../components/admin/ReportsPanel'
@@ -45,7 +44,10 @@ export default function AdminPage() {
   // codes). Default their landing tab to props so they don't land on a
   // blocked section.
   const isHelperAdmin = profile?.admin_role === 'helper'
-  const [adminSection, setAdminSection] = useState(isHelperAdmin ? 'props' : 'dashboard')
+  // Helper admins used to land on 'props' — that was the job before props
+  // went self-serve. The section is gone, so they start on Trivia, which is
+  // the review queue a helper is actually needed for now.
+  const [adminSection, setAdminSection] = useState(isHelperAdmin ? 'trivia' : 'dashboard')
   const [activeSport, setActiveSport] = useState(0)
   const [selectedGame, setSelectedGame] = useState(null)
   const [emailSubject, setEmailSubject] = useState('')
@@ -63,9 +65,6 @@ export default function AdminPage() {
   const { data: leagueSearchResults } = useAdminLeagueSearch(leagueSearch)
   const sportKey = sportTabs[activeSport].key
   const { data: games, isLoading: gamesLoading } = useGames(sportKey, 'upcoming', 7)
-  const { data: featuredProps } = useAdminFeaturedProps()
-  const voidProp = useVoidProp()
-  const settleProps = useSettleProps()
 
   const syncOdds = useSyncOdds()
   const syncInjuries = useSyncInjuries()
@@ -203,57 +202,7 @@ export default function AdminPage() {
     }
   }
 
-  async function handleVoid(propId) {
-    if (!window.confirm('Void this prop? All picks will be cancelled and any points reversed.')) return
-    try {
-      const result = await voidProp.mutateAsync(propId)
-      toast(`Prop voided — reverted ${result.voidedCount} picks`, 'success')
-    } catch (err) {
-      toast(err.message || 'Failed to void prop', 'error')
-    }
-  }
-
-  async function handleSettle(propId, outcome) {
-    try {
-      const results = await settleProps.mutateAsync([{ propId, outcome }])
-      const totalScored = results.reduce((sum, r) => sum + r.scored, 0)
-      toast(`Settled as ${outcome} — scored ${totalScored} picks`, 'success')
-    } catch (err) {
-      toast(err.message || 'Settlement failed', 'error')
-    }
-  }
-
   const upcomingGames = games || []
-
-  // Forward 3-day schedule (today / tomorrow / day after) — matches the
-  // 3-button date selector below. Settled props are excluded from the
-  // forward-looking lineup; the previous 7 days view still shows them.
-  const scheduleDays = Array.from({ length: 3 }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() + i)
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'long' })
-    const dayProps = (featuredProps || []).filter((p) => p.featured_date === dateStr && p.status !== 'settled')
-    return { dateStr, label, props: dayProps }
-  })
-
-  // Build previous 7 days — keep settled props here so the historical view
-  // shows the full slate that ran each day.
-  const previousDays = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() - (i + 1))
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const label = i === 0 ? 'Yesterday' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })
-    const dayProps = (featuredProps || []).filter((p) => p.featured_date === dateStr)
-    return { dateStr, label, props: dayProps }
-  })
-  const [showPrevious, setShowPrevious] = useState(false)
-  const [propsView, setPropsView] = useState('set') // 'set' | 'settle'
-
-  // Unsettled featured props sorted oldest first
-  const unsettledProps = (featuredProps || [])
-    .filter((p) => p.status === 'locked' || p.status === 'published')
-    .sort((a, b) => new Date(a.featured_date) - new Date(b.featured_date))
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -263,7 +212,6 @@ export default function AdminPage() {
       <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-6">
         {[
           { key: 'dashboard', label: 'Dashboard', badge: pendingCounts?.stuckLeagues },
-          { key: 'props', label: 'Props' },
           { key: 'brackets', label: 'Brackets' },
           { key: 'futures', label: 'Futures' },
           { key: 'email', label: 'Email' },
@@ -632,250 +580,6 @@ export default function AdminPage() {
 
       {adminSection === 'dashboard' && <DashboardPanel />}
 
-      {adminSection === 'props' && <>
-      {/* Set / Settle toggle */}
-      <div className="flex gap-2 mb-4">
-        {[
-          { key: 'set', label: 'Set' },
-          { key: 'settle', label: `Settle${unsettledProps.length ? ` (${unsettledProps.length})` : ''}` },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setPropsView(tab.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${
-              propsView === tab.key
-                ? 'bg-bg-primary/50 border-accent text-accent'
-                : 'bg-bg-primary/50 border-text-primary/20 text-text-secondary hover:border-text-primary/40'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Settle view — all unsettled featured props, oldest first */}
-      {propsView === 'settle' && (
-        <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 mb-6">
-          <h2 className="font-semibold text-sm mb-3">Unsettled Props</h2>
-          {!unsettledProps.length ? (
-            <p className="text-sm text-text-muted">All featured props are settled.</p>
-          ) : (
-            <div className="space-y-3">
-              {unsettledProps.map((prop) => (
-                <div key={prop.id} className="rounded-xl bg-bg-secondary/50 border border-border p-4">
-                  <div className="text-base font-semibold text-text-primary mb-1">
-                    {prop.player_name}
-                  </div>
-                  <div className="text-sm text-accent font-medium mb-2">
-                    {prop.market_label} — {prop.line}
-                  </div>
-                  <div className="text-xs text-text-muted mb-3">
-                    {prop.games?.away_team} @ {prop.games?.home_team} · {new Date(prop.featured_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {['over', 'under', 'push', 'void'].map((action) => (
-                      <button
-                        key={action}
-                        onClick={() => action === 'void' ? handleVoid(prop.id) : handleSettle(prop.id, action)}
-                        disabled={settleProps.isPending || voidProp.isPending}
-                        className={`py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 ${
-                          action === 'over'
-                            ? 'bg-correct/20 text-correct hover:bg-correct/30 border border-correct/30'
-                            : action === 'under'
-                              ? 'bg-incorrect/20 text-incorrect hover:bg-incorrect/30 border border-incorrect/30'
-                              : action === 'push'
-                                ? 'bg-text-muted/20 text-text-muted hover:bg-text-muted/30 border border-text-muted/30'
-                                : 'bg-bg-primary text-text-muted hover:text-incorrect border border-text-primary/20'
-                        }`}
-                      >
-                        {action.charAt(0).toUpperCase() + action.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {propsView === 'set' && <>
-      {/* Featured Schedule — 3-day overview (today / tomorrow / day after) */}
-      <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 mb-6">
-        <h2 className="font-semibold text-sm mb-3">Featured Schedule</h2>
-        <div className="space-y-2">
-          {scheduleDays.map(({ dateStr, label, props: dayProps }) => (
-            <div key={dateStr} className={`rounded-lg ${
-              dayProps.length ? 'bg-accent/5 border border-accent/20' : 'bg-bg-secondary/50 border border-text-primary/10'
-            }`}>
-              <div className="px-3 py-2 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-text-primary/10 flex items-center justify-between">
-                <span>{label}</span>
-                <span className="text-text-muted normal-case tracking-normal">
-                  {dayProps.length === 0 ? 'No props' : `${dayProps.length} ${dayProps.length === 1 ? 'prop' : 'props'}`}
-                </span>
-              </div>
-              {dayProps.length > 0 && (
-                <div className="divide-y divide-text-primary/10">
-                  {dayProps.map((prop) => {
-                    const nameParts = prop.player_name?.split(' ') || []
-                    const shortName = nameParts.length >= 2
-                      ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
-                      : prop.player_name
-                    return (
-                      <div key={prop.id} className="flex items-start gap-3 px-3 py-2.5">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-text-primary truncate">
-                            {shortName} — {prop.market_label} ({prop.line})
-                          </div>
-                          <div className="text-xs text-text-muted truncate mt-0.5">
-                            {prop.games?.away_team} @ {prop.games?.home_team}
-                          </div>
-                        </div>
-                        <div className="shrink-0">
-                          {prop.outcome ? (
-                            <span className={`text-[10px] font-bold px-2 py-1 rounded ${
-                              prop.outcome === 'over' ? 'bg-correct/20 text-correct'
-                                : prop.outcome === 'under' ? 'bg-incorrect/20 text-incorrect'
-                                : 'bg-text-muted/20 text-text-muted'
-                            }`}>
-                              {prop.outcome.toUpperCase()}
-                            </span>
-                          ) : prop.status === 'voided' ? (
-                            <span className="text-[10px] font-bold px-2 py-1 rounded bg-text-muted/20 text-text-muted">VOIDED</span>
-                          ) : (prop.status === 'published' || prop.status === 'locked') ? (
-                            <span className="text-[10px] font-bold px-2 py-1 rounded bg-yellow-500/20 text-yellow-500">PENDING</span>
-                          ) : null}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        <button
-          onClick={() => setShowPrevious(!showPrevious)}
-          className="text-xs text-accent hover:text-accent-hover mt-2"
-        >
-          {showPrevious ? 'Hide previous props' : 'See previous props'}
-        </button>
-        {showPrevious && (
-          <div className="space-y-2 mt-2">
-            {previousDays.map(({ dateStr, label, props: dayProps }) => (
-              <div key={dateStr} className={`rounded-lg ${
-                dayProps.length ? 'bg-bg-secondary/50 border border-text-primary/10' : 'bg-bg-secondary/30 border border-text-primary/10'
-              }`}>
-                <div className="px-3 py-2 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-text-primary/10 flex items-center justify-between">
-                  <span>{label}</span>
-                  <span className="text-text-muted normal-case tracking-normal">
-                    {dayProps.length === 0 ? 'No props' : `${dayProps.length} ${dayProps.length === 1 ? 'prop' : 'props'}`}
-                  </span>
-                </div>
-                {dayProps.length > 0 && (
-                  <div className="divide-y divide-text-primary/10">
-                    {dayProps.map((prop) => {
-                      const nameParts = prop.player_name?.split(' ') || []
-                      const shortName = nameParts.length >= 2
-                        ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
-                        : prop.player_name
-                      return (
-                        <div key={prop.id} className="flex items-start gap-3 px-3 py-2.5">
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-semibold text-text-primary truncate">
-                              {shortName} — {prop.market_label} ({prop.line})
-                            </div>
-                            <div className="text-xs text-text-muted truncate mt-0.5">
-                              {prop.games?.away_team} @ {prop.games?.home_team}
-                            </div>
-                          </div>
-                          <div className="shrink-0">
-                            {prop.outcome ? (
-                              <span className={`text-[10px] font-bold px-2 py-1 rounded ${
-                                prop.outcome === 'over' ? 'bg-correct/20 text-correct'
-                                  : prop.outcome === 'under' ? 'bg-incorrect/20 text-incorrect'
-                                  : 'bg-text-muted/20 text-text-muted'
-                              }`}>
-                                {prop.outcome.toUpperCase()}
-                              </span>
-                            ) : (prop.status === 'published' || prop.status === 'locked') ? (
-                              <span className="text-[10px] font-bold px-2 py-1 rounded bg-yellow-500/20 text-yellow-500">PENDING</span>
-                            ) : null}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Props Manager */}
-      <h2 className="font-display text-xl mb-4">Sync & Feature Props</h2>
-
-      {/* Sport Tabs */}
-      <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
-        {sportTabs.map((tab, i) => (
-          <button
-            key={tab.key}
-            onClick={() => {
-              setActiveSport(i)
-              setSelectedGame(null)
-            }}
-            className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-              activeSport === i
-                ? 'bg-accent text-white'
-                : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Game List — upcoming only */}
-        <div className="lg:col-span-1">
-          {gamesLoading ? (
-            <LoadingSpinner />
-          ) : upcomingGames.length > 0 ? (
-            <div className="space-y-1">
-              {upcomingGames.map((game) => (
-                <GameListItem
-                  key={game.id}
-                  game={game}
-                  isSelected={selectedGame?.id === game.id}
-                  onClick={() => setSelectedGame(game)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center text-text-muted text-sm py-8">No upcoming games</div>
-          )}
-        </div>
-
-        {/* Props Panel */}
-        <div className="lg:col-span-2">
-          {selectedGame ? (
-            <div>
-              <h3 className="font-semibold text-sm mb-4">
-                {selectedGame.away_team} @ {selectedGame.home_team}
-              </h3>
-              <PropSyncPanel game={selectedGame} sportKey={sportKey} />
-            </div>
-          ) : (
-            <div className="text-center text-text-muted text-sm py-16">
-              Select a game to sync & feature props
-            </div>
-          )}
-        </div>
-      </div>
-
-      </>}
-      </>}
 
       {adminSection === 'overrides' && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
