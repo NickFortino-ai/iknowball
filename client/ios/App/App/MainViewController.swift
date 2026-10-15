@@ -1,31 +1,40 @@
 import Capacitor
 import UIKit
 
-// Custom CAPBridgeViewController subclass that re-enables pinch-to-zoom
-// on the underlying WKWebView. Capacitor disables WebView zoom by
-// default to mimic native app behavior, but for content-heavy screens
-// — long-form text, dense tables, picks lists, league standings —
-// pinch zoom is a real usability + accessibility need.
+// Custom CAPBridgeViewController subclass that fixes WKWebView's layout
+// after backgrounding and rotation.
+//
+// IT NO LONGER TOUCHES ZOOM. Pinch-to-zoom is owned entirely by the
+// viewport meta tag in index.html (maximum-scale=5.0), which is the same
+// mechanism — webView.scrollView zoom IS viewport zoom, not a second engine
+// beside it.
+//
+// This file used to set scrollView.delegate = self and implement
+// viewForZooming, which was necessary in June 2026 when the meta tag
+// carried user-scalable=no: WebKit refuses pinch outright when the page
+// forbids scaling, so the only way back in was to drive the scroll view
+// directly. The meta tag was reopened to maximum-scale=5.0 two days later
+// (bda6fb81) and the override was left behind.
+//
+// Keeping it is worse than removing it. WKWebView installs its own scroll
+// view delegate and relies on those callbacks to re-render tiles at the new
+// scale, reposition fixed elements, and report window.visualViewport. The
+// old comment argued the steal was safe because "scroll/bounce/inertia is
+// implemented by UIScrollView itself" — true of the scrolling PHYSICS,
+// false of WebKit's rendering, which is what made zoom feel wrong.
 //
 // Wired to the app via Main.storyboard's root view controller
 // customClass reference. File must be registered in App.xcodeproj's
 // project.pbxproj to be included in the build target — drag into
 // Xcode's project navigator if it isn't already.
-class MainViewController: CAPBridgeViewController, UIScrollViewDelegate {
+class MainViewController: CAPBridgeViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
-        if let webView = self.webView {
-            // Becoming the scrollView delegate is required so viewForZooming
-            // returns non-nil — without it WKWebView's default delegate kills
-            // pinch even when min/maxZoomScale are set. Setting it here also
-            // overrides WKWebView's internal delegate; that's fine because
-            // standard scroll/bounce/inertia behavior is implemented by
-            // UIScrollView itself, not by the delegate.
-            webView.scrollView.delegate = self
-            webView.scrollView.minimumZoomScale = 1.0
-            webView.scrollView.maximumZoomScale = 5.0
-            webView.scrollView.bouncesZoom = true
-        }
+
+        // Zoom bounds are NOT set here. minimum/maximumZoomScale on the
+        // scroll view are redundant with the viewport meta tag, which WebKit
+        // already enforces at 1x-5x, and setting them was only ever paired
+        // with the delegate steal above.
 
         // Reset zoom + relayout on:
         //  - App returning from background (fixes the "half-screen render"
@@ -70,7 +79,4 @@ class MainViewController: CAPBridgeViewController, UIScrollViewDelegate {
         webView.layoutIfNeeded()
     }
 
-    func viewForZooming(in scrollView: UIScrollView) -> UIView? {
-        return scrollView.subviews.first
-    }
 }
