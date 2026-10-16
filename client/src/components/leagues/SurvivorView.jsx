@@ -141,6 +141,18 @@ export default function SurvivorView({ league }) {
   // its game has kicked off, so the pick has left 'pending'.
   const pickIsLocked = !!todayPick && todayPick.status !== 'pending'
 
+  // Period-aware copy for the locked-in state. A DAILY pool telling the user
+  // "next week's picks open" is the same bug family as the weekly-worded
+  // daily narrative — the league knows its cadence, the string didn't.
+  const lockedTitle = isDaily ? "You're locked in for today" : "You're locked in for this week"
+  const nextPeriodCopy = actualCurrentWeek?.ends_at
+    ? `${isDaily ? 'Next pick opens' : "Next week's picks open"} ${new Date(
+        actualCurrentWeek.ends_at,
+      ).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`
+    : isDaily
+      ? "Next pick opens when today's games end"
+      : "Next week's picks open when this week ends"
+
   const pickWeekGames = useMemo(() => {
     if (!games?.length) return []
     let upcoming = league?.starts_at
@@ -158,12 +170,30 @@ export default function SurvivorView({ league }) {
 
     // Having picked is NOT the same as being committed. While the picked
     // game has not kicked off the pick can still be changed, so the rest of
-    // the week's games stay on offer. Once it starts, there is nothing left
-    // to choose this period.
-    if (pickIsLocked) return []
+    // the period's games stay on offer.
+    //
+    // Once it locks, withhold only the CURRENT period's games — not every
+    // game. This used to `return []`, which also threw away the NEXT
+    // period, even though the server has by then advanced pick_week to it
+    // (survivorService: a non-pending pick advances the board). In a daily
+    // pool that meant the form went dark the moment a result landed and
+    // stayed dark until the next day opened, which is most of the day.
+    //
+    // The bound above has usually already excluded these, since it filters
+    // to pickWeek. This is the belt-and-braces case where pick_week has not
+    // advanced — without it a tap on a today game would overwrite a settled
+    // pick and lose the credit.
+    if (pickIsLocked && actualCurrentWeek?.starts_at && actualCurrentWeek?.ends_at) {
+      upcoming = upcoming.filter(
+        (g) => !(g.starts_at >= actualCurrentWeek.starts_at && g.starts_at <= actualCurrentWeek.ends_at),
+      )
+    }
+
+    // No next period at all — the pool has run out of calendar.
+    if (!pickWeek) return []
 
     return upcoming
-  }, [games, pickWeek, league?.starts_at, pickIsLocked])
+  }, [games, pickWeek, league?.starts_at, pickIsLocked, actualCurrentWeek])
 
   // Detect when user has used every available team in current period (pool expansion)
   const poolExpanded = useMemo(() => {
@@ -340,12 +370,10 @@ export default function SurvivorView({ league }) {
       {showPickForm && !leagueCompleted && userIsAlive && isTouchdown && pickIsLocked && (
         <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10 text-center py-8">
           <div className="text-sm text-text-primary mb-1 font-semibold">
-            {todayPick?.player_name ? `You're locked in with ${todayPick.player_name}` : "You're locked in for this week"}
+            {todayPick?.player_name ? `You're locked in with ${todayPick.player_name}` : lockedTitle}
           </div>
           <div className="text-xs text-text-secondary">
-            {actualCurrentWeek?.ends_at
-              ? `Next week's picks open ${new Date(actualCurrentWeek.ends_at).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`
-              : "Next week's picks open when this week ends"}
+            {nextPeriodCopy}
           </div>
         </div>
       )}
@@ -370,12 +398,10 @@ export default function SurvivorView({ league }) {
                     pick has kicked off. Saying "no games available" there
                     reads as something being broken. */}
                 <div className="text-sm text-text-primary mb-1 font-semibold">
-                  {todayPick?.team_name ? `You're locked in with ${todayPick.team_name}` : "You're locked in for this week"}
+                  {todayPick?.team_name ? `You're locked in with ${todayPick.team_name}` : lockedTitle}
                 </div>
                 <div className="text-xs text-text-secondary">
-                  {actualCurrentWeek?.ends_at
-                    ? `Next week's picks open ${new Date(actualCurrentWeek.ends_at).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`
-                    : "Next week's picks open when this week ends"}
+                  {nextPeriodCopy}
                 </div>
               </>
             ) : (
