@@ -6,27 +6,32 @@
 -- PUSH, so nothing errored — picks settled at zero, parlay legs dropped out
 -- of the multiplier, and survivorService marked a LOSING pick as 'survived'.
 --
--- In all five the stored score is missing exactly the game-winning score:
+-- In all five the stored score is missing exactly the game-winning score,
+-- and the live_* columns show the moment we last polled:
 --
---   2026-03-07  MTL 5 @ ANA 5     real: ANA 6-5
---   2026-03-18  NSH 3 @ WPG 3     real: NSH 4-3
---   2026-05-06  CIN 6 @ CHC 6     real: CHC 7-6
---   2026-10-04  LA  4 @ SJ  4     real: SJ  5-4   (overtime)
---   2026-10-14  KENN 21 @ MOST 21 real: MOST 24-21
+--   2026-03-07  MTL 5 @ ANA 5     real: ANA 6-5    (live 5-5, period 5 OT)
+--   2026-03-18  NSH 3 @ WPG 3     real: NSH 4-3    (live 4-3, period 5 OT)
+--   2026-05-06  CIN 6 @ CHC 6     real: CHC 7-6    (live 6-6, Bot 10th)
+--   2026-10-04  LA  4 @ SJ  4     real: SJ  5-4    (live 4-5, period 4 OT)
+--   2026-10-14  KENN 21 @ MOST 21 real: MOST 24-21 (live 21-21, Q4 0:35)
 --
 -- Every real score below was read from ESPN's scoreboard for that date, with
 -- the winner confirmed by ESPN's own `competitor.winner` flag.
 --
 -- NOT INCLUDED, deliberately:
+--   * SURVIVOR. Damian_11's Kennesaw pick lost, and the push convention kept
+--     him alive in D1 Dreams. Nick's ruling 2026-10-16 is to let him stay —
+--     see the note at the bottom. His straight pick on the same game still
+--     settles as a loss; that is the ordinary picks board, not the league.
 --   * The 2 MLB 0-0 "finals" (MIL@KC 2026-04-03, CHC@CLE 2026-04-04). ESPN
---     says STATUS_POSTPONED for both — they are stuck-postponed rows, a
---     different bug, and no picks ride on them.
+--     says STATUS_POSTPONED for both — stuck-postponed rows, a different
+--     bug, and no picks ride on them.
 --   * NYG 27-27 WSH (2026-10-11). That is a REAL NFL tie; ESPN flags no
 --     winner. Leave it alone.
 --   * 112 MLS draws, 8 World Cup, 2 NFL preseason. All legitimate.
 --
--- The code fix is already deployed, so no new instances can appear. This only
--- cleans up what already landed.
+-- The code fix is already deployed, so no new instances can appear. This
+-- only cleans up what already landed.
 
 BEGIN;
 
@@ -74,16 +79,9 @@ END $$;
 -- 1. THE GAMES. Correct score + winner.
 --
 -- live_away_score / live_home_score are reset alongside the real score.
--- Those columns hold what the clock said when we last polled, and they are
--- the proof of the cause — every one of these was captured moments before
--- the winning score:
---
---   KENN @ MOST   live 21-21 at Q4 0:35
---   CIN  @ CHC    live  6-6  in the Bot 10th
---   MTL  @ ANA    live  5-5  in period 5 (OT)
---
--- Leaving them stale would let any surface that reads live_* keep showing
--- the tie after this file corrects the final.
+-- Those columns hold what the clock said when we last polled, so leaving
+-- them stale would let any surface that reads live_* keep showing the tie
+-- after this file corrects the final.
 -- ---------------------------------------------------------------------
 UPDATE games SET away_score =  5, home_score =  6, winner = 'home',
                  live_away_score =  5, live_home_score =  6, updated_at = NOW()
@@ -127,12 +125,12 @@ WHERE id = '3d8712cd-2f1e-4571-997c-7d984b9012eb';   -- Owls 21 @ Bears 24
 -- SolidSailor96 appears twice: +8 and -10, net -2.
 -- ---------------------------------------------------------------------
 UPDATE picks p
-SET is_correct   = (p.picked_team = g.winner),
+SET is_correct    = (p.picked_team = g.winner),
     points_earned = CASE WHEN p.picked_team = g.winner
                          THEN  COALESCE(p.reward_points, 0)
                          ELSE -COALESCE(p.risk_points,   0) END,
-    status       = 'settled',
-    updated_at   = NOW()
+    status        = 'settled',
+    updated_at    = NOW()
 FROM games g
 WHERE g.id = p.game_id
   AND p.game_id IN (
@@ -145,7 +143,7 @@ WHERE g.id = p.game_id
 
 -- ---------------------------------------------------------------------
 -- 3. USER TOTALS. The push awarded 0, so the delta IS the new value —
---    nothing to claw back. Run this ONCE (step 0 is the guard).
+--    nothing to claw back. Safe only once; step 0 is the guard.
 -- ---------------------------------------------------------------------
 UPDATE users u
 SET total_points = COALESCE(u.total_points, 0) + d.delta,
@@ -203,54 +201,49 @@ SET total_points = COALESCE(total_points, 0) + 18,   -- 29 - 11 already paid
     updated_at = NOW()
 WHERE id = '24f2bcdc-1c5a-44f5-bddb-911f22cd3d47';   -- daluz
 
--- ---------------------------------------------------------------------
--- 6. SURVIVOR. Damian_11 picked Kennesaw State, which LOST, but the push
---    convention in survivorService ("winner === null -> treat as survived")
---    kept him alive in D1 Dreams.
---
---    lives_remaining was 1, so one loss eliminates. Week 1 of that league.
---    He has no future picks in this league, so there is nothing to clean up
---    that the normal elimination path would have deleted.
--- ---------------------------------------------------------------------
-UPDATE survivor_picks
-SET status = 'eliminated', updated_at = NOW()
-WHERE id = '0de81b49-07d1-48dc-a508-957fc35aa48b';
-
-UPDATE league_members
-SET is_alive        = false,
-    lives_remaining = 0,
-    eliminated_week = 1
-WHERE league_id = '7907fadf-d2e3-4b9a-b9d3-6f3bf7757f9f'
-  AND user_id   = '44a4f1d8-da99-432f-8767-ab5586379ae8';
-
--- Remove the false "You survived Week 1" notice and replace it with the
--- truth. 'survivor_result' is the type the real elimination path uses.
-DELETE FROM notifications
-WHERE id = 'b77b9916-b374-4233-aca2-8440331ffdc7';
-
-INSERT INTO notifications (user_id, type, message, metadata)
-VALUES (
-  '44a4f1d8-da99-432f-8767-ab5586379ae8',
-  'survivor_result',
-  'Correction: Kennesaw State lost 24-21, so your Week 1 pick in D1 Dreams--College Football Survivor did not survive. Sorry — we had the final score wrong.',
-  '{"leagueId":"7907fadf-d2e3-4b9a-b9d3-6f3bf7757f9f"}'::jsonb
-);
-
 COMMIT;
 
 -- ---------------------------------------------------------------------
--- 7. CONFIRM. Run after COMMIT.
+-- SURVIVOR: INTENTIONALLY NOT TOUCHED.
+--
+-- Damian_11 picked Kennesaw State in D1 Dreams--College Football Survivor.
+-- Kennesaw lost 24-21, so by the rules he is out — survivorService only let
+-- him through because winner=null reads as a push ("treat as survived").
+--
+-- Nick's ruling 2026-10-16: he stays. The mistake was ours, the pick was
+-- made in good faith against a board we got wrong, and D1 Dreams is one
+-- week old.
+--
+-- Nothing re-litigates this on its own: scoreSurvivorPicks only reads picks
+-- in 'locked'/'pending', and his sits at 'survived'. So correcting the game
+-- above does NOT quietly eliminate him later.
+--
+-- His survivor_picks row stays 'survived' and league_members stays
+-- is_alive=true, lives_remaining=1. The only visible oddity is that the
+-- pick reads as survived next to a game that now shows Missouri State
+-- winning. He also keeps the "You survived Week 1" notification, which is
+-- now the ruling rather than a mistake.
+--
+-- If you ever change your mind, this is the eliminate:
+--   UPDATE survivor_picks SET status='eliminated', updated_at=NOW()
+--   WHERE id = '0de81b49-07d1-48dc-a508-957fc35aa48b';
+--   UPDATE league_members SET is_alive=false, lives_remaining=0, eliminated_week=1
+--   WHERE league_id='7907fadf-d2e3-4b9a-b9d3-6f3bf7757f9f'
+--     AND user_id='44a4f1d8-da99-432f-8767-ab5586379ae8';
 -- ---------------------------------------------------------------------
 
--- a) No tied finals left in sports that cannot draw (the 2 MLB 0-0
---    postponed rows are expected and excluded above).
+-- ---------------------------------------------------------------------
+-- 6. CONFIRM. Run after COMMIT.
+-- ---------------------------------------------------------------------
+
+-- a) No tied finals left in sports that cannot draw.
 SELECT g.id, s.key, g.away_team, g.away_score, g.home_team, g.home_score, g.winner
 FROM games g JOIN sports s ON s.id = g.sport_id
 WHERE g.status = 'final' AND g.winner IS NULL
   AND s.key IN ('americanfootball_ncaaf','icehockey_nhl','baseball_mlb',
                 'basketball_nba','basketball_ncaab','basketball_wnba','basketball_wncaab')
 ORDER BY g.starts_at;
--- ^ expect only the 2 MLB 0-0 postponed rows.
+-- ^ expect ONLY the 2 MLB 0-0 postponed rows (MIL@KC, CHC@CLE).
 
 -- b) Every repaired pick now has a verdict.
 SELECT u.username, g.away_team, g.home_team, p.picked_team,
@@ -272,14 +265,8 @@ WHERE status = 'push' AND game_id IN (
   '3d8712cd-2f1e-4571-997c-7d984b9012eb');
 -- ^ expect 0.
 
--- d) Damian_11 is out of D1 Dreams; 12 of 14 alive.
+-- d) D1 Dreams unchanged — 13 of 14 alive, Damian_11 among them.
 SELECT u.username, m.is_alive, m.lives_remaining, m.eliminated_week
 FROM league_members m JOIN users u ON u.id = m.user_id
 WHERE m.league_id = '7907fadf-d2e3-4b9a-b9d3-6f3bf7757f9f'
 ORDER BY m.is_alive DESC, u.username;
-
--- ---------------------------------------------------------------------
--- TO UNDO (scores only — pick/total repair is not reversible by this file):
---   UPDATE games SET winner = NULL, away_score = ..., home_score = ...
---   for each id above, using the ORIGINAL tied values in the header comment.
--- ---------------------------------------------------------------------
