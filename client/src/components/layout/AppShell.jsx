@@ -116,7 +116,16 @@ export default function AppShell({ children }) {
           You're offline. Check your connection.
         </div>
       )}
-      <main className="flex-1 overflow-y-auto overscroll-contain">{children}</main>
+      {/* overflow-x-hidden is EXPLICIT. Setting only overflow-y makes the
+          other axis compute to auto rather than staying visible, so main
+          was a silent horizontal scroller and any stray overflow on any
+          page slid the whole app sideways — clipping the picks bar at both
+          edges rather than being contained where it happened.
+
+          Does not break the legitimate scrollers: the sport tab strip and
+          the stat tables carry their own overflow-x-auto, which still
+          works inside a clipped parent. */}
+      <main className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">{children}</main>
       <BottomTabBar />
     </div>
   )
