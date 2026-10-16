@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useConversations, useRealtimeMessages, useThread, useSendMessage, useMarkThreadRead } from '../hooks/useMessages'
 import { useConnections } from '../hooks/useConnections'
+import { useSearchUsers } from '../hooks/useInvitations'
 import { useAuth } from '../hooks/useAuth'
 import Avatar from '../components/ui/Avatar'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
@@ -132,6 +133,7 @@ export default function MessagesPage() {
   const { data: conversations, isLoading } = useConversations()
   const { data: connections } = useConnections()
   const [showNewMessage, setShowNewMessage] = useState(false)
+  const [recipientQuery, setRecipientQuery] = useState('')
   const [selectedPartnerId, setSelectedPartnerId] = useState(null)
   const navigate = useNavigate()
 
@@ -140,8 +142,31 @@ export default function MessagesPage() {
 
   useRealtimeMessages(profile?.id)
 
-  const existingPartnerIds = new Set((conversations || []).map((c) => c.partnerId))
-  const newMessageTargets = (connections || []).filter((c) => !existingPartnerIds.has(c.user_id))
+  // A full admin can message anyone, so their search hits the global user
+  // directory. Everyone else is still gated on being connected server-side
+  // (messageService.assertCanMessage), so searching all 199 users would only
+  // surface people whose send would 403 — filter their own squad instead.
+  // That also means no network call for the common case: connections are
+  // already loaded for the list below.
+  const isFullAdmin = !!profile?.is_admin && profile?.admin_role !== 'helper'
+  const query = recipientQuery.trim()
+  const { data: globalResults } = useSearchUsers(isFullAdmin ? query : '')
+
+  // NOT filtered by existing conversations. It used to be, which meant the
+  // list shrank as you used it and eventually read "All your squad members
+  // already have conversations" with nothing selectable — no way to start a
+  // message and no way back to an existing thread. Picking someone you
+  // already have a thread with just opens that thread.
+  const squadMatches = (connections || []).filter((c) => {
+    if (query.length < 2) return true
+    const q = query.toLowerCase()
+    return (c.username || '').toLowerCase().includes(q)
+      || (c.display_name || '').toLowerCase().includes(q)
+  })
+
+  const newMessageTargets = isFullAdmin && query.length >= 2
+    ? (globalResults || []).map((u) => ({ ...u, user_id: u.id }))
+    : squadMatches
 
   function handleConvoClick(partnerId, e) {
     // Desktop: open inline; Mobile: navigate
@@ -153,6 +178,7 @@ export default function MessagesPage() {
 
   function handleNewMessageClick(userId) {
     setShowNewMessage(false)
+    setRecipientQuery('')
     if (window.innerWidth >= 1024) {
       setSelectedPartnerId(userId)
     } else {
@@ -169,7 +195,7 @@ export default function MessagesPage() {
           <div className="flex items-center justify-between mb-4">
             <h1 className="font-display text-2xl">Messages</h1>
             <button
-              onClick={() => setShowNewMessage(!showNewMessage)}
+              onClick={() => { setShowNewMessage(!showNewMessage); setRecipientQuery('') }}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
             >
               {showNewMessage ? 'Cancel' : 'New Message'}
@@ -180,11 +206,22 @@ export default function MessagesPage() {
           {showNewMessage && (
             <div className="bg-bg-primary border border-text-primary/20 rounded-xl mb-4 overflow-hidden">
               <div className="px-4 py-3 border-b border-text-primary/10">
-                <p className="text-xs text-text-muted">Select a squad member</p>
+                <input
+                  type="text"
+                  value={recipientQuery}
+                  onChange={(e) => setRecipientQuery(e.target.value)}
+                  autoFocus
+                  placeholder={isFullAdmin ? 'Search any username...' : 'Search your squad...'}
+                  className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                />
               </div>
               {newMessageTargets.length === 0 ? (
                 <div className="px-4 py-6 text-center text-sm text-text-muted">
-                  {connections?.length ? 'All your squad members already have conversations' : 'Connect with people first to message them'}
+                  {query.length >= 2
+                    ? 'No users found'
+                    : connections?.length
+                      ? 'Start typing to find someone'
+                      : 'Connect with people first to message them'}
                 </div>
               ) : (
                 <div className="max-h-60 overflow-y-auto">
@@ -212,7 +249,11 @@ export default function MessagesPage() {
             <div className="bg-bg-primary border border-text-primary/20 rounded-xl p-8 text-center">
               <div className="text-3xl mb-3">💬</div>
               <p className="text-sm text-text-muted">No messages yet</p>
-              <p className="text-xs text-text-muted mt-1">Tap "New Message" to start a conversation with a squad member</p>
+              <p className="text-xs text-text-muted mt-1">
+                {isFullAdmin
+                  ? 'Tap "New Message" and search for any user'
+                  : 'Tap "New Message" to start a conversation with a squad member'}
+              </p>
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto space-y-2">

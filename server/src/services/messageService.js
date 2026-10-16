@@ -2,6 +2,71 @@ import { supabase } from '../config/supabase.js'
 import { assertConnected } from './socialService.js'
 import { checkUserMuted, checkContent } from './contentFilterService.js'
 
+// Messaging is gated on being connected — that gate IS the anti-harassment
+// design, so it stays for everyone except full admins doing support.
+//
+// A full admin is connected to almost nobody (the @admin account had 19
+// connections out of 199 users), which made it impossible to answer a user
+// who wrote in, or to reach someone about a scoring correction, without
+// first sending a connection request and waiting for it to be accepted.
+//
+// Scoped to FULL admins deliberately: admin_role='helper' does NOT get this.
+// A helper is a trusted friend with a limited panel, and the ability to DM
+// all 199 users is a larger grant than the panel itself. Same rule as
+// middleware/requireFullAdmin.js — NULL or 'full' passes, 'helper' does not.
+async function isFullAdmin(userId) {
+  const { data } = await supabase
+    .from('users')
+    .select('is_admin, admin_role')
+    .eq('id', userId)
+    .single()
+  return !!data?.is_admin && data.admin_role !== 'helper'
+}
+
+// Can `userId` participate in a thread with `partnerId`?
+//
+// Three ways in, checked cheapest-first:
+//
+//   1. Full admin — the support bypass above.
+//   2. Connected — the ordinary rule, unchanged for everyone.
+//   3. A message already exists between the two. This is what lets the
+//      RECIPIENT of an admin DM read and reply to it.
+//
+// (3) is not optional. Without it the bypass is half a feature: the admin
+// sends fine, but the user's own getThread call runs assertConnected with
+// the USER as caller, fails, and they get a 403 opening a message that is
+// sitting in their inbox — getConversations has no gate, so the thread is
+// visible but unopenable. Replying would fail the same way.
+//
+// (3) cannot be used to start an unsolicited conversation, because a row
+// only exists if (1) or (2) already let someone send. It strictly follows
+// a message that was already allowed.
+async function assertCanMessage(userId, partnerId) {
+  if (userId === partnerId) return
+  if (await isFullAdmin(userId)) return
+
+  try {
+    await assertConnected(userId, partnerId)
+    return
+  } catch (err) {
+    // Not connected — fall through to the existing-thread check rather than
+    // rethrowing, so an admin-initiated thread stays readable.
+    if (err.status !== 403) throw err
+  }
+
+  const { data: existing } = await supabase
+    .from('direct_messages')
+    .select('id')
+    .or(`and(sender_id.eq.${userId},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${userId})`)
+    .limit(1)
+
+  if (!existing?.length) {
+    const err = new Error('You must be connected to this user')
+    err.status = 403
+    throw err
+  }
+}
+
 export async function sendMessage(senderId, receiverId, content) {
   if (await checkUserMuted(senderId)) {
     const err = new Error('Your messaging privileges have been suspended')
@@ -16,7 +81,7 @@ export async function sendMessage(senderId, receiverId, content) {
     throw err
   }
 
-  await assertConnected(senderId, receiverId)
+  await assertCanMessage(senderId, receiverId)
 
   // Dedupe: reject identical message within 30 seconds
   const thirtySecsAgo = new Date(Date.now() - 30_000).toISOString()
@@ -82,7 +147,7 @@ export async function getConversations(userId) {
 }
 
 export async function getThread(userId, partnerId, before = null) {
-  await assertConnected(userId, partnerId)
+  await assertCanMessage(userId, partnerId)
 
   // Fetch partner profile
   const { data: partner } = await supabase
