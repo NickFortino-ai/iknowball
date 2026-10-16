@@ -19,10 +19,10 @@
 -- the winner confirmed by ESPN's own `competitor.winner` flag.
 --
 -- NOT INCLUDED, deliberately:
---   * SURVIVOR. Damian_11's Kennesaw pick lost, and the push convention kept
---     him alive in D1 Dreams. Nick's ruling 2026-10-16 is to let him stay —
---     see the note at the bottom. His straight pick on the same game still
---     settles as a loss; that is the ordinary picks board, not the league.
+--   * SURVIVOR is handled in step 1 below — Damian_11's pick is MOVED to the
+--     winning team rather than eliminated. Nick's ruling 2026-10-16. His
+--     straight pick on the same game still settles as a loss; that is the
+--     ordinary picks board, not the league.
 --   * The 2 MLB 0-0 "finals" (MIL@KC 2026-04-03, CHC@CLE 2026-04-04). ESPN
 --     says STATUS_POSTPONED for both — stuck-postponed rows, a different
 --     bug, and no picks ride on them.
@@ -76,7 +76,37 @@ BEGIN
 END $$;
 
 -- ---------------------------------------------------------------------
--- 1. THE GAMES. Correct score + winner.
+-- 1. SURVIVOR — move Damian_11 onto the winning team.
+--
+-- He picked Kennesaw State, which lost 24-21. survivorService only kept him
+-- alive because winner=null reads as a push ("treat as survived"), so once
+-- step 2 writes the real winner his row would be a pick that visibly lost
+-- while still marked 'survived'.
+--
+-- Rather than eliminate him for our data error, the pick MOVES to Missouri
+-- State. The row then stands on its own terms: picked the winner, survived.
+-- The mistake was ours, the pick was made in good faith against a board we
+-- got wrong, and D1 Dreams is one week old.
+--
+-- SIDE EFFECT, accepted: no-reuse is enforced on team_name
+-- (survivorService.js:126), so this burns Missouri State for him and frees
+-- Kennesaw State. Both are weak this season (KENN 1-5, MOST 2-4), so it is
+-- not a meaningful edge either way.
+--
+-- His "You survived Week 1" notification stays — it is now simply true.
+--
+-- Do this BEFORE step 2 so there is no moment where a corrected game sits
+-- next to an uncorrected pick.
+-- ---------------------------------------------------------------------
+UPDATE survivor_picks
+SET picked_team = 'home',
+    team_name   = 'Missouri State Bears',
+    status      = 'survived',
+    updated_at  = NOW()
+WHERE id = '0de81b49-07d1-48dc-a508-957fc35aa48b';
+
+-- ---------------------------------------------------------------------
+-- 2. THE GAMES. Correct score + winner.
 --
 -- live_away_score / live_home_score are reset alongside the real score.
 -- Those columns hold what the clock said when we last polled, so leaving
@@ -104,7 +134,7 @@ UPDATE games SET away_score = 21, home_score = 24, winner = 'home',
 WHERE id = '3d8712cd-2f1e-4571-997c-7d984b9012eb';   -- Owls 21 @ Bears 24
 
 -- ---------------------------------------------------------------------
--- 2. STRAIGHT PICKS — 9 rows, 8 users.
+-- 3. STRAIGHT PICKS — 9 rows, 8 users.
 --
 -- Computed from games.winner (now correct) and the stake already stored on
 -- the row, which is exactly what scoringService.scoreCompletedGame does:
@@ -142,7 +172,7 @@ WHERE g.id = p.game_id
   );
 
 -- ---------------------------------------------------------------------
--- 3. USER TOTALS. The push awarded 0, so the delta IS the new value —
+-- 4. USER TOTALS. The push awarded 0, so the delta IS the new value —
 --    nothing to claw back. Safe only once; step 0 is the guard.
 -- ---------------------------------------------------------------------
 UPDATE users u
@@ -163,7 +193,7 @@ FROM (
 WHERE u.id = d.user_id;
 
 -- ---------------------------------------------------------------------
--- 4. PARLAY LEGS — 5 legs, currently 'push'.
+-- 5. PARLAY LEGS — 5 legs, currently 'push'.
 -- ---------------------------------------------------------------------
 UPDATE parlay_legs l
 SET status = CASE WHEN l.picked_team = g.winner THEN 'won' ELSE 'lost' END,
@@ -178,7 +208,7 @@ WHERE g.id = l.game_id
   );
 
 -- ---------------------------------------------------------------------
--- 5. THE ONE PARLAY THAT CHANGES OUTCOME.
+-- 6. THE ONE PARLAY THAT CHANGES OUTCOME.
 --
 -- Four of the five parlays already contain a leg that lost on a DIFFERENT,
 -- correctly-scored game, so they are settled lost at -10 and stay that way —
@@ -204,36 +234,7 @@ WHERE id = '24f2bcdc-1c5a-44f5-bddb-911f22cd3d47';   -- daluz
 COMMIT;
 
 -- ---------------------------------------------------------------------
--- SURVIVOR: INTENTIONALLY NOT TOUCHED.
---
--- Damian_11 picked Kennesaw State in D1 Dreams--College Football Survivor.
--- Kennesaw lost 24-21, so by the rules he is out — survivorService only let
--- him through because winner=null reads as a push ("treat as survived").
---
--- Nick's ruling 2026-10-16: he stays. The mistake was ours, the pick was
--- made in good faith against a board we got wrong, and D1 Dreams is one
--- week old.
---
--- Nothing re-litigates this on its own: scoreSurvivorPicks only reads picks
--- in 'locked'/'pending', and his sits at 'survived'. So correcting the game
--- above does NOT quietly eliminate him later.
---
--- His survivor_picks row stays 'survived' and league_members stays
--- is_alive=true, lives_remaining=1. The only visible oddity is that the
--- pick reads as survived next to a game that now shows Missouri State
--- winning. He also keeps the "You survived Week 1" notification, which is
--- now the ruling rather than a mistake.
---
--- If you ever change your mind, this is the eliminate:
---   UPDATE survivor_picks SET status='eliminated', updated_at=NOW()
---   WHERE id = '0de81b49-07d1-48dc-a508-957fc35aa48b';
---   UPDATE league_members SET is_alive=false, lives_remaining=0, eliminated_week=1
---   WHERE league_id='7907fadf-d2e3-4b9a-b9d3-6f3bf7757f9f'
---     AND user_id='44a4f1d8-da99-432f-8767-ab5586379ae8';
--- ---------------------------------------------------------------------
-
--- ---------------------------------------------------------------------
--- 6. CONFIRM. Run after COMMIT.
+-- 7. CONFIRM. Run after COMMIT.
 -- ---------------------------------------------------------------------
 
 -- a) No tied finals left in sports that cannot draw.
@@ -265,8 +266,17 @@ WHERE status = 'push' AND game_id IN (
   '3d8712cd-2f1e-4571-997c-7d984b9012eb');
 -- ^ expect 0.
 
--- d) D1 Dreams unchanged — 13 of 14 alive, Damian_11 among them.
-SELECT u.username, m.is_alive, m.lives_remaining, m.eliminated_week
-FROM league_members m JOIN users u ON u.id = m.user_id
-WHERE m.league_id = '7907fadf-d2e3-4b9a-b9d3-6f3bf7757f9f'
-ORDER BY m.is_alive DESC, u.username;
+-- d) Damian_11's survivor pick now reads as a winning pick, and D1 Dreams
+--    still has 13 of 14 alive.
+SELECT u.username, sp.team_name, sp.picked_team, sp.status,
+       g.away_team, g.away_score, g.home_team, g.home_score, g.winner
+FROM survivor_picks sp
+JOIN users u ON u.id = sp.user_id
+JOIN games g ON g.id = sp.game_id
+WHERE sp.id = '0de81b49-07d1-48dc-a508-957fc35aa48b';
+-- ^ expect: Missouri State Bears / home / survived, winner = home.
+
+SELECT COUNT(*) FILTER (WHERE is_alive) AS alive, COUNT(*) AS total
+FROM league_members
+WHERE league_id = '7907fadf-d2e3-4b9a-b9d3-6f3bf7757f9f';
+-- ^ expect 13 of 14.
