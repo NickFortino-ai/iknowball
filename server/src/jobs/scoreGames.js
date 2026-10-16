@@ -7,6 +7,35 @@ import { scoreLeaguePicks } from '../services/leaguePickService.js'
 import { scoreBracketMatchups } from '../services/bracketService.js'
 import { findESPNEventId, fetchGameTopScorers } from '../services/espnService.js'
 
+// Sports where a tied final score is IMPOSSIBLE, so a tie reported upstream
+// means we are looking at a stale mid-game snapshot rather than a result.
+//
+// NCAAF abolished ties in 1996 and plays OT until someone wins. The NHL
+// decides every regular-season game by overtime or shootout. Basketball plays
+// OT until a winner. MLB plays extra innings. Each of those leagues CAN NOT
+// hand us a draw, so `winner === null` is a data bug, not an outcome.
+//
+// Deliberately NOT in this set:
+//   americanfootball_nfl            — a real tie is possible after one OT
+//                                     period (NYG 27-27 WSH, 2026-10-11)
+//   americanfootball_nfl_preseason  — no OT at all, ties are routine
+//   americanfootball_ufl            — same OT shootout format, but leave it
+//                                     out until we have seen one; no cost
+//   soccer_usa_mls                  — draws are a normal league result
+//
+// soccer_world_cup is handled separately below: the whole league can draw in
+// the group stage, so it cannot live in this set, but its KNOCKOUT rounds
+// cannot — that guard keys off the tie plus ESPN's winner flag instead.
+export const DRAW_IMPOSSIBLE_SPORTS = new Set([
+  'americanfootball_ncaaf',
+  'basketball_nba',
+  'basketball_ncaab',
+  'basketball_wnba',
+  'basketball_wncaab',
+  'icehockey_nhl',
+  'baseball_mlb',
+])
+
 async function scoreSport(sportKey) {
   // Smart gate: only call API if there are games that need scoring
   const { data: sport } = await supabase
@@ -115,6 +144,27 @@ async function scoreSport(sportKey) {
     // and leave the bracket unsettleable. Skip and let ESPN catch it.
     if (sportKey === 'soccer_world_cup' && winner === null) {
       logger.warn({ gameId: game.id, home: game.home_team, away: game.away_team, homePoints, awayPoints }, 'World Cup knockout reported tied via Odds API — skipping, waiting for ESPN winner flag')
+      continue
+    }
+
+    // Same reasoning, generalised: in a sport that cannot draw, a tied
+    // "completed" event is the Odds API handing us a stale in-progress
+    // snapshot. Finalizing it writes a score that never happened AND a null
+    // winner, which every downstream scorer reads as a push — picks settle
+    // at zero, parlay legs drop out of the multiplier, and survivor treats
+    // it as SURVIVED. A user whose team lost stays alive.
+    //
+    // That is what happened to Kennesaw State @ Missouri State on
+    // 2026-10-14: stored 21-21 and finalized, while the real result was
+    // 24-21 Missouri State. Same for LA @ SJ on 2026-10-03, stored 4-4
+    // against a real 5-4 Sharks overtime win.
+    //
+    // Skipping leaves the row un-final so syncLiveScores can finalize it
+    // from ESPN's post-game payload, which is the authoritative source for a
+    // completed score. A game that stays unsettled is visible and fixable;
+    // one that settles wrong pays out silently.
+    if (DRAW_IMPOSSIBLE_SPORTS.has(sportKey) && winner === null) {
+      logger.warn({ gameId: game.id, sportKey, home: game.home_team, away: game.away_team, homePoints, awayPoints }, 'Tied final in a sport that cannot draw — stale Odds API score, skipping and waiting for ESPN')
       continue
     }
 

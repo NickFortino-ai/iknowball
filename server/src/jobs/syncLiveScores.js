@@ -6,6 +6,7 @@ import { scoreSurvivorPicks } from '../services/survivorService.js'
 import { scoreLeaguePicks } from '../services/leaguePickService.js'
 import { scoreBracketMatchups } from '../services/bracketService.js'
 import { findESPNEventId, fetchGameTopScorers } from '../services/espnService.js'
+import { DRAW_IMPOSSIBLE_SPORTS } from './scoreGames.js'
 
 const SPORTS = [
   'americanfootball_nfl',
@@ -237,6 +238,16 @@ async function syncSportLiveScores(sportKey) {
       // gets picked up. Mirrors the same guard in scoreGames.js:116.
       if (sportKey === 'soccer_world_cup' && winner === null) {
         logger.warn({ gameId: game.id, home: game.home_team, away: game.away_team, homeScore: match.homeScore, awayScore: match.awayScore }, 'World Cup knockout reported tied via ESPN with no winner flag — leaving as live, will retry next tick')
+        continue
+      }
+
+      // Same guard for sports that cannot draw at all. ESPN flips state to
+      // 'post' before the final scoring play has propagated often enough to
+      // matter, and this branch is the one that writes the score we keep.
+      // Leaving the row 'live' costs one tick; finalizing a tie that cannot
+      // exist settles every downstream pick as a push. Mirrors scoreGames.js.
+      if (DRAW_IMPOSSIBLE_SPORTS.has(sportKey) && winner === null) {
+        logger.warn({ gameId: game.id, sportKey, home: game.home_team, away: game.away_team, homeScore: match.homeScore, awayScore: match.awayScore }, 'ESPN reported a tie in a sport that cannot draw — leaving as live, will retry next tick')
         continue
       }
 
