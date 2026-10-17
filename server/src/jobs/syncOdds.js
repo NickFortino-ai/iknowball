@@ -247,9 +247,16 @@ async function syncSport(sportKey, { force = false } = {}) {
     //   game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE
     // (migration 002), so a game whose only dependency was a survivor pick
     // counted as zero deps here, got deleted, and took the user's pick with
-    // it — no log, no error, the pick simply stopped existing. That is the
-    // unexplained "survivor pick ghost delete" we could never trace to a
-    // code path: the delete is three tables away from the symptom.
+    // it — no log, no error, the pick simply stopped existing. The delete is
+    // three tables away from the symptom, so nothing in the survivor code
+    // could ever be made to explain it.
+    //
+    // This is NOT the 2026-07-07 Ustadbadger ghost delete, despite looking
+    // like it. That pick was 'survived' on a game that had already finished,
+    // and this pruner only considers status='upcoming' rows with a future
+    // starts_at — it could not have touched it. That one is still open.
+    // What this IS: the same failure mode for picks on games that have not
+    // been played yet.
     //
     // Worth stating plainly: every table with an ON DELETE CASCADE to
     // games(id) has to be counted here, or pruning silently destroys user
