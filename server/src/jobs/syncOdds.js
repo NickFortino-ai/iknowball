@@ -243,12 +243,26 @@ async function syncSport(sportKey, { force = false } = {}) {
   const orphans = candidates.filter((g) => !seenExternalIds.has(g.external_id))
   for (const orphan of orphans) {
     // Check for dependent records
-    const [picksRes, legsRes, leaguePicksRes] = await Promise.all([
+    // survivor_picks MUST be in this list. Its FK is
+    //   game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE
+    // (migration 002), so a game whose only dependency was a survivor pick
+    // counted as zero deps here, got deleted, and took the user's pick with
+    // it — no log, no error, the pick simply stopped existing. That is the
+    // unexplained "survivor pick ghost delete" we could never trace to a
+    // code path: the delete is three tables away from the symptom.
+    //
+    // Worth stating plainly: every table with an ON DELETE CASCADE to
+    // games(id) has to be counted here, or pruning silently destroys user
+    // data. picks / parlay_legs / league_picks / survivor_picks are the set
+    // today — check again before adding any new table that references a game.
+    const [picksRes, legsRes, leaguePicksRes, survivorRes] = await Promise.all([
       supabase.from('picks').select('id', { count: 'exact', head: true }).eq('game_id', orphan.id),
       supabase.from('parlay_legs').select('id', { count: 'exact', head: true }).eq('game_id', orphan.id),
       supabase.from('league_picks').select('id', { count: 'exact', head: true }).eq('game_id', orphan.id),
+      supabase.from('survivor_picks').select('id', { count: 'exact', head: true }).eq('game_id', orphan.id),
     ])
-    const totalDeps = (picksRes.count || 0) + (legsRes.count || 0) + (leaguePicksRes.count || 0)
+    const totalDeps = (picksRes.count || 0) + (legsRes.count || 0)
+      + (leaguePicksRes.count || 0) + (survivorRes.count || 0)
 
     if (totalDeps > 0) {
       logger.warn({
@@ -259,6 +273,7 @@ async function syncSport(sportKey, { force = false } = {}) {
         picks: picksRes.count,
         parlayLegs: legsRes.count,
         leaguePicks: leaguePicksRes.count,
+        survivorPicks: survivorRes.count,
       }, 'Orphaned game has picks — admin must resolve manually')
       // A warn log is not enough: this row can never settle (no Odds API
       // event to finalize it, no ESPN event to match it) and it keeps
@@ -274,6 +289,7 @@ async function syncSport(sportKey, { force = false } = {}) {
         picks: picksRes.count || 0,
         parlayLegs: legsRes.count || 0,
         leaguePicks: leaguePicksRes.count || 0,
+        survivorPicks: survivorRes.count || 0,
       })
       continue
     }
@@ -327,6 +343,7 @@ async function reportStrandedOrphans() {
       o.picks ? `${o.picks} pick(s)` : null,
       o.parlayLegs ? `${o.parlayLegs} parlay leg(s)` : null,
       o.leaguePicks ? `${o.leaguePicks} league pick(s)` : null,
+      o.survivorPicks ? `${o.survivorPicks} survivor pick(s)` : null,
     ].filter(Boolean).join(', ')
     return `${o.sportKey} — ${o.matchup}\n  starts ${o.startsAt}\n  game_id ${o.gameId}\n  blocked by ${deps}`
   })
