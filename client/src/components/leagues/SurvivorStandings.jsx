@@ -5,6 +5,7 @@ import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import SurvivorPickChip from './SurvivorPickChip'
 import PlayerDetailModal from './PlayerDetailModal'
+import GameCenterModal from '../picks/GameCenterModal'
 
 const FOOTBALL_SPORTS = ['americanfootball_nfl', 'americanfootball_ncaaf']
 const BASEBALL_SPORTS = ['baseball_mlb']
@@ -46,7 +47,7 @@ const PICK_STYLES = {
 // them. Every row's headshots were torn down and rebuilt on any state change
 // in the parent, which is both the flicker and the reason the pick row kept
 // snapping back to its right edge.
-function PickChain({ member, weeks, nowMs, periodLabel, isDaily, sportKey, onOpenPlayer }) {
+function PickChain({ member, weeks, nowMs, periodLabel, isDaily, sportKey, onOpenPlayer, onOpenGame }) {
   const scrollRef = useRef(null)
   const picks = member.picks || []
 
@@ -128,6 +129,7 @@ function PickChain({ member, weeks, nowMs, periodLabel, isDaily, sportKey, onOpe
             isDaily={isDaily}
             sportKey={sportKey}
             onOpenPlayer={onOpenPlayer}
+            onOpenGame={onOpenGame}
           />
         )
       })}
@@ -137,7 +139,7 @@ function PickChain({ member, weeks, nowMs, periodLabel, isDaily, sportKey, onOpe
 
 function MemberRow({
   member, variant, scaleClass, periodLabel, onUserTap,
-  weeks, nowMs, isDaily, sportKey, onOpenPlayer,
+  weeks, nowMs, isDaily, sportKey, onOpenPlayer, onOpenGame,
 }) {
   const isAlive = variant === 'alive'
   const isWinner = variant === 'winner'
@@ -191,6 +193,7 @@ function MemberRow({
         isDaily={isDaily}
         sportKey={sportKey}
         onOpenPlayer={onOpenPlayer}
+        onOpenGame={onOpenGame}
       />
     </div>
   )
@@ -204,10 +207,14 @@ export default function SurvivorStandings({ league, onUserTap }) {
   // Picks tab. Only touchdown-survivor picks carry a player_id; team picks,
   // locked picks and missed periods render inert.
   const [detailPlayer, setDetailPlayer] = useState(null)
+  // Team picks open that game's Game Center. The chip stops propagation so
+  // this doesn't fight MemberRow's own tap target, which opens the profile.
+  const [detailGameId, setDetailGameId] = useState(null)
   // Sampled once per mount, not per render: every row then agrees on which
   // periods are "past", and render stays pure.
   const [nowMs] = useState(() => Date.now())
   const onOpenPlayer = setDetailPlayer
+  const onOpenGame = setDetailGameId
 
   const isDaily = league.settings?.pick_frequency === 'daily'
   const periodLabel = isDaily ? 'Day' : 'Wk'
@@ -265,6 +272,7 @@ export default function SurvivorStandings({ league, onUserTap }) {
     isDaily,
     sportKey: league.sport,
     onOpenPlayer,
+    onOpenGame,
   }
 
   return (
@@ -295,6 +303,10 @@ export default function SurvivorStandings({ league, onUserTap }) {
             ))}
           </div>
         </>
+      )}
+
+      {detailGameId && (
+        <GameCenterModal gameId={detailGameId} onClose={() => setDetailGameId(null)} />
       )}
 
       {detailPlayer && (

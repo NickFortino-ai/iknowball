@@ -24,6 +24,7 @@ export default function SurvivorPickChip({
   isDaily = false,
   missed = false,
   onOpenPlayer,
+  onOpenGame,
   sportKey,
 }) {
   // An all-sports survivor row mixes leagues, so the pick's own game wins over
@@ -34,7 +35,12 @@ export default function SurvivorPickChip({
   // rather than leaving a broken image in the circle.
   const [logoFailed, setLogoFailed] = useState(false)
   const isLocked = !missed && pick?.team_name === 'Locked'
-  const canOpen = !missed && !isLocked && !!pick?.player_id && !!onOpenPlayer
+  // A touchdown-survivor pick opens the PLAYER; a team pick opens that game's
+  // Game Center. Player wins where both could apply, since the player card is
+  // the more specific thing the chip is actually showing.
+  const canOpenPlayer = !missed && !isLocked && !!pick?.player_id && !!onOpenPlayer
+  const canOpenGame = !missed && !isLocked && !pick?.player_id && !!pick?.game_id && !!onOpenGame
+  const canOpen = canOpenPlayer || canOpenGame
 
   // Outcome lives in the ring rather than a filled pill, so the face stays
   // the thing you read and the colour is peripheral.
@@ -70,6 +76,7 @@ export default function SurvivorPickChip({
   const title = missed
     ? `${periodLabel} ${weekNumber}: Missed pick — lost a life`
     : `${periodLabel} ${weekNumber}: ${isLocked ? 'Hidden' : pick?.team_name || 'No pick'}`
+      + (canOpenGame ? ' — tap for Game Center' : '')
 
   const Tag = canOpen ? 'button' : 'div'
 
@@ -77,11 +84,18 @@ export default function SurvivorPickChip({
     <Tag
       {...(canOpen ? {
         type: 'button',
-        // Hands back the player id. The league PlayerDetailModal fetches the
-        // full card from it — team colour header, bio, notes, week-by-week
-        // table — rather than the trimmed ui/ modal that only had what the
-        // caller happened to pass in.
-        onClick: () => onOpenPlayer(pick.player_id),
+        // stopPropagation matters: the whole MemberRow is itself a click
+        // target that opens the user's profile modal, so without this the
+        // tap bubbles up and you get the profile instead of the game.
+        onClick: (e) => {
+          e.stopPropagation()
+          // Hands back the player id. The league PlayerDetailModal fetches
+          // the full card from it — team colour header, bio, notes,
+          // week-by-week table — rather than the trimmed ui/ modal that only
+          // had what the caller happened to pass in.
+          if (canOpenPlayer) onOpenPlayer(pick.player_id)
+          else onOpenGame(pick.game_id)
+        },
       } : {})}
       title={title}
       className={`shrink-0 flex flex-col items-center gap-0.5 w-14 lg:w-20 ${canOpen ? 'hover:opacity-80 transition-opacity' : ''}`}
