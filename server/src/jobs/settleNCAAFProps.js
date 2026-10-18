@@ -53,12 +53,31 @@ export async function settleNCAAFProps() {
     .single()
   if (!sport) return
 
+  // Ask ONLY for markets we can actually map. Without this the query was
+  // dominated by rows it could never settle: of 1,271 unsettled NCAAF props
+  // on final games, 1,014 were player_anytime_td, which has no entry in
+  // MARKET_STAT_MAP and so is skipped every single run. They are never
+  // picked either — zero prop_picks exist on NCAAF anytime_td — so they are
+  // pure ballast that permanently crowds out real work.
+  //
+  // That is what left Darian Mensah's 268.5 pass-yards line locked while
+  // 269.5, 270.5 and 271.5 on the same player and game settled: with a
+  // .limit(500) over 1,271 rows the job saw an arbitrary slice, and most of
+  // every slice was anytime_td.
+  //
+  // The explicit .order() matters for the same reason. An unordered limit in
+  // PostgREST returns an ARBITRARY subset, so a row can lose the draw
+  // forever. Oldest first means the backlog drains in a defined order and
+  // nothing can starve.
+  const settleableMarkets = Object.keys(MARKET_STAT_MAP)
   const { data: props, error } = await supabase
     .from('player_props')
     .select('id, player_name, market_key, line, game_id, games!inner(id, status, home_team, away_team, starts_at)')
     .eq('sport_id', sport.id)
     .in('status', ['locked', 'published'])
+    .in('market_key', settleableMarkets)
     .eq('games.status', 'final')
+    .order('id')
     .limit(500)
 
   if (error) {
