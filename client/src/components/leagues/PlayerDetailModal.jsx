@@ -29,6 +29,18 @@ function InjuryBadge({ status }) {
 // slot names.
 const IDP_POSITION_CODES = ['DL', 'LB', 'DB', 'S', 'DE', 'DT', 'NT', 'ILB', 'OLB', 'MLB', 'CB', 'FS', 'SS']
 
+// Offensive counterpart to IDP_COLUMN_DEFS below, for the mirror case: a
+// player whose base position is defensive but who touches the ball.
+const OFFENSE_COLUMN_DEFS = [
+  { key: 'rec_tgt', label: 'TGT' },
+  { key: 'rec', label: 'REC' },
+  { key: 'rec_yd', label: 'ReYD' },
+  { key: 'rec_td', label: 'ReTD' },
+  { key: 'rush_att', label: 'CAR' },
+  { key: 'rush_yd', label: 'RuYD' },
+  { key: 'rush_td', label: 'RuTD' },
+]
+
 const IDP_COLUMN_DEFS = [
   { key: 'idp_tkl_solo', label: 'SOLO' },
   { key: 'idp_tkl_ast', label: 'AST' },
@@ -72,7 +84,31 @@ function columnsFor(position, weeks) {
   const produced = (key) => (weeks || []).some((w) => (Number(w[key]) || 0) !== 0)
   const extras = IDP_COLUMN_DEFS.filter((c) => !seen.has(c.key) && produced(c.key))
 
-  const cols = extras.length ? [...base, ...extras] : base
+  // The mirror of the rule above, and for the same reason.
+  //
+  // Appending IDP columns by production fixed the receiver who makes a
+  // tackle. It did NOT fix the other direction: Travis Hunter is stored as
+  // plain 'DB', so he takes the IDP branch and his receiving line — 4 for 59
+  // and a touchdown in week 6, most of that week's 15.9 points — had no
+  // columns to render in. The points were right; the table simply could not
+  // show where they came from.
+  //
+  // The dual-position path above expects the server to send 'WR/DB', which
+  // comes from player_position_overrides. No such row exists for him, and
+  // adding one would change which roster slots he can fill mid-season — a
+  // league-rules decision, not a display one. Keying off production needs no
+  // override and covers any two-way player automatically.
+  // Scoped to a DEFENSIVE base position on purpose. Applied everywhere it
+  // would also hand a CAR column to any receiver who ever took a handoff,
+  // which is a change to tables that are already correct.
+  const isDefensiveBase = IDP_POSITION_CODES.includes(basePosition) || basePosition === 'DEF'
+  const offenseExtras = isDefensiveBase
+    ? OFFENSE_COLUMN_DEFS.filter((c) => !seen.has(c.key) && produced(c.key))
+    : []
+
+  // Offence first: it is what the player did with the ball, and it keeps the
+  // column order consistent with every other skill position's table.
+  const cols = [...base, ...offenseExtras, ...extras]
 
   // Snap share goes LAST, after the IDP extras, so it is the far-right
   // column in every position's table — context you scroll to, not something
