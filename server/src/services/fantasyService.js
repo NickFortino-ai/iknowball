@@ -6167,9 +6167,49 @@ export async function getPlayerDetail(leagueId, playerId) {
       .in('week', upcomingWeeks.map((w) => w.week))
     const projByWeek = {}
     for (const r of projRows || []) projByWeek[r.week] = r
+
+    // Zero out the weeks a designation already tells us he cannot play.
+    //
+    // Alec Pierce is on IR. His CURRENT-week projection correctly read 0,
+    // but the weekly table still forecast 12.8, 9.3, 7.2 for weeks he is
+    // ineligible for — a number the roster row and the table disagreed on.
+    //
+    // Counted in GAMES, from the next one on his calendar:
+    //   IR   4 — the NFL minimum before a player on injured reserve may be
+    //            activated, so it is the floor regardless of the injury.
+    //   Out  1 — a weekly game-status designation; it rules out that game
+    //            and says nothing about the one after it.
+    //
+    // Questionable and Doubtful are deliberately absent. Those are
+    // probabilities, not rulings, and plenty of Questionable players start.
+    //
+    // KNOWN IMPRECISION: we store no IR placement date, so the four games
+    // are counted from NOW rather than from when he landed there. A player
+    // three weeks into an IR stint therefore shows a zero or two he might
+    // actually play. That errs toward under-promising, which is the right
+    // direction — the alternative was forecasting double digits for someone
+    // who is not on the roster. Inferring the start from trailing 0-point
+    // weeks was considered and rejected: a healthy deep-bench player with
+    // three quiet games would have his window silently shortened.
+    const MISSED_GAMES_BY_INJURY_STATUS = { IR: 4, Out: 1 }
+    const missedGames = MISSED_GAMES_BY_INJURY_STATUS[player.injury_status] || 0
+    const unavailableWeeks = new Set(
+      missedGames
+        ? upcomingWeeks
+            .filter((w) => !w.is_past)
+            .sort((a, b) => a.week - b.week)
+            .slice(0, missedGames)
+            .map((w) => w.week)
+        : [],
+    )
+
     for (const w of upcomingWeeks) {
       // Never project a week that has already been played.
       if (w.is_past) continue
+      if (unavailableWeeks.has(w.week)) {
+        w.projected_pts = 0
+        continue
+      }
       const computed = computeIdpAwareProjection(projByWeek[w.week], player.position, projCol, leagueRules)
       if (computed != null) w.projected_pts = Math.round(computed * 10) / 10
     }
