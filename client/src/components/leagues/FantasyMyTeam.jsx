@@ -1135,9 +1135,22 @@ export default function FantasyMyTeam({ league }) {
           playerId={detailPlayerId}
           onClose={() => setDetailPlayerId(null)}
           playerContext="my_roster"
+          // Same rule the lineup badge uses (see PlayerRow): locked AND in a
+          // scoring slot. Bench and IR are droppable while locked.
+          dropBlockedReason={(() => {
+            const row = roster?.find((r) => r.player_id === detailPlayerId)
+            if (!row?.is_locked) return null
+            if (row.slot === 'bench' || row.slot === 'ir') return null
+            return "His game has already been played and his points are in this week's score. You can drop him once the week finalizes."
+          })()}
           onDrop={(pid) => {
             const row = roster?.find((r) => r.player_id === pid)
-            if (row) { setDetailPlayerId(null); setConfirmDrop(row) }
+            if (!row) return
+            // Belt and braces — the button is already disabled above, but a
+            // stale roster render must not open a confirm dialog for a drop
+            // the server is going to refuse.
+            if (row.is_locked && row.slot !== 'bench' && row.slot !== 'ir') return
+            setDetailPlayerId(null); setConfirmDrop(row)
           }}
         />
       )}

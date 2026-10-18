@@ -509,7 +509,7 @@ function PlayerNotesSection({ blurbs, blurb, injuryDetail }) {
   )
 }
 
-export default function PlayerDetailModal({ leagueId, playerId, onClose, playerContext, onDrop, onTrade, onClaim, onAdd, hideFantasyPoints = false }) {
+export default function PlayerDetailModal({ leagueId, playerId, onClose, playerContext, onDrop, dropBlockedReason = null, onTrade, onClaim, onAdd, hideFantasyPoints = false }) {
   const { data, isLoading } = usePlayerDetail(leagueId, playerId)
   const contentRef = useRef(null)
 
@@ -666,13 +666,39 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
             {playerContext && (
               <div className="flex justify-center pt-2 pb-1">
                 {playerContext === 'my_roster' && onDrop && (
-                  <button
-                    onClick={() => onDrop(playerId)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-incorrect hover:bg-incorrect/10 transition-colors font-semibold text-xs"
-                  >
-                    <span className="text-sm leading-none">−</span>
-                    Drop
-                  </button>
+                  // A started STARTER cannot be dropped — his points are
+                  // already in this week's score. The server refuses it
+                  // (fantasyService: lockedTeams + isStarterSlot), and
+                  // without this the only way to find out was to tap Drop,
+                  // confirm "Are you sure?", and then read an error. The
+                  // reason belongs on the button, before the decision.
+                  //
+                  // Bench and IR stay droppable even when locked, which is
+                  // deliberate and matches Yahoo — a non-scoring slot cannot
+                  // change what the lineup already earned.
+                  dropBlockedReason ? (
+                    <div className="flex flex-col items-center gap-1">
+                      <button
+                        type="button"
+                        disabled
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-text-muted font-semibold text-xs opacity-50 cursor-not-allowed"
+                      >
+                        <span className="text-sm leading-none">−</span>
+                        Drop
+                      </button>
+                      <p className="text-[11px] text-text-muted text-center max-w-[15rem] leading-snug">
+                        {dropBlockedReason}
+                      </p>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => onDrop(playerId)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-incorrect hover:bg-incorrect/10 transition-colors font-semibold text-xs"
+                    >
+                      <span className="text-sm leading-none">−</span>
+                      Drop
+                    </button>
+                  )
                 )}
                 {playerContext === 'opponent' && onTrade && (
                   <button
