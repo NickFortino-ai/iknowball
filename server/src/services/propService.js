@@ -186,6 +186,47 @@ export async function attachNflHeadshots(rows, sportKey) {
 }
 
 /**
+ * Fill player_headshot_url on NBA / WNBA / MLB prop rows from the ESPN
+ * roster cache.
+ *
+ * Same shape, and the same reason, as attachNflHeadshots above: there are
+ * TWO row builders — syncPropsForGame and the user-facing load — and only
+ * the load one ever looked a headshot up. Every row syncPropsForGame wrote
+ * got a null, permanently, because once a game is past it falls out of the
+ * load path's upcoming/live window and is never revisited.
+ *
+ * That is most of the gap. NBA sat at 36% coverage with 101 of its 102
+ * resolvable players ALSO having rows with no image — the same player,
+ * resolving on one row and not the next. Against a warm cache 258 of the
+ * 281 missing players resolve, so this was never a name-matching problem.
+ *
+ * Applied to EVERY row rather than only the blank ones, so a re-sync repairs
+ * a value written while the cache was cold instead of needing a migration.
+ * The cache build is 30 roster fetches (~4s cold, then 24h in memory), which
+ * is why a row written before it warms up is the common case worth fixing.
+ *
+ * No-op for NFL, which has its own path above, and for any sport with no
+ * ESPN roster list.
+ */
+export async function attachEspnHeadshots(rows, sportKey) {
+  if (!rows?.length) return
+  const sportPath = SPORT_KEY_TO_ESPN_PATH[sportKey]
+  if (!sportPath || sportPath === 'football/nfl') return
+  try {
+    await refreshPlayerHeadshotCache(sportPath)
+    let filled = 0
+    for (const r of rows) {
+      if (!r.player_name) continue
+      const url = getPlayerHeadshotUrl(r.player_name, sportPath)
+      if (url) { r.player_headshot_url = url; filled++ }
+    }
+    logger.info({ sportPath, rows: rows.length, filled }, 'ESPN headshots attached')
+  } catch (err) {
+    logger.warn({ err: err.message, sportPath }, 'ESPN headshot attach failed — cards fall back to initials')
+  }
+}
+
+/**
  * Pick which bookmaker to price a game from.
  *
  * Preference is one carrying BOTH sides, so a card can offer Over and Under
@@ -356,6 +397,12 @@ export async function syncPropsForGame(gameId, markets) {
   if (!rows.length) {
     return { synced: 0 }
   }
+
+  // This builder never looked up a headshot, so every row it wrote carried a
+  // null until the user-facing load happened to rewrite it — and for a game
+  // already past, that never happens.
+  await attachNflHeadshots(rows, game.sports?.key)
+  await attachEspnHeadshots(rows, game.sports?.key)
 
   // Upsert props — omit status so existing published/locked props keep their status
   for (const row of rows) {
@@ -633,10 +680,6 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey, userId =
             bookmaker: primary.key,
             external_event_id: game.external_id,
           }
-          if (sportPath) {
-            const url = getPlayerHeadshotUrl(playerName, sportPath)
-            if (url) row.player_headshot_url = url
-          }
           rows.push(row)
         }
         if (side === 'over') row.over_odds = outcome.price
@@ -650,6 +693,11 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey, userId =
       PROPS_LOAD_CACHE.set(cacheKey, { expiresAt: now + PROPS_LOAD_TTL_MS })
       return
     }
+
+    // Attach to EVERY row rather than only to newly-created ones, which is
+    // what the inline lookup here used to do. Re-resolving on each sync is
+    // what repairs a row written while the roster cache was still cold.
+    await attachEspnHeadshots(rows, fullSportKey)
 
     // Look up existing rows to preserve 'locked' / 'settled' statuses; only
     // set status='published' on inserts / 'synced' / 'published' upserts.
