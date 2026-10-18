@@ -150,17 +150,30 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
         </div>
       </div>
 
-      {isPostponed && userPick && (
+      {/* A SETTLED pick reports its own result, even when the game row is
+          still 'postponed'. Pick status is the more specific fact, and the
+          two can legitimately disagree: a postponed game that is never made
+          up inside its window settles its picks as pushes, and the game row
+          stays postponed forever because it is true.
+
+          This used to be the other way round — isPostponed won outright and
+          the settled branch excluded postponed games — so a pushed pick sat
+          on "pick will settle when rescheduled" permanently, a sentence that
+          was false the moment it settled. */}
+      {userPick?.status === 'settled' && userPick.points_earned !== null ? (
+        <div className={`mt-3 text-center text-sm font-semibold ${userPick.points_earned > 0 ? 'text-correct' : userPick.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
+          {userPick.is_correct === null
+            // is_correct null on a settled pick IS the push marker — a tie,
+            // or a game that never happened. "0 pts" reads as a loss that
+            // scored nothing rather than a bet that was returned.
+            ? (isPostponed ? 'Push — game postponed' : 'Push')
+            : `${userPick.points_earned > 0 ? '+' : ''}${userPick.points_earned} pts`}
+        </div>
+      ) : isPostponed && userPick ? (
         <div className="mt-3 text-center text-sm font-semibold text-yellow-500">
           Game postponed — pick will settle when rescheduled
         </div>
-      )}
-
-      {!isPostponed && userPick?.status === 'settled' && userPick.points_earned !== null && (
-        <div className={`mt-3 text-center text-sm font-semibold ${userPick.points_earned > 0 ? 'text-correct' : userPick.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
-          {userPick.points_earned > 0 ? '+' : ''}{userPick.points_earned} pts
-        </div>
-      )}
+      ) : null}
 
       {userPick?.status === 'locked' && userPick.odds_at_pick != null && (
         <div className="mt-3 text-center text-sm text-text-muted">
