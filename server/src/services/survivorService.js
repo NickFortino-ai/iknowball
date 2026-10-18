@@ -1355,6 +1355,46 @@ export async function autoEliminateMissedPicks() {
         }
       }
 
+      // Push any pick left locked on a POSTPONED game before closing the
+      // week out.
+      //
+      // scoreSurvivorPicks only ever runs when a game FINALIZES, and a
+      // postponed game never does — so such a pick cannot settle on its
+      // own. There is a 24-hour fallback further up that pushes stragglers,
+      // but it only looks at weeks with missed_picks_processed = false, and
+      // the update below is about to set that true. Once it does, this week
+      // is filtered out of every future pass and the pick is stranded at
+      // 'locked' permanently.
+      //
+      // That is exactly what happened to daluz's Day 2 Guardians pick in
+      // Immortality: the Rays @ Guardians game was postponed, `allStarted`
+      // counts 'postponed' as started, so the week processed normally about
+      // 15 hours in and closed with his pick still locked.
+      //
+      // ONLY postponed games. A pick whose game is still 'live' also reads
+      // as locked here — allStarted admits 'live' — and that one must be
+      // left alone to settle on its own when the game ends.
+      //
+      // Sportsbook convention, same as the 24h branch: postponed = push.
+      // The user survives and the team stays burned.
+      const postponedGameIds = games.filter((g) => g.status === 'postponed').map((g) => g.id)
+      if (postponedGameIds.length) {
+        const { data: pushedPicks, error: pushErr } = await supabase
+          .from('survivor_picks')
+          .update({ status: 'survived', updated_at: new Date().toISOString() })
+          .eq('league_id', league.id)
+          .eq('league_week_id', week.id)
+          .eq('status', 'locked')
+          .in('game_id', postponedGameIds)
+          .select('id, user_id')
+        if (pushErr) {
+          logger.error({ pushErr, leagueId: league.id, weekId: week.id }, 'Failed to push locked picks on postponed games')
+        } else if (pushedPicks?.length) {
+          logger.info({ leagueId: league.id, weekId: week.id, pushed: pushedPicks.length },
+            'Pushed survivor picks stranded on postponed games')
+        }
+      }
+
       // Mark week as processed
       await supabase
         .from('league_weeks')
