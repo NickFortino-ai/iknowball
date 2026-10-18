@@ -34,6 +34,8 @@ function sportLabel(key) {
 const STATUS_STYLES = {
   survived: 'bg-correct/20 text-correct',
   survived_wrong: 'bg-yellow-500/20 text-yellow-500',
+  // No result to win or lose — postponed, or a draw. Still alive.
+  pushed: 'bg-yellow-500/20 text-yellow-500',
   eliminated: 'bg-incorrect/20 text-incorrect',
   locked: 'bg-accent/20 text-accent',
   pending: 'bg-tier-hof/20 text-tier-hof',

@@ -376,7 +376,7 @@ async function calcLongestSurvivorStreak() {
     supabase
       .from('survivor_picks')
       .select('id, user_id, league_id, status, league_weeks(week_number), leagues!inner(settings)')
-      .in('status', ['survived', 'eliminated'])
+      .in('status', ['survived', 'pushed', 'eliminated'])
       .order('id')
   )
 
@@ -408,7 +408,9 @@ async function calcLongestSurvivorStreak() {
 
     let streak = 0
     for (const p of group.picks) {
-      if (p.status === 'survived') {
+      // A push extends the streak — the user survived the period, which is
+      // what the streak counts. Only an elimination ends it.
+      if (p.status === 'survived' || p.status === 'pushed') {
         streak++
       } else {
         if (streak > bestStreak) {

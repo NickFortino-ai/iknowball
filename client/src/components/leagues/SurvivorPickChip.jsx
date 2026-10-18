@@ -50,7 +50,7 @@ export default function SurvivorPickChip({
       ? 'ring-white/15'
       : pick?.status === 'survived'
         ? 'ring-correct/70'
-        : pick?.status === 'survived_wrong'
+        : pick?.status === 'survived_wrong' || pick?.status === 'pushed'
           ? 'ring-yellow-500/70'
           : pick?.status === 'eliminated'
             ? 'ring-incorrect/70'

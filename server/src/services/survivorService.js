@@ -120,7 +120,7 @@ export async function submitSurvivorPick(leagueId, userId, weekId, gameId, picke
     .select('team_name')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
-    .in('status', ['pending', 'locked', 'survived', 'survived_wrong', 'eliminated'])
+    .in('status', ['pending', 'locked', 'survived', 'survived_wrong', 'pushed', 'eliminated'])
     .neq('league_week_id', resolvedWeekId)
 
   const usedTeams = (usedPicks || []).map((p) => p.team_name)
@@ -304,7 +304,7 @@ export async function submitTouchdownPick(leagueId, userId, weekId, playerId) {
     .select('player_id')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
-    .in('status', ['locked', 'survived', 'survived_wrong', 'eliminated'])
+    .in('status', ['locked', 'survived', 'survived_wrong', 'pushed', 'eliminated'])
 
   const usedPlayerIds = new Set((usedPicks || []).map((p) => p.player_id).filter(Boolean))
   if (usedPlayerIds.has(playerId)) {
@@ -721,7 +721,7 @@ export async function getUsedTeams(leagueId, userId) {
     .select('team_name, status')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
-    .in('status', ['locked', 'survived', 'survived_wrong', 'eliminated'])
+    .in('status', ['locked', 'survived', 'survived_wrong', 'pushed', 'eliminated'])
 
   if (error) throw error
   return (data || []).map((p) => p.team_name)
@@ -939,10 +939,13 @@ export async function scoreSurvivorPicks(gameId, winner) {
     const leagueName = pick.leagues?.name || 'Survivor'
 
     if (winner === null) {
-      // Push - treat as survived
+      // No winner — a draw, or a result we could not resolve. The user
+      // advances, but this was not a win, so it gets its own status and the
+      // board shows a yellow ring rather than a green one. 'pushed' counts
+      // as survived everywhere it matters, including burning the team.
       await supabase
         .from('survivor_picks')
-        .update({ status: 'survived', updated_at: new Date().toISOString() })
+        .update({ status: 'pushed', updated_at: new Date().toISOString() })
         .eq('id', pick.id)
 
       deferredNotifications.push({ userId: pick.user_id, leagueId: pick.league_id,
@@ -1176,7 +1179,7 @@ export async function autoEliminateMissedPicks() {
         // Sportsbook convention: postponed = push. Team stays burned.
         await supabase
           .from('survivor_picks')
-          .update({ status: 'survived', updated_at: new Date().toISOString() })
+          .update({ status: 'pushed', updated_at: new Date().toISOString() })
           .eq('league_id', league.id)
           .eq('league_week_id', week.id)
           .eq('status', 'locked')
@@ -1300,7 +1303,7 @@ export async function autoEliminateMissedPicks() {
           .select('team_name')
           .eq('league_id', league.id)
           .eq('user_id', member.user_id)
-          .in('status', ['locked', 'survived', 'survived_wrong', 'eliminated'])
+          .in('status', ['locked', 'survived', 'survived_wrong', 'pushed', 'eliminated'])
 
         const memberUsedTeams = new Set((memberUsedPicks || []).map((p) => p.team_name))
         const hadAvailableTeam = [...periodTeamNames].some((t) => !memberUsedTeams.has(t))
@@ -1381,7 +1384,7 @@ export async function autoEliminateMissedPicks() {
       if (postponedGameIds.length) {
         const { data: pushedPicks, error: pushErr } = await supabase
           .from('survivor_picks')
-          .update({ status: 'survived', updated_at: new Date().toISOString() })
+          .update({ status: 'pushed', updated_at: new Date().toISOString() })
           .eq('league_id', league.id)
           .eq('league_week_id', week.id)
           .eq('status', 'locked')

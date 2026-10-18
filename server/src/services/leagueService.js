@@ -1343,7 +1343,7 @@ async function checkLeagueHasLockedPicks(leagueId, league) {
       .from('survivor_picks')
       .select('id', { count: 'exact', head: true })
       .eq('league_id', leagueId)
-      .in('status', ['locked', 'survived', 'eliminated'])
+      .in('status', ['locked', 'survived', 'survived_wrong', 'pushed', 'eliminated'])
     return count > 0
   }
   if (league.format === 'pickem') {
