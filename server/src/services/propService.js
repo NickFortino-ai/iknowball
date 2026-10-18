@@ -1586,11 +1586,39 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
     const ncaafByName = {}
     if (ncaafLockedPicks.length) {
       try {
-        const events = await cached('ncaafScoreboardLive', 30_000, async () => {
-          const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?limit=200')
-          if (!res.ok) throw new Error(`ESPN NCAAF scoreboard ${res.status}`)
-          return (await res.json()).events || []
-        })
+        // ESPN's scoreboard MUST be asked for explicit dates. Called without
+        // them it returns whatever it considers "now" — on a Saturday night
+        // at 9:50pm PT that was 16 events out of the day's 52, and the 36 it
+        // dropped included games still in progress. Anthony Colandrea had no
+        // live line because NEB @ ORE was simply not in the payload, which
+        // also means the leaders pass never saw it either.
+        //
+        // PT-anchored, per utils/sportsDay.js. ESPN keys by a calendar date,
+        // and a 7:30pm PT kickoff is already "tomorrow" in ET — asking for
+        // the ET date at that hour returns an empty slate. Yesterday is
+        // included too, for a late game still running past the rollover.
+        //
+        // Cached per date, so the two calls are shared across every user and
+        // every prop on the page.
+        const espnDates = [todaySportsDay(), yesterdaySportsDay()].map((d) => d.replace(/-/g, ''))
+        const eventsByDate = await Promise.all(espnDates.map((d) =>
+          cached(`ncaafScoreboardLive:${d}`, 30_000, async () => {
+            const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?limit=200&dates=${d}`)
+            if (!res.ok) throw new Error(`ESPN NCAAF scoreboard ${res.status}`)
+            return (await res.json()).events || []
+          }).catch((err) => {
+            logger.error({ err: err.message, date: d }, 'Live stat enrichment: NCAAF scoreboard date fetch failed')
+            return []
+          }),
+        ))
+        // Merge, de-duping by event id — a game can appear under both dates.
+        const seenEventIds = new Set()
+        const events = []
+        for (const list of eventsByDate) {
+          for (const ev of list) {
+            if (ev?.id && !seenEventIds.has(ev.id)) { seenEventIds.add(ev.id); events.push(ev) }
+          }
+        }
         for (const ev of events) {
           for (const cat of ev.competitions?.[0]?.leaders || []) {
             for (const l of cat.leaders || []) {
