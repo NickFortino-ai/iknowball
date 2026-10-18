@@ -873,6 +873,53 @@ export async function scoreTouchdownSurvivorPicks(gameId) {
   logger.info({ gameId, picks: picks.length, scorers: Object.values(tdsByPlayer).filter((n) => n > 0).length }, 'Touchdown survivor picks scored')
 }
 
+/**
+ * Could an elimination in this period still be undone?
+ *
+ * Only under all_eliminated_survive, and only while NOBODY still alive has
+ * banked a surviving pick for the period. One survivor is enough to make
+ * every other elimination final, because the all-lose condition can no
+ * longer be met.
+ *
+ * A player who is alive with no pick at all counts as still-losable — the
+ * missed-pick job will take them out, which is exactly the path that leads
+ * to a mass elimination.
+ *
+ * Conservative on error: returns false, so the message stays as it was
+ * rather than hedging an elimination that is actually settled.
+ */
+async function isEliminationReversible(leagueId, weekId) {
+  if (!weekId) return false
+  try {
+    const { data: league } = await supabase
+      .from('leagues')
+      .select('settings')
+      .eq('id', leagueId)
+      .single()
+    if (!league?.settings?.all_eliminated_survive) return false
+
+    const { data: alive } = await supabase
+      .from('league_members')
+      .select('user_id')
+      .eq('league_id', leagueId)
+      .eq('is_alive', true)
+    if (!alive?.length) return false
+
+    const { data: safePicks } = await supabase
+      .from('survivor_picks')
+      .select('user_id')
+      .eq('league_id', leagueId)
+      .eq('league_week_id', weekId)
+      .in('status', ['survived', 'survived_wrong', 'pushed'])
+      .in('user_id', alive.map((m) => m.user_id))
+
+    return !safePicks?.length
+  } catch (err) {
+    logger.warn({ err: err.message, leagueId, weekId }, 'Reversibility check failed — sending the plain elimination notice')
+    return false
+  }
+}
+
 export async function scoreSurvivorPicks(gameId, winner) {
   // Find all unsettled survivor picks for this game. We accept both 'locked'
   // (the happy path — lockPicks ran before the game finalized) and 'pending'
@@ -998,9 +1045,17 @@ export async function scoreSurvivorPicks(gameId, winner) {
           .eq('user_id', pick.user_id)
 
         // Defer elimination notification — only send if user is still eliminated
-        // after checkSurvivorWinner (which may revive everyone)
+        // after checkSurvivorWinner (which may revive everyone).
+        //
+        // weekId and teamName ride along so the send loop can tell a FINAL
+        // elimination from one that is still reversible — see the note there.
         deferredNotifications.push({ userId: pick.user_id, leagueId: pick.league_id,
           message: `You were eliminated in ${periodLabel} ${periodNum} of ${leagueName}`,
+          weekId: pick.league_week_id,
+          teamName: pick.team_name,
+          periodLabel,
+          periodNum,
+          leagueName,
           onlyIfEliminated: true })
 
         // Defer pending pick deletion — only delete if user stays eliminated
@@ -1062,6 +1117,28 @@ export async function scoreSurvivorPicks(gameId, winner) {
         // User was revived — send survival notification instead
         await createNotification(n.userId, 'survivor_result',
           'Everyone was eliminated — you all survive! Pick again next round.',
+          { leagueId: n.leagueId })
+        continue
+      }
+
+      // Still eliminated — but is that FINAL?
+      //
+      // Under all_eliminated_survive, an elimination is undone if every
+      // remaining player also goes out this period. The revival check above
+      // only sees picks that settled in THIS run, and games finish at
+      // different times: userpick was told he was eliminated in Immortality
+      // while the last player standing had an unsettled pick, so the result
+      // could still have been reversed. If it had been, he would have got a
+      // flat contradiction a few hours later.
+      //
+      // So when nobody left alive has yet locked in a surviving pick for the
+      // period, say so rather than asserting something we do not know. The
+      // notice is still sent immediately — no new trigger, nothing that can
+      // leave a user un-notified — it just stops being wrong.
+      const soft = await isEliminationReversible(n.leagueId, n.weekId)
+      if (soft) {
+        await createNotification(n.userId, 'survivor_result',
+          `${n.teamName} lost — you're eliminated in ${n.periodLabel} ${n.periodNum} of ${n.leagueName}, unless everyone still alive loses too.`,
           { leagueId: n.leagueId })
         continue
       }
