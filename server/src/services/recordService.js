@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from './notificationService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 // Records whose CHANGE OF HAND is not worth putting in the Hub feed.
 //
@@ -20,7 +21,6 @@ import { createNotification } from './notificationService.js'
 const UNANNOUNCED_RECORD_KEYS = new Set([
   'highest_prop_pct',   // "Sharpest Prop Picker"
 ])
-import { fetchAll } from '../utils/fetchAll.js'
 
 // Tier thresholds (mirrored from client scoring.js)
 const TIER_THRESHOLDS = [
