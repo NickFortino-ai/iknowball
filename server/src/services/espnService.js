@@ -652,15 +652,27 @@ export async function fetchFootballPlayerBoxStats(sportKey, espnEventId) {
       const key = normalizePlayerName(name)
       if (!key) return null
       if (!result[key]) {
-        result[key] = { pass_yd: 0, pass_td: 0, rush_yd: 0, rush_td: 0, rec: 0, rec_yd: 0, rec_td: 0 }
+        result[key] = {
+          pass_yd: 0, pass_td: 0, rush_yd: 0, rush_td: 0, rec: 0, rec_yd: 0, rec_td: 0,
+          // Touchdowns scored on a return or on defence. Kept separate from
+          // rush/rec so a caller can choose: "anytime TD" wants all of them,
+          // a rushing-TD market must not.
+          return_td: 0,
+        }
       }
       return result[key]
     }
 
     for (const teamBox of data.boxscore.players) {
+      // defensiveTd / interceptionTd are collected per player and reconciled
+      // AFTER the group loop — see the note where they are merged.
+      const defensiveTd = {}
+      const interceptionTd = {}
+
       for (const group of teamBox.statistics || []) {
         const name = (group?.name || '').toLowerCase()
-        if (!['passing', 'rushing', 'receiving'].includes(name)) continue
+        const SCORING_GROUPS = ['passing', 'rushing', 'receiving', 'kickreturns', 'puntreturns', 'defensive', 'interceptions']
+        if (!SCORING_GROUPS.includes(name)) continue
         const labels = group.labels || []
         const yds = labels.indexOf('YDS')
         const td = labels.indexOf('TD')
@@ -676,12 +688,33 @@ export async function fetchFootballPlayerBoxStats(sportKey, espnEventId) {
           } else if (name === 'rushing') {
             if (yds >= 0) row.rush_yd = num(arr[yds])
             if (td >= 0) row.rush_td = num(arr[td])
-          } else {
+          } else if (name === 'receiving') {
             if (rec >= 0) row.rec = num(arr[rec])
             if (yds >= 0) row.rec_yd = num(arr[yds])
             if (td >= 0) row.rec_td = num(arr[td])
+          } else if (name === 'kickreturns' || name === 'puntreturns') {
+            // Distinct events — a player can take back a kick AND a punt.
+            if (td >= 0) row.return_td += num(arr[td])
+          } else if (name === 'defensive') {
+            if (td >= 0) defensiveTd[normalizePlayerName(athlete.athlete?.displayName)] = num(arr[td])
+          } else if (name === 'interceptions') {
+            if (td >= 0) interceptionTd[normalizePlayerName(athlete.athlete?.displayName)] = num(arr[td])
           }
         }
+      }
+
+      // A pick-six is BOTH a defensive touchdown and an interception
+      // touchdown, and ESPN reports it in both groups — `defensive` carries
+      // TOT/SOLO/SACKS/TFL/PD/QB HUR/TD, where TD is any defensive score, and
+      // `interceptions` carries the INT subset. Adding them would count one
+      // play twice.
+      //
+      // So take the MAX rather than the sum: `defensive` is the superset and
+      // also catches fumble returns, while `interceptions` is kept as a
+      // fallback in case a box score populates one group and not the other.
+      for (const key of new Set([...Object.keys(defensiveTd), ...Object.keys(interceptionTd)])) {
+        if (!result[key]) continue
+        result[key].return_td += Math.max(defensiveTd[key] || 0, interceptionTd[key] || 0)
       }
     }
     return result

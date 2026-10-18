@@ -13,6 +13,17 @@ const MARKET_STAT_MAP = {
   player_rush_yds: (s) => s.rush_yd,
   player_reception_yds: (s) => s.rec_yd,
   player_receptions: (s) => s.rec,
+  // Anytime TD. Rushing + receiving + returns/defence, matching how a
+  // sportsbook grades it and how the NFL map (propService) already does.
+  //
+  // pass_td is DELIBERATELY excluded: throwing a touchdown is not scoring
+  // one, and including it would pay out every quarterback in the country.
+  //
+  // return_td covers kick returns, punt returns, pick-sixes and fumble
+  // returns. The NFL map's comment warns that leaving returns out "silently
+  // under-graded return specialists", so college grades them too rather than
+  // repeating that.
+  player_anytime_td: (s) => (s.rush_td || 0) + (s.rec_td || 0) + (s.return_td || 0),
 }
 
 // Each game costs one scoreboard lookup plus one summary fetch. ESPN
@@ -173,6 +184,27 @@ export async function settleNCAAFProps() {
         // so a systematic name mismatch shows up as a pattern in the logs
         // rather than as props that quietly never settle.
         unmatched.push(prop.player_name)
+
+        // ANYTIME TD only: settle it as a push rather than leaving it.
+        //
+        // We only reach this loop once the box score came back POPULATED, so
+        // an absent player is one who recorded nothing — not a summary ESPN
+        // has yet to fill in. Same reasoning, and the same resolution, as
+        // settleNFLProps: a push with a null actualValue is the signal
+        // settleProps already looks for, returning the risked points and
+        // sending the "didn't play — your pick was pushed" notice. It also
+        // matches the book convention, which voids an anytime-TD bet on a
+        // player who never takes the field rather than grading it a loss.
+        //
+        // Scoped to this market deliberately. Anytime TD is ~80% of all
+        // college props (1,014 of 1,271 unsettled), so leaving no-shows
+        // locked would rebuild the backlog that was starving this job in the
+        // first place. The yards and receptions markets are low volume and
+        // draining fine, so their long-standing "leave it alone" behaviour is
+        // left exactly as it was rather than quietly re-graded tonight.
+        if (prop.market_key === 'player_anytime_td') {
+          settlements.push({ propId: prop.id, outcome: 'push', actualValue: null })
+        }
         continue
       }
 
