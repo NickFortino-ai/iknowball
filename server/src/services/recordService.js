@@ -1,6 +1,25 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from './notificationService.js'
+
+// Records whose CHANGE OF HAND is not worth putting in the Hub feed.
+//
+// A percentage record re-ranks on every settle for every user, so the lead
+// flips back and forth between the same handful of people without anyone
+// having achieved anything. Over the pool's life Sharpest Prop Picker has
+// changed hands 14 times — and it is not even the worst: Highest Overall
+// Win % has done it 49 times, Biggest Dog Lover 22. Compare a genuine
+// streak record, which only moves when somebody actually goes further.
+//
+// Nick's call 2026-10-17, on Sharpest Prop Picker specifically. Streak
+// records stay loud — those breaks are real news.
+//
+// This suppresses the FEED ITEM only. The record itself still updates and
+// still displays its new value and holder everywhere it is shown, and the
+// new holder still gets their personal "you now hold it" notification.
+const UNANNOUNCED_RECORD_KEYS = new Set([
+  'highest_prop_pct',   // "Sharpest Prop Picker"
+])
 import { fetchAll } from '../utils/fetchAll.js'
 
 // Tier thresholds (mirrored from client scoring.js)
@@ -83,15 +102,21 @@ async function updateRecord(key, holderId, value, metadata = {}) {
     return true
   }
 
-  // Insert history
-  await supabase.from('record_history').insert({
-    record_key: key,
-    previous_holder_id: previousHolderId,
-    new_holder_id: holderId,
-    previous_value: previousValue,
-    new_value: value,
-    metadata,
-  })
+  // Insert history. This row IS the Hub feed card — connectionService's
+  // "Source 5: Record broken" reads record_history directly — so skipping it
+  // is what takes a churny record out of everyone's feed.
+  if (!UNANNOUNCED_RECORD_KEYS.has(key)) {
+    await supabase.from('record_history').insert({
+      record_key: key,
+      previous_holder_id: previousHolderId,
+      new_holder_id: holderId,
+      previous_value: previousValue,
+      new_value: value,
+      metadata,
+    })
+  } else {
+    logger.info({ key, holderId, value, previousHolderId }, 'Record changed hands (feed item suppressed)')
+  }
 
   // Get the record display name for notifications
   const { data: record } = await supabase
