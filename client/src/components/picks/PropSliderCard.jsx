@@ -65,6 +65,15 @@ export default function PropSliderCard({
   })
   const [showPlayerModal, setShowPlayerModal] = useState(false)
   const { data: playerLookup } = useNbaDfsPlayerLookup(showPlayerModal ? prop.player_name : null, sportKey)
+  // College football is the one sport where we have no headshots at all —
+  // 0 of 1,322 distinct prop players. ESPN publishes them, but NFL headshots
+  // come from our own nfl_players table and there is no NCAAF equivalent, so
+  // nothing fills the field. Rather than show every college card with an
+  // empty disc (or initials that are just the name again, two inches left of
+  // the name), the avatar is dropped entirely for NCAAF and the text slides
+  // over. Nick's call 2026-10-17; revisit if we ever source college
+  // headshots. NCAAB is in the same state but carries almost no prop volume.
+  const isNcaaf = (prop.games?.sports?.key || sportKey) === 'americanfootball_ncaaf'
 
   const current = stops[index] || stops[slider?.defaultIndex] || null
   const isSettled = !!settled
@@ -121,7 +130,7 @@ export default function PropSliderCard({
       )}
 
       <div className="flex flex-col items-center text-center -mt-2">
-        {prop.player_headshot_url ? (
+        {isNcaaf ? null : prop.player_headshot_url ? (
           <button onClick={() => setShowPlayerModal(true)} className="shrink-0">
             <img
               src={prop.player_headshot_url}

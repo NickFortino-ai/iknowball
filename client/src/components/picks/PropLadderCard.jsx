@@ -43,6 +43,15 @@ export default function PropLadderCard({ picks }) {
   // live one while the game is on.
   const actual = prop.actual_value ?? picks.find((p) => p.live_stat != null)?.live_stat ?? null
   const isFinal = prop.actual_value != null
+  // College football is the one sport where we have no headshots at all —
+  // 0 of 1,322 distinct prop players. ESPN publishes them, but NFL headshots
+  // come from our own nfl_players table and there is no NCAAF equivalent, so
+  // nothing fills the field. Rather than show every college card with an
+  // empty disc (or initials that are just the name again, two inches left of
+  // the name), the avatar is dropped entirely for NCAAF and the text slides
+  // over. Nick's call 2026-10-17; revisit if we ever source college
+  // headshots. NCAAB is in the same state but carries almost no prop volume.
+  const isNcaaf = game.sports?.key === 'americanfootball_ncaaf'
   const settledCount = picks.filter((p) => p.status === 'settled').length
   const netPoints = picks.reduce((a, p) => a + (p.points_earned || 0), 0)
 
@@ -59,7 +68,7 @@ export default function PropLadderCard({ picks }) {
         : 'border-accent'
     }`}>
       <div className="flex items-center gap-3 p-4 pb-3">
-        {prop.player_headshot_url ? (
+        {isNcaaf ? null : prop.player_headshot_url ? (
           <img src={prop.player_headshot_url} alt="" className="w-14 h-14 rounded-full object-cover bg-bg-secondary shrink-0" />
         ) : (
           <div className="w-14 h-14 rounded-full bg-bg-secondary shrink-0" />

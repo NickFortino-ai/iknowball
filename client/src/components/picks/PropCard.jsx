@@ -84,6 +84,15 @@ export default function PropCard({ prop, picks, pick: pickProp, onPick, onUndoPi
   const isSettled = prop.status === 'settled'
   const [showPlayerModal, setShowPlayerModal] = useState(false)
   const sportKey = prop.games?.sports?.key || prop.sport_key || 'basketball_nba'
+  // College football is the one sport where we have no headshots at all —
+  // 0 of 1,322 distinct prop players. ESPN publishes them, but NFL headshots
+  // come from our own nfl_players table and there is no NCAAF equivalent, so
+  // nothing fills the field. Rather than show every college card with an
+  // empty disc (or initials that are just the name again, two inches left of
+  // the name), the avatar is dropped entirely for NCAAF and the text slides
+  // over. Nick's call 2026-10-17; revisit if we ever source college
+  // headshots. NCAAB is in the same state but carries almost no prop volume.
+  const isNcaaf = sportKey === 'americanfootball_ncaaf'
 
   // Markets the server could calibrate a line ladder for render as a slider
   // instead of over/under. Everything else — anytime TD, every non-football
@@ -207,7 +216,7 @@ export default function PropCard({ prop, picks, pick: pickProp, onPick, onUndoPi
               }}
             />
           </div>
-        ) : prop.player_headshot_url ? (
+        ) : isNcaaf ? null : prop.player_headshot_url ? (
           <button
             onClick={() => setShowPlayerModal(true)}
             disabled={isTeamDefense}
