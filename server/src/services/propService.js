@@ -1617,6 +1617,104 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
           }
         }
         logger.info({ players: Object.keys(ncaafByName).length, events: events.length }, 'Live stat enrichment: NCAAF scoreboard leaders loaded')
+
+        // ── Per-game box score, for players the leaders list omits ──────
+        //
+        // The leaders block above returns ONE player per category per GAME,
+        // picked across both teams. So in every matchup the quarterback with
+        // the quieter line is invisible — Bear Bachmeier had no number
+        // because CJ Carr led ND @ BYU in passing, and Ashton Daniels had
+        // none because Darian Mensah led FSU @ MIA. That is not an edge
+        // case; it is roughly half of all quarterback props.
+        //
+        // The gaps the original comment said to watch for duly showed up, so
+        // this is the fallback it nominated. The 403 risk it flagged is real
+        // (ESPN per-host blocked this server on 2026-08-26 over call volume)
+        // and is bounded three ways:
+        //
+        //   1. Only games that still have an UNMATCHED pick are fetched. A
+        //      slate where the leaders happened to cover everyone costs
+        //      nothing extra.
+        //   2. Each summary is cached 45s under its event id, so every user
+        //      looking at the same game shares one fetch.
+        //   3. Hard cap of 6 games per pass, and the overflow is logged
+        //      rather than dropped silently.
+        //
+        // Uses the site.web.api mirror, which is the host that got us out of
+        // the August block.
+        const stillMissing = ncaafLockedPicks.filter(
+          (p) => !ncaafByName[normalizeName(p.player_props?.player_name)],
+        )
+        if (stillMissing.length) {
+          // Match our game to its ESPN event through the scoreboard we
+          // already hold — no extra lookup, and no reliance on external_id,
+          // which is the Odds API's id and not ESPN's.
+          const eventByTeams = {}
+          for (const ev of events) {
+            for (const c of ev.competitions?.[0]?.competitors || []) {
+              const dn = c.team?.displayName
+              if (dn) eventByTeams[normalizeName(dn)] = ev.id
+            }
+          }
+          const wantedEventIds = new Set()
+          for (const p of stillMissing) {
+            const g = p.player_props?.games
+            const id = eventByTeams[normalizeName(g?.home_team)] || eventByTeams[normalizeName(g?.away_team)]
+            if (id) wantedEventIds.add(id)
+          }
+          const MAX_SUMMARY_FETCHES = 6
+          const eventIds = [...wantedEventIds]
+          if (eventIds.length > MAX_SUMMARY_FETCHES) {
+            logger.warn({ wanted: eventIds.length, cap: MAX_SUMMARY_FETCHES },
+              'Live stat enrichment: NCAAF summary fan-out capped — some players will have no live line this pass')
+          }
+          const results = await Promise.allSettled(eventIds.slice(0, MAX_SUMMARY_FETCHES).map((eventId) =>
+            cached(`ncaafSummary:${eventId}`, 45_000, async () => {
+              const res = await fetch(`https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=${eventId}`)
+              if (!res.ok) throw new Error(`ESPN NCAAF summary ${res.status}`)
+              return (await res.json()).boxscore?.players || []
+            }),
+          ))
+          let added = 0
+          for (const r of results) {
+            if (r.status !== 'fulfilled') {
+              logger.error({ err: r.reason?.message }, 'Live stat enrichment: NCAAF summary fetch failed')
+              continue
+            }
+            for (const team of r.value || []) {
+              for (const cat of team.statistics || []) {
+                // ESPN labels the columns per category; read by label rather
+                // than by index so a layout change cannot silently shift
+                // yards into attempts.
+                const labels = (cat.labels || []).map((l) => String(l).toUpperCase())
+                const yds = labels.indexOf('YDS')
+                const rec = labels.indexOf('REC')
+                for (const a of cat.athletes || []) {
+                  const name = a.athlete?.displayName
+                  if (!name) continue
+                  const key = normalizeName(name)
+                  // Never overwrite a leaders value — same source, and it is
+                  // the one already proven to parse.
+                  const row = ncaafByName[key] || (ncaafByName[key] = {})
+                  const num = (i) => {
+                    if (i < 0) return null
+                    const v = String(a.stats?.[i] ?? '').replace(/,/g, '')
+                    return v === '' || Number.isNaN(Number(v)) ? null : Number(v)
+                  }
+                  if (cat.name === 'passing' && row.pass_yd == null) row.pass_yd = num(yds)
+                  else if (cat.name === 'rushing' && row.rush_yd == null) row.rush_yd = num(yds)
+                  else if (cat.name === 'receiving') {
+                    if (row.rec_yd == null) row.rec_yd = num(yds)
+                    if (row.rec == null) row.rec = num(rec)
+                  }
+                  added++
+                }
+              }
+            }
+          }
+          logger.info({ games: Math.min(eventIds.length, MAX_SUMMARY_FETCHES), unmatchedPicks: stillMissing.length, athleteRows: added },
+            'Live stat enrichment: NCAAF per-game box scores loaded')
+        }
       } catch (err) {
         logger.error({ err: err.message }, 'Live stat enrichment: NCAAF scoreboard load failed')
       }
