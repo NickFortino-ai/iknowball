@@ -86,12 +86,24 @@ export default function PropLadderCard({ picks }) {
       <div className="px-4 pb-4 space-y-1">
         {rungs.map((p, i) => {
           const line = p.chosen_line ?? p.player_props?.line
+          // A verdict ONLY once the figure is final. While the game is on,
+          // comparing the live stat to the line produces a tick or a cross
+          // that is simply wrong: a quarterback sitting on 178 pass yards
+          // showed ✓ against under 365.5 and ✗ against over 180.5, when
+          // neither bet had been decided and the second needed three yards.
+          //
+          // isFinal is `prop.actual_value != null`, which is written at
+          // settlement — the in-game number arrives separately as live_stat
+          // — so this cannot go true mid-game.
+          //
+          // Where it stands is still legible: the rungs keep their order and
+          // the actual value draws its own marker line between them, which
+          // shows the cut positionally without claiming anything is over.
           const won = p.status === 'settled'
             ? p.is_correct
-            // Not settled: show where it stands, which is only knowable once
-            // there is a figure to compare against.
-            : actual == null ? null
-            : p.picked_side === 'under' ? Number(actual) < Number(line) : Number(actual) > Number(line)
+            : isFinal && actual != null
+              ? (p.picked_side === 'under' ? Number(actual) < Number(line) : Number(actual) > Number(line))
+              : null
           const tone = won === true ? 'text-correct' : won === false ? 'text-incorrect' : 'text-text-secondary'
 
           // The actual value drops in between the rungs it sits between, so
