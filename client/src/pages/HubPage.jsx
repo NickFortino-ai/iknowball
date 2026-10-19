@@ -480,7 +480,12 @@ export default function HubPage() {
       {/* Revealed under the title rather than expanding inside it: at 375px
           the title row has no width to give, and results need the full page
           anyway. */}
-      {searchOpen && <div className="mb-6">{renderSearch()}</div>}
+      {/* Capped rather than full-bleed. It searches usernames, so a field
+          stretched across 1900px of desktop reads as the page's main event
+          when it is a lookup — and the results list is absolutely positioned
+          to this box, so a row holding an avatar and a handle was being
+          stretched just as far. Under max-w-md a phone is unaffected. */}
+      {searchOpen && <div className="mb-6 max-w-md">{renderSearch()}</div>}
 
       {/* Identity card + the things you DO from the Hub, side by side on
           desktop. Search used to be a full-width block of its own under the
