@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import {
@@ -27,7 +27,7 @@ import NewsFeed from '../components/feed/NewsFeed'
 import Avatar from '../components/ui/Avatar'
 import MyProfileBanner from '../components/hub/MyProfileBanner'
 import { useBackClosable } from '../hooks/useBackClosable'
-import { NewsIcon, FeedIcon, RoomButton } from '../components/hub/RoomIcons'
+import { NewsIcon, FeedIcon, HallOfFameIcon, RoomButton } from '../components/hub/RoomIcons'
 
 const SPORT_OPTIONS = [
   { key: 'basketball_nba', label: 'NBA' },
@@ -95,6 +95,7 @@ export default function HubPage() {
   const { session } = useAuth()
   const { data: profile, isLoading: profileLoading } = useProfile()
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [squadExpanded, setSquadExpanded] = useState(false)
@@ -506,14 +507,23 @@ export default function HubPage() {
               there, so this one can't simply move. */}
           <div className="hidden lg:block lg:mt-auto lg:pt-3">{renderSquadHeader('mb-0')}</div>
         </div>
-        {/* Mobile gets all three rooms as a row of marks; desktop gets the
-            arcade alone, because news never leaves the sidebar there and the
-            feed is simply the page you are on. */}
-        <div className="mb-6 lg:mb-0 lg:w-72 lg:shrink-0 lg:flex lg:pb-3">
-          <div className="grid w-full grid-cols-3 gap-1 lg:hidden">
-            <RoomButton icon={FeedIcon} label="Feed" iconClass="w-11 h-11" active={hubView === 'feed'} onClick={() => setHubView('feed')} />
-            <RoomButton icon={ArcadeIcon} label="Arcade" data-onboarding="arcade" active={hubView === 'arcade'} onClick={() => setHubView('arcade')} />
-            <RoomButton icon={NewsIcon} label="News" active={hubView === 'news'} onClick={() => setHubView('news')} />
+        {/* Mobile gets all four rooms as a row of marks; desktop stacks the
+            arcade and the hall of fame, because news never leaves the sidebar
+            there and the feed is simply the page you are on.
+
+            The Hall of Fame is a PAGE, not a hub view — it has its own route
+            and its own back link — so its mark navigates rather than flipping
+            hubView like the other three. */}
+        <div className="mb-6 lg:mb-0 lg:w-72 lg:shrink-0 lg:flex lg:flex-col lg:pb-3 lg:gap-2">
+          {/* Four across on a phone. The marks already sit on their own
+              square canvases, so the only thing that gives is the gutter;
+              the icons themselves step down a size to keep the labels from
+              wrapping at 375px. */}
+          <div className="grid w-full grid-cols-4 gap-0.5 lg:hidden">
+            <RoomButton icon={FeedIcon} label="Feed" iconClass="w-10 h-10" active={hubView === 'feed'} onClick={() => setHubView('feed')} />
+            <RoomButton icon={ArcadeIcon} label="Arcade" iconClass="w-12 h-12" data-onboarding="arcade" active={hubView === 'arcade'} onClick={() => setHubView('arcade')} />
+            <RoomButton icon={NewsIcon} label="News" iconClass="w-12 h-12" active={hubView === 'news'} onClick={() => setHubView('news')} />
+            <RoomButton icon={HallOfFameIcon} label="Hall of Fame" iconClass="w-12 h-12" data-onboarding="hall-of-fame" onClick={() => navigate('/hall-of-fame')} />
           </div>
           {/* No border, no fill — the cabinet IS the button. A bordered box
               around art that already has its own outline and glow was two
@@ -541,6 +551,20 @@ export default function HubPage() {
               <ArcadeIcon className="absolute inset-0 w-full h-full" />
             </span>
             <span className="text-sm font-semibold leading-none">Arcade</span>
+          </button>
+
+          {/* Desktop hall of fame, directly under the cabinet. Deliberately
+              NOT flex-1 like the arcade above it — the cabinet claims the
+              leftover height, and this sits at its own fixed size beneath so
+              the column does not grow and push the news rail off the fold. */}
+          <button
+            onClick={() => navigate('/hall-of-fame')}
+            aria-label="Hall of Fame"
+            data-onboarding="hall-of-fame"
+            className="hidden lg:flex w-full flex-col items-center justify-center gap-1 shrink-0 text-accent transition-transform hover:scale-105 active:scale-95"
+          >
+            <HallOfFameIcon className="w-16 h-16" />
+            <span className="text-sm font-semibold leading-none">Hall of Fame</span>
           </button>
         </div>
       </div>

@@ -14,6 +14,10 @@ export function FeedIcon({ className = 'w-5 h-5' }) {
   return <img src="/feed-icon.png" alt="" aria-hidden="true" draggable={false} className={`${className} object-contain`} />
 }
 
+export function HallOfFameIcon({ className = 'w-5 h-5' }) {
+  return <img src="/hall-of-fame-icon.png" alt="" aria-hidden="true" draggable={false} className={`${className} object-contain`} />
+}
+
 /**
  * One room launcher: the mark, the word, and nothing else.
  *

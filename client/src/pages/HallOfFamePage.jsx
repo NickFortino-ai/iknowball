@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { RoyaltyContent } from './RoyaltyPage'
 import { RecordBookContent } from './RecordBookPage'
 
@@ -73,6 +73,23 @@ export default function HallOfFamePage() {
           {/* Dark gradient overlay — stronger at bottom to fade into content */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-bg-primary" />
         </div>
+
+        {/* Back to the Hub. The Hall of Fame is reached from the Hub's
+            fourth mark now rather than from the account menu, so it needs a
+            way back that does not depend on the browser's — a user who deep
+            links in from a record notification has no history to pop.
+
+            Deliberately quiet: the hero is the point of this page, and a
+            solid button in the corner would compete with it. Sits above the
+            backdrop on z-20 and inside the safe area, since the hero runs to
+            the top of the screen on a phone. */}
+        <Link
+          to="/hub"
+          className="absolute top-0 left-0 z-20 m-3 mt-[calc(0.75rem+env(safe-area-inset-top))] flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white/70 hover:text-white hover:bg-black/30 transition-colors drop-shadow"
+        >
+          <span aria-hidden="true" className="text-sm leading-none">&larr;</span>
+          Hub
+        </Link>
 
         <div className="relative z-10 pb-10 sm:pb-14 px-4">
           <h1 className="font-display text-3xl sm:text-5xl lg:text-8xl text-accent tracking-tight drop-shadow-lg">

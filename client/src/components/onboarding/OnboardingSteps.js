@@ -62,18 +62,10 @@ const ONBOARDING_STEPS = [
     freeScroll: true,
   },
   {
-    page: '/hall-of-fame',
-    targetSelector: null,
-    title: 'Hall of Fame & Record Book',
-    body: "The Hall of Fame features IKB Royalty — the current leaders in every category — alongside the all-time record book.",
-    position: 'center',
-    freeScroll: true,
-  },
-  {
     page: '/hub?tab=all',
     targetSelector: null,
     title: 'Your Hub',
-    body: "IKB is complete with a sportscentric social hub. View your profile, browse the activity feed, and create posts, predictions, and polls. \"All of IKB\" shows what everyone across the platform is up to. The Hub has three rooms \u2014 Feed, Arcade and News \u2014 and News carries a live ESPN wire so you can stay on top of what\u2019s happening in sports.",
+    body: "IKB is complete with a sportscentric social hub. View your profile, browse the activity feed, and create posts, predictions, and polls. \"All of IKB\" shows what everyone across the platform is up to. The Hub has four rooms \u2014 Feed, Arcade, News and the Hall of Fame \u2014 and News carries a live ESPN wire so you can stay on top of what\u2019s happening in sports.",
     position: 'center',
     freeScroll: true,
   },
@@ -98,11 +90,23 @@ const ONBOARDING_STEPS = [
     body: "Sports games you can play right now. Memory, played on IKB's own image library, and Trivia — pick a sport or take all of them, in 10 or 20 question rounds or Streak mode, where you keep answering until you miss one. Every game keeps high scores and a leaderboard for each sport, so the board is the thing to chase.",
     position: 'bottom',
   },
+  // Points at the Hub's fourth mark rather than opening the page, for the
+  // same reason the Arcade step does: where it lives is the thing a new
+  // player doesn't know, and the page has its own hero to discover.
+  // It used to navigate to /hall-of-fame and sit before the Hub steps, back
+  // when the only way in was the account menu.
+  {
+    page: '/hub',
+    targetSelector: '[data-onboarding="hall-of-fame"]',
+    title: 'Hall of Fame & Record Book',
+    body: "The fourth room. IKB Royalty shows the current leaders in every category, alongside the all-time record book \u2014 longest win streaks, biggest underdog hits, the lot. Chase a record and your name goes up there.",
+    position: 'bottom',
+  },
   {
     page: null,
     targetSelector: '[data-onboarding="hamburger-menu"]',
     title: 'The Menu',
-    body: 'This is where you\u2019ll find the Hall of Fame & Record Book, FAQ, Share IKB with friends, and your profile settings \u2014 where you can update your username, avatar, backdrop, notification preferences, and more.',
+    body: 'This is where you\u2019ll find the FAQ, Share IKB with friends, and your profile settings \u2014 where you can update your username, avatar, backdrop, notification preferences, and more.',
     position: 'bottom',
   },
   {
