@@ -514,7 +514,7 @@ export default function HubPage() {
             The Hall of Fame is a PAGE, not a hub view — it has its own route
             and its own back link — so its mark navigates rather than flipping
             hubView like the other three. */}
-        <div className="mb-6 lg:mb-0 lg:w-72 lg:shrink-0 lg:flex lg:flex-col lg:pb-3 lg:gap-2">
+        <div className="mb-6 lg:mb-0 lg:w-72 lg:shrink-0 lg:flex lg:flex-col lg:pb-3 lg:min-h-[23rem]">
           {/* Four across on a phone. The marks already sit on their own
               square canvases, so the only thing that gives is the gutter;
               the icons themselves step down a size to keep the labels from
@@ -553,17 +553,26 @@ export default function HubPage() {
             <span className="text-sm font-semibold leading-none">Arcade</span>
           </button>
 
-          {/* Desktop hall of fame, directly under the cabinet. Deliberately
-              NOT flex-1 like the arcade above it — the cabinet claims the
-              leftover height, and this sits at its own fixed size beneath so
-              the column does not grow and push the news rail off the fold. */}
+          {/* The ring gets the cabinet's treatment exactly — same flex-1
+              box, same out-of-flow icon — so the two marks are the same size
+              rather than one being a footnote under the other.
+
+              Which is why the column carries a min-height. The row is
+              lg:items-stretch, so without one this column is only as tall as
+              the profile card beside it, and two flex-1 marks would split
+              that between them — halving the cabinet to make room. The floor
+              gives each mark roughly the height the cabinet had on its own,
+              and the row grows to match, which is what carries the news rail
+              down the page with it. */}
           <button
             onClick={() => navigate('/hall-of-fame')}
             aria-label="Hall of Fame"
             data-onboarding="hall-of-fame"
-            className="hidden lg:flex w-full flex-col items-center justify-center gap-1 shrink-0 text-accent transition-transform hover:scale-105 active:scale-95"
+            className="hidden lg:flex w-full lg:flex-1 flex-col items-center justify-center gap-1 min-h-0 text-accent transition-transform hover:scale-105 active:scale-95"
           >
-            <HallOfFameIcon className="w-16 h-16" />
+            <span className="relative hidden lg:block lg:flex-1 w-full min-h-[56px]">
+              <HallOfFameIcon className="absolute inset-0 w-full h-full" />
+            </span>
             <span className="text-sm font-semibold leading-none">Hall of Fame</span>
           </button>
         </div>
