@@ -7,9 +7,21 @@ import { useCreateFlex } from '../../hooks/useHotTakes'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import PickComments from '../social/PickComments'
 import PropResultCard from './PropResultCard'
+import PropLadderCard from './PropLadderCard'
 import { toast } from '../ui/Toast'
 
-export default function PropDetailModal({ propPickId, onClose }) {
+/**
+ * `groupPicks` — every pick this user made on the SAME player + market +
+ * game. A slider prop invites a ladder, and opening one rung of eight to see
+ * a single half-point in isolation tells you almost nothing. When it holds
+ * more than one, the ladder card renders the whole set with its net, which is
+ * the thing being asked about.
+ *
+ * Comments and the flex button stay bound to the tapped pick. They are per
+ * pick server-side, and silently re-homing them onto a representative row
+ * would move a user's comment to a pick they did not write it on.
+ */
+export default function PropDetailModal({ propPickId, groupPicks = null, onClose }) {
   const { data: pick, isLoading } = usePropPick(propPickId)
   const { session } = useAuth()
   const ownerId = pick?.user_id
@@ -101,7 +113,9 @@ export default function PropDetailModal({ propPickId, onClose }) {
           <p className="text-text-muted text-center">Prop pick not found</p>
         ) : (
           <div className="space-y-4">
-            <PropResultCard pick={pick} />
+            {groupPicks?.length > 1
+              ? <PropLadderCard picks={groupPicks} />
+              : <PropResultCard pick={pick} />}
 
             {/* Comments */}
             <PickComments targetType="prop" targetId={propPickId} initialExpanded hideForm={!canComment} />

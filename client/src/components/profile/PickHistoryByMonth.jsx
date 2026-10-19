@@ -1,3 +1,4 @@
+import { groupPropPicks, groupLineLabel } from '../../lib/groupPropPicks'
 import { useState, useMemo, useEffect, Fragment } from 'react'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
@@ -48,17 +49,30 @@ function normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses) {
     })
   }
 
-  for (const pp of (propPicks || [])) {
+  // One entry per player + market + game, not per pick. A slider ladder of
+  // eight rungs on one quarterback otherwise fills a day with near-identical
+  // rows separated by a half-point each.
+  for (const g of groupPropPicks(propPicks)) {
+    const first = g.picks[0]
+    const prop = first.player_props || {}
+    const single = g.count === 1
     items.push({
-      id: pp.id,
+      // The first rung's id — it is what comments hang off, and what the
+      // detail modal loads when the group is handed over alongside it.
+      id: first.id,
       type: 'prop',
-      label: `${pp.player_props?.player_name} — ${pp.player_props?.line} ${pp.player_props?.market_label}`,
-      detail: `Picked: ${pp.picked_side}`,
-      date: pp.player_props?.games?.starts_at || pp.updated_at,
-      is_correct: pp.is_correct,
-      points_earned: pp.points_earned,
-      is_settled: pp.player_props?.games?.status === 'settled',
-      game_status: pp.player_props?.games?.status,
+      groupPicks: g.picks,
+      label: `${g.playerName} — ${single ? `${prop.line} ${g.marketLabel}` : g.marketLabel}`,
+      detail: single
+        ? `Picked: ${first.picked_side}`
+        : `${g.count} picks · ${groupLineLabel(g)}${g.settledCount ? ` · ${g.wins}W-${g.losses}L` : ''}`,
+      date: prop.games?.starts_at || first.updated_at,
+      // A mixed ladder has no single verdict — renderItemStatus falls back to
+      // the points, which is the honest summary of a split result.
+      is_correct: single ? first.is_correct : null,
+      points_earned: g.settledCount ? g.netPoints : null,
+      is_settled: prop.games?.status === 'settled',
+      game_status: prop.games?.status,
     })
   }
 
@@ -279,7 +293,7 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
                       <div
                         key={`${item.type}-${item.id}`}
                         className={`bg-bg-primary/50 rounded-lg border border-text-primary/20 px-4 py-3 flex items-center justify-between${isTappable ? ' cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors' : ''}`}
-                        onClick={isTappable ? () => onItemTap(item.type, item.id) : undefined}
+                        onClick={isTappable ? () => onItemTap(item.type, item.id, item.groupPicks) : undefined}
                       >
                         <div className="min-w-0">
                           <div className="text-sm font-semibold truncate">{item.label}</div>
@@ -359,7 +373,7 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
                                   {showDivider && <hr className="border-t border-white/15 my-1" />}
                                   <div
                                     className={`bg-bg-primary/50 rounded-lg border border-text-primary/20 px-4 py-3 flex items-center justify-between${isTappable ? ' cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors' : ''}`}
-                                    onClick={isTappable ? () => onItemTap(item.type, item.id) : undefined}
+                                    onClick={isTappable ? () => onItemTap(item.type, item.id, item.groupPicks) : undefined}
                                   >
                                     <div className="min-w-0">
                                       <div className="text-sm font-semibold truncate">{item.label}</div>

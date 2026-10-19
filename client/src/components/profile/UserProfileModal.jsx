@@ -18,6 +18,7 @@ import TierBadge from '../ui/TierBadge'
 import OGBadge from '../ui/OGBadge'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import PickHistoryByMonth from './PickHistoryByMonth'
+import { groupPropPicks, groupLineLabel } from '../../lib/groupPropPicks'
 import SocialLinks from '../ui/SocialLinks'
 import Avatar from '../ui/Avatar'
 import PickModalRouter from '../picks/PickModalRouter'
@@ -91,10 +92,13 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, futuresPi
       .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
   }, [parlays])
 
-  const settledProps = useMemo(() => {
-    return (propPicks || [])
-      .filter((p) => p.status === 'settled')
-      .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
+  // Collapsed to one row per player + market + game. Eight rungs of a Jameis
+  // Winston ladder are eight near-identical lines differing only in the
+  // half-point, which buries everything else the user did.
+  const settledPropGroups = useMemo(() => {
+    const settled = (propPicks || []).filter((p) => p.status === 'settled')
+    return groupPropPicks(settled)
+      .sort((a, b) => new Date(b.sortDate || 0) - new Date(a.sortDate || 0))
   }, [propPicks])
 
   const hasAnything = sportStats?.length > 0 || parlayStats || propStats || futuresStats || leaguePoints !== 0
@@ -213,7 +217,7 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, futuresPi
         })()}
         {propStats && (() => {
           const isOpen = expanded['props']
-          const items = settledProps.slice(0, 10)
+          const items = settledPropGroups.slice(0, 10)
           return (
             <div>
               <button
@@ -231,17 +235,26 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, futuresPi
               </button>
               {isOpen && items.length > 0 && (
                 <div className="mt-1 space-y-1">
-                  {items.map((pp) => (
+                  {items.map((g) => (
                     <div
-                      key={pp.id}
+                      key={g.key}
                       className="bg-bg-primary rounded-lg border border-text-primary/20 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors"
-                      onClick={() => onItemTap?.('prop', pp.id)}
+                      // Hands back the whole group. The detail modal renders
+                      // the full ladder when there is more than one, and the
+                      // first pick is the one comments hang off.
+                      onClick={() => onItemTap?.('prop', g.picks[0].id, g.picks)}
                     >
                       <div className="min-w-0">
-                        <div className="text-sm font-semibold truncate">{pp.player_props?.player_name} — {pp.player_props?.line} {pp.player_props?.market_label}</div>
-                        <div className="text-xs text-text-muted truncate">Picked: {pp.picked_side}</div>
+                        <div className="text-sm font-semibold truncate">
+                          {g.playerName} — {g.count > 1 ? g.marketLabel : `${g.picks[0].player_props?.line} ${g.marketLabel}`}
+                        </div>
+                        <div className="text-xs text-text-muted truncate">
+                          {g.count > 1
+                            ? `${g.count} picks · ${groupLineLabel(g)} · ${g.wins}W-${g.losses}L`
+                            : `Picked: ${g.picks[0].picked_side}`}
+                        </div>
                       </div>
-                      {renderItemPoints(pp.points_earned)}
+                      {renderItemPoints(g.netPoints)}
                     </div>
                   ))}
                 </div>
@@ -330,6 +343,9 @@ export default function UserProfileModal({ userId, onClose }) {
   const { data: picks, isLoading: picksLoading } = useUserPickHistory(userId)
   const { data: parlays, isLoading: parlaysLoading } = useUserParlayHistory(userId)
   const { data: propPicks, isLoading: propsLoading } = useUserPropPickHistory(userId)
+  // Every pick in the tapped ladder, so the detail modal can show the set
+  // rather than one rung of it. Null for a single-pick row.
+  const [selectedPropGroup, setSelectedPropGroup] = useState(null)
   const { data: bonuses, isLoading: bonusesLoading } = useUserBonusHistory(userId)
   const { data: futuresPicks } = useUserSettledFutures(userId)
   const [showH2HDetail, setShowH2HDetail] = useState(false)
@@ -713,18 +729,18 @@ export default function UserProfileModal({ userId, onClose }) {
 
             {/* Pick History */}
             <div className="mb-4">
-              <PickHistoryByMonth picks={picks} parlays={parlays} propPicks={propPicks} bonuses={bonuses} isLoading={picksLoading || parlaysLoading || propsLoading || bonusesLoading} allCollapsed onItemTap={(type, id) => {
+              <PickHistoryByMonth picks={picks} parlays={parlays} propPicks={propPicks} bonuses={bonuses} isLoading={picksLoading || parlaysLoading || propsLoading || bonusesLoading} allCollapsed onItemTap={(type, id, group) => {
                   if (type === 'pick') setSelectedPickId(id)
                   else if (type === 'parlay') setSelectedParlayId(id)
-                  else if (type === 'prop') setSelectedPropPickId(id)
+                  else if (type === 'prop') { setSelectedPropPickId(id); setSelectedPropGroup(group || null) }
                 }} />
             </div>
 
             {/* Event Type Breakdown */}
-            <EventTypeBreakdown sportStats={user.sport_stats} parlays={parlays} propPicks={propPicks} bonuses={bonuses} futuresPicks={futuresPicks} picks={picks} onItemTap={(type, id) => {
+            <EventTypeBreakdown sportStats={user.sport_stats} parlays={parlays} propPicks={propPicks} bonuses={bonuses} futuresPicks={futuresPicks} picks={picks} onItemTap={(type, id, group) => {
                   if (type === 'pick') setSelectedPickId(id)
                   else if (type === 'parlay') setSelectedParlayId(id)
-                  else if (type === 'prop') setSelectedPropPickId(id)
+                  else if (type === 'prop') { setSelectedPropPickId(id); setSelectedPropGroup(group || null) }
                 }} />
 
 
@@ -800,7 +816,11 @@ export default function UserProfileModal({ userId, onClose }) {
     </div>
     <PickModalRouter pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />
     <ParlayResultModal parlayId={selectedParlayId} onClose={() => setSelectedParlayId(null)} />
-    <PropDetailModal propPickId={selectedPropPickId} onClose={() => setSelectedPropPickId(null)} />
+    <PropDetailModal
+      propPickId={selectedPropPickId}
+      groupPicks={selectedPropGroup}
+      onClose={() => { setSelectedPropPickId(null); setSelectedPropGroup(null) }}
+    />
     {showReportModal && (
       <ReportModal
         targetType="profile_picture"
