@@ -89,10 +89,16 @@ export default function HallOfFamePage() {
             Deliberately quiet: the hero is the point of this page, and a
             solid button in the corner would compete with it. Sits above the
             backdrop on z-20 and inside the safe area, since the hero runs to
-            the top of the screen on a phone. */}
+            the top of the screen on a phone.
+
+            It carries its own dark pill rather than relying on a drop
+            shadow. First pass was white/70 text on the bare hero, which is a
+            bright sports photo under only a 40% gradient — legible on the
+            dark frames of the cycle and effectively invisible on the rest.
+            Subtle should mean quiet, not missing. */}
         <Link
           to="/hub"
-          className="absolute top-0 left-0 z-20 m-3 mt-[calc(0.75rem+env(safe-area-inset-top))] flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white/70 hover:text-white hover:bg-black/30 transition-colors drop-shadow"
+          className="absolute top-0 left-0 z-20 m-3 mt-[calc(0.75rem+env(safe-area-inset-top))] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/45 backdrop-blur-sm text-xs font-semibold text-white/90 hover:bg-black/70 hover:text-white transition-colors"
         >
           <span aria-hidden="true" className="text-sm leading-none">&larr;</span>
           Hub

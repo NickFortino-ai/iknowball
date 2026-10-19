@@ -354,15 +354,17 @@ function CategoryCrown({ crown, index, onUserTap }) {
     >
       {/* Crown SVG — scaled up 1.2x on mobile, 1.6x on desktop */}
       <div className="flex justify-center mb-2 lg:mb-3">
-        <div className="scale-[1.2] lg:scale-[1.6] origin-bottom">
+        <div className="scale-[1.2] lg:scale-[2] origin-bottom">
           <SmallCrownSVG id={`cat-crown-${index}`} jewel={getJewelTheme(crown.scope)} />
         </div>
       </div>
       <div className="text-xs lg:text-sm font-semibold text-[#DAA520] uppercase tracking-wider mb-2 lg:mb-3">{crown.scope}</div>
-      {/* Avatar — xl on mobile, 2xl on desktop */}
+      {/* Avatar — xl on mobile, 3xl on desktop. 2xl (56px) was sized for
+          thirteen crowns squeezed into one row; two rows leave room for the
+          face to actually be a face. */}
       <div className="flex justify-center mb-1 lg:mb-2">
         <Avatar user={holder} size="xl" className="bg-[#FFD700]/10 border border-[#FFD700]/15 lg:hidden" />
-        <Avatar user={holder} size="2xl" className="bg-[#FFD700]/10 border border-[#FFD700]/15 hidden lg:flex" />
+        <Avatar user={holder} size="3xl" className="bg-[#FFD700]/10 border border-[#FFD700]/15 hidden lg:flex" />
       </div>
       <div className="text-sm lg:text-base font-medium text-text-primary group-hover:text-[#FFD700] transition-colors truncate">
         {holder.display_name || holder.username}
@@ -437,15 +439,26 @@ export function RoyaltyContent() {
         {secondaryCrowns.length > 0 && (
           <>
             <div className="border-t border-border/50 my-2" />
-            {/* On desktop, break out of the parent's max-w-2xl so the single
-                row of secondary crowns can use the full viewport width. The
+            {/* On desktop, break out of the parent's max-w-2xl so the
+                secondary crowns can use the full viewport width. The
                 left-1/2 + -translate-x-1/2 + w-screen combo anchors a wider
                 container centered in the viewport regardless of parent. */}
             <div className="lg:w-screen lg:relative lg:left-1/2 lg:-translate-x-1/2">
               <div className="lg:max-w-7xl lg:mx-auto lg:px-6">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 lg:grid-cols-none lg:flex lg:flex-wrap lg:justify-center lg:gap-x-6 lg:gap-y-4">
+                  {/* Fixed 150px rather than flex-1. There are thirteen of
+                      these — eleven sports plus Props and Parlays — and
+                      flex-1 forced all thirteen into one row, shrinking each
+                      to about 72px: a crown, a scope label, an avatar and a
+                      name in the width of a thumbnail.
+
+                      At 150px, seven fit per row and the rest wrap to a
+                      second, which is what lets the avatar go up to 3xl.
+                      flex-wrap + justify-center centres that short second
+                      row under the first; a grid would have left it
+                      hanging off to the left. */}
                   {secondaryCrowns.map((crown, i) => (
-                    <div key={crown.scope || i} className="lg:flex-1 lg:min-w-0">
+                    <div key={crown.scope || i} className="lg:w-[150px]">
                       <CategoryCrown crown={crown} index={i} onUserTap={setProfileUserId} />
                     </div>
                   ))}
