@@ -55,7 +55,28 @@ export function groupPropPicks(propPicks) {
     const lines = picks
       .map((p) => Number(p.player_props?.line))
       .filter((n) => Number.isFinite(n))
-    const sides = [...new Set(picks.map((p) => p.picked_side).filter(Boolean))]
+
+    // Ranges PER SIDE, not one range across the group.
+    //
+    // 27% of multi-pick groups mix over and under, and they are not noise —
+    // they are the bet. "over 145.5-165.5 AND under 285.5-300.5" is someone
+    // backing the stat to land between the two, and "over 241.5 AND under
+    // 241.5" is a hedge on a single number. Collapsing either to one
+    // undirected 145.5-300.5 span would describe a wager nobody placed.
+    const bySide = new Map()
+    for (const pick of picks) {
+      const side = pick.picked_side
+      const line = Number(pick.player_props?.line)
+      if (!side || !Number.isFinite(line)) continue
+      if (!bySide.has(side)) bySide.set(side, [])
+      bySide.get(side).push(line)
+    }
+    // 'over' before 'under' so a range bet reads low-to-high.
+    const sideRanges = [...bySide.entries()]
+      .sort((a, b) => (a[0] === 'over' ? -1 : b[0] === 'over' ? 1 : 0))
+      .map(([side, ls]) => ({ side, low: Math.min(...ls), high: Math.max(...ls), count: ls.length }))
+
+    const sides = [...bySide.keys()]
 
     return {
       ...g,
@@ -69,6 +90,8 @@ export function groupPropPicks(propPicks) {
       // 'over' when every pick took the same side, null on a mixed ladder so
       // the label does not claim a direction the user did not take.
       side: sides.length === 1 ? sides[0] : null,
+      isMixed: sides.length > 1,
+      sideRanges,
       lineLow: lines.length ? Math.min(...lines) : null,
       lineHigh: lines.length ? Math.max(...lines) : null,
       // Most recent activity in the group, for sorting a mixed list.
@@ -80,12 +103,15 @@ export function groupPropPicks(propPicks) {
   })
 }
 
-/** "over 145.5–250.5", or "over 160.5" when a group holds one line. */
+/**
+ * "over 145.5–250.5" for a one-sided ladder, "over 160.5" for a single line,
+ * and "over 145.5–165.5 · under 285.5–300.5" when the user took both sides.
+ */
 export function groupLineLabel(group) {
-  if (group.lineLow == null) return ''
-  const side = group.side ? `${group.side} ` : ''
   const fmt = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
-  return group.lineLow === group.lineHigh
-    ? `${side}${fmt(group.lineLow)}`
-    : `${side}${fmt(group.lineLow)}–${fmt(group.lineHigh)}`
+  const ranges = group.sideRanges || []
+  if (!ranges.length) return ''
+  return ranges
+    .map(({ side, low, high }) => (low === high ? `${side} ${fmt(low)}` : `${side} ${fmt(low)}–${fmt(high)}`))
+    .join(' · ')
 }
