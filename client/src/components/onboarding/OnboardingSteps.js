@@ -69,14 +69,6 @@ const ONBOARDING_STEPS = [
     position: 'center',
     freeScroll: true,
   },
-  {
-    page: '/hub',
-    targetSelector: null,
-    title: 'Your Squad',
-    body: "Your squad is your circle on IKB — the people you connect with. Send connection requests from anyone\u2019s profile, and once they accept, you\u2019re in each other\u2019s squad. Your squad sees your picks, posts, and streaks in their feed, and you\u2019ll see theirs. You can also join leagues together and auto-connect with leaguemates at the end of a season.",
-    position: 'center',
-    freeScroll: true,
-  },
   // Deliberately stays on the FEED view rather than deep-linking
   // ?tab=arcade: the arcade room replaces this part of the Hub, marks and
   // all, so opening it would spotlight an element that no longer exists and
