@@ -29,11 +29,18 @@ function SectionToggle({ title, open, onToggle }) {
 
 export default function HallOfFamePage() {
   const [searchParams] = useSearchParams()
-  const section = searchParams.get('section')
+  // ?section is no longer read — both sections open on arrival now. ?record
+  // still is, and drives scrollToRecord below.
   const recordParam = searchParams.get('record')
-  const [openSections, setOpenSections] = useState(
-    section === 'records' ? { records: true } : { royalty: true }
-  )
+  // Both open on arrival. The page used to open whichever section the
+  // ?section param named and leave the other collapsed, which made sense
+  // when every visit came from a notification deep link — but the Hub's
+  // fourth mark now sends people here with no section at all, and they were
+  // landing on a Record Book that looked empty until they thought to tap it.
+  //
+  // The param still matters: scrollToRecord below needs it to jump to a
+  // specific record, and that only works if the section is already open.
+  const [openSections, setOpenSections] = useState({ royalty: true, records: true })
   const [heroIdx, setHeroIdx] = useState(0)
 
   useEffect(() => {
