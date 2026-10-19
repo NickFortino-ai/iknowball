@@ -401,7 +401,13 @@ function OGSection({ onUserTap }) {
       <p className="text-sm text-text-primary text-center mb-4 px-4">
         <span className="text-accent font-semibold">The OG&apos;s</span> are the earliest IKB members who were crucial in bringing the app to life.
       </p>
-      {/* Match CategoryCrown layout — centered avatar + name, no card chrome. */}
+      {/* Match CategoryCrown layout — centered avatar + name, no card chrome.
+          Mobile sizes track it too: two columns on a phone leave roughly
+          167px a cell, which a 36px avatar did not use.
+
+          Desktop is left alone. There are nine OGs sharing one row at about
+          112px each, which has no room for a 3xl face, and they read fine a
+          step below the crowns — a recognition list rather than a ranking. */}
       <div className="lg:w-screen lg:relative lg:left-1/2 lg:-translate-x-1/2">
         <div className="lg:max-w-7xl lg:mx-auto lg:px-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 lg:grid-cols-none lg:flex lg:flex-wrap lg:justify-center lg:gap-x-6 lg:gap-y-4">
@@ -415,13 +421,13 @@ function OGSection({ onUserTap }) {
                 className="text-center py-5 cursor-pointer group lg:flex-1 lg:min-w-0"
               >
                 <div className="flex justify-center mb-1 lg:mb-2">
-                  <Avatar user={og} size="xl" className="bg-bg-primary/40 lg:hidden" />
+                  <Avatar user={og} size="2xl" className="bg-bg-primary/40 lg:hidden" />
                   <Avatar user={og} size="2xl" className="bg-bg-primary/40 hidden lg:flex" />
                 </div>
-                <div className="text-sm lg:text-base font-medium text-text-primary group-hover:text-accent transition-colors truncate">
+                <div className="text-base font-medium text-text-primary group-hover:text-accent transition-colors truncate">
                   {og.display_name || og.username}
                 </div>
-                <div className="text-xs lg:text-sm text-text-muted truncate">@{og.username}</div>
+                <div className="text-sm text-text-muted truncate">@{og.username}</div>
               </div>
             ))}
           </div>
