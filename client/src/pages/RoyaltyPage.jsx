@@ -323,15 +323,22 @@ function GlobalCrown({ crown, onUserTap }) {
       onClick={() => onUserTap?.(holder.id)}
     >
       <div className="flex justify-center mb-4">
-        <CrownSVG size={100} id="global-crown" animate />
+        <div className="lg:scale-[1.4] origin-bottom">
+          <CrownSVG size={100} id="global-crown" animate />
+        </div>
       </div>
-      <h2 className="font-display text-lg text-[#FFD700] mb-4 tracking-wide">The {title} of I KNOW BALL</h2>
+      <h2 className="font-display text-lg lg:text-2xl text-[#FFD700] mb-4 lg:mb-6 tracking-wide">The {title} of I KNOW BALL</h2>
 
+      {/* The King/Queen outranks every category crown below, so the face
+          has to as well. This was a flat 2xl (56px) at every width — which
+          left the headline smaller than the thirteen beneath it once those
+          went to 3xl on desktop. */}
       <div className="flex justify-center mb-2">
-        <Avatar user={holder} size="2xl" className="bg-[#FFD700]/10 border border-[#FFD700]/20" />
+        <Avatar user={holder} size="2xl" className="bg-[#FFD700]/10 border border-[#FFD700]/20 lg:hidden" />
+        <Avatar user={holder} size="4xl" className="bg-[#FFD700]/10 border border-[#FFD700]/20 hidden lg:flex" />
       </div>
 
-      <div className="font-semibold text-lg text-text-primary group-hover:text-[#FFD700] transition-colors">
+      <div className="font-semibold text-lg lg:text-2xl text-text-primary group-hover:text-[#FFD700] transition-colors">
         {holder.display_name || holder.username}
       </div>
       <div className="flex items-center justify-center gap-2 mt-1">

@@ -8,6 +8,9 @@ const SIZE_CLASSES = {
   xl: 'w-9 h-9 text-base',
   '2xl': 'w-14 h-14 text-2xl',
   '3xl': 'w-24 h-24 text-4xl',
+  // For the single biggest face on a page. The Royalty global crown needs
+  // to outrank the category crowns beside it, and those are 3xl.
+  '4xl': 'w-32 h-32 text-5xl',
 }
 
 export default function Avatar({ user, size = 'md', className = '' }) {
