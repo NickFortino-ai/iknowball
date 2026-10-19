@@ -236,16 +236,38 @@ export default function PicksPage() {
         <InfoTooltip text="Risk → Reward: You risk the red number on every pick. If you're right, you win the green number. If you're wrong, you lose the red number. Higher odds = higher reward but less likely to hit. Example: -10 → +19 means you risk 10 points to win 19 points." />
       </h1>
 
-      {/* Straight / Parlay toggle */}
-      {!isFuturesMode && !isPropsMode && (
+      {/* Straight / Parlay / Props — WHAT KIND OF BET, which is a different
+          question from which sport.
+
+          Props used to sit in the sport row below, beside NFL and NBA, and
+          selecting it hid this control outright. So the two rows fought:
+          choosing a "sport" silently threw away the bet type. Props is a
+          category in its own right, equal to the other two, and belongs
+          here.
+
+          Futures stays in the tab row deliberately. It is the one mode with
+          a season-long horizon rather than a slate, so it reads as a
+          destination rather than a way of betting today's games.
+
+          Hidden in futures mode only, where none of the three applies. */}
+      {!isFuturesMode && (
         <div className="flex rounded-xl border border-text-primary/20 p-1 mb-4">
-          {['Straight', 'Parlay'].map((mode) => {
-            const isActive = mode === 'Parlay' ? parlayMode : !parlayMode
+          {['Straight', 'Parlay', 'Props'].map((mode) => {
+            const isActive = mode === 'Props'
+              ? isPropsMode
+              : isPropsMode ? false : (mode === 'Parlay' ? parlayMode : !parlayMode)
             return (
               <button
                 key={mode}
                 {...(mode === 'Parlay' ? { 'data-onboarding': 'parlay-toggle' } : {})}
-                onClick={() => setParlayMode(mode === 'Parlay')}
+                {...(mode === 'Props' ? { 'data-onboarding': 'props-tab' } : {})}
+                onClick={() => {
+                  if (mode === 'Props') { setIsPropsMode(true); setIsFuturesMode(false); return }
+                  // Leaving Props returns you to the slate, so the bet type
+                  // you pick here has to be applied as you arrive.
+                  setIsPropsMode(false)
+                  setParlayMode(mode === 'Parlay')
+                }}
                 className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
                   isActive ? 'bg-accent text-white' : 'text-text-primary hover:bg-text-primary/10'
                 }`}
@@ -257,7 +279,10 @@ export default function PicksPage() {
         </div>
       )}
 
-      <div className="flex overflow-x-auto gap-2 pb-2 mb-4 scrollbar-hide -mx-4 px-4">
+      {/* Sport tabs + Futures. Hidden in Props mode: PropsSection brings its
+          own sport tiles, and two sport pickers stacked on one screen is a
+          question asked twice. Every other mode shares this row. */}
+      <div className={`flex overflow-x-auto gap-2 pb-2 mb-4 scrollbar-hide -mx-4 px-4 ${isPropsMode ? 'hidden' : ''}`}>
         {sortedTabs.filter((t) => activeKeys.has(t.key)).map((tab) => {
           const isActive = activeSport === tab.key && !isFuturesMode && !isPropsMode
           return (
@@ -274,19 +299,6 @@ export default function PicksPage() {
             </button>
           )
         })}
-        {/* Props sits just left of Futures — new discovery surface for
-            self-serve prop loading (replaces the old admin-featured flow) */}
-        <button
-          onClick={() => { setIsPropsMode(true); setIsFuturesMode(false) }}
-          data-onboarding="props-tab"
-          className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            isPropsMode
-              ? 'bg-accent text-white'
-              : 'bg-bg-primary border border-text-primary/20 text-text-primary hover:border-text-primary/40'
-          }`}
-        >
-          Props
-        </button>
         {/* Futures sits at the right edge of the live tabs, always */}
         <button
           onClick={() => { setIsFuturesMode(true); setIsPropsMode(false) }}
