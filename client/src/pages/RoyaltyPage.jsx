@@ -334,7 +334,7 @@ function GlobalCrown({ crown, onUserTap }) {
           left the headline smaller than the thirteen beneath it once those
           went to 3xl on desktop. */}
       <div className="flex justify-center mb-2">
-        <Avatar user={holder} size="2xl" className="bg-[#FFD700]/10 border border-[#FFD700]/20 lg:hidden" />
+        <Avatar user={holder} size="3xl" className="bg-[#FFD700]/10 border border-[#FFD700]/20 lg:hidden" />
         <Avatar user={holder} size="4xl" className="bg-[#FFD700]/10 border border-[#FFD700]/20 hidden lg:flex" />
       </div>
 
@@ -359,25 +359,32 @@ function CategoryCrown({ crown, index, onUserTap }) {
       className="text-center py-5 cursor-pointer group"
       onClick={() => onUserTap?.(holder.id)}
     >
-      {/* Crown SVG — scaled up 1.2x on mobile, 1.6x on desktop */}
+      {/* Two columns on a phone leave each crown about 167px to work with,
+          and these were drawn for a tighter grid: a 36px avatar and text-xs
+          labels. Avatar to 2xl, crown to 1.5x, labels up a step.
+
+          The global crown moves with them — it was 2xl on mobile, which the
+          category avatars have now matched, and the King or Queen cannot be
+          the same size as the thirteen below. */}
+      {/* Crown SVG — scaled up 1.5x on mobile, 2x on desktop */}
       <div className="flex justify-center mb-2 lg:mb-3">
-        <div className="scale-[1.2] lg:scale-[2] origin-bottom">
+        <div className="scale-[1.5] lg:scale-[2] origin-bottom">
           <SmallCrownSVG id={`cat-crown-${index}`} jewel={getJewelTheme(crown.scope)} />
         </div>
       </div>
-      <div className="text-xs lg:text-sm font-semibold text-[#DAA520] uppercase tracking-wider mb-2 lg:mb-3">{crown.scope}</div>
+      <div className="text-sm font-semibold text-[#DAA520] uppercase tracking-wider mb-2 lg:mb-3">{crown.scope}</div>
       {/* Avatar — xl on mobile, 3xl on desktop. 2xl (56px) was sized for
           thirteen crowns squeezed into one row; two rows leave room for the
           face to actually be a face. */}
       <div className="flex justify-center mb-1 lg:mb-2">
-        <Avatar user={holder} size="xl" className="bg-[#FFD700]/10 border border-[#FFD700]/15 lg:hidden" />
+        <Avatar user={holder} size="2xl" className="bg-[#FFD700]/10 border border-[#FFD700]/15 lg:hidden" />
         <Avatar user={holder} size="3xl" className="bg-[#FFD700]/10 border border-[#FFD700]/15 hidden lg:flex" />
       </div>
-      <div className="text-sm lg:text-base font-medium text-text-primary group-hover:text-[#FFD700] transition-colors truncate">
+      <div className="text-base font-medium text-text-primary group-hover:text-[#FFD700] transition-colors truncate">
         {holder.display_name || holder.username}
       </div>
       {crown.points != null && (
-        <div className="text-xs lg:text-sm text-text-muted mt-0.5 lg:mt-1">{crown.points?.toLocaleString()} pts</div>
+        <div className="text-sm text-text-muted mt-0.5 lg:mt-1">{crown.points?.toLocaleString()} pts</div>
       )}
     </div>
   )

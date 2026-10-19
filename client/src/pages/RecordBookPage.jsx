@@ -149,8 +149,8 @@ function RecordCard({ record, onUserTap, defaultExpanded = false }) {
             className="flex items-center gap-2 mt-3 pt-3 border-t border-border cursor-pointer hover:opacity-80 transition-opacity"
             onClick={(e) => { e.stopPropagation(); onUserTap?.(holder.id) }}
           >
-            <Avatar user={holder} size="md" className="bg-accent/20" />
-            <span className="text-sm font-medium text-text-primary">{holder.display_name || holder.username}</span>
+            <Avatar user={holder} size="xl" className="bg-accent/20" />
+            <span className="text-base font-medium text-text-primary">{holder.display_name || holder.username}</span>
             <TierBadge tier={holder.tier} size="xs" />
           </div>
         )}
@@ -198,13 +198,22 @@ function RecordCard({ record, onUserTap, defaultExpanded = false }) {
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium text-text-primary">{sub.display_name}</div>
+                    {/* The holder is the point of a record row, so the face
+                        and the name are sized to be read rather than squinted
+                        at. xs (20px) and text-xs put the person who set the
+                        record below the explanatory copy around it in visual
+                        weight.
+
+                        Still a step under the parent row above, which keeps
+                        xl and text-base plus a tier badge, so the headline
+                        record stays the headline. */}
                     {sub.users && (
                       <div
-                        className="flex items-center gap-1.5 mt-1 cursor-pointer hover:opacity-80 transition-opacity"
+                        className="flex items-center gap-2 mt-1.5 cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => onUserTap?.(sub.users.id)}
                       >
-                        <Avatar user={sub.users} size="xs" className="bg-accent/20" />
-                        <span className="text-xs text-text-secondary">{sub.users.display_name || sub.users.username}</span>
+                        <Avatar user={sub.users} size="lg" className="bg-accent/20" />
+                        <span className="text-sm text-text-secondary">{sub.users.display_name || sub.users.username}</span>
                       </div>
                     )}
                   </div>
