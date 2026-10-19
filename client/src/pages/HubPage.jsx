@@ -491,7 +491,7 @@ export default function HubPage() {
 
           Stacks on mobile in the same order as before — banner, search —
           so the phone layout is unchanged for now. */}
-      <div className="lg:flex lg:items-stretch lg:gap-4 lg:mb-3">
+      <div className="lg:flex lg:items-stretch lg:gap-6 lg:mb-3">
         <div className="lg:flex-1 lg:min-w-0 lg:flex lg:flex-col">
           {profile && (
             <MyProfileBanner
@@ -507,16 +507,21 @@ export default function HubPage() {
               there, so this one can't simply move. */}
           <div className="hidden lg:block lg:mt-auto lg:pt-3">{renderSquadHeader('mb-0')}</div>
         </div>
-        {/* Mobile gets all four rooms as a row of marks. Desktop shows the
-            arcade alone here — news never leaves the sidebar there, the feed
-            is simply the page you are on, and the hall of fame sits at the
-            top of the news column (see the note down there for why it is not
-            stacked under the cabinet).
+        {/* Mobile gets all four rooms as a row of marks. Desktop gets the
+            two you GO somewhere for — the arcade and the hall of fame, side
+            by side — because news never leaves the sidebar there and the
+            feed is simply the page you are on.
+
+            Side by side rather than stacked. Stacked needs a column twice as
+            tall, and this row is lg:items-stretch, so that stretched the
+            profile card beside it too — a dead band under the banner and the
+            whole feed pushed down. Across, the row keeps the height it
+            always had and nothing below it moves.
 
             The Hall of Fame is a PAGE, not a hub view — it has its own route
             and its own back link — so its mark navigates rather than flipping
             hubView like the other three. */}
-        <div className="mb-6 lg:mb-0 lg:w-72 lg:shrink-0 lg:flex lg:pb-3">
+        <div className="mb-6 lg:mb-0 lg:w-[380px] lg:shrink-0 lg:flex lg:gap-3 lg:pb-3">
           {/* Four across on a phone. The marks already sit on their own
               square canvases, so the only thing that gives is the gutter;
               the icons themselves step down a size to keep the labels from
@@ -553,6 +558,21 @@ export default function HubPage() {
               <ArcadeIcon className="absolute inset-0 w-full h-full" />
             </span>
             <span className="text-sm font-semibold leading-none">Arcade</span>
+          </button>
+
+          {/* Same treatment as the cabinet beside it — flex-1 box, icon out
+              of flow — so the two are equals sharing the row's width rather
+              than one being a footnote beside the other. */}
+          <button
+            onClick={() => navigate('/hall-of-fame')}
+            aria-label="Hall of Fame"
+            data-onboarding="hall-of-fame"
+            className="hidden lg:flex w-full lg:flex-1 flex-col items-center justify-center gap-1 min-h-0 text-accent transition-transform hover:scale-105 active:scale-95"
+          >
+            <span className="relative hidden lg:block lg:flex-1 w-full min-h-[56px]">
+              <HallOfFameIcon className="absolute inset-0 w-full h-full" />
+            </span>
+            <span className="text-sm font-semibold leading-none">Hall of Fame</span>
           </button>
         </div>
       </div>
@@ -676,7 +696,12 @@ export default function HubPage() {
           instead of scrolling within its own box. min-w-0 on descendants
           can't fix that; the constraint is the track, and the grid ITEM
           (the div below) needs it too. */}
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
+      {/* 380px, not 320. Six sport tabs — NFL, NCAAF, MLB, WNBA, NBA, NHL —
+          need about 400px laid out, so at 320 the last two sat off the edge
+          and had to be scrolled to. It is also the width the room row above
+          uses, with the same gap, so the arcade and hall of fame marks line
+          up over this column exactly rather than floating 32px inboard. */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-6">
       <div className="min-w-0">
         {hubView === 'news' ? (
           /* News renders WHERE THE FEED WAS, not as its own page. Everything
@@ -783,28 +808,6 @@ export default function HubPage() {
       {/* Desktop news sidebar */}
       <div className="hidden lg:block">
         <div className="sticky top-4 max-h-[calc(100vh-2rem)] flex flex-col">
-          {/* The hall of fame mark lives at the top of THIS column, not in
-              the room column above it.
-
-              Stacked up there it read as intended, but the room column is in
-              a lg:items-stretch row — so making it tall enough for two marks
-              stretched the profile card beside it too, opening a dead band
-              between the banner and MY SQUAD and pushing the whole feed down
-              with it.
-
-              Here it lands in the same vertical line, directly under the
-              cabinet, because this column and the room column share the
-              container's right edge. News drops by exactly the mark's height
-              and the feed never moves, since it is a different grid column. */}
-          <button
-            onClick={() => navigate('/hall-of-fame')}
-            aria-label="Hall of Fame"
-            data-onboarding="hall-of-fame"
-            className="flex flex-col items-center justify-center gap-1 w-full mb-5 flex-shrink-0 text-accent transition-transform hover:scale-105 active:scale-95"
-          >
-            <HallOfFameIcon className="w-28 h-28" />
-            <span className="text-sm font-semibold leading-none">Hall of Fame</span>
-          </button>
           <h2 className="text-xs text-text-muted uppercase tracking-wider mb-3 flex-shrink-0">News</h2>
           <div className="flex-1 overflow-y-auto overscroll-contain pr-1">
             <NewsFeed compact />
