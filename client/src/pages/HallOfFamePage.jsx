@@ -108,11 +108,18 @@ export default function HallOfFamePage() {
         </div>
       </div>
 
-      {/* Outer wrapper widens to max-w-5xl on desktop so the Royalty /
-          Record Book / Headlines Archive section headers left-align with
-          their wider expanded content, instead of being centered in a
-          narrower column that floats away from the content. */}
-      <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 pb-6 -mt-8 sm:-mt-10 relative z-10">
+      {/* Outer wrapper widens on desktop so the Royalty / Record Book /
+          Headlines Archive section headers left-align with their wider
+          expanded content, instead of being centered in a narrower column
+          that floats away from it.
+
+          max-w-7xl with lg:px-6, matching RoyaltyPage's breakout container
+          exactly (lg:w-screen -> lg:max-w-7xl lg:mx-auto lg:px-6). It was
+          5xl, which is 256px narrower, so every header sat 128px inboard of
+          the crowns underneath it. Changing one without the other is what
+          put them out of line in the first place — if that breakout width
+          ever moves, this has to move with it. */}
+      <div className="max-w-2xl lg:max-w-7xl mx-auto px-4 lg:px-6 pb-6 -mt-8 sm:-mt-10 relative z-10">
         {/* Royalty */}
         <div className="border-b border-border">
           <SectionToggle title="Royalty" open={openSections.royalty} onToggle={() => toggle('royalty')} />
