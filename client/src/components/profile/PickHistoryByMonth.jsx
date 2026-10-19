@@ -67,11 +67,23 @@ function normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses) {
         ? `Picked: ${first.picked_side}`
         : `${g.count} picks · ${groupLineLabel(g)}${g.settledCount ? ` · ${g.wins}W-${g.losses}L` : ''}`,
       date: prop.games?.starts_at || first.updated_at,
-      // A mixed ladder has no single verdict — renderItemStatus falls back to
-      // the points, which is the honest summary of a split result.
+      // A mixed ladder has no single verdict, so is_correct stays null and
+      // the row reports its net instead.
       is_correct: single ? first.is_correct : null,
       points_earned: g.settledCount ? g.netPoints : null,
-      is_settled: prop.games?.status === 'settled',
+      // renderItemStatus shows points when `is_correct !== null || is_settled`.
+      // A group fails the first test by design, so it has to pass the second
+      // or it falls through to the "—" placeholder — which is what a winning
+      // 5-pick ladder was rendering instead of its +points.
+      //
+      // Derived from the GROUP, not from games.status. That comparison is
+      // against 'settled', a value games never hold (they go to 'final'), so
+      // it has always been false — single picks only ever passed on their
+      // own is_correct. Fully-settled only: a half-settled ladder keeps the
+      // live treatment rather than advertising a partial net as the result.
+      is_settled: single
+        ? prop.games?.status === 'final'
+        : g.count > 0 && g.settledCount === g.count,
       game_status: prop.games?.status,
     })
   }
