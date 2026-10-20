@@ -820,6 +820,28 @@ export default function FantasyMatchup({ league, fantasySettings }) {
   const [viewWeek, setViewWeek] = useState(currentWeek)
   const playoffStartWeek = fantasySettings?.playoff_start_week || 15
   const isPlayoffWeek = viewWeek >= playoffStartWeek
+
+  // First-round bye (6- and 8-team brackets seed 1/2 straight into round 2).
+  //
+  // A bye team has no matchup this week, which read as the same dead end as
+  // being eliminated: "No matchup found for you this week." The bracket view
+  // showed them correctly — sitting in the semifinal with a TBD opponent —
+  // but the Matchups tab hides half-filled matchups, so the two views
+  // disagreed about whether their next game existed.
+  //
+  // Detected from the bracket rather than from the seed number, so it stays
+  // right whatever shape the bracket is: no game this week + already placed
+  // in a later main-bracket round = a bye.
+  const { data: bracketData } = usePlayoffBracket(isPlayoffWeek ? league.id : null)
+  const byeMatchup = useMemo(() => {
+    if (!isPlayoffWeek || !profile?.id) return null
+    const all = bracketData?.matchups || []
+    const isMine = (m) => m.home_user?.id === profile.id || m.away_user?.id === profile.id
+    if (all.some((m) => m.week === viewWeek && isMine(m))) return null
+    return all
+      .filter((m) => m.week > viewWeek && !m.is_consolation && isMine(m))
+      .sort((a, b) => a.week - b.week)[0] || null
+  }, [bracketData, viewWeek, isPlayoffWeek, profile?.id])
   const [matchupView, setMatchupView] = useState('mine') // 'mine' | 'all' | 'bracket'
   const [expandedMatchups, setExpandedMatchups] = useState(new Set())
   const [detailPlayerId, setDetailPlayerId] = useState(null)
@@ -856,10 +878,13 @@ export default function FantasyMatchup({ league, fantasySettings }) {
   // manually toggle back if they want.
   useEffect(() => {
     if (!isPlayoffWeek || !matchups.length) return
+    // A bye team keeps 'mine' — the bye note below is the thing they came to
+    // read, and flipping them to 'all' would bury it under every other game.
+    if (byeMatchup) return
     const myMatchup = matchups.find((m) => m.home_user?.id === profile?.id || m.away_user?.id === profile?.id)
     if (!myMatchup && matchupView === 'mine') setMatchupView('all')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewWeek, matchups.length, isPlayoffWeek])
+  }, [viewWeek, matchups.length, isPlayoffWeek, byeMatchup])
 
   // Playoff weeks: drop TBD placeholders (matchups awaiting winner
   // assignment from a lower round), then sort by stakes:
@@ -1007,6 +1032,30 @@ export default function FantasyMatchup({ league, fantasySettings }) {
               slotLabels={slotLabels}
               isChampionship={isPlayoffWeek && !mine.is_consolation && mine.round === maxRound}
             />
+          ) : byeMatchup ? (
+            <div className="rounded-xl border border-accent/40 bg-bg-primary/60 px-4 py-5 text-center">
+              <div className="text-sm font-display text-accent uppercase tracking-wider mb-1.5">
+                First-Round Bye
+              </div>
+              <div className="text-sm text-text-primary leading-relaxed">
+                You're off this week
+                {(() => {
+                  // Byes are inserted home-side, but read whichever slot is
+                  // actually this user so the copy can't name the wrong seed.
+                  const mySeed = byeMatchup.home_user?.id === profile?.id
+                    ? byeMatchup.seed_home
+                    : byeMatchup.seed_away
+                  return mySeed != null ? ` as the No. ${mySeed} seed` : ''
+                })()}.
+                Your Week {byeMatchup.week} opponent is decided by this week's results.
+              </div>
+              <button
+                onClick={() => setMatchupView('bracket')}
+                className="mt-3 text-xs font-semibold text-accent hover:underline"
+              >
+                View the bracket →
+              </button>
+            </div>
           ) : (
             <div className="text-center py-8 text-sm text-text-muted">No matchup found for you this week.</div>
           )
