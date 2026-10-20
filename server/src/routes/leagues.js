@@ -140,6 +140,10 @@ const createLeagueSchema = z.object({
     champion_metric: z.enum(['total_points', 'most_wins']).optional(),
     single_week: z.number().int().min(1).max(18).nullable().optional(),
     playoff_teams: z.number().int().optional(),
+    // NFL week trading closes. Resolved to a date by createFantasySettings;
+    // null means no deadline, which is what every league had before this
+    // existed because nothing could set one.
+    trade_deadline_week: z.number().int().min(1).max(18).nullable().optional(),
   }).passthrough().optional(),
   // .passthrough() so client-side fields like draft_date, draft_mode,
   // draft_location, roster_slots, scoring_rules, playoff_start_week,

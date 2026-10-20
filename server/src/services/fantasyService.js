@@ -6,6 +6,7 @@ import { fetchAll } from '../utils/fetchAll.js'
 import { buildStarterSlots, buildLineupValidationMaps, isStarterSlot } from '../utils/rosterSlots.js'
 import { isIrEligible } from '../utils/injuryStatus.js'
 import { isUnavailable } from '../utils/injuryStatus.js'
+import { sportsDayBoundsUtc } from '../utils/sportsDay.js'
 import { cached } from '../utils/memoCache.js'
 import { throwIfInfra } from '../utils/dbError.js'
 
@@ -357,6 +358,39 @@ function returnProjection(projRow, rules) {
  * back to a safe 3-round default. Server is authoritative — client sends
  * are ignored on both create and update.
  */
+/**
+ * Resolve a trade-deadline NFL WEEK to the calendar date trading closes.
+ *
+ * The UI picks a week; `fantasy_settings.trade_deadline` stores a date,
+ * which is what the two enforcement checks read. Converting here, at
+ * creation, keeps that column's meaning unchanged.
+ *
+ * The date is the LAST game of the chosen week (its Monday nighter), so
+ * "deadline: week 12" means you can trade all the way THROUGH week 12
+ * rather than being cut off before its games — the way the phrase reads to
+ * a commissioner.
+ *
+ * `nfl_schedule.game_date` is already ET, matching the PT-day comparison
+ * the enforcement does. Returns null if the week is unknown, which leaves
+ * the league with no deadline rather than inventing one.
+ */
+async function resolveTradeDeadlineDate(week, season) {
+  if (!week) return null
+  const { data, error } = await supabase
+    .from('nfl_schedule')
+    .select('game_date')
+    .eq('season', season)
+    .eq('week', week)
+    .order('game_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error || !data?.game_date) {
+    logger.warn({ week, season, error }, 'Could not resolve trade deadline week to a date')
+    return null
+  }
+  return data.game_date
+}
+
 function derivePlayoffStartWeek(playoffTeams, championshipWeek) {
   const rounds = playoffTeams <= 2 ? 1 : playoffTeams <= 4 ? 2 : 3
   return championshipWeek - (rounds - 1)
@@ -378,6 +412,7 @@ export async function createFantasySettings(leagueId, settings = {}) {
     trade_review = 'commissioner',
     playoff_teams = 4,
     championship_week = 17,
+    trade_deadline_week = null,
     season = 2026,
     format: dfsFormat,
     salary_cap,
@@ -408,6 +443,7 @@ export async function createFantasySettings(leagueId, settings = {}) {
       draft_location,
       waiver_type,
       trade_review,
+      trade_deadline: await resolveTradeDeadlineDate(trade_deadline_week, season),
       playoff_teams,
       // Server-authoritative — ignore any incoming client value.
       playoff_start_week: derivePlayoffStartWeek(playoff_teams, championship_week),
@@ -7988,8 +8024,12 @@ export async function proposeTrade(leagueId, proposerUserId, receiverUserId, pro
     .eq('league_id', leagueId)
     .maybeSingle()
   if (settings?.trade_deadline) {
-    const deadline = new Date(settings.trade_deadline + 'T23:59:59Z')
-    if (new Date() > deadline) {
+    // End of the PT sports day, not 23:59:59 UTC. The old form expired the
+    // deadline at 6:59pm ET on its own date — mid-afternoon on the west
+    // coast — so a league advertising "deadline: week 12" closed hours
+    // before week 12's last game finished.
+    const { endUtc } = sportsDayBoundsUtc(settings.trade_deadline)
+    if (endUtc && new Date() > new Date(endUtc)) {
       const err = new Error('The trade deadline has passed')
       err.status = 400
       throw err
@@ -8165,8 +8205,12 @@ export async function acceptTrade(tradeId, userId, dropPlayerIds = []) {
     .eq('league_id', trade.league_id)
     .maybeSingle()
   if (settings?.trade_deadline) {
-    const deadline = new Date(settings.trade_deadline + 'T23:59:59Z')
-    if (new Date() > deadline) {
+    // End of the PT sports day, not 23:59:59 UTC. The old form expired the
+    // deadline at 6:59pm ET on its own date — mid-afternoon on the west
+    // coast — so a league advertising "deadline: week 12" closed hours
+    // before week 12's last game finished.
+    const { endUtc } = sportsDayBoundsUtc(settings.trade_deadline)
+    if (endUtc && new Date() > new Date(endUtc)) {
       const err = new Error('The trade deadline has passed')
       err.status = 400
       throw err

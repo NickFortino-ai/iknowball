@@ -912,6 +912,11 @@ export default function CreateLeaguePage() {
   // 14+ since deep leagues conventionally play out 6-team brackets).
   const [playoffTeamsManuallySet, setPlayoffTeamsManuallySet] = useState(false)
   const [championshipWeek, setChampionshipWeek] = useState(17)
+  // Week trading closes. 12 by default — late enough that contenders have
+  // shown themselves, early enough that a team out of it can't ship its
+  // roster to a friend during the run-in. null = no deadline, which is what
+  // every league had before this control existed.
+  const [tradeDeadlineWeek, setTradeDeadlineWeek] = useState(12)
   // Playoff start is derived from teams + championship week — no need for
   // a separate picker. Standard bracket sizing:
   //   2 teams → 1 round (championship only)
@@ -1061,6 +1066,8 @@ export default function CreateLeaguePage() {
       playoff_teams: format === 'fantasy' && fantasyFormat === 'traditional' ? playoffTeams : undefined,
       // playoff_start_week is derived server-side from playoff_teams + championship_week.
       championship_week: format === 'fantasy' && fantasyFormat === 'traditional' ? championshipWeek : undefined,
+      // Traditional only — salary cap has no rosters to trade.
+      trade_deadline_week: format === 'fantasy' && fantasyFormat === 'traditional' ? tradeDeadlineWeek : undefined,
       scoring_rules: format === 'fantasy' && fantasyFormat === 'traditional' && scoringRules ? scoringRules : undefined,
       salary_cap: (format === 'nba_dfs' || format === 'wnba_dfs' || format === 'mlb_dfs' || fantasyFormat === 'salary_cap') ? salaryCap : undefined,
       season_type: (format === 'nba_dfs' || format === 'wnba_dfs' || fantasyFormat === 'salary_cap') ? seasonType : undefined,
@@ -1980,6 +1987,28 @@ export default function CreateLeaguePage() {
               </div>
               <p className="text-[10px] text-text-muted mt-1">
                 Playoffs start Week {playoffStartWeek}. Week 17 championship dodges the Week 18 starter-rest lottery.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Trade Deadline</label>
+              <div className="flex gap-2">
+                {[11, 12, 13, null].map((w) => (
+                  <button
+                    key={w ?? 'none'}
+                    type="button"
+                    onClick={() => setTradeDeadlineWeek(w)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      tradeDeadlineWeek === w ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {w ? `Wk ${w}` : 'None'}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-text-muted mt-1">
+                {tradeDeadlineWeek
+                  ? `Trades close when Week ${tradeDeadlineWeek} ends. Waivers and free agents stay open.`
+                  : 'Trading stays open all season, including through the playoffs.'}
               </p>
             </div>
             </>}

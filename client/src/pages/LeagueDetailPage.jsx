@@ -729,6 +729,15 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
     if (fantasySettings.playoff_start_week) {
       items.push({ label: 'Playoffs Start', value: `NFL Week ${fantasySettings.playoff_start_week}` })
     }
+    // Noon-anchored before formatting. `trade_deadline` is a bare
+    // YYYY-MM-DD, and `new Date('2026-11-30')` is UTC midnight, which
+    // renders as the 29th for anyone west of Greenwich.
+    items.push({
+      label: 'Trade Deadline',
+      value: fantasySettings.trade_deadline
+        ? new Date(`${fantasySettings.trade_deadline}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        : 'None',
+    })
   }
 
   // Pick frequency
