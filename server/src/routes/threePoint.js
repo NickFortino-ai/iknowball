@@ -15,7 +15,10 @@ router.use(requireAuth)
 // `/types/<2|3>/athletes/<id>/statistics/0` response which exposes the
 // total separately ("3-Point Field Goals Made" without "Average" in the
 // displayName). 30-min per-athlete cache keeps the call volume sane.
-const athleteTotalCache = new Map() // espnId -> { total, ts }
+// Keyed by espnId AND season — two seasons are in flight at once (this one
+// for the number shown, last one for the ordering), and an id-only key would
+// serve whichever landed first for both.
+const athleteTotalCache = new Map() // `${espnId}:${season}` -> { total, ts }
 const ATHLETE_TOTAL_TTL = 30 * 60 * 1000
 
 async function fetchAthlete3PMForType(espnId, seasonType, season) {
@@ -52,6 +55,13 @@ async function fetchAthlete3PMForType(espnId, seasonType, season) {
  * which is exactly how this went stale: correct when written, silently wrong
  * a year later.
  */
+function currentNbaSeason(now = new Date()) {
+  const pt = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
+  const y = pt.getFullYear()
+  // Sep onward belongs to the season that ends next year.
+  return pt.getMonth() >= 8 ? y + 1 : y
+}
+
 function lastCompletedNbaRegularSeason(now = new Date()) {
   const pt = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
   const y = pt.getFullYear()
@@ -79,7 +89,7 @@ async function fetchNbaSeason3PMTotals(espnIds, season = lastCompletedNbaRegular
   const now = Date.now()
   const toFetch = []
   for (const id of espnIds) {
-    const cached = athleteTotalCache.get(id)
+    const cached = athleteTotalCache.get(`${id}:${season}`)
     if (cached && now - cached.ts < ATHLETE_TOTAL_TTL) {
       result[id] = cached.total
     } else {
@@ -96,7 +106,7 @@ async function fetchNbaSeason3PMTotals(espnIds, season = lastCompletedNbaRegular
       const id = batch[j]
       const total = totals[j]
       result[id] = total
-      athleteTotalCache.set(id, { total, ts: Date.now() })
+      athleteTotalCache.set(`${id}:${season}`, { total, ts: Date.now() })
     }
   }
   return result
@@ -122,12 +132,37 @@ router.get('/players', async (req, res) => {
   const { date } = req.query
   if (!date) return res.status(400).json({ error: 'date required' })
   const pool = await getNBAPlayerPool(date)
-  const totals = await fetchNbaSeason3PMTotals(pool.map((p) => p.espn_player_id).filter(Boolean))
+  const ids = pool.map((p) => p.espn_player_id).filter(Boolean)
+
+  // Two seasons, two jobs.
+  //
+  // season_threes is THIS season and is what the column shows. On opening
+  // night that is 0 for everyone, which is the truth — nobody has made a
+  // three yet — and it climbs as games are played.
+  //
+  // prior_threes is last completed season and exists to order the list. A
+  // board sorted by a column that is all zeroes is just the salary order
+  // wearing a different hat.
+  const [current, prior] = await Promise.all([
+    fetchNbaSeason3PMTotals(ids, currentNbaSeason()),
+    fetchNbaSeason3PMTotals(ids, lastCompletedNbaRegularSeason()),
+  ])
+
   const enriched = pool.map((p) => ({
     ...p,
-    season_threes: totals[p.espn_player_id] || 0,
+    season_threes: current[p.espn_player_id] || 0,
+    prior_threes: prior[p.espn_player_id] || 0,
   }))
-  enriched.sort((a, b) => b.season_threes - a.season_threes || b.salary - a.salary)
+
+  // Current season first, last season as the tiebreak. That needs no
+  // cutover date and no second change later: today every current total is
+  // 0, so the order is last season's outright; as the season fills in, real
+  // totals separate players and last season only settles ties. It decays
+  // out of the ranking on its own.
+  enriched.sort((a, b) =>
+    b.season_threes - a.season_threes
+    || b.prior_threes - a.prior_threes
+    || b.salary - a.salary)
   res.json(enriched)
 })
 
