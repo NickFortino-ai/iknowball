@@ -89,11 +89,19 @@ export async function createTusUploadURL({ uploadLength, maxDurationSeconds = 18
   }
 
   const b64 = (v) => Buffer.from(String(v)).toString('base64')
-  // tus metadata is `key base64value` pairs, comma separated. Cloudflare
-  // reads the same options the JSON body carries on the basic call.
+  // tus metadata is `key base64value` pairs, comma separated.
+  //
+  // `requiresignedurls` IS DELIBERATELY ABSENT. It is a FLAG, not a boolean:
+  // Cloudflare's own example writes it bare with no value at all
+  // (`maxDurationSeconds NjAw,requiresignedurls,expiry ...`), so the key's
+  // mere presence turns signed URLs ON. Sending `requiresignedurls false`
+  // — the obvious translation of the JSON body's `requireSignedURLs: false`
+  // — enabled them, and every manifest and thumbnail came back 401. The post
+  // rendered as an empty player with working controls and no picture.
+  //
+  // Hot takes are public. To require signed URLs, ADD the bare key.
   const uploadMetadata = [
     `maxdurationseconds ${b64(maxDurationSeconds)}`,
-    `requiresignedurls ${b64('false')}`,
     ...Object.entries(meta).map(([k, v]) => `${k} ${b64(v)}`),
   ].join(',')
 
