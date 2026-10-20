@@ -12,8 +12,8 @@ import RosterSettingsEditor, { DEFAULT_ROSTER_SLOTS } from '../components/league
 import { getSeasonEndDate, isSeasonUnderway, getNflWeekEnd, arePlayoffsUnderway, getFullSeasonLeagueEndDate, getPlayoffsButtonLabel, getPlayoffsHelperText } from '../lib/seasonDates'
 import { todaySportsDay, tomorrowSportsDay } from '../lib/sportsDay'
 
-// Winner-only tiered bonus (scaledWinnerBonus on server) — shared across
-// NBA DFS, MLB DFS, HR Derby, TD Pass, Bracket, and Survivor.
+// Winner-only tiered bonus (scaledWinnerBonus on server) — BRACKET ONLY now.
+// The multi-night and multi-week contests moved to CONTEST_BONUS_ROWS below.
 const WINNER_BONUS_COLUMNS = [
   { key: 'size', label: 'League Size', align: 'left' },
   { key: 'winner', label: 'Winner Bonus', align: 'center', color: 'text-correct' },
@@ -36,6 +36,23 @@ const SURVIVOR_BONUS_ROWS = [
   { size: '16–30', winner: '+50' },
   { size: '31–40', winner: '+75' },
   { size: '41+', winner: '+100' },
+]
+
+// Finish bonuses for the multi-night / multi-week contests — 1st gets
+// 50 + memberCount, 2nd and 3rd at 40% and 20%. Mirrors
+// `contestFullSeasonBonus` in server/src/services/prorationService.js.
+//
+// Listed at representative sizes rather than the old ranges because the
+// ladder is continuous in member count: every member who joins raises the
+// prize by one point.
+const CONTEST_BONUS_ROWS = [
+  { size: '4 members',  first: '+54',  second: '+22', third: '+11' },
+  { size: '6 members',  first: '+56',  second: '+22', third: '+11' },
+  { size: '8 members',  first: '+58',  second: '+23', third: '+12' },
+  { size: '10 members', first: '+60',  second: '+24', third: '+12' },
+  { size: '15 members', first: '+65',  second: '+26', third: '+13' },
+  { size: '20 members', first: '+70',  second: '+28', third: '+14' },
+  { size: '30 members', first: '+80',  second: '+32', third: '+16' },
 ]
 
 const FORMAT_OPTIONS = [
@@ -83,16 +100,15 @@ Commissioner controls: scoring format (PPR, half-PPR, standard, or fully custom 
     description: 'Build a nightly NBA lineup under a salary cap and compete for the highest score',
     details: `Build a nightly 9-man NBA lineup (PG, PG, SG, SG, SF, SF, PF, PF, C) under a salary cap. Players are priced using a weighted algorithm that factors in recent performance and opponent defensive strength — so salaries shift nightly based on matchups and form. Scoring follows DraftKings-style NBA rules. Your league tracks wins across every night of the duration.
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how long the league actually ran out of a ~180-night NBA regular season.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The top three also earn a size-scaled finish bonus shown below. A league that runs the full ~175-night NBA regular season pays it in full; a shorter league is scaled to the share of the season it covers.
 
 At the end of the season, the league generates a League Report — a full breakdown of every member's season including most played player, pick of the year, best value plays, worst investments, and league-wide awards for top scorer, most rostered player, and the most contrarian hit of the season.
 
 Commissioner controls: salary cap, team count, league duration, and lineup lock time. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'NBA DFS Winner Bonus (Full Season, ~180 game nights)',
-      columns: WINNER_BONUS_COLUMNS,
-      rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus scales with how many nights your league runs (out of ~180 in a full NBA season). A 90-night league earns 50% of the bonus; a 30-night league earns about 17%. Position points (n+1−2×rank) are added on top.',
+      title: 'NBA DFS Finish Bonuses (Full Season)',
+      rows: CONTEST_BONUS_ROWS,
+      footnote: 'Shown in full for a league that runs the whole ~175-night NBA regular season — a full-season league pays the full amount. A shorter league is scaled to the share of the season it covers, so half a season pays half. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -101,16 +117,15 @@ Commissioner controls: salary cap, team count, league duration, and lineup lock 
     description: 'Build a nightly WNBA lineup under a salary cap and compete for the highest score',
     details: `Build a nightly 9-player WNBA lineup (G, G, F, F, C, UTIL, UTIL, UTIL, UTIL) under a salary cap. Players are priced using a weighted algorithm that factors in recent performance and opponent defensive strength — so salaries shift nightly based on matchups and form. Scoring follows DraftKings-style WNBA rules. Your league tracks wins across every night of the duration.
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how long the league actually ran out of a ~120-night WNBA regular season.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The top three also earn a size-scaled finish bonus shown below. A league that runs the full ~120-night WNBA regular season pays it in full; a shorter league is scaled to the share of the season it covers.
 
 At the end of the season, the league generates a League Report — a full breakdown of every member's season including most played player, pick of the year, best value plays, worst investments, and league-wide awards for top scorer, most rostered player, and the most contrarian hit of the season.
 
 Commissioner controls: salary cap, team count, league duration, and lineup lock time. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'WNBA DFS Winner Bonus (Full Season, ~120 game nights)',
-      columns: WINNER_BONUS_COLUMNS,
-      rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus scales with how many nights your league runs (out of ~120 in a full WNBA season). A 60-night league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      title: 'WNBA DFS Finish Bonuses (Full Season)',
+      rows: CONTEST_BONUS_ROWS,
+      footnote: 'Shown in full for a league that runs the whole ~120-night WNBA regular season — a full-season league pays the full amount. A shorter league is scaled to the share of the season it covers, so half a season pays half. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -119,16 +134,15 @@ Commissioner controls: salary cap, team count, league duration, and lineup lock 
     description: 'Build a daily MLB lineup under a salary cap — scored on hits, HRs, RBIs, runs, and more',
     details: `Build a daily 10-man MLB lineup (SP, C, 1B, 2B, SS, 3B, OF, OF, OF, UTIL) under a salary cap. Scored on hits, home runs, RBIs, runs, stolen bases, and walks. Player pricing uses recent game logs and opponent pitching and defensive strength. Compete each night with your league across the full slate.
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how long the league actually ran out of a ~180-night MLB regular season.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The top three also earn a size-scaled finish bonus shown below. A league that runs the full ~186-night MLB regular season pays it in full; a shorter league is scaled to the share of the season it covers.
 
 At the end of the season, the league generates a League Report — a full breakdown of every member's season including most played player, pick of the year, best value plays, worst investments, and league-wide awards for top scorer, most rostered player, and the most contrarian hit of the season.
 
 Commissioner controls: salary cap, team count, league duration, lineup lock time. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'MLB DFS Winner Bonus (Full Season, ~180 game nights)',
-      columns: WINNER_BONUS_COLUMNS,
-      rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus scales with how many nights your league runs (out of ~180 in a full MLB season). A 90-night league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      title: 'MLB DFS Finish Bonuses (Full Season)',
+      rows: CONTEST_BONUS_ROWS,
+      footnote: 'Shown in full for a league that runs the whole ~186-night MLB regular season — a full-season league pays the full amount. A shorter league is scaled to the share of the season it covers, so half a season pays half. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -137,14 +151,13 @@ Commissioner controls: salary cap, team count, league duration, lineup lock time
     description: 'Pick 3 pitchers per day — score points for every strikeout they throw',
     details: `Pick up to 3 MLB pitchers each day you think will rack up strikeouts. By default, each pitcher can only be used once per week — commissioners can flip that to unlimited. Total strikeouts determine standings; ties share rank. Just like HR Derby — no salaries, no lineups. Just: who's gonna deal tonight?
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how long the league actually ran out of a ~180-night MLB regular season.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The top three also earn a size-scaled finish bonus shown below. A league that runs the full ~186-night MLB regular season pays it in full; a shorter league is scaled to the share of the season it covers.
 
 Commissioner controls: league length, player reuse rule, team count. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'Strikeouts Contest Winner Bonus (Full Season, ~180 game nights)',
-      columns: WINNER_BONUS_COLUMNS,
-      rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus scales with how many nights your league runs (out of ~180 in a full MLB season). A 90-night league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      title: 'Strikeouts Contest Finish Bonuses (Full Season)',
+      rows: CONTEST_BONUS_ROWS,
+      footnote: 'Shown in full for a league that runs the whole ~186-night MLB regular season — a full-season league pays the full amount. A shorter league is scaled to the share of the season it covers, so half a season pays half. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -153,14 +166,13 @@ Commissioner controls: league length, player reuse rule, team count. Custom back
     description: 'Pick 3 hitters per day — score points for every HR they hit',
     details: `Pick up to 3 hitters per day who you think will go yard. By default, each player can only be used once per week — commissioners can flip that to unlimited. Total home runs determine standings; ties share rank. No salaries, no lineups, no optimization required. Just: will this guy hit one tonight?
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how long the league actually ran out of a ~180-night MLB regular season.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The top three also earn a size-scaled finish bonus shown below. A league that runs the full ~186-night MLB regular season pays it in full; a shorter league is scaled to the share of the season it covers.
 
 Commissioner controls: league length, team count. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'HR Derby Winner Bonus (Full Season, ~180 game nights)',
-      columns: WINNER_BONUS_COLUMNS,
-      rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus scales with how many nights your league runs (out of ~180 in a full MLB season). A 90-night league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      title: 'HR Derby Finish Bonuses (Full Season)',
+      rows: CONTEST_BONUS_ROWS,
+      footnote: 'Shown in full for a league that runs the whole ~186-night MLB regular season — a full-season league pays the full amount. A shorter league is scaled to the share of the season it covers, so half a season pays half. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -169,14 +181,13 @@ Commissioner controls: league length, team count. Custom backdrop from a curated
     description: 'Pick 3 NBA shooters per night — score points for every made 3-pointer',
     details: `Pick up to 3 NBA players per night you think will drain threes. By default, each player can only be used once per week — commissioners can flip that to unlimited. Total made 3-pointers determine standings; ties share rank. No salaries, no lineups — just pick the shooters.
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how long the league actually ran out of a ~180-night NBA regular season.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The top three also earn a size-scaled finish bonus shown below. A league that runs the full ~175-night NBA regular season pays it in full; a shorter league is scaled to the share of the season it covers.
 
 Commissioner controls: league length, player reuse rule, team count. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'NBA 3-Point Contest Winner Bonus (Full Season, ~180 game nights)',
-      columns: WINNER_BONUS_COLUMNS,
-      rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus scales with how many nights your league runs (out of ~180 in a full NBA season). A 90-night league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      title: 'NBA 3-Point Contest Finish Bonuses (Full Season)',
+      rows: CONTEST_BONUS_ROWS,
+      footnote: 'Shown in full for a league that runs the whole ~175-night NBA regular season — a full-season league pays the full amount. A shorter league is scaled to the share of the season it covers, so half a season pays half. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -185,14 +196,13 @@ Commissioner controls: league length, player reuse rule, team count. Custom back
     description: 'Pick 3 WNBA shooters per night — score points for every made 3-pointer',
     details: `Pick up to 3 WNBA players per night you think will drain threes. By default, each player can only be used once per week — commissioners can flip that to unlimited. Total made 3-pointers determine standings; ties share rank. No salaries, no lineups — just pick the shooters.
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how long the league actually ran out of a ~120-night WNBA regular season.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The top three also earn a size-scaled finish bonus shown below. A league that runs the full ~120-night WNBA regular season pays it in full; a shorter league is scaled to the share of the season it covers.
 
 Commissioner controls: league length, player reuse rule, team count. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'WNBA 3-Point Contest Winner Bonus (Full Season, ~120 game nights)',
-      columns: WINNER_BONUS_COLUMNS,
-      rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus scales with how many nights your league runs (out of ~120 in a full WNBA season). A 60-night league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      title: 'WNBA 3-Point Contest Finish Bonuses (Full Season)',
+      rows: CONTEST_BONUS_ROWS,
+      footnote: 'Shown in full for a league that runs the whole ~120-night WNBA regular season — a full-season league pays the full amount. A shorter league is scaled to the share of the season it covers, so half a season pays half. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -201,14 +211,13 @@ Commissioner controls: league length, player reuse rule, team count. Custom back
     description: 'Pick 3 NFL defenders per week — score points for every interception they record',
     details: `Pick 3 NFL defenders each week — DBs, LBs, anyone who can pick off a pass. Every interception each pick records adds to your league total. By default, each defender can only be used once per season — commissioners can flip that to unlimited.
 
-When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by NFL weeks played out of 18.
+When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The top three also earn a size-scaled finish bonus shown below. A league that runs the full 18-week NFL regular season pays it in full; a shorter league is scaled to the share of the season it covers.
 
 Commissioner controls: league length (defaults to full NFL season), player reuse rule, team count. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'Interceptions Contest Winner Bonus (Full Season, 18 weeks)',
-      columns: WINNER_BONUS_COLUMNS,
-      rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus scales with how many weeks your league runs (out of 18 in a full NFL regular season). A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      title: 'Interceptions Contest Finish Bonuses (Full Season)',
+      rows: CONTEST_BONUS_ROWS,
+      footnote: 'Shown in full for a league that runs the whole 18-week NFL regular season — a full-season league pays the full amount. A shorter league is scaled to the share of the season it covers, so half a season pays half. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -217,14 +226,13 @@ Commissioner controls: league length (defaults to full NFL season), player reuse
     description: 'Pick 3 NFL defenders per week — score points for every sack they record',
     details: `Pick 3 NFL defenders each week — anyone who can rush the passer (DEs, DTs, edge rushers, blitzing LBs, even DBs). Every sack each pick records adds to your league total. By default, each defender can only be used once per season — commissioners can flip that to unlimited.
 
-When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by NFL weeks played out of 18.
+When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The top three also earn a size-scaled finish bonus shown below. A league that runs the full 18-week NFL regular season pays it in full; a shorter league is scaled to the share of the season it covers.
 
 Commissioner controls: league length (defaults to full NFL season), player reuse rule, team count. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'Sacks Contest Winner Bonus (Full Season, 18 weeks)',
-      columns: WINNER_BONUS_COLUMNS,
-      rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus scales with how many weeks your league runs (out of 18 in a full NFL regular season). A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      title: 'Sacks Contest Finish Bonuses (Full Season)',
+      rows: CONTEST_BONUS_ROWS,
+      footnote: 'Shown in full for a league that runs the whole 18-week NFL regular season — a full-season league pays the full amount. A shorter league is scaled to the share of the season it covers, so half a season pays half. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -233,14 +241,13 @@ Commissioner controls: league length (defaults to full NFL season), player reuse
     description: 'Pick 3 NFL defenders per week — score points for every tackle they record',
     details: `Pick 3 NFL defenders each week — LBs, safeties, corners, anyone on defense. Every tackle each pick records adds to your league total. By default, each defender can only be used once per season — commissioners can flip that to twice, three times, or unlimited.
 
-When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by NFL weeks played out of 18.
+When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The top three also earn a size-scaled finish bonus shown below. A league that runs the full 18-week NFL regular season pays it in full; a shorter league is scaled to the share of the season it covers.
 
 Commissioner controls: league length (defaults to full NFL season), player reuse rule, team count. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'Tackles Contest Winner Bonus (Full Season, 18 weeks)',
-      columns: WINNER_BONUS_COLUMNS,
-      rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus scales with how many weeks your league runs (out of 18 in a full NFL regular season). A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      title: 'Tackles Contest Finish Bonuses (Full Season)',
+      rows: CONTEST_BONUS_ROWS,
+      footnote: 'Shown in full for a league that runs the whole 18-week NFL regular season — a full-season league pays the full amount. A shorter league is scaled to the share of the season it covers, so half a season pays half. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -249,14 +256,13 @@ Commissioner controls: league length (defaults to full NFL season), player reuse
     description: 'Pick 3 NFL pass catchers per week — score points for every reception they record',
     details: `Pick 3 NFL pass catchers each week — WRs, TEs, and pass-catching RBs. Every reception each pick records adds to your league total. By default, each player can only be used once per season — commissioners can flip that to twice, three times, or unlimited.
 
-When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by NFL weeks played out of 18.
+When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The top three also earn a size-scaled finish bonus shown below. A league that runs the full 18-week NFL regular season pays it in full; a shorter league is scaled to the share of the season it covers.
 
 Commissioner controls: league length (defaults to full NFL season), player reuse rule, team count. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'Receptions Contest Winner Bonus (Full Season, 18 weeks)',
-      columns: WINNER_BONUS_COLUMNS,
-      rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus scales with how many weeks your league runs (out of 18 in a full NFL regular season). A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      title: 'Receptions Contest Finish Bonuses (Full Season)',
+      rows: CONTEST_BONUS_ROWS,
+      footnote: 'Shown in full for a league that runs the whole 18-week NFL regular season — a full-season league pays the full amount. A shorter league is scaled to the share of the season it covers, so half a season pays half. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -265,14 +271,13 @@ Commissioner controls: league length (defaults to full NFL season), player reuse
     description: 'Pick one NFL QB per week — never repeat a QB. Most passing TDs across the season wins',
     details: `Season-long NFL league where you pick one quarterback per week — and you can never pick the same QB twice all season. Standings rank by total passing touchdowns accumulated across all your picks. Most TDs by season's end wins. Rushing TDs don't count. Ties split the bonus.
 
-When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how many NFL weeks the league ran out of 18.
+When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The top three also earn a size-scaled finish bonus shown below. A league that runs the full 18-week NFL regular season pays it in full; a shorter league is scaled to the share of the season it covers.
 
 Commissioner controls: league length (defaults to full NFL season), team count. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'TD Pass Winner Bonus (Full Season, 18 weeks)',
-      columns: WINNER_BONUS_COLUMNS,
-      rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus scales with how many weeks your league runs (out of 18 in a full NFL regular season). A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      title: 'TD Pass Finish Bonuses (Full Season)',
+      rows: CONTEST_BONUS_ROWS,
+      footnote: 'Shown in full for a league that runs the whole 18-week NFL regular season — a full-season league pays the full amount. A shorter league is scaled to the share of the season it covers, so half a season pays half. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
