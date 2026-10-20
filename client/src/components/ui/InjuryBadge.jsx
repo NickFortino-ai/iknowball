@@ -3,17 +3,22 @@
 //   Q   bright yellow   Questionable
 //   D   red             Doubtful (unlikely to play — treated like Out)
 //   DTD bright yellow   Day-To-Day
-//   O   red             Out
+//   O   red             Out — and suspended, which reads the same to a lineup
 //   IR  red             Injured Reserve
 //   P   green           Probable
 // Case-insensitive lookup so Sleeper / ESPN / manual values all resolve.
 // Previously "Doubtful" from any non-canonical casing fell through to gray.
+// Sleeper spells a suspension 'Sus', 'Suspended' AND 'Suspension'. Matched by
+// prefix below rather than listed here, because enumerating the spellings is
+// what let 'Suspension' through: it missed this map (grey, not red) and missed
+// shortLabel, so Montez Sweat wore a bare grey "S" — a letter this legend
+// doesn't assign — in a starting lineup.
+const isSuspension = (s) => String(s || '').trim().toLowerCase().startsWith('sus')
+
 const INJURY_COLORS = {
   out: 'text-incorrect',
   ir: 'text-incorrect',
   pup: 'text-incorrect',
-  sus: 'text-incorrect',
-  suspended: 'text-incorrect',
   doubtful: 'text-yellow-400',
   questionable: 'text-yellow-400',
   probable: 'text-correct',
@@ -24,6 +29,10 @@ const INJURY_COLORS = {
 
 function shortLabel(status) {
   const s = String(status).toLowerCase()
+  // A suspended player reads as OUT. Nick's call 2026-10-20: the distinction
+  // between "hurt" and "banned" doesn't change the only thing a lineup screen
+  // needs to say, which is that he will score nothing.
+  if (isSuspension(s)) return 'O'
   if (s === 'day-to-day' || s === 'dtd') return 'DTD'
   if (s === 'questionable') return 'Q'
   if (s === 'doubtful') return 'D'
@@ -31,7 +40,6 @@ function shortLabel(status) {
   if (s === 'out') return 'O'
   if (s === 'ir') return 'IR'
   if (s === 'pup') return 'PUP'
-  if (s === 'sus' || s === 'suspended') return 'SUS'
   return status?.charAt(0)?.toUpperCase() || ''
 }
 
@@ -64,7 +72,9 @@ const NOT_AN_INJURY = new Set([
 export default function InjuryBadge({ status, className = '' }) {
   if (!status) return null
   if (NOT_AN_INJURY.has(String(status).trim().toLowerCase())) return null
-  const color = INJURY_COLORS[String(status).toLowerCase()] || 'text-text-muted'
+  const color = isSuspension(status)
+    ? 'text-incorrect'
+    : INJURY_COLORS[String(status).toLowerCase()] || 'text-text-muted'
   return (
     <span
       className={`text-[12px] font-mono font-bold shrink-0 ${color} ${className}`}

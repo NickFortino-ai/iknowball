@@ -34,8 +34,13 @@ const POS_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'DEF', 'OUT']
 // Jacobs is the ONLY player in the league carrying NA, so he was the entire
 // sample, and he is on the commissioner's exempt list — ineligible to play.
 // Sleeper's NA means not active, which is exactly what this set is for.
-const UNAVAILABLE_STATUSES = new Set(['out', 'ir', 'pup', 'sus', 'suspended', 'dnr', 'na'])
-const isUnavailable = (status) => UNAVAILABLE_STATUSES.has(String(status || '').toLowerCase())
+// Suspensions match by PREFIX: Sleeper writes 'Sus', 'Suspended' AND
+// 'Suspension', and enumerating them is what let the third spelling through.
+const UNAVAILABLE_STATUSES = new Set(['out', 'ir', 'pup', 'sus', 'suspended', 'suspension', 'dnr', 'na'])
+const isUnavailable = (status) => {
+  const s = String(status || '').trim().toLowerCase()
+  return s.startsWith('sus') || UNAVAILABLE_STATUSES.has(s)
+}
 
 // Copy for an empty player pool.
 //

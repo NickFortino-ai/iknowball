@@ -421,7 +421,13 @@ const NFL_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000
 
 // Designations ESPN's weekly injury report does not carry, so its silence
 // says nothing about them. Only Sleeper's roster feed can clear these.
-const LONG_TERM_STATUSES = new Set(['ir', 'injured reserve', 'pup', 'sus', 'suspended', 'dnr', 'na'])
+// 'suspension' included alongside 'sus'/'suspended' — Sleeper uses all three,
+// and omitting one meant ESPN's silence could CLEAR a genuine suspension.
+const LONG_TERM_STATUSES = new Set(['ir', 'injured reserve', 'pup', 'sus', 'suspended', 'suspension', 'dnr', 'na'])
+const isLongTermStatus = (s) => {
+  const v = String(s || '').trim().toLowerCase()
+  return v.startsWith('sus') || LONG_TERM_STATUSES.has(v)
+}
 
 async function getUpcomingTeams(sportKey, windowOverrideMs = null) {
   // NFL preseason games have their own sport_id ('americanfootball_nfl_preseason')
@@ -878,7 +884,7 @@ export async function syncInjuries() {
             })
             if (res.action === 'inserted') blurbsWritten++
           }
-        } else if (p.injury_status && activeNamesNorm.has(norm) && !LONG_TERM_STATUSES.has(String(p.injury_status).toLowerCase())) {
+        } else if (p.injury_status && activeNamesNorm.has(norm) && !isLongTermStatus(p.injury_status)) {
           // Cleared-to-play: was injured, no longer in ESPN injuries,
           // still on the depth chart. Safe to clear and announce.
           //

@@ -17,12 +17,25 @@
 // came from, and he is on the commissioner's exempt list — ineligible to play.
 // Sleeper's NA means not active.
 export const UNAVAILABLE_INJURY_STATUSES = new Set([
-  'out', 'doubtful', 'ir', 'pup', 'sus', 'suspended', 'dnr', 'na',
+  'out', 'doubtful', 'ir', 'pup', 'sus', 'suspended', 'suspension', 'dnr', 'na',
 ])
+
+// Sleeper spells a suspension at least THREE ways — 'Sus', 'Suspended' and
+// 'Suspension' — and had two players on the third while every list in the
+// codebase enumerated only the first two. Montez Sweat sat suspended in a
+// starting lineup with the readiness flag green, because 'Suspension' matched
+// nothing anywhere.
+//
+// Matched by prefix rather than by adding a fourth string, since the next
+// spelling costs nothing to absorb. No other NFL designation begins 'sus'.
+export function isSuspension(injuryStatus) {
+  return String(injuryStatus || '').trim().toLowerCase().startsWith('sus')
+}
 
 /** True when this injury_status means the player cannot play. */
 export function isUnavailable(injuryStatus) {
-  return UNAVAILABLE_INJURY_STATUSES.has(String(injuryStatus || '').toLowerCase())
+  const s = String(injuryStatus || '').trim().toLowerCase()
+  return isSuspension(s) || UNAVAILABLE_INJURY_STATUSES.has(s)
 }
 
 // Which designations can occupy an IR roster slot in traditional fantasy.

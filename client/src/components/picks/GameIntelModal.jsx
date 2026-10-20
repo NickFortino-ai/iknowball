@@ -172,7 +172,9 @@ function TeamSection({ teamName, starters, injuries, sportKey }) {
       // being rendered as starters — which is how a PUP running back kept his
       // RB1 slot. Questionable deliberately stays: he is expected to play, so
       // he holds the slot and carries a badge.
-      if (['out', 'doubtful', 'ir', 'pup', 'sus', 'suspended', 'dnr'].includes(String(status || '').toLowerCase())) continue
+      // Suspensions match by prefix — Sleeper also writes 'Suspension'.
+      const st = String(status || '').trim().toLowerCase()
+      if (st.startsWith('sus') || ['out', 'doubtful', 'ir', 'pup', 'dnr'].includes(st)) continue
       usedPlayers.add(player.name)
       // Prefer the promoted player's OWN position. Falling back to the
       // slot's position labelled a promoted guard with the outgoing

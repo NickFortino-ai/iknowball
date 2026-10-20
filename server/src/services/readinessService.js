@@ -256,10 +256,19 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
 // amber "needs eyes" marker on a slot that is a guaranteed zero.
 //
 // Doubtful and Questionable stay yellow — those are genuine judgement calls.
+//
+// Suspensions are matched by PREFIX, not by name. Sleeper writes 'Sus',
+// 'Suspended' AND 'Suspension'; this list carried the first two, so Montez
+// Sweat ('Suspension') started a week with the flag showing green. Kept
+// separate from utils/injuryStatus.js on purpose — that set includes
+// Doubtful, which stays yellow here because it is a judgement call.
 const UNAVAILABLE_STATUSES = new Set([
-  'out', 'ir', 'injured reserve', 'pup', 'na', 'sus', 'suspended', 'dnr',
+  'out', 'ir', 'injured reserve', 'pup', 'na', 'sus', 'suspended', 'suspension', 'dnr',
 ])
-const isUnavailableStatus = (s) => UNAVAILABLE_STATUSES.has(String(s || '').trim().toLowerCase())
+const isUnavailableStatus = (s) => {
+  const v = String(s || '').trim().toLowerCase()
+  return v.startsWith('sus') || UNAVAILABLE_STATUSES.has(v)
+}
 
 async function applyInjuryDowngrades(byFormat, userId, todayET, result) {
   // Split injured players into Out (red downgrade) and yellow-flag (Q / DTD /
