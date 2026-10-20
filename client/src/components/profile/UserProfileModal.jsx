@@ -673,43 +673,35 @@ export default function UserProfileModal({ userId, onClose }) {
                   437W-362L at "50%", which is 437/869: the 70 pushes had
                   quietly cost him four and a half points. The real figure is
                   437/799, 55%.
-                  It also made the card fail its own arithmetic — the three
-                  numbers beside the percentage did not sum to the total. */}
+
+                  Wins + Losses therefore will NOT equal Total for anyone
+                  holding a push, and that is correct rather than an
+                  oversight. A Pushes tile to close the gap was tried and
+                  dropped — it gave a dead stat the same weight as the record
+                  itself, to explain an arithmetic nobody was auditing. */}
               {(() => {
                 const decided = user.record.wins + user.record.losses
-                const pushes = Math.max(0, (user.record.total || 0) - decided)
                 return (
-                  <>
-                    <div className={`grid ${pushes > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-2 text-center`}>
-                      <div>
-                        <div className="font-display text-xl text-text-primary">{user.record.total}</div>
-                        <div className="text-xs text-text-muted">Total</div>
-                      </div>
-                      <div>
-                        <div className="font-display text-xl text-correct">{user.record.wins}</div>
-                        <div className="text-xs text-text-muted">Wins</div>
-                      </div>
-                      <div>
-                        <div className="font-display text-xl text-incorrect">{user.record.losses}</div>
-                        <div className="text-xs text-text-muted">Losses</div>
-                      </div>
-                      {/* Shown only when there are any, so the usual card
-                          keeps its four tiles — but when it appears, Wins +
-                          Losses + Pushes finally equals Total. */}
-                      {pushes > 0 && (
-                        <div>
-                          <div className="font-display text-xl text-text-muted">{pushes}</div>
-                          <div className="text-xs text-text-muted">Pushes</div>
-                        </div>
-                      )}
-                      <div>
-                        <div className="font-display text-xl text-text-primary">
-                          {decided > 0 ? `${((user.record.wins / decided) * 100).toFixed(0)}%` : '—'}
-                        </div>
-                        <div className="text-xs text-text-muted">Win %</div>
-                      </div>
+                  <div className="grid grid-cols-4 gap-3 text-center">
+                    <div>
+                      <div className="font-display text-xl text-text-primary">{user.record.total}</div>
+                      <div className="text-xs text-text-muted">Total</div>
                     </div>
-                  </>
+                    <div>
+                      <div className="font-display text-xl text-correct">{user.record.wins}</div>
+                      <div className="text-xs text-text-muted">Wins</div>
+                    </div>
+                    <div>
+                      <div className="font-display text-xl text-incorrect">{user.record.losses}</div>
+                      <div className="text-xs text-text-muted">Losses</div>
+                    </div>
+                    <div>
+                      <div className="font-display text-xl text-text-primary">
+                        {decided > 0 ? `${((user.record.wins / decided) * 100).toFixed(0)}%` : '—'}
+                      </div>
+                      <div className="text-xs text-text-muted">Win %</div>
+                    </div>
+                  </div>
                 )
               })()}
             </div>
