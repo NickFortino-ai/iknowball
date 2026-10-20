@@ -49,7 +49,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
   const queryClient = useQueryClient()
   const { data: profile } = useProfile()
   const { uploading, previewUrls, selectImage, removeImage, uploadImage, hasImage, imageCount } = useHotTakeImageUpload()
-  const { uploading: videoUploading, previewUrl: videoPreviewUrl, selectVideo, removeVideo, uploadVideo, hasVideo } = useHotTakeVideoUpload()
+  const { uploading: videoUploading, progress: videoProgress, previewUrl: videoPreviewUrl, selectVideo, removeVideo, uploadVideo, hasVideo } = useHotTakeVideoUpload()
   const fileInputRef = useRef(null)
   const textareaRef = useRef(null)
 
@@ -803,7 +803,9 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                       disabled={!canPost}
                       className="bg-accent text-white text-xs font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 transition-opacity"
                     >
-                      {createHotTake.isPending || uploading || videoUploading ? 'Posting...' : 'Post'}
+                      {videoUploading && videoProgress > 0
+                        ? `Uploading ${videoProgress}%`
+                        : createHotTake.isPending || uploading || videoUploading ? 'Posting...' : 'Post'}
                     </button>
                   )}
                 </div>

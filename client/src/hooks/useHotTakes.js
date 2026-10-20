@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tansta
 import { api } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import { toast } from '../components/ui/Toast'
+import * as tus from 'tus-js-client'
 
 export function useCreateHotTake() {
   const queryClient = useQueryClient()
@@ -371,9 +372,20 @@ export function useHotTakeImageUpload() {
 // a 1:40 video sailed past the size check and then died inside Cloudflare.
 const MAX_VIDEO_SECONDS = 180
 
-// Cloudflare Stream's basic (form POST) direct upload caps at 200MB. Past
-// that you need the resumable tus protocol, which is a different client.
-const MAX_VIDEO_BYTES = 200 * 1024 * 1024
+// Cloudflare's basic (form POST) direct upload caps at 200MB — their limit,
+// not our plan's. Past that we switch to the resumable tus protocol, which
+// Cloudflare allows up to 30GB.
+//
+// 2GB is deliberately far below that ceiling. The real brake is the 180s
+// duration cap: at 3 minutes even iPhone 4K/60 (~50 Mbps) lands near 1.1GB,
+// so 2GB clears any honest recording. Keep in step with MAX_UPLOAD_BYTES in
+// server/src/routes/stream.js and the figure quoted in TermsPage.jsx.
+const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024
+
+// Above this, upload resumably instead of in one POST. Small files stay on
+// the proven single-POST path — it has been carrying every upload to date,
+// and a chunked protocol buys nothing on a file that sends in one go.
+const TUS_THRESHOLD_BYTES = 200 * 1024 * 1024
 
 /**
  * Read a local video's duration without uploading it. Resolves null when the
@@ -403,6 +415,9 @@ function readVideoDuration(file) {
 
 export function useHotTakeVideoUpload() {
   const [uploading, setUploading] = useState(false)
+  // 0-100 while a resumable upload runs. A half-gigabyte file behind a bare
+  // spinner reads as a hung app, and people kill it and retry.
+  const [progress, setProgress] = useState(0)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [videoFile, setVideoFile] = useState(null)
 
@@ -422,8 +437,9 @@ export function useHotTakeVideoUpload() {
     // "Video must be under 200MB" sent people hunting for a shorter clip when
     // the fix is to record or export smaller.
     if (file.size > MAX_VIDEO_BYTES) {
-      const mb = Math.round(file.size / (1024 * 1024))
-      toast(`That video is ${mb}MB and the limit is 200MB. Recording at 1080p instead of 4K usually gets well under it.`, 'error')
+      const gb = (file.size / (1024 ** 3)).toFixed(1)
+      const limitGb = (MAX_VIDEO_BYTES / (1024 ** 3)).toFixed(1)
+      toast(`That video is ${gb}GB and the limit is ${limitGb}GB. Recording at 1080p instead of 4K usually gets well under it.`, 'error')
       return
     }
 
@@ -458,20 +474,60 @@ export function useHotTakeVideoUpload() {
    * shouldn't block on that — the feed will render the video-not-ready state
    * for a moment then start streaming as soon as Cloudflare finishes.
    */
+  /**
+   * Send the file in resumable chunks via tus.
+   *
+   * Cloudflare hands back a one-time endpoint; tus-js-client PATCHes chunks
+   * at it and retries from the last acknowledged byte, so a phone that drops
+   * signal at 80% resumes there instead of starting the file again.
+   *
+   * `chunkSize` is required — Cloudflare rejects a tus upload that streams
+   * without one, and it also defines the resume granularity. 50MB is their
+   * documented suggestion.
+   */
+  function uploadViaTus(uploadURL) {
+    return new Promise((resolve, reject) => {
+      const upload = new tus.Upload(videoFile, {
+        uploadUrl: uploadURL,
+        chunkSize: 50 * 1024 * 1024,
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        metadata: { filename: videoFile.name, filetype: videoFile.type },
+        onProgress: (sent, total) => {
+          setProgress(total ? Math.round((sent / total) * 100) : 0)
+        },
+        onError: reject,
+        onSuccess: resolve,
+      })
+      upload.start()
+    })
+  }
+
   async function uploadVideo() {
     if (!videoFile) return null
     setUploading(true)
+    setProgress(0)
     try {
-      const { uploadURL, uid, hlsUrl } = await api.post('/stream/direct-upload', { maxDurationSeconds: MAX_VIDEO_SECONDS })
+      // Files past Cloudflare's 200MB form-POST ceiling go the resumable
+      // route. Everything else stays on the single POST that has carried
+      // every upload so far.
+      const useTus = videoFile.size > TUS_THRESHOLD_BYTES
+      const endpoint = useTus ? '/stream/tus-upload' : '/stream/direct-upload'
+      const { uploadURL, uid, hlsUrl } = await api.post(endpoint, {
+        maxDurationSeconds: MAX_VIDEO_SECONDS,
+        ...(useTus && { uploadLength: videoFile.size }),
+      })
       if (!uploadURL || !uid) throw new Error('Video upload service is unavailable')
 
-      const form = new FormData()
-      form.append('file', videoFile)
-
-      const uploadRes = await fetch(uploadURL, { method: 'POST', body: form })
-      if (!uploadRes.ok) {
-        const body = await uploadRes.text().catch(() => '')
-        throw new Error(body || `Cloudflare upload failed (${uploadRes.status})`)
+      if (useTus) {
+        await uploadViaTus(uploadURL)
+      } else {
+        const form = new FormData()
+        form.append('file', videoFile)
+        const uploadRes = await fetch(uploadURL, { method: 'POST', body: form })
+        if (!uploadRes.ok) {
+          const body = await uploadRes.text().catch(() => '')
+          throw new Error(body || `Cloudflare upload failed (${uploadRes.status})`)
+        }
       }
 
       return { hlsUrl, uid }
@@ -480,10 +536,11 @@ export function useHotTakeVideoUpload() {
       return null
     } finally {
       setUploading(false)
+      setProgress(0)
     }
   }
 
-  return { uploading, previewUrl, selectVideo, removeVideo, uploadVideo, hasVideo: !!videoFile }
+  return { uploading, progress, previewUrl, selectVideo, removeVideo, uploadVideo, hasVideo: !!videoFile }
 }
 
 export function usePollVote() {

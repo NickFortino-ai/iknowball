@@ -1,11 +1,22 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
-import { createDirectUploadURL, hlsUrlFor } from '../services/cloudflareStreamService.js'
+import { createDirectUploadURL, createTusUploadURL, hlsUrlFor } from '../services/cloudflareStreamService.js'
 import { supabase } from '../config/supabase.js'
 import { env } from '../config/env.js'
 import { logger } from '../utils/logger.js'
 
 const CLOUDFLARE_API = 'https://api.cloudflare.com/client/v4'
+
+// Hard ceiling for a single video, server side.
+//
+// Cloudflare's tus protocol allows 30GB; this is deliberately far below it.
+// The real brake on an abusive upload is the 180s duration cap — at 3
+// minutes even iPhone 4K/60 (~50 Mbps) lands near 1.1GB, so 2GB clears any
+// honest recording while keeping a 30GB one impossible.
+//
+// Keep in step with MAX_VIDEO_BYTES in client/src/hooks/useHotTakes.js and
+// the figure quoted in TermsPage.jsx.
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
 
 const router = Router()
 
@@ -29,6 +40,39 @@ router.post('/direct-upload', requireAuth, async (req, res) => {
       600, // 10 min hard cap to keep abuse potential low
     )
     const { uploadURL, uid } = await createDirectUploadURL({ maxDurationSeconds, meta })
+    res.json({ uploadURL, uid, hlsUrl: hlsUrlFor(uid) })
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+/**
+ * Hand the client a RESUMABLE (tus) upload endpoint, for files past the
+ * 200MB ceiling on the form-POST route above.
+ *
+ * `uploadLength` is the exact byte count — tus requires it at creation time,
+ * so the client sends `file.size` and Cloudflare holds the slot for it.
+ *
+ * The ceiling here is the server's word on the matter. The client checks the
+ * same number first so a user gets a sentence instead of a 400, but a client
+ * is editable and this is not.
+ */
+router.post('/tus-upload', requireAuth, async (req, res) => {
+  try {
+    const uploadLength = parseInt(req.body?.uploadLength, 10)
+    if (!Number.isFinite(uploadLength) || uploadLength <= 0) {
+      return res.status(400).json({ error: 'uploadLength is required' })
+    }
+    if (uploadLength > MAX_UPLOAD_BYTES) {
+      const gb = (MAX_UPLOAD_BYTES / (1024 ** 3)).toFixed(1)
+      return res.status(400).json({ error: `Video exceeds the ${gb}GB limit` })
+    }
+    const meta = { userId: req.user.id }
+    const maxDurationSeconds = Math.min(
+      Math.max(parseInt(req.body?.maxDurationSeconds || '180', 10), 5),
+      600,
+    )
+    const { uploadURL, uid } = await createTusUploadURL({ uploadLength, maxDurationSeconds, meta })
     res.json({ uploadURL, uid, hlsUrl: hlsUrlFor(uid) })
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })
