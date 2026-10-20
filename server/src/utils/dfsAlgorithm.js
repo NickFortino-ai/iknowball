@@ -1,6 +1,22 @@
 import { logger } from './logger.js'
+import { currentNbaSeason } from './nbaSeason.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/common/v3/sports'
+
+// ESPN marks exhibition games only in the season type's displayName
+// ("2026-27 Preseason") — there is no type id to key off.
+function stripPreseason(data) {
+  if (!data?.seasonTypes) return
+  data.seasonTypes = data.seasonTypes.filter((st) => !/preseason/i.test(st.displayName || ''))
+}
+
+function countEvents(data) {
+  let n = 0
+  for (const st of data?.seasonTypes || []) {
+    for (const cat of st.categories || []) n += (cat.events || []).length
+  }
+  return n
+}
 
 /**
  * Fetch a player's game log from ESPN.
@@ -24,10 +40,43 @@ const ESPN_BASE = 'https://site.api.espn.com/apis/common/v3/sports'
  */
 export async function fetchGameLog(espnId, sportPath, season) {
   try {
-    const seasonParam = sportPath !== 'basketball/nba' ? `?season=${season}` : ''
-    const res = await fetch(`${ESPN_BASE}/${sportPath}/athletes/${espnId}/gamelog${seasonParam}`)
+    const isNBA = sportPath === 'basketball/nba'
+    // The NBA used to send NO season param here, trusting ESPN's default to
+    // mean "current season". It does not — on 2026-10-20, opening day of
+    // 2026-27, the default still returned the whole of 2025-26. Pricing would
+    // have run the entire new season off last season's game logs without ever
+    // looking stale, because the data was real, just a year old.
+    //
+    // The season passed in is our DB partition key, which is a year behind
+    // ESPN's NBA labelling (ESPN names a season by the year it ENDS), so for
+    // the NBA we compute it rather than trust the argument.
+    const espnSeason = isNBA ? currentNbaSeason() : season
+    const res = await fetch(`${ESPN_BASE}/${sportPath}/athletes/${espnId}/gamelog?season=${espnSeason}`)
     if (!res.ok) return null
     const data = await res.json()
+
+    // Exhibition games are not priceable. Starters play 15 minutes and
+    // end-of-bench players play 30, so an October preseason log prices the
+    // roster roughly upside down.
+    if (isNBA) stripPreseason(data)
+
+    // Top up a thin current season with last season's games.
+    //
+    // NOT an either/or like the player modal, which is a display and must not
+    // mix seasons. This is PRICING: calcWeightedFppg sorts most-recent-first
+    // and weights a 10-game recent window, so appending last season fills the
+    // tail while tonight's games still dominate. The alternative is pricing
+    // the first weeks of a season off a 1-3 game sample, which is how the
+    // floor collapsed last time.
+    if (isNBA && countEvents(data) < 20) {
+      const priorRes = await fetch(`${ESPN_BASE}/${sportPath}/athletes/${espnId}/gamelog?season=${espnSeason - 1}`)
+      if (priorRes.ok) {
+        const prior = await priorRes.json()
+        stripPreseason(prior)
+        data.seasonTypes = [...(data.seasonTypes || []), ...(prior.seasonTypes || [])]
+        data.events = { ...(prior.events || {}), ...(data.events || {}) }
+      }
+    }
 
     const labels = data.labels || []
     const names = data.names || []

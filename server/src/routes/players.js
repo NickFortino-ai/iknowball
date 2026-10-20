@@ -20,6 +20,7 @@ import { calculateWNBAFantasyPoints } from '../services/wnbaDfsService.js'
 import { mlbBatterGameFpts, mlbPitcherGameFpts } from '../services/mlbDfsService.js'
 import { leagueEndSportsDay, leagueStartSportsDay } from '../utils/sportsDay.js'
 import { getFantasySettings } from '../services/fantasyService.js'
+import { espnSeasonYear } from '../utils/nbaSeason.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -998,9 +999,16 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     }
   }
 
-  function eventsFromGamelog(data) {
+  // `skipPreseason` exists for the NBA. On opening day a player's current
+  // season holds nothing BUT exhibition games — Devin Vassell had 4 — and
+  // counting those as "this season has games" would both suppress the
+  // prior-season backfill and mix October exhibitions into a log people read
+  // to price props. ESPN marks them only in the season type's displayName
+  // ("2026-27 Preseason"); there is no type id to key off.
+  function eventsFromGamelog(data, { skipPreseason = false } = {}) {
     const out = []
     for (const seasonType of data?.seasonTypes || []) {
+      if (skipPreseason && /preseason/i.test(seasonType.displayName || '')) continue
       for (const cat of seasonType.categories || []) {
         for (const ev of cat.events || []) out.push(ev)
       }
@@ -1009,11 +1017,23 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
   }
 
   try {
-    const seasonYear = new Date().getFullYear()
-    // NBA's gamelog endpoint returns the current season by default.
-    // Other sports prefer an explicit season param.
-    const useSeasonParam = sport !== 'basketball_nba'
-    const response = await fetch(`https://site.api.espn.com/apis/common/v3/sports/${espnPath}/athletes/${espnId}/gamelog${useSeasonParam ? `?season=${seasonYear}` : ''}`)
+    const isNBA = sport === 'basketball_nba'
+    // ESPN labels an NBA season by the year it ENDS, so the calendar year is
+    // the PREVIOUS season from October onward. See utils/nbaSeason.js.
+    const seasonYear = espnSeasonYear(sport)
+    // The season param is ALWAYS sent now.
+    //
+    // The NBA used to send none, on the belief that ESPN's gamelog "returns
+    // the current season by default". It does not: on 2026-10-20, opening day
+    // of the 2026-27 season, the default still served all 95 games of 2025-26
+    // including the playoffs. Left alone, every NBA player modal would have
+    // shown last season's log deep into the new one, with nothing on screen
+    // to tell a user which season they were reading.
+    // Which season we ENDED UP showing — the backfill below can move it. The
+    // season averages must be fetched for the same one, or the modal pairs a
+    // log from one season with a GP from another.
+    let effectiveSeason = seasonYear
+    const response = await fetch(`https://site.api.espn.com/apis/common/v3/sports/${espnPath}/athletes/${espnId}/gamelog?season=${seasonYear}`)
     if (!response.ok) {
       // This is the branch that silently produces "No games available" for
       // every non-NFL sport, and it was the one path with no logging at all
@@ -1075,7 +1095,7 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     // Pull games from EVERY season type — regular season, playoffs,
     // play-in, whatever ESPN exposes. The sort-by-date-desc below then
     // surfaces the actual most recent games to the top.
-    const allGames = eventsFromGamelog(data)
+    const allGames = eventsFromGamelog(data, { skipPreseason: isNBA })
 
     const isMLB = sport === 'baseball_mlb'
     const isNFL = sport === 'americanfootball_nfl'
@@ -1090,11 +1110,19 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     // contest modals (Sacks, Ints, Tackles, Receptions, etc.) where prior-
     // season leakage is misleading during preseason. FF draft still gets
     // last year's stats through a different route by design.
-    if (allGames.length === 0 && useSeasonParam && !isNFL) {
+    //
+    // This is the branch that carries an NBA player through opening week: the
+    // new season is empty (or preseason-only), so we show last season's log
+    // until real games exist — and stop the moment they do.
+    if (allGames.length === 0 && !isNFL) {
       const prior = await fetchGamelogJson(seasonYear - 1)
       if (prior) {
-        Object.assign(eventsMap, prior.events || {})
-        allGames.push(...eventsFromGamelog(prior))
+        const priorGames = eventsFromGamelog(prior, { skipPreseason: isNBA })
+        if (priorGames.length) {
+          Object.assign(eventsMap, prior.events || {})
+          allGames.push(...priorGames)
+          effectiveSeason = seasonYear - 1
+        }
       }
     }
     // Detect MLB pitchers by the presence of IP (innings pitched) in the
@@ -1292,8 +1320,10 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
       })
     }
 
-    // Season averages
-    const seasonParam = useSeasonParam ? `?season=${seasonYear}` : ''
+    // Season averages — for the SAME season the log above ended up showing,
+    // so an NBA player on opening night doesn't pair last season's games with
+    // this season's empty averages.
+    const seasonParam = `?season=${effectiveSeason}`
     const statsRes = await fetch(`https://site.api.espn.com/apis/common/v3/sports/${espnPath}/athletes/${espnId}/stats${seasonParam}`)
     let averages = null
     if (statsRes.ok) {

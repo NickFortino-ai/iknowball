@@ -5,6 +5,7 @@ import { getNBAPlayerPool } from '../services/nbaDfsService.js'
 import { fetchESPNScoreboard } from '../services/espnService.js'
 import { leagueEndSportsDay } from '../utils/sportsDay.js'
 import { logger } from '../utils/logger.js'
+import { currentNbaSeason, lastCompletedNbaRegularSeason } from '../utils/nbaSeason.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -40,35 +41,6 @@ async function fetchAthlete3PMForType(espnId, seasonType, season) {
   } catch {
     return 0
   }
-}
-
-/**
- * The season whose REGULAR-season totals we rank by.
- *
- * ESPN labels a season by the year it ends: 2026-27 is season 2027. We want
- * the last COMPLETED regular season, because that is a full 82-game sample.
- * The season now starting has no games in it — on opening night every total
- * would be 0, and for weeks after it is a handful of games that says less
- * than last year's full one.
- *
- * Computed rather than hardcoded. The previous value was a literal 2026,
- * which is exactly how this went stale: correct when written, silently wrong
- * a year later.
- */
-function currentNbaSeason(now = new Date()) {
-  const pt = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
-  const y = pt.getFullYear()
-  // Sep onward belongs to the season that ends next year.
-  return pt.getMonth() >= 8 ? y + 1 : y
-}
-
-function lastCompletedNbaRegularSeason(now = new Date()) {
-  const pt = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
-  const y = pt.getFullYear()
-  const m = pt.getMonth()            // 0 = Jan
-  if (m >= 8) return y               // Sep-Dec: season starting now is y+1, so y is done
-  if (m <= 5) return y - 1           // Jan-Jun: season y is still being played
-  return y                           // Jul-Aug: offseason, season y finished in June
 }
 
 // Ranked on REGULAR-season 3PM, not postseason.
