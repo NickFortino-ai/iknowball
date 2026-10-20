@@ -64,9 +64,18 @@ async function verifyAndHealContest(contest, date) {
   // helpers go straight to ESPN, so this is the current source of
   // truth. Skip the call entirely if we have no picks to verify.
   let upstream = []
+  // Whether EVERY game on the date has finished. Both fetchers already
+  // return this and it was being thrown away — which is what turned the
+  // first night of the NBA season into an hourly false alarm: at 6am PT,
+  // with the earliest tip at noon, all fifteen 3-Point picks reported "no
+  // upstream stats row" because none of the three games had been played.
+  // A pick with no box-score row is only evidence of a GAP once the game
+  // it belongs to is over.
+  let allFinal = true
   try {
     const result = await contest.fetchUpstream(date)
     upstream = result.playerStats || []
+    allFinal = result.allFinal !== false
   } catch (err) {
     logger.error({ err: err.message, contest: contest.label, date }, 'Upstream fetch failed during verify')
     return { picksCount: picks.length, healed: [], unfixable: [], error: err.message }
@@ -86,6 +95,9 @@ async function verifyAndHealContest(contest, date) {
 
   const healed = []
   const unfixable = []
+  // Picks skipped because their slate is still in progress. Logged, not
+  // emailed — it is the normal state of an evening, not a fault.
+  let pendingGames = 0
   // Dedup picks by espn_player_id so we don't fix the same player N
   // times — the stats table is keyed once per player per date.
   const seenStatsFix = new Set()
@@ -96,11 +108,20 @@ async function verifyAndHealContest(contest, date) {
     const ourVal = Number(pick[contest.pickStatColumn]) || 0
 
     if (upstreamVal == null) {
-      unfixable.push({
-        player: pick.player_name,
-        espn_player_id: pick.espn_player_id,
-        reason: 'no upstream stats row',
-      })
+      // Healing still runs below for players whose games DID finish — this
+      // only withholds the alarm. On a mixed slate a genuine gap waits for
+      // the last game to end and is caught on the next hourly pass, which
+      // is a far better trade than emailing every hour about games that
+      // have not tipped off.
+      if (allFinal) {
+        unfixable.push({
+          player: pick.player_name,
+          espn_player_id: pick.espn_player_id,
+          reason: 'no upstream stats row',
+        })
+      } else {
+        pendingGames++
+      }
       continue
     }
 
@@ -144,7 +165,12 @@ async function verifyAndHealContest(contest, date) {
     })
   }
 
-  return { picksCount: picks.length, healed, unfixable }
+  if (pendingGames) {
+    logger.info({ contest: contest.label, date, pendingGames },
+      'Stat coverage: slate still in progress, holding gap report until every game is final')
+  }
+
+  return { picksCount: picks.length, healed, unfixable, pendingGames }
 }
 
 export async function verifyStatCoverage() {
