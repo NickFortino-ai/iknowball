@@ -370,48 +370,35 @@ export function useHotTakeImageUpload() {
 // video longer than this. The server clamps to 600s, so this is the binding
 // limit. It was 90s, which is under the length of a normal highlight clip —
 // a 1:40 video sailed past the size check and then died inside Cloudflare.
-const MAX_VIDEO_SECONDS = 180
+//
+// THERE IS NO LENGTH LIMIT ANY MORE (Nick, 2026-10-20: "just keep it to the
+// size limit, not length limit"). A 3:17 talking-head take was rejected by
+// the old 180s cap; a spoken hot take needs room, and SIZE is now the only
+// gate a user can hit.
+//
+// This constant is still sent to Cloudflare because their API wants one, and
+// an upload that exceeds it "will fail during processing" — i.e. AFTER the
+// whole file has been sent. So it is pinned to their documented maximum
+// (36000s / 10h) precisely so it can never be the thing that binds: 3GB of
+// even 1 Mbps video is under 7 hours.
+const STREAM_MAX_DURATION_SECONDS = 36000
 
 // Cloudflare's basic (form POST) direct upload caps at 200MB — their limit,
 // not our plan's. Past that we switch to the resumable tus protocol, which
 // Cloudflare allows up to 30GB.
 //
-// 2GB is deliberately far below that ceiling. The real brake is the 180s
-// duration cap: at 3 minutes even iPhone 4K/60 (~50 Mbps) lands near 1.1GB,
-// so 2GB clears any honest recording. Keep in step with MAX_UPLOAD_BYTES in
-// server/src/routes/stream.js and the figure quoted in TermsPage.jsx.
-const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024
+// 3GB is deliberately far below that ceiling, and sized against the 300s
+// duration cap rather than picked round: five minutes of iPhone 4K/60 is
+// ~1.95GB by Apple's own per-minute figures, so a 2GB cap would have left
+// ~50MB of headroom on the heaviest honest recording the length allows.
+// Keep in step with MAX_UPLOAD_BYTES in server/src/routes/stream.js and the
+// figure quoted in TermsPage.jsx.
+const MAX_VIDEO_BYTES = 3 * 1024 * 1024 * 1024
 
 // Above this, upload resumably instead of in one POST. Small files stay on
 // the proven single-POST path — it has been carrying every upload to date,
 // and a chunked protocol buys nothing on a file that sends in one go.
 const TUS_THRESHOLD_BYTES = 200 * 1024 * 1024
-
-/**
- * Read a local video's duration without uploading it. Resolves null when the
- * browser can't parse the container (some .mov variants) or reports a
- * non-finite duration — in that case we let the upload proceed rather than
- * block on a probe we don't trust, since Cloudflare still enforces the limit.
- */
-function formatClipLength(seconds) {
-  const whole = Math.round(seconds)
-  const mins = Math.floor(whole / 60)
-  const secs = whole % 60
-  if (!mins) return `${secs} seconds`
-  return `${mins}:${String(secs).padStart(2, '0')}`
-}
-
-function readVideoDuration(file) {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file)
-    const probe = document.createElement('video')
-    const done = (value) => { URL.revokeObjectURL(url); resolve(value) }
-    probe.preload = 'metadata'
-    probe.onloadedmetadata = () => done(Number.isFinite(probe.duration) ? probe.duration : null)
-    probe.onerror = () => done(null)
-    probe.src = url
-  })
-}
 
 export function useHotTakeVideoUpload() {
   const [uploading, setUploading] = useState(false)
@@ -421,7 +408,7 @@ export function useHotTakeVideoUpload() {
   const [previewUrl, setPreviewUrl] = useState(null)
   const [videoFile, setVideoFile] = useState(null)
 
-  async function selectVideo(file) {
+  function selectVideo(file) {
     if (!file) return
 
     // Cloudflare Stream transcodes any input container to HLS on the way
@@ -440,16 +427,6 @@ export function useHotTakeVideoUpload() {
       const gb = (file.size / (1024 ** 3)).toFixed(1)
       const limitGb = (MAX_VIDEO_BYTES / (1024 ** 3)).toFixed(1)
       toast(`That video is ${gb}GB and the limit is ${limitGb}GB. Recording at 1080p instead of 4K usually gets well under it.`, 'error')
-      return
-    }
-
-    // Check length locally so an over-long video fails here, with a sentence
-    // that explains itself, instead of being uploaded and then rejected
-    // inside Cloudflare — which surfaced as raw API JSON in a toast.
-    const duration = await readVideoDuration(file)
-    if (duration != null && duration > MAX_VIDEO_SECONDS) {
-      const mins = Math.floor(MAX_VIDEO_SECONDS / 60)
-      toast(`That video is ${formatClipLength(duration)} and the limit is ${mins} minutes. Trim it and try again.`, 'error')
       return
     }
 
@@ -513,7 +490,7 @@ export function useHotTakeVideoUpload() {
       const useTus = videoFile.size > TUS_THRESHOLD_BYTES
       const endpoint = useTus ? '/stream/tus-upload' : '/stream/direct-upload'
       const { uploadURL, uid, hlsUrl } = await api.post(endpoint, {
-        maxDurationSeconds: MAX_VIDEO_SECONDS,
+        maxDurationSeconds: STREAM_MAX_DURATION_SECONDS,
         ...(useTus && { uploadLength: videoFile.size }),
       })
       if (!uploadURL || !uid) throw new Error('Video upload service is unavailable')

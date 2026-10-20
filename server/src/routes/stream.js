@@ -10,13 +10,13 @@ const CLOUDFLARE_API = 'https://api.cloudflare.com/client/v4'
 // Hard ceiling for a single video, server side.
 //
 // Cloudflare's tus protocol allows 30GB; this is deliberately far below it.
-// The real brake on an abusive upload is the 180s duration cap — at 3
-// minutes even iPhone 4K/60 (~50 Mbps) lands near 1.1GB, so 2GB clears any
-// honest recording while keeping a 30GB one impossible.
+// The real brake on an abusive upload is the 300s duration cap — five
+// minutes of iPhone 4K/60 is ~1.95GB, so 3GB clears the heaviest honest
+// recording the length allows while keeping a 30GB one impossible.
 //
 // Keep in step with MAX_VIDEO_BYTES in client/src/hooks/useHotTakes.js and
 // the figure quoted in TermsPage.jsx.
-const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024 * 1024
 
 const router = Router()
 
@@ -36,8 +36,11 @@ router.post('/direct-upload', requireAuth, async (req, res) => {
   try {
     const meta = { userId: req.user.id }
     const maxDurationSeconds = Math.min(
-      Math.max(parseInt(req.body?.maxDurationSeconds || '90', 10), 5),
-      600, // 10 min hard cap to keep abuse potential low
+      Math.max(parseInt(req.body?.maxDurationSeconds || '36000', 10), 5),
+      // Cloudflare's documented maximum. There is no length limit any more —
+      // size is the only gate — and a clamp here would quietly become the
+      // real cap, failing the upload only AFTER the whole file was sent.
+      36000,
     )
     const { uploadURL, uid } = await createDirectUploadURL({ maxDurationSeconds, meta })
     res.json({ uploadURL, uid, hlsUrl: hlsUrlFor(uid) })
@@ -69,8 +72,8 @@ router.post('/tus-upload', requireAuth, async (req, res) => {
     }
     const meta = { userId: req.user.id }
     const maxDurationSeconds = Math.min(
-      Math.max(parseInt(req.body?.maxDurationSeconds || '180', 10), 5),
-      600,
+      Math.max(parseInt(req.body?.maxDurationSeconds || '36000', 10), 5),
+      36000,
     )
     const { uploadURL, uid } = await createTusUploadURL({ uploadLength, maxDurationSeconds, meta })
     res.json({ uploadURL, uid, hlsUrl: hlsUrlFor(uid) })
