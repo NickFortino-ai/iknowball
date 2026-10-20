@@ -712,6 +712,25 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
     }
   }
 
+  // Playoff field — read-only.
+  //
+  // How many teams make the playoffs is a league RULE, and until now it was
+  // only ever shown on the create screen. An existing league had nowhere to
+  // look it up: the count isn't rendered anywhere else, so the first time
+  // members learn the size of the field is when the bracket appears. That is
+  // too late to plan a run at it.
+  //
+  // Traditional only — salary cap has no bracket. Not editable here on
+  // purpose: playoff_teams is in the server's PRESEASON_ONLY_FIELDS and is
+  // rejected once the draft completes, so an input would be a control that
+  // fails on save.
+  if (league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap' && fantasySettings?.playoff_teams) {
+    items.push({ label: 'Playoff Teams', value: `${fantasySettings.playoff_teams} of ${fantasySettings.num_teams || league.max_members || '?'}` })
+    if (fantasySettings.playoff_start_week) {
+      items.push({ label: 'Playoffs Start', value: `NFL Week ${fantasySettings.playoff_start_week}` })
+    }
+  }
+
   // Pick frequency
   if (league.format === 'survivor' || league.format === 'pickem') {
     items.push({ label: 'Picks', value: isDaily ? 'Daily' : 'Weekly' })
