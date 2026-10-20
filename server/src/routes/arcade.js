@@ -74,6 +74,57 @@ const TRIVIA_BONUS_PER_SECOND = 0.2
 // sport so the images look alike).
 const PAIR_COUNTS = { easy: 6, medium: 8, hard: 10 }
 
+// Memory deals PEOPLE, not places (Nick, 2026-10-20).
+//
+// `league_backdrops` holds both, split by which `formats` bucket a row sits
+// in rather than by a column: the SPORT-KEY buckets are stadiums, arenas and
+// ballparks, while the COMPETITION buckets are player portraits.
+//
+// Stated as an EXCLUDE list on purpose. Anything new is a player deck by
+// default, so adding portraits — under an existing bucket or a brand new one
+// — gets picked up with no code change. The prefix test is the safety net for
+// the other direction: a future `icehockey_nhl` set of arenas is recognised
+// as a venue bucket without anyone remembering to list it here.
+//
+// `wnba_dfs_contest` is the one competition bucket that is NOT portraits —
+// it is teams and seasons (Aces 2025, Liberty 2024) — so it is named
+// explicitly.
+const VENUE_FORMATS = new Set(['wnba_dfs_contest'])
+const SPORT_KEY_PREFIX = /^(americanfootball|baseball|basketball|icehockey|soccer|tennis|golf|mma|hockey)_/
+
+function isVenueFormat(format) {
+  return VENUE_FORMATS.has(format) || SPORT_KEY_PREFIX.test(format)
+}
+
+function isPlayerRow(row) {
+  return (row.formats || []).some((f) => !isVenueFormat(f))
+}
+
+/**
+ * One row per distinct label, because the label is a FIRST NAME and the card
+ * shows it.
+ *
+ * Six people appear twice under different buckets (Jerry Rice is both
+ * `rec-jerry.webp` and `td-jerry.webp`), and `pairKey` is the filename — so
+ * undeduped, a round can deal four cards showing two Jerry Rices where
+ * matching the obvious thing is a MISS.
+ *
+ * Eight more labels collide between genuinely different people (Ray Allen and
+ * Ray Lewis, Randy Johnson and Randy Moss). Those are deduped too: two cards
+ * both reading "Ray" that don't match is the same confusion from the player's
+ * side whether or not we know they are different men. Each round simply picks
+ * one of them.
+ */
+function dedupeByLabel(rows) {
+  const byLabel = new Map()
+  for (const row of rows) {
+    const key = row.label || row.filename
+    if (!byLabel.has(key)) byLabel.set(key, [])
+    byLabel.get(key).push(row)
+  }
+  return [...byLabel.values()].map((group) => group[Math.floor(Math.random() * group.length)])
+}
+
 // Scoring. Deliberately explainable on screen rather than a mystery number:
 //    +10  per matched pair
 //   -2.5  per INFORMED miss
@@ -121,14 +172,22 @@ router.post('/memory/start', async (req, res, next) => {
     if (!pairs) return res.status(400).json({ error: 'difficulty must be easy, medium or hard' })
     const variant = String(req.body?.variant || 'all')
 
+    // A venue bucket is not a deck any more — reject it rather than deal a
+    // round of stadiums from a stale client that still has the old tile.
+    if (variant !== 'all' && isVenueFormat(variant)) {
+      return res.status(400).json({ error: 'That set is no longer available.' })
+    }
+
     let query = supabase.from('league_backdrops').select('filename, label, formats')
     if (variant !== 'all') query = query.contains('formats', [variant])
-    const { data: pool, error } = await query
+    const { data: rows, error } = await query
     if (error) throw error
 
-    if (!pool?.length || pool.length < pairs) {
+    const pool = dedupeByLabel((rows || []).filter(isPlayerRow))
+
+    if (!pool.length || pool.length < pairs) {
       return res.status(400).json({
-        error: `Not enough images for that set — it has ${pool?.length || 0}, this round needs ${pairs}.`,
+        error: `Not enough images for that set — it has ${pool.length}, this round needs ${pairs}.`,
       })
     }
 
@@ -773,27 +832,37 @@ router.get('/leaderboard', async (req, res, next) => {
 // count, so the client can disable difficulties that don't fit.
 router.get('/memory/variants', async (_req, res, next) => {
   try {
-    const { data, error } = await supabase.from('league_backdrops').select('filename, formats')
+    const { data, error } = await supabase.from('league_backdrops').select('filename, label, formats')
     if (error) throw error
-    const counts = new Map()
+
+    // Players only, and counted the way a round actually deals: DISTINCT
+    // LABELS, not rows. Counting rows would advertise a hard round on a set
+    // that dedupes below 10 and then fail at /memory/start.
+    const playerRows = (data || []).filter(isPlayerRow)
+    const labelsFor = new Map()
     // A few filenames per variant so the arcade tile can show the actual
     // images a round would deal, rather than a generic illustration of a
     // game we already own 220 pictures for.
     const samples = new Map()
-    for (const row of data || []) {
+    for (const row of playerRows) {
       for (const f of row.formats || []) {
-        counts.set(f, (counts.get(f) || 0) + 1)
+        if (isVenueFormat(f)) continue
+        if (!labelsFor.has(f)) labelsFor.set(f, new Set())
+        labelsFor.get(f).add(row.label || row.filename)
         const s = samples.get(f) || []
         if (s.length < 4) { s.push(row.filename); samples.set(f, s) }
       }
     }
+    const allLabels = new Set(playerRows.map((r) => r.label || r.filename))
     const variants = [{
       key: 'all',
-      count: (data || []).length,
-      samples: (data || []).slice(0, 4).map((r) => r.filename),
+      count: allLabels.size,
+      samples: playerRows.slice(0, 4).map((r) => r.filename),
     }]
-    for (const [key, count] of [...counts.entries()].sort((a, b) => b[1] - a[1])) {
-      if (count >= PAIR_COUNTS.easy) variants.push({ key, count, samples: samples.get(key) || [] })
+    for (const [key, labels] of [...labelsFor.entries()].sort((a, b) => b[1].size - a[1].size)) {
+      if (labels.size >= PAIR_COUNTS.easy) {
+        variants.push({ key, count: labels.size, samples: samples.get(key) || [] })
+      }
     }
     // Trivia's readiness rides along on this request rather than getting its
     // own endpoint: the arcade room fetches this once to build its tiles, and
