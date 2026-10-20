@@ -68,7 +68,10 @@ export function getSeasonEndDate(sportKey) {
 export function getSeasonStartDate(sportKey) {
   const year = new Date().getFullYear()
   const dates = {
-    basketball_nba: `${year}-10-21`,
+    // 2026-27 opened Oct 20. Note there is no roll-forward guard here, unlike
+    // getSeasonEndDate — this returns the date as-is, so an NBA season that
+    // opens earlier in a future year needs this value moved.
+    basketball_nba: `${year}-10-20`,
     americanfootball_nfl: `${year}-09-04`,
     baseball_mlb: `${year}-03-27`,
     basketball_ncaab: `${year}-11-03`,
