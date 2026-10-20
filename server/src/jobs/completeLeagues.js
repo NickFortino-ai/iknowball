@@ -7,9 +7,14 @@ import { fetchAll } from '../utils/fetchAll.js'
 import { salaryCapWeekStart } from '../utils/salaryCapStart.js'
 import { connectAutoConnectMembers } from '../services/connectionService.js'
 import { generateLeagueReport } from '../services/leagueReportService.js'
+import { getContestBonusFn } from '../services/prorationService.js'
 
 // Scaled winner bonus based on league size — matches survivor pool structure.
-// Used by bracket, NBA DFS, MLB DFS, HR Derby, TD Pass.
+//
+// BRACKET ONLY now, as the default for awardPositionBasedPoints. The
+// multi-night and multi-week contests that used to share it moved to
+// prorationService's `50 + memberCount` ladder, which pays 2nd and 3rd as
+// well; a bracket runs a weekend to three weeks and is priced accordingly.
 function scaledWinnerBonus(memberCount) {
   if (memberCount >= 41) return 110
   if (memberCount >= 31) return 85
@@ -1374,16 +1379,7 @@ export async function completeLeagues() {
             bonusFn = (rank, n) => getSalaryCapBonus(rank, n, { isSingleWeek, isFullSeasonRun, weeksPlayed })
           }
           if (isNbaDfs) {
-            // Prorate the scaled winner bonus by nights actually played
-            // (versus a full ~180-night NBA regular season). Short leagues
-            // get a small slice of the bonus; full-season leagues get all of it.
-            const { data: nightRows } = await supabase
-              .from('nba_dfs_nightly_results')
-              .select('game_date')
-              .eq('league_id', league.id)
-            const nightsPlayed = new Set((nightRows || []).map((r) => r.game_date)).size
-            const fraction = Math.min(1, nightsPlayed / 180)
-            bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+            bonusFn = await getContestBonusFn(league)
           }
           await awardPositionBasedPoints(league, standings, label, bonusFn, memberCount)
         }
@@ -1391,150 +1387,77 @@ export async function completeLeagues() {
         const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getMLBDFSStandings(league)
         if (standings?.length > 0) {
-          // Prorate winner bonus by nights played vs ~180-night MLB regular season
-          const { data: nightRows } = await supabase
-            .from('mlb_dfs_nightly_results')
-            .select('game_date')
-            .eq('league_id', league.id)
-          const nightsPlayed = new Set((nightRows || []).map((r) => r.game_date)).size
-          const fraction = Math.min(1, nightsPlayed / 180)
-          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          const bonusFn = await getContestBonusFn(league)
           await awardPositionBasedPoints(league, standings, 'MLB DFS', bonusFn, memberCount)
         }
       } else if (league.format === 'wnba_dfs') {
         const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getWNBADFSStandings(league)
         if (standings?.length > 0) {
-          // Prorate winner bonus by nights played vs ~120-night WNBA regular season
-          const { data: nightRows } = await supabase
-            .from('wnba_dfs_nightly_results')
-            .select('game_date')
-            .eq('league_id', league.id)
-          const nightsPlayed = new Set((nightRows || []).map((r) => r.game_date)).size
-          const fraction = Math.min(1, nightsPlayed / 120)
-          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          const bonusFn = await getContestBonusFn(league)
           await awardPositionBasedPoints(league, standings, 'WNBA DFS', bonusFn, memberCount)
         }
       } else if (league.format === 'hr_derby') {
         const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getHRDerbyStandings(league)
         if (standings?.length > 0) {
-          // Prorate winner bonus by unique pick nights vs ~180-night MLB regular
-          // season — matches MLB DFS so a full-season HR Derby pays a full
-          // bonus and a short one pays a small slice.
-          const { data: pickRows } = await supabase
-            .from('hr_derby_picks')
-            .select('game_date')
-            .eq('league_id', league.id)
-          const nightsPlayed = new Set((pickRows || []).map((r) => r.game_date)).size
-          const fraction = Math.min(1, nightsPlayed / 180)
-          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          const bonusFn = await getContestBonusFn(league)
           await awardPositionBasedPoints(league, standings, 'HR Derby', bonusFn, memberCount)
         }
       } else if (league.format === 'strikeouts') {
         const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getStrikeoutsStandings(league)
         if (standings?.length > 0) {
-          const { data: pickRows } = await supabase
-            .from('strikeouts_picks')
-            .select('game_date')
-            .eq('league_id', league.id)
-          const nightsPlayed = new Set((pickRows || []).map((r) => r.game_date)).size
-          const fraction = Math.min(1, nightsPlayed / 180)
-          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          const bonusFn = await getContestBonusFn(league)
           await awardPositionBasedPoints(league, standings, 'Strikeouts Contest', bonusFn, memberCount)
         }
       } else if (league.format === 'three_point') {
         const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getThreePointStandings(league)
         if (standings?.length > 0) {
-          const { data: pickRows } = await supabase
-            .from('three_point_picks')
-            .select('game_date')
-            .eq('league_id', league.id)
-          const nightsPlayed = new Set((pickRows || []).map((r) => r.game_date)).size
-          const fraction = Math.min(1, nightsPlayed / 180)
-          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          const bonusFn = await getContestBonusFn(league)
           await awardPositionBasedPoints(league, standings, 'NBA 3-Point Contest', bonusFn, memberCount)
         }
       } else if (league.format === 'wnba_three_point') {
         const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getWnbaThreePointStandings(league)
         if (standings?.length > 0) {
-          const { data: pickRows } = await supabase
-            .from('wnba_three_point_picks')
-            .select('game_date')
-            .eq('league_id', league.id)
-          const nightsPlayed = new Set((pickRows || []).map((r) => r.game_date)).size
-          const fraction = Math.min(1, nightsPlayed / 120)
-          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          const bonusFn = await getContestBonusFn(league)
           await awardPositionBasedPoints(league, standings, 'WNBA 3-Point Contest', bonusFn, memberCount)
         }
       } else if (league.format === 'sacks') {
         const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getSacksStandings(league)
         if (standings?.length > 0) {
-          // Prorate winner bonus by NFL weeks played (out of 18-week regular season)
-          const { data: pickRows } = await supabase
-            .from('sacks_picks')
-            .select('week')
-            .eq('league_id', league.id)
-          const weeksPlayed = new Set((pickRows || []).map((r) => r.week)).size
-          const fraction = Math.min(1, weeksPlayed / 18)
-          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          const bonusFn = await getContestBonusFn(league)
           await awardPositionBasedPoints(league, standings, 'Sacks Contest', bonusFn, memberCount)
         }
       } else if (league.format === 'ints') {
         const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getIntsStandings(league)
         if (standings?.length > 0) {
-          const { data: pickRows } = await supabase
-            .from('ints_picks')
-            .select('week')
-            .eq('league_id', league.id)
-          const weeksPlayed = new Set((pickRows || []).map((r) => r.week)).size
-          const fraction = Math.min(1, weeksPlayed / 18)
-          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          const bonusFn = await getContestBonusFn(league)
           await awardPositionBasedPoints(league, standings, 'Interceptions Contest', bonusFn, memberCount)
         }
       } else if (league.format === 'tackles') {
         const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getTacklesStandings(league)
         if (standings?.length > 0) {
-          const { data: pickRows } = await supabase
-            .from('tackles_picks')
-            .select('week')
-            .eq('league_id', league.id)
-          const weeksPlayed = new Set((pickRows || []).map((r) => r.week)).size
-          const fraction = Math.min(1, weeksPlayed / 18)
-          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          const bonusFn = await getContestBonusFn(league)
           await awardPositionBasedPoints(league, standings, 'Tackles Contest', bonusFn, memberCount)
         }
       } else if (league.format === 'receptions') {
         const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getReceptionsStandings(league)
         if (standings?.length > 0) {
-          const { data: pickRows } = await supabase
-            .from('receptions_picks')
-            .select('week')
-            .eq('league_id', league.id)
-          const weeksPlayed = new Set((pickRows || []).map((r) => r.week)).size
-          const fraction = Math.min(1, weeksPlayed / 18)
-          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          const bonusFn = await getContestBonusFn(league)
           await awardPositionBasedPoints(league, standings, 'Receptions Contest', bonusFn, memberCount)
         }
       } else if (league.format === 'td_pass') {
         const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getTdPassStandings(league)
         if (standings?.length > 0) {
-          // Prorate winner bonus by NFL weeks played (out of 18-week regular season)
-          const { data: pickRows } = await supabase
-            .from('td_pass_picks')
-            .select('week')
-            .eq('league_id', league.id)
-          const weeksPlayed = new Set((pickRows || []).map((r) => r.week)).size
-          const fraction = Math.min(1, weeksPlayed / 18)
-          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          const bonusFn = await getContestBonusFn(league)
           await awardPositionBasedPoints(league, standings, 'TD Pass', bonusFn, memberCount)
         }
       }

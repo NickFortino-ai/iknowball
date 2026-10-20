@@ -419,8 +419,9 @@ function ScoringRulesDisplay({ rules: storedRules, format, hideKicking = false }
   )
 }
 
-// Mirrors `scaledWinnerBonus` in server/src/jobs/completeLeagues.js — used by
-// bracket, NBA DFS, MLB DFS, HR Derby, and TD Pass leagues. Keep in sync.
+// Mirrors `scaledWinnerBonus` in server/src/jobs/completeLeagues.js. BRACKET
+// ONLY — the multi-night and multi-week contests moved to the ladder below.
+// Keep in sync.
 function scaledWinnerBonusClient(n) {
   if (n >= 41) return 110
   if (n >= 31) return 85
@@ -429,6 +430,25 @@ function scaledWinnerBonusClient(n) {
   if (n >= 6) return 30
   return 20
 }
+
+// Mirrors `contestFullSeasonBonus` in server/src/services/prorationService.js.
+// 1st gets 50 + memberCount, 2nd and 3rd follow at 40% and 20% — the same
+// 1 : 0.40 : 0.20 ladder the fantasy tables use. Keep in sync.
+const CONTEST_BONUS_RATIOS = { 1: 1, 2: 0.4, 3: 0.2 }
+
+function contestFullSeasonBonusClient(rank, n) {
+  const ratio = CONTEST_BONUS_RATIOS[rank]
+  if (!ratio) return 0
+  return Math.round((50 + Math.max(1, n || 1)) * ratio)
+}
+
+// Every format that prorates its bonus across a season. Bracket is NOT one of
+// them: it runs a weekend to three weeks and pays the tiers above.
+const CONTEST_FORMATS = new Set([
+  'nba_dfs', 'mlb_dfs', 'wnba_dfs', 'hr_derby', 'strikeouts',
+  'three_point', 'wnba_three_point',
+  'sacks', 'ints', 'tackles', 'receptions', 'td_pass',
+])
 
 // Mirrors TRADITIONAL_FANTASY_BONUSES in server/src/jobs/completeLeagues.js
 const TRADITIONAL_FANTASY_BONUSES = {
@@ -483,40 +503,45 @@ function buildBonusForRank({ leagueFormat, fantasyFormat, seasonType, prorationF
   if (leagueFormat === 'fantasy') {
     return getTraditionalFantasyBonusClient
   }
-  // Default: scaled winner bonus (bracket, NBA DFS, MLB DFS, WNBA DFS,
-  // HR Derby, TD Pass, NFL stat contests). Multi-night/week formats
-  // prorate the bonus by their fraction of a full regular season to
-  // match the server's awardPositionBasedPoints math.
-  return (rank, n) => (rank === 1 ? Math.round(scaledWinnerBonusClient(n) * fraction) : 0)
+  // Multi-night / multi-week contests: the 1st/2nd/3rd ladder, prorated by
+  // the share of a regular season the league is configured to cover. Matches
+  // the server's getContestBonusFn.
+  if (CONTEST_FORMATS.has(leagueFormat)) {
+    return (rank, n) => Math.round(contestFullSeasonBonusClient(rank, n) * fraction)
+  }
+  // Bracket and anything else: winner-only scaled tiers, no proration.
+  return (rank, n) => (rank === 1 ? scaledWinnerBonusClient(n) : 0)
 }
 
-// Full-season denominators (in nights for DFS, weeks for NFL stat
-// contests) that the server uses to prorate the winner bonus. Mirror of
-// completeLeagues.js — keep in sync if those denominators move.
-const FULL_SEASON_DENOMINATOR = {
-  nba_dfs: { unit: 'days', value: 180 },
-  mlb_dfs: { unit: 'days', value: 180 },
-  wnba_dfs: { unit: 'days', value: 120 },
-  hr_derby: { unit: 'days', value: 180 },
-  strikeouts: { unit: 'days', value: 180 },
-  three_point: { unit: 'days', value: 180 },
-  wnba_three_point: { unit: 'days', value: 120 },
-  sacks: { unit: 'weeks', value: 18 },
-  ints: { unit: 'weeks', value: 18 },
-  tackles: { unit: 'weeks', value: 18 },
-  receptions: { unit: 'weeks', value: 18 },
-  td_pass: { unit: 'weeks', value: 18 },
+// Calendar length of a full regular season per format, so a league spanning
+// one divides out to exactly 1.0 and pays an unprorated bonus. Mirror of
+// PRORATION_BASIS in server/src/services/prorationService.js — keep in sync.
+const FULL_SEASON_DAYS = {
+  nba_dfs:          { days: 175, label: '~175-day NBA regular season' },
+  mlb_dfs:          { days: 186, label: '~186-day MLB regular season' },
+  wnba_dfs:         { days: 120, label: '~120-day WNBA regular season' },
+  hr_derby:         { days: 186, label: '~186-day MLB regular season' },
+  strikeouts:       { days: 186, label: '~186-day MLB regular season' },
+  three_point:      { days: 175, label: '~175-day NBA regular season' },
+  wnba_three_point: { days: 120, label: '~120-day WNBA regular season' },
+  sacks:            { days: 126, label: '18-week NFL regular season' },
+  ints:             { days: 126, label: '18-week NFL regular season' },
+  tackles:          { days: 126, label: '18-week NFL regular season' },
+  receptions:       { days: 126, label: '18-week NFL regular season' },
+  td_pass:          { days: 126, label: '18-week NFL regular season' },
 }
 
 function computeProrationFraction(league, leagueFormat, fantasySettings) {
-  // Prefer the server's own number. It counts nights (or NFL weeks) actually
-  // PLAYED, which is the basis completeLeagues.js pays the winner bonus on.
-  // The date math below spans starts_at..ends_at, and days >= nights always,
-  // so it could only ever overpromise — a 7-night WNBA contest whose ends_at
-  // was a year out rendered "+24" against an actual payout of 5.
+  // Prefer the server's own number — same basis the payout uses.
   //
-  // Kept as a fallback so an older app bundle, or a payload from before this
-  // field existed, still renders something sane instead of nothing.
+  // That basis is now the league's CONFIGURED SPAN, not nights played so far,
+  // which is what makes this table show the stakes rather than a running
+  // total. On the old basis a full-season contest advertised 1/180th of its
+  // bonus on opening night: Shooters Shoot rendered "+7 for 1st" against a
+  // real payout of 65.
+  //
+  // The date math below is the same calculation, kept as a fallback so an
+  // older app bundle still renders something sane instead of nothing.
   if (typeof league?.proration_fraction === 'number') {
     return Math.min(1, Math.max(0, league.proration_fraction))
   }
@@ -536,14 +561,19 @@ function computeProrationFraction(league, leagueFormat, fantasySettings) {
     if (weeks >= 17) return 1
     return Math.min(1, weeks / 18)
   }
-  const denom = FULL_SEASON_DENOMINATOR[leagueFormat]
-  if (!denom || !league?.starts_at || !league?.ends_at) return 1
+  const season = FULL_SEASON_DAYS[leagueFormat]
+  if (!season || !league?.starts_at || !league?.ends_at) return 1
   const start = new Date(league.starts_at)
   const end = new Date(league.ends_at)
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 1
   const days = Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)))
-  const span = denom.unit === 'weeks' ? Math.ceil(days / 7) : days
-  return Math.min(1, span / denom.value)
+  // A span beyond 1.5 seasons is a bad ends_at rather than a long league —
+  // treat it as unprorated instead of dividing to a nonsense number.
+  if (days > season.days * 1.5) return 1
+  // Cover 95% of a season and you ARE a full-season league. Mirrors
+  // FULL_SEASON_SNAP on the server; see the note there.
+  const raw = days / season.days
+  return raw >= 0.95 ? 1 : Math.min(1, raw)
 }
 
 function ordinalSuffix(r) {
@@ -1106,13 +1136,16 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                     : liveMemberCount
                 const prorationFraction = computeProrationFraction(league, f, fantasySettings)
                 const bonusFn = buildBonusForRank({ leagueFormat: f, fantasyFormat: fFormat, seasonType: sType, prorationFraction })
-                const denom = FULL_SEASON_DENOMINATOR[f]
+                const season = FULL_SEASON_DAYS[f]
                 const isMidSeasonSalaryCap = f === 'fantasy' && fFormat === 'salary_cap' && sType !== 'single_week' && prorationFraction < 1
                 let footnote = null
                 if (isMidSeasonSalaryCap) {
-                  footnote = 'Winner bonus prorated by weeks played in this mid-season run (~18-week NFL regular season).'
-                } else if (denom && prorationFraction < 1) {
-                  footnote = `Winner bonus prorated by league duration (${denom.unit === 'weeks' ? '~18-week NFL regular season' : `~${denom.value}-${denom.unit} ${f === 'wnba_dfs' ? 'WNBA' : f === 'mlb_dfs' ? 'MLB' : 'NBA'} regular season`}).`
+                  footnote = 'Finish bonuses prorated by weeks played in this mid-season run (~18-week NFL regular season).'
+                } else if (season && prorationFraction < 1) {
+                  // Only shown on a SHORT league. A league spanning the whole
+                  // season prorates to 1.0 and gets no footnote, because
+                  // there is nothing being scaled down to explain.
+                  footnote = `Finish bonuses scaled to ${Math.round(prorationFraction * 100)}% — this league covers part of the ${season.label}. A full-season league pays the full amount.`
                 }
                 return <GlobalPointsTable memberCount={tableMemberCount} bonusForRank={bonusFn} footnote={footnote} />
               })()}
