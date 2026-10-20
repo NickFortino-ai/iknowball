@@ -537,6 +537,15 @@ router.get('/:id', requireAuth, async (req, res) => {
       // writing, which looks exactly like a failed upload.
       stream_video_uid: take.stream_video_uid,
       stream_ready_at: take.stream_ready_at,
+      // Also SELECTed and also dropped. The detail modal renders
+      // <PostEmbed> from these, so a post made with the `<>` embed field
+      // showed NOTHING there — the composer strips the raw URL out of the
+      // body once an embed is attached, so there wasn't even a link left
+      // for LinkPreview to fall back on. embed_provider additionally
+      // suppresses a duplicate LinkPreview for the same video.
+      embed_provider: take.embed_provider,
+      embed_ref_id: take.embed_ref_id,
+      embed_url: take.embed_url,
       post_type: take.post_type || 'post',
       tagged_users,
     },
