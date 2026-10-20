@@ -15,6 +15,7 @@ import PickComments from '../social/PickComments'
 import { timeAgo } from '../../lib/time'
 import { extractFirstUrl } from '../../lib/urlUtils'
 import { useHlsSource } from '../../lib/useHlsSource'
+import { VideoProcessingPlaceholder } from './HotTakeFeedCard'
 
 function DetailVideo({ url }) {
   const videoRef = useRef(null)
@@ -192,7 +193,17 @@ export default function HotTakeDetailModal({ hotTakeId, onClose, reminderContext
               {hotTake.image_url && (
                 <img src={hotTake.image_url} alt="" className="w-full rounded-lg mt-2" />
               )}
-              {hotTake.video_url && <DetailVideo url={hotTake.video_url} />}
+              {/* Same gate the feed card uses. This modal rendered the
+                  player unconditionally, so a post opened while Cloudflare
+                  was still transcoding showed a blank video with working
+                  controls — indistinguishable from an upload that failed.
+                  The feed card behind it was showing the spinner correctly
+                  the whole time. */}
+              {hotTake.stream_video_uid && !hotTake.stream_ready_at ? (
+                <VideoProcessingPlaceholder streamUid={hotTake.stream_video_uid} />
+              ) : (
+                hotTake.video_url && <DetailVideo url={hotTake.video_url} />
+              )}
               {hotTake.embed_provider && hotTake.embed_ref_id && (
                 <PostEmbed provider={hotTake.embed_provider} refId={hotTake.embed_ref_id} />
               )}

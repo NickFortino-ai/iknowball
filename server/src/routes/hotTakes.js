@@ -530,6 +530,13 @@ router.get('/:id', requireAuth, async (req, res) => {
       image_url: take.image_url,
       image_urls: take.image_urls || (take.image_url ? [take.image_url] : null),
       video_url: take.video_url,
+      // Both are SELECTed above and were being dropped here. The detail
+      // modal needs them to tell "still transcoding" apart from "broken
+      // video" — without them its readiness check is permanently false and
+      // it renders a player over a manifest Cloudflare has not finished
+      // writing, which looks exactly like a failed upload.
+      stream_video_uid: take.stream_video_uid,
+      stream_ready_at: take.stream_ready_at,
       post_type: take.post_type || 'post',
       tagged_users,
     },

@@ -96,7 +96,7 @@ function FlexTargetCard({ hot_take }) {
   return null
 }
 
-function VideoProcessingPlaceholder({ streamUid }) {
+export function VideoProcessingPlaceholder({ streamUid }) {
   const queryClient = useQueryClient()
   // Client-driven readiness poll — fires every 8s while the placeholder is
   // mounted, hitting the server which does a live Cloudflare lookup and
