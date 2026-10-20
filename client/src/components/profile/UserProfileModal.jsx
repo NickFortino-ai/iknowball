@@ -666,28 +666,52 @@ export default function UserProfileModal({ userId, onClose }) {
             {/* Pick Record */}
             <div className="bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-xl p-4 mb-4">
               <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">Pick Record</h3>
-              <div className="grid grid-cols-4 gap-3 text-center">
-                <div>
-                  <div className="font-display text-xl text-text-primary">{user.record.total}</div>
-                  <div className="text-xs text-text-muted">Total</div>
-                </div>
-                <div>
-                  <div className="font-display text-xl text-correct">{user.record.wins}</div>
-                  <div className="text-xs text-text-muted">Wins</div>
-                </div>
-                <div>
-                  <div className="font-display text-xl text-incorrect">{user.record.losses}</div>
-                  <div className="text-xs text-text-muted">Losses</div>
-                </div>
-                <div>
-                  <div className="font-display text-xl text-text-primary">
-                    {user.record.total > 0
-                      ? `${((user.record.wins / user.record.total) * 100).toFixed(0)}%`
-                      : '—'}
-                  </div>
-                  <div className="text-xs text-text-muted">Win %</div>
-                </div>
-              </div>
+              {/* Win % counts only picks that WON or LOST.
+                  user.record.total includes pushes — ties, postponed games,
+                  voided props, anything with is_correct null — so dividing
+                  by it treated every no-action pick as a loss. One user read
+                  437W-362L at "50%", which is 437/869: the 70 pushes had
+                  quietly cost him four and a half points. The real figure is
+                  437/799, 55%.
+                  It also made the card fail its own arithmetic — the three
+                  numbers beside the percentage did not sum to the total. */}
+              {(() => {
+                const decided = user.record.wins + user.record.losses
+                const pushes = Math.max(0, (user.record.total || 0) - decided)
+                return (
+                  <>
+                    <div className={`grid ${pushes > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-2 text-center`}>
+                      <div>
+                        <div className="font-display text-xl text-text-primary">{user.record.total}</div>
+                        <div className="text-xs text-text-muted">Total</div>
+                      </div>
+                      <div>
+                        <div className="font-display text-xl text-correct">{user.record.wins}</div>
+                        <div className="text-xs text-text-muted">Wins</div>
+                      </div>
+                      <div>
+                        <div className="font-display text-xl text-incorrect">{user.record.losses}</div>
+                        <div className="text-xs text-text-muted">Losses</div>
+                      </div>
+                      {/* Shown only when there are any, so the usual card
+                          keeps its four tiles — but when it appears, Wins +
+                          Losses + Pushes finally equals Total. */}
+                      {pushes > 0 && (
+                        <div>
+                          <div className="font-display text-xl text-text-muted">{pushes}</div>
+                          <div className="text-xs text-text-muted">Pushes</div>
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-display text-xl text-text-primary">
+                          {decided > 0 ? `${((user.record.wins / decided) * 100).toFixed(0)}%` : '—'}
+                        </div>
+                        <div className="text-xs text-text-muted">Win %</div>
+                      </div>
+                    </div>
+                  </>
+                )
+              })()}
             </div>
 
             {/* Head-to-Head */}

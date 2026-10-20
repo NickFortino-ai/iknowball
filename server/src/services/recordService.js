@@ -685,7 +685,12 @@ async function calcHighestOverallWinPct() {
     fetchAll(supabase.from('picks').select('id, user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null).order('id')),
     fetchAll(supabase.from('parlays').select('id, user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null).order('id')),
     fetchAll(supabase.from('prop_picks').select('id, user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null).order('id')),
-    fetchAll(supabase.from('futures_picks').select('id, user_id, is_correct').eq('status', 'settled').order('id')),
+    // .not('is_correct', 'is', null) on this one too. The other three
+    // already exclude pushes; futures did not, so a push there would have
+    // counted toward total while never counting as correct — i.e. scored as
+    // a loss. There are none today, which is why it has not shown up, but
+    // the rule has to match or the record quietly measures two things.
+    fetchAll(supabase.from('futures_picks').select('id, user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null).order('id')),
   ])
 
   const stats = {}
