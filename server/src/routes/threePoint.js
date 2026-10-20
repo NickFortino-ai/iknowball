@@ -18,7 +18,7 @@ router.use(requireAuth)
 const athleteTotalCache = new Map() // espnId -> { total, ts }
 const ATHLETE_TOTAL_TTL = 30 * 60 * 1000
 
-async function fetchAthlete3PMForType(espnId, seasonType, season = 2026) {
+async function fetchAthlete3PMForType(espnId, seasonType, season) {
   const url = `https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/seasons/${season}/types/${seasonType}/athletes/${espnId}/statistics/0`
   try {
     const res = await fetch(url)
@@ -39,12 +39,42 @@ async function fetchAthlete3PMForType(espnId, seasonType, season = 2026) {
   }
 }
 
-// NBA picker shows POSTSEASON 3PM only — we shipped this format with the
-// playoffs in full swing, and ranking by reg-season totals (mostly
-// 50-game samples for half the league) drowned out hot postseason
-// shooters. Once we hit the offseason, flip this back to type 2 (regular)
-// or sum both via a season-toggle setting on the league.
-async function fetchNbaSeason3PMTotals(espnIds, season = 2026) {
+/**
+ * The season whose REGULAR-season totals we rank by.
+ *
+ * ESPN labels a season by the year it ends: 2026-27 is season 2027. We want
+ * the last COMPLETED regular season, because that is a full 82-game sample.
+ * The season now starting has no games in it — on opening night every total
+ * would be 0, and for weeks after it is a handful of games that says less
+ * than last year's full one.
+ *
+ * Computed rather than hardcoded. The previous value was a literal 2026,
+ * which is exactly how this went stale: correct when written, silently wrong
+ * a year later.
+ */
+function lastCompletedNbaRegularSeason(now = new Date()) {
+  const pt = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
+  const y = pt.getFullYear()
+  const m = pt.getMonth()            // 0 = Jan
+  if (m >= 8) return y               // Sep-Dec: season starting now is y+1, so y is done
+  if (m <= 5) return y - 1           // Jan-Jun: season y is still being played
+  return y                           // Jul-Aug: offseason, season y finished in June
+}
+
+// Ranked on REGULAR-season 3PM, not postseason.
+//
+// This used to request type 3. That was deliberate — the format shipped
+// mid-playoffs, when reg-season totals drowned out whoever was hot in May —
+// and the note here said to flip it back in the offseason. It never got
+// flipped, so a contest opening on the first night of a new season was
+// ranking players by threes made in last season's PLAYOFFS.
+//
+// That is close to noise for picking. It sorts by how far a team went in
+// May, not by who shoots: Julian Champagnie led the board at 61 while he and
+// Jalen Brunson are level at 195 across a full season, and Anfernee Simons —
+// 146 threes last year — sat at 0 among the centres because Portland missed
+// the playoffs. Of the top 40 by salary, 11 showed 0.
+async function fetchNbaSeason3PMTotals(espnIds, season = lastCompletedNbaRegularSeason()) {
   const result = {}
   const now = Date.now()
   const toFetch = []
@@ -61,7 +91,7 @@ async function fetchNbaSeason3PMTotals(espnIds, season = 2026) {
   const CONCURRENCY = 6
   for (let i = 0; i < toFetch.length; i += CONCURRENCY) {
     const batch = toFetch.slice(i, i + CONCURRENCY)
-    const totals = await Promise.all(batch.map((id) => fetchAthlete3PMForType(id, 3, season)))
+    const totals = await Promise.all(batch.map((id) => fetchAthlete3PMForType(id, 2, season)))
     for (let j = 0; j < batch.length; j++) {
       const id = batch[j]
       const total = totals[j]
@@ -86,7 +116,8 @@ function getWeekEnd(weekStart) {
   return d.toLocaleDateString('en-CA')
 }
 
-// Available NBA players for the night, sorted by season 3PM desc.
+// Available NBA players for the night, sorted by last completed regular
+// season's 3PM desc.
 router.get('/players', async (req, res) => {
   const { date } = req.query
   if (!date) return res.status(400).json({ error: 'date required' })
