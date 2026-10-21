@@ -526,7 +526,7 @@ export default function HubPage() {
             The Hall of Fame is a PAGE, not a hub view — it has its own route
             and its own back link — so its mark navigates rather than flipping
             hubView like the other three. */}
-        <div className="mb-6 lg:mb-0 lg:w-[380px] lg:shrink-0 lg:flex lg:gap-3 lg:pb-3">
+        <div className="mb-6 lg:mb-0 lg:w-[320px] lg:shrink-0 lg:flex lg:gap-2 lg:pb-3">
           {/* Four across on a phone. The marks already sit on their own
               square canvases, so the only thing that gives is the gutter;
               the icons themselves step down a size to keep the labels from
@@ -706,7 +706,13 @@ export default function HubPage() {
           and had to be scrolled to. It is also the width the room row above
           uses, with the same gap, so the arcade and hall of fame marks line
           up over this column exactly rather than floating 32px inboard. */}
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-6">
+      {/* 320px, and the rooms row above uses the SAME number — they stack
+          into one right-hand rail, so a mismatch misaligns its edge against
+          the news column directly beneath it. Narrowed from 380: it buys the
+          feed 60px and nudges its centre that much closer to the middle of
+          the page, which is the only way the feed can move toward centre
+          without the whole container growing. */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
       <div className="min-w-0">
         {hubView === 'news' ? (
           /* News renders WHERE THE FEED WAS, not as its own page. Everything
@@ -725,8 +731,12 @@ export default function HubPage() {
         ) : (
           <>
         <div className="flex items-center gap-2 mb-3">
-          <h2 className="text-xs text-text-muted uppercase tracking-wider flex-shrink-0">Feed</h2>
-          {/* min-w-0 or the scroller claims its max-content width and the
+          {/* No "Feed" heading. The tab row is self-evidently the feed
+              selector, and the word was a second label for what "All of
+              IKB / My Squad / Posts" already says — while taking width off
+              a scroller that was already clipping its last tab.
+
+              min-w-0 or the scroller claims its max-content width and the
               last tab ends up underneath whatever is pinned to its right —
               "Receipts" was being clipped by the arcade button. */}
           <div className="flex gap-1 overflow-x-auto flex-nowrap no-scrollbar min-w-0">
