@@ -43,6 +43,14 @@ export async function settleNBAProps() {
     .eq('sport_id', sport.id)
     .in('status', ['locked', 'published'])
     .eq('games.status', 'final')
+    // Explicit .order() before the cap, for the reason settleNCAAFProps
+    // documents: an unordered limit in PostgREST returns an ARBITRARY slice,
+    // not the first N. Without it a night with more finished props than the
+    // cap can hand back the same arbitrary subset run after run, and the
+    // props outside it are never settled at all — starvation, not merely
+    // truncation. Ordering by id makes the window deterministic so each
+    // pass drains what the last one left.
+    .order('id')
     .limit(200)
 
   if (error) {
