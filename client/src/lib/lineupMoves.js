@@ -110,17 +110,37 @@ export function buildMoveOptions({ anchor, roster, starterSlots, benchLimit, irL
       if (!movable(player, spot.slotKey)) continue
 
       const occupant = spot.occupant
+      // Where the displaced occupant ends up. Normally the anchor's own slot
+      // — a swap is a SWAP — but an IR swap is different, see below.
+      let occupantTo = player.slot
       if (occupant) {
-        // A swap is a SWAP: the occupant has to be able to play the anchor's
-        // slot. Tapping a bench RB while moving a WR out of WR1 would
-        // otherwise "swap" into the RB being re-benched and WR1 left empty —
-        // a move nobody asked for, silently committed.
+        // Moving someone ONTO an occupied IR spot bumps the occupant to the
+        // BENCH, not into the anchor's slot.
         //
-        // So a QB in the QB slot only ever offers other QBs, while a flex
-        // offers every RB/WR/TE, which is exactly the eligibility already
-        // written on the slot.
-        if (!isEligibleFor(occupant, player.slot, starterSlots)) continue
-        if (!movable(occupant, player.slot)) continue
+        // Requiring him to fill the anchor's slot is the rule everywhere
+        // else and it is right there: tapping a bench RB while moving a WR
+        // out of WR1 would otherwise "swap" into the RB being re-benched and
+        // WR1 left empty — a move nobody asked for, silently committed.
+        //
+        // But IR is not a position, it is a holding area, and the player
+        // coming off it is healed rather than ready to start. Making him
+        // eligible for the anchor's slot meant a DL on IR could not be
+        // replaced by an Out WR, because a DL cannot play WR — so the IR
+        // option simply never appeared and there was nothing on screen to
+        // explain why. Bench is where clearing IR puts you on every other
+        // platform.
+        if (spot.slotKey === IR) {
+          if (!movable(occupant, BENCH)) continue
+          // Only if the bench can actually take him. The anchor vacating a
+          // bench seat frees one, which is why this counts the resulting
+          // roster rather than the current one.
+          const benchAfter = rows.filter((r) => r.slot === BENCH && r.player_id !== player.player_id).length + 1
+          if (benchAfter > Math.max(Number(benchLimit || 0), 0)) continue
+          occupantTo = BENCH
+        } else {
+          if (!isEligibleFor(occupant, player.slot, starterSlots)) continue
+          if (!movable(occupant, player.slot)) continue
+        }
       }
 
       options.push({
@@ -130,6 +150,10 @@ export function buildMoveOptions({ anchor, roster, starterSlots, benchLimit, irL
         slotKey: spot.slotKey,
         spotId: spot.id,
         occupant,
+        // Read by applyMove. Without it an IR swap would send the occupant
+        // to the anchor's slot, which is the thing this branch exists to
+        // avoid.
+        occupantTo,
       })
     }
     // Collapse interchangeable empty spots. Seven open bench slots produced
@@ -198,10 +222,12 @@ export function applyMove({ anchor, option, roster }) {
   if (anchor?.type === 'player') {
     const player = rows.find((r) => r.player_id === anchor.playerId)
     if (!player) return next
-    // A straight exchange. buildMoveOptions only offers an occupied spot when
-    // the occupant can take the anchor's slot, so there is no bump-to-bench
-    // case to handle here.
-    if (option.occupant) next[option.occupant.player_id] = player.slot
+    // A straight exchange, EXCEPT onto IR — there the occupant is bumped to
+    // the bench instead. buildMoveOptions decides which it is and records
+    // the destination on the option; defaulting to the anchor's slot keeps
+    // an older option object (or a test building one by hand) behaving the
+    // way it always did.
+    if (option.occupant) next[option.occupant.player_id] = option.occupantTo || player.slot
     next[player.player_id] = option.slotKey
     return next
   }
