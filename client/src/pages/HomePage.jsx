@@ -503,11 +503,22 @@ export default function HomePage() {
         <WelcomeCard userId={session?.user?.id} profile={profile} />
       )}
 
-      {/* Logged-in: Open Leagues + Active Leagues */}
+      {/* Open leagues FIRST, then the ones you are already in.
+          
+          A league you have joined is somewhere you can get to from the
+          Leagues tab and from every notification it sends you; one you have
+          not joined is only discoverable here, and only while it stays
+          joinable. So the row with a deadline goes above the row without
+          one.
+          
+          Safe to put first precisely because it disappears when it is empty
+          — OpenLeaguesSection returns null on no results, as MyActiveLeagues
+          does on no leagues — so this never pushes anything down behind a
+          blank heading. Today it renders nothing at all. */}
       {isAuthenticated && (
         <>
-          <MyActiveLeagues />
           <OpenLeaguesSection />
+          <MyActiveLeagues />
         </>
       )}
 
