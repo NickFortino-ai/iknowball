@@ -79,7 +79,11 @@ const ONBOARDING_STEPS = [
     page: '/hub',
     targetSelector: '[data-onboarding="arcade"]',
     title: 'The Arcade',
-    body: "Sports games you can play right now. Memory, played on IKB's own image library, and Trivia — pick a sport or take all of them, in 10 or 20 question rounds or Streak mode, where you keep answering until you miss one. Every game keeps high scores and a leaderboard for each sport, so the board is the thing to chase.",
+    // Describes trivia as streak-only, which it has been since the 10 and 20
+    // question rounds were removed, and Memory as player photos, which it has
+    // been since the venue images came out of the deck. Both read as stale
+    // the moment someone opens the arcade and finds neither on offer.
+    body: "Sports games you can play right now. Memory, dealt from IKB's own player photos, and Trivia — pick a sport or take all of them, then keep answering until you miss one. Every game keeps high scores and a leaderboard for each sport, so the board is the thing to chase.",
     position: 'bottom',
   },
   // Points at the Hub's fourth mark rather than opening the page, for the
