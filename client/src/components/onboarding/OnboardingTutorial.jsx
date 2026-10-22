@@ -377,7 +377,14 @@ export default function OnboardingTutorial() {
           ...(isFreeScroll ? { pointerEvents: 'auto' } : {}),
         }}
       >
-        <div className="bg-bg-card border border-border rounded-2xl p-5 shadow-2xl overflow-hidden">
+        {/* Glass edge: bg-bg-primary with a faint white border, the
+            same treatment as member rows, league cards and the survivor
+            board. Deliberately NOT bg-white/5 + backdrop-blur — the house
+            style is a solid dark ground with a bright edge, not frosted
+            glass. bg-bg-card read as a lighter grey box floating over the
+            dimmed page; this sits on the same ground as everything else
+            and is defined by its edge instead. */}
+        <div className="bg-bg-primary border border-text-primary/20 rounded-2xl p-5 shadow-2xl overflow-hidden">
           {/* Header: Step counter + Skip */}
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs text-text-muted font-semibold">
@@ -394,7 +401,7 @@ export default function OnboardingTutorial() {
           </div>
 
           {/* Progress bar */}
-          <div className="w-full h-1 bg-bg-secondary rounded-full mb-4 overflow-hidden">
+          <div className="w-full h-1 bg-text-primary/10 rounded-full mb-4 overflow-hidden">
             <div
               className="h-full bg-accent rounded-full transition-all duration-300"
               style={{ width: `${progressPercent}%` }}
@@ -405,14 +412,14 @@ export default function OnboardingTutorial() {
           <h2 className="font-display text-xl mb-2">{currentStep.title}</h2>
 
           {/* Body */}
-          <p className="text-text-secondary text-sm mb-5 leading-relaxed">{currentStep.body}</p>
+          <p className="text-text-primary/90 text-sm mb-5 leading-relaxed">{currentStep.body}</p>
 
           {/* Buttons */}
           <div className="flex items-center gap-3">
             {step > 0 && (
               <button
                 onClick={goBack}
-                className="px-4 py-2.5 rounded-xl text-sm font-semibold text-text-secondary hover:text-text-primary hover:bg-bg-card-hover transition-colors"
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold text-text-secondary hover:text-text-primary hover:bg-text-primary/5 transition-colors"
               >
                 Back
               </button>
