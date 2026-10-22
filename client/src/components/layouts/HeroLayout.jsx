@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Outlet, Link, useParams, useLocation } from 'react-router-dom'
 import { getBackdropUrl } from '../../lib/backdropUrl'
 import { useAuthStore } from '../../stores/authStore'
@@ -97,7 +97,21 @@ export default function HeroLayout() {
   // IKB cycling state — only animates when we're not in league mode. State
   // lives in the layout, so it persists across child route changes (the
   // whole point of the persistent layout).
-  const [heroIdx, setHeroIdx] = useState(0)
+  // Seeded at RANDOM, not 0.
+  //
+  // The layout persists across the auth routes but unmounts the moment you
+  // leave for Picks or the Hub, so every return to the landing page
+  // remounted the hero at index 0. With six images that was harmless. With
+  // sixteen and an 11-second interval it takes nearly three minutes to see
+  // the set, so a visitor would have met the first two and never the rest —
+  // the other fourteen may as well not have been there.
+  //
+  // Lazy initialiser so it is picked once per mount, not on every render.
+  const [heroIdx, setHeroIdx] = useState(() => Math.floor(Math.random() * IKB_HERO_IMAGES.length))
+  // Captured at mount so the eager-loading hint below has a stable target —
+  // reading heroIdx there would flip images to lazy as the cycle advances,
+  // after they have already loaded.
+  const firstHeroIdx = useRef(heroIdx)
   useEffect(() => {
     if (useLeagueHero) return
     const interval = setInterval(() => {
@@ -142,7 +156,10 @@ export default function HeroLayout() {
                   ? 'opacity 2.5s ease-in-out, transform 15s ease-out'
                   : 'opacity 2.5s ease-in-out, transform 0.01s 2.6s',
               }}
-              loading={i <= 1 ? 'eager' : 'lazy'}
+              // Eager for the image that opens and the one queued behind
+              // it. Pinned to 0/1 this fetched two images the visitor might
+              // never see while the one on screen waited its turn.
+              loading={i === firstHeroIdx.current || i === (firstHeroIdx.current + 1) % IKB_HERO_IMAGES.length ? 'eager' : 'lazy'}
             />
           ))
         )}
