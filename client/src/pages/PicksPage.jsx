@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useGames, useActiveSports } from '../hooks/useGames'
 import { useMyPicks, useSubmitPick, useDeletePick, useUpdatePickMultiplier } from '../hooks/usePicks'
 import { useMyParlays, useDeleteParlay } from '../hooks/useParlays'
@@ -64,8 +65,24 @@ function isSameDay(date1, date2) {
 export default function PicksPage() {
   const [activeSport, setActiveSport] = useState(null)
   const [dayOffset, setDayOffset] = useState(0)
-  const [isFuturesMode, setIsFuturesMode] = useState(false)
-  const [isPropsMode, setIsPropsMode] = useState(false)
+  // ?tab=props opens the Props tab directly.
+  //
+  // Which tab you are on is React state, not a route, so nothing could link
+  // to it — the onboarding tutorial's props step could spotlight the tab but
+  // not open it, and the player read a paragraph about moving the line while
+  // looking at the straight-pick board. Mirrors the ?tab= param HubPage
+  // already accepts for the arcade.
+  const [searchParams] = useSearchParams()
+  const [isFuturesMode, setIsFuturesMode] = useState(() => searchParams.get('tab') === 'futures')
+  const [isPropsMode, setIsPropsMode] = useState(() => searchParams.get('tab') === 'props')
+
+  // Re-reads on change, so arriving from a page that is already /picks still
+  // switches — the tutorial navigates /picks -> /picks?tab=props, same path.
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'props') { setIsPropsMode(true); setIsFuturesMode(false) }
+    else if (tab === 'futures') { setIsFuturesMode(true); setIsPropsMode(false) }
+  }, [searchParams])
   const userChangedDay = useRef(false)
 
   const { data: activeSportsData } = useActiveSports()

@@ -26,8 +26,14 @@ const ONBOARDING_STEPS = [
     position: 'top',
     freeScroll: true,
   },
+  // Opens the Props tab, not just a spotlight on it. The step before is
+  // /picks, so this is the same pathname with a new query param — the branch
+  // in OnboardingTutorial that re-navigates on changed params is what makes
+  // it switch. The player lands on the sport row rather than a prop card,
+  // which is fine: the point is that Props is a place you go, and the copy
+  // explains what is waiting there.
   {
-    page: '/picks',
+    page: '/picks?tab=props',
     targetSelector: '[data-onboarding="props-tab"]',
     title: 'Set Your Own Line',
     body: "Open Props and you don't just take the number the book is offering — you move it. Slide the line to where you think the player lands, pick over or under, and the payout scales with how far you went: the bolder the call, the bigger the return. You can stack several predictions on the same player at different lines, and the results page shows them as a ladder so you can see exactly where the night actually finished.",
