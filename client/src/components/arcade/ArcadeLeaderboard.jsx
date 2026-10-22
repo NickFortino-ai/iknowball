@@ -46,16 +46,35 @@ export default function ArcadeLeaderboard({ game = 'memory', variant = null }) {
   const { data, isLoading } = useArcadeLeaderboard(game, variant)
   const board = data?.board || []
 
+  // Says out loud that the top of this board is not reachable from a phone.
+  //
+  // Expert is 15 pairs against Hard's 10, and the score is 10 points a pair,
+  // so the ceiling on desktop is roughly half again what a mobile player can
+  // reach. Keeping one board per variant is the deliberate choice — splitting
+  // it would divide an already small pool — but a board you cannot win should
+  // say why rather than let someone grind at it and never work it out.
+  const desktopNote = game === 'memory' ? (
+    <p className="flex items-start gap-1.5 pb-3 text-[11px] leading-relaxed text-text-muted">
+      <span aria-hidden="true">&#9432;</span>
+      <span>Expert — the longest board, and the most points available — is desktop only. Phone screens cannot fit six columns at a readable size.</span>
+    </p>
+  ) : null
+
   if (isLoading) return <p className="text-sm text-text-muted py-6 text-center">Loading board…</p>
   if (!board.length) {
     return (
-      <p className="text-sm text-text-muted py-6 text-center">
-        {variant ? 'No scores for that sport yet. Be first.' : 'No scores yet. Be first.'}
-      </p>
+      <>
+        {desktopNote}
+        <p className="text-sm text-text-muted py-6 text-center">
+          {variant ? 'No scores for that sport yet. Be first.' : 'No scores yet. Be first.'}
+        </p>
+      </>
     )
   }
 
   return (
+    <>
+    {desktopNote}
     <div className="divide-y divide-text-primary/10">
       {board.map((row) => (
         <div
@@ -103,5 +122,6 @@ export default function ArcadeLeaderboard({ game = 'memory', variant = null }) {
         </div>
       ))}
     </div>
+    </>
   )
 }

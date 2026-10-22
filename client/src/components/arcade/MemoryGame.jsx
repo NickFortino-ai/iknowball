@@ -28,14 +28,24 @@ import ResultBoard from './ResultBoard'
 //
 // Not a huge spread: much past a second and a mismatch stops feeling like a
 // miss and starts feeling like the board is waiting on you.
-const PEEK_MS = { easy: 1400, medium: 1150, hard: 900 }
+const PEEK_MS = { easy: 1400, medium: 1150, hard: 900, expert: 900 }
 const DEFAULT_PEEK_MS = 1150
 
 const DIFFICULTIES = [
   { key: 'easy', label: 'Easy', pairs: 6 },
   { key: 'medium', label: 'Medium', pairs: 8 },
   { key: 'hard', label: 'Hard', pairs: 10 },
+  // Six columns of 30 cards. Offered on DESKTOP ONLY: the board has to fit
+  // one screen without scrolling (you cannot remember a card you never saw),
+  // and six columns at 375px puts a card under 60px, which is too small to
+  // tell two player photos apart. Still listed on mobile rather than hidden,
+  // disabled with the reason — a tier you can see exists is a reason to open
+  // the app on a laptop.
+  { key: 'expert', label: 'Expert', pairs: 15, desktopOnly: true },
 ]
+
+// Matches the `sm` breakpoint the board's column classes already switch on.
+const DESKTOP_MIN_WIDTH = 640
 
 function Timer({ startedAt, running }) {
   const [, tick] = useState(0)
@@ -52,6 +62,17 @@ function Timer({ startedAt, running }) {
 
 export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
   const [difficulty, setDifficulty] = useState('medium')
+  // Tracked, not read once: a desktop user who narrows the window should see
+  // Expert turn off, and someone who maximises should see it become
+  // available without reloading.
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window === 'undefined' || window.innerWidth >= DESKTOP_MIN_WIDTH,
+  )
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= DESKTOP_MIN_WIDTH)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
   const [round, setRound] = useState(null)      // { roundId, cards, pairs, parSeconds }
   const [flipped, setFlipped] = useState([])    // card ids currently face-up this turn (0-2)
   const [matched, setMatched] = useState(new Set())
@@ -204,8 +225,12 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
   // Four columns on a phone, five from `sm` once there are more than 16
   // cards. Kept as a number too, because the board has to be sized from the
   // VIEWPORT HEIGHT and that needs the row count.
+  const expertBoard = round?.difficulty === 'expert'
   const wideBoard = round && round.cards.length > 16
-  const cols = wideBoard ? 'grid-cols-4 sm:grid-cols-5' : 'grid-cols-4 sm:grid-cols-4'
+  // Expert is six wide from `sm`. It stays four on a phone so a forced
+  // expert round is merely long rather than unreadable.
+  const cols = expertBoard ? 'grid-cols-4 sm:grid-cols-6'
+    : wideBoard ? 'grid-cols-4 sm:grid-cols-5' : 'grid-cols-4 sm:grid-cols-4'
 
   // A memory board you cannot see all of is not a memory game: you cannot
   // remember a card you never saw, and scrolling between flips means the
@@ -219,7 +244,7 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
   // screen is wide relative to its height, which is every desktop and no
   // phone — on mobile the computed width exceeds the page, so nothing
   // changes there.
-  const boardCols = wideBoard ? 5 : 4
+  const boardCols = expertBoard ? 6 : wideBoard ? 5 : 4
   const boardRows = round ? Math.ceil(round.cards.length / boardCols) : 1
   const boardMaxWidth = `min(calc((100dvh - 15rem) / ${boardRows} * ${boardCols}), ${boardCols * 200}px)`
 
@@ -247,17 +272,19 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
         <div className="flex gap-2">
           {DIFFICULTIES.map((d) => {
             const fits = !variantCount || variantCount >= d.pairs
+            const blockedOnMobile = d.desktopOnly && !isDesktop
+            const playable = fits && !blockedOnMobile
             return (
               <button
                 key={d.key}
                 onClick={() => { setDifficulty(d.key); deal(d.key) }}
-                disabled={busy || !fits}
-                title={fits ? undefined : `Only ${variantCount} images available`}
+                disabled={busy || !playable}
+                title={blockedOnMobile ? 'Expert needs a wider screen' : fits ? undefined : `Only ${variantCount} images available`}
                 className="flex-1 rounded-xl border border-text-primary/20 px-3 py-3 text-sm font-semibold text-text-secondary transition-colors hover:border-accent hover:bg-accent/10 hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {d.label}
                 <span className="block text-[11px] font-normal text-text-muted">
-                  {fits ? `${d.pairs} pairs` : 'too few images'}
+                  {blockedOnMobile ? 'desktop only' : fits ? `${d.pairs} pairs` : 'too few images'}
                 </span>
               </button>
             )

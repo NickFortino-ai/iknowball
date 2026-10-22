@@ -72,7 +72,12 @@ const TRIVIA_BONUS_PER_SECOND = 0.2
 // which defeats a memory game. So difficulty adds ROWS, and past 10 pairs it
 // has to come from somewhere other than grid size (shorter peek, a single
 // sport so the images look alike).
-const PAIR_COUNTS = { easy: 6, medium: 8, hard: 10 }
+// `expert` is DESKTOP ONLY, enforced by the client — 15 pairs is 30 cards,
+// which needs six columns to stay inside one screen, and six columns puts a
+// card under 60px on a phone. The server still accepts it from any device:
+// device detection server-side is guesswork, and the failure mode of a
+// forced expert round on mobile is an unpleasant board, not a broken one.
+const PAIR_COUNTS = { easy: 6, medium: 8, hard: 10, expert: 15 }
 
 // Memory deals PEOPLE, not places (Nick, 2026-10-20).
 //
