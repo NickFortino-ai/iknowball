@@ -19,6 +19,10 @@ export default function OnboardingTutorial() {
   const observerRef = useRef(null)
   const timeoutRef = useRef(null)
   const returnPathRef = useRef(null)
+  // A replay from the FAQ should go back to the FAQ. A first run should not
+  // go anywhere — see goNext. Both entry points set returnPathRef, so the
+  // path alone cannot tell them apart.
+  const isReplayRef = useRef(false)
 
   // Trigger logic
   useEffect(() => {
@@ -38,6 +42,7 @@ export default function OnboardingTutorial() {
     if (profile && !profile.has_seen_onboarding && hasAccess) {
       // Remember where the user was so we can return them after the tutorial
       returnPathRef.current = location.pathname
+      isReplayRef.current = false
       setActive(true)
       // Slight delay for mount animation
       requestAnimationFrame(() => setMounted(true))
@@ -48,6 +53,7 @@ export default function OnboardingTutorial() {
   useEffect(() => {
     function handleReplay() {
       returnPathRef.current = location.pathname
+      isReplayRef.current = true
       setStep(0)
       setActive(true)
       requestAnimationFrame(() => setMounted(true))
@@ -168,12 +174,22 @@ export default function OnboardingTutorial() {
       // Check for a saved return path from the payment/invite flow
       const savedReturn = localStorage.getItem('onboardingReturnPath')
       if (savedReturn) localStorage.removeItem('onboardingReturnPath')
-      const returnTo = savedReturn || returnPathRef.current || '/picks'
+      // A FIRST RUN ends wherever its last step left them, which is now the
+      // settings page — and that is the point. The tour closes by asking
+      // them to upload a picture and pick a backdrop, and of the 88 accounts
+      // that signed up and went quiet, not one had done either. Dropping
+      // them on /picks the instant they are told to do it put a navigation
+      // between the instruction and the thing.
+      //
+      // Still navigates in the two cases that need it: a payment or invite
+      // flow waiting to be resumed, and a replay from the FAQ, which should
+      // give the FAQ back.
+      const returnTo = savedReturn || (isReplayRef.current ? returnPathRef.current : null)
       setMounted(false)
       setTimeout(() => {
         setActive(false)
         completeOnboarding()
-        navigate(returnTo)
+        if (returnTo) navigate(returnTo)
       }, 300)
       return
     }
