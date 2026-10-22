@@ -152,7 +152,22 @@ function dedupeByLabel(rows) {
 // never seen is information gathering and costs nothing — exploring is free,
 // forgetting is not.
 const POINTS_PER_PAIR = 10
-const PENALTY_PER_INFORMED_MISS = 2.5
+// An informed miss costs 2.5% OF THE BASE, not a flat 2.5.
+//
+// Flat was backwards. The base scales with pairs while the penalty did not,
+// so a mistake got proportionally cheaper exactly as the board got harder:
+//
+//      6 pairs   one miss = 4.17% of base
+//     10 pairs              2.50%
+//     20 pairs              1.25%
+//
+// And a longer board GENERATES more recall chances, so the softest penalty
+// sat where there were the most opportunities to earn it — doubly wrong.
+//
+// Calibrated so 10 pairs is unchanged (10 x 0.25 = 2.5), which keeps every
+// score on the board today directly comparable. 20 pairs now costs 5 a miss,
+// 6 pairs costs 1.5.
+const PENALTY_RATE_PER_PAIR = 0.25
 const PAR_SECONDS_PER_PAIR = 6
 const TIME_BONUS_PER_SECOND = 0.3
 
@@ -161,7 +176,7 @@ function scoreRound({ pairs, informedMisses, durationMs }) {
   // Rounded here, not just in the total: the breakdown is shown on the
   // result screen and has to add up to the score, or the scoring reads as
   // arbitrary the first time a half point disappears.
-  const penalty = Math.round(informedMisses * PENALTY_PER_INFORMED_MISS)
+  const penalty = Math.round(informedMisses * pairs * PENALTY_RATE_PER_PAIR)
   const parSeconds = pairs * PAR_SECONDS_PER_PAIR
   const elapsedSeconds = durationMs / 1000
   const timeBonus = Math.max(0, Math.round((parSeconds - elapsedSeconds) * TIME_BONUS_PER_SECOND))
