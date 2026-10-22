@@ -69,41 +69,48 @@ const ONBOARDING_STEPS = [
     position: 'center',
     freeScroll: true,
   },
-  // Deliberately stays on the FEED view rather than deep-linking
-  // ?tab=arcade: the arcade room replaces this part of the Hub, marks and
-  // all, so opening it would spotlight an element that no longer exists and
-  // time out to a fullscreen card. Pointing at the door is also the more
-  // useful lesson — where the arcade lives is the thing a new player
-  // doesn't know.
+  // Opens the arcade itself (`?tab=arcade`, the param HubPage already reads
+  // for notification deep-links) rather than spotlighting the mark on the
+  // Hub. Pointing at the door taught where it was; walking through it shows
+  // the games, which is the thing worth seeing. Fullscreen — there is no
+  // single element in the room to spotlight, and dimming the whole arcade
+  // behind the card still puts it on screen.
   {
-    page: '/hub',
-    targetSelector: '[data-onboarding="arcade"]',
+    page: '/hub?tab=arcade',
+    targetSelector: null,
+    position: 'center',
     title: 'The Arcade',
     // Describes trivia as streak-only, which it has been since the 10 and 20
     // question rounds were removed, and Memory as player photos, which it has
     // been since the venue images came out of the deck. Both read as stale
     // the moment someone opens the arcade and finds neither on offer.
     body: "Sports games you can play right now. Memory, dealt from IKB's own player photos, and Trivia — pick a sport or take all of them, then keep answering until you miss one. Every game keeps high scores and a leaderboard for each sport, so the board is the thing to chase.",
-    position: 'bottom',
   },
-  // Points at the Hub's fourth mark rather than opening the page, for the
-  // same reason the Arcade step does: where it lives is the thing a new
-  // player doesn't know, and the page has its own hero to discover.
-  // It used to navigate to /hall-of-fame and sit before the Hub steps, back
-  // when the only way in was the account menu.
+  // Opens the Hall of Fame itself. It briefly pointed at the Hub's fourth
+  // mark instead, on the reasoning that where it lives is what a new player
+  // doesn't know — but Royalty and the record book are the draw, and a mark
+  // with a label cannot show them. Fullscreen for the same reason as the
+  // arcade: the page is one long board, not a single element to spotlight.
   {
-    page: '/hub',
-    targetSelector: '[data-onboarding="hall-of-fame"]',
+    page: '/hall-of-fame',
+    targetSelector: null,
+    position: 'center',
     title: 'Hall of Fame & Record Book',
-    body: "The fourth room. IKB Royalty shows the current leaders in every category, alongside the all-time record book \u2014 longest win streaks, biggest underdog hits, the lot. Chase a record and your name goes up there.",
-    position: 'bottom',
+    body: "IKB Royalty shows the current leaders in every category, alongside the all-time record book \u2014 longest win streaks, biggest underdog hits, the lot. Chase a record and your name goes up there.",
   },
+  // Opens Settings rather than spotlighting the hamburger. The menu is a
+  // list of links a player will find on their own; what they will not do
+  // unprompted is set an avatar and a backdrop — and of the 88 accounts that
+  // signed up and went quiet, NOT ONE had set either. A tutorial that ends
+  // having shown someone their own blank profile is a better prompt than one
+  // that points at a button.
   {
-    page: null,
-    targetSelector: '[data-onboarding="hamburger-menu"]',
-    title: 'The Menu',
-    body: 'This is where you\u2019ll find the FAQ, Share IKB with friends, and your profile settings \u2014 where you can update your username, avatar, backdrop, notification preferences, and more.',
-    position: 'bottom',
+    page: '/settings',
+    targetSelector: null,
+    position: 'center',
+    title: 'Customize Your Profile',
+    body: 'Establish your identity on IKB. Upload a profile picture, and choose a backdrop from the library or upload your own. The menu up top is also where the FAQ, Share IKB, notification preferences and the rest of your settings live.',
+    freeScroll: true,
   },
   {
     page: null,
