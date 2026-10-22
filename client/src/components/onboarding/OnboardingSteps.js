@@ -88,7 +88,12 @@ const ONBOARDING_STEPS = [
   {
     page: '/hub?tab=arcade',
     targetSelector: null,
-    position: 'center',
+    // freeScroll, not a centred fullscreen card. Fullscreen dims the whole
+    // page behind a 75% black overlay and parks the card dead centre — so
+    // the step that exists to SHOW the arcade covered it and turned the
+    // lights down on whatever was left. freeScroll drops the overlay
+    // entirely and docks the card right on desktop, bottom on mobile.
+    freeScroll: true,
     title: 'The Arcade',
     // Describes trivia as streak-only, which it has been since the 10 and 20
     // question rounds were removed, and Memory as player photos, which it has
@@ -104,7 +109,7 @@ const ONBOARDING_STEPS = [
   {
     page: '/hall-of-fame',
     targetSelector: null,
-    position: 'center',
+    freeScroll: true,
     title: 'Hall of Fame & Record Book',
     body: "IKB Royalty shows the current leaders in every category, alongside the all-time record book \u2014 longest win streaks, biggest underdog hits, the lot. Chase a record and your name goes up there.",
   },
@@ -117,7 +122,6 @@ const ONBOARDING_STEPS = [
   {
     page: '/settings',
     targetSelector: null,
-    position: 'center',
     title: 'Customize Your Profile',
     body: 'Establish your identity on IKB. Upload a profile picture, and choose a backdrop from the library or upload your own. The menu up top is also where the FAQ, Share IKB, notification preferences and the rest of your settings live.',
     freeScroll: true,
