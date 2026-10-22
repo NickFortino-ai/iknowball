@@ -13,13 +13,37 @@ import { useAuthStore } from '../../stores/authStore'
 // league's own image — same wordmark on top, league name as subtitle, form
 // card slides in below via <Outlet />.
 
+// Sixteen, ORDERED SO NO TWO CONSECUTIVE SHOTS ARE THE SAME SPORT. The hero
+// cycles on a timer, and three ballparks in a row reads as one picture that
+// failed to change.
+//
+// Every one was picked by LOOKING at it, not by resolution or file size. The
+// bar is: a packed house, real light, and the playing surface roughly central
+// so the wordmark sits over the pitch rather than over a crowd. Most of the
+// library fails that — a lot of the NBA set is a beautiful EMPTY arena shot
+// pre-game (Chase Center, TD Garden, Crypto.com), and Arrowhead is an empty
+// bowl. Those are good backdrops and bad heroes.
+//
+// Also deliberately excluded: exteriors (the Superdome night shot is
+// gorgeous, but it has CAESARS SUPERDOME and SUPER BOWL LIX baked into the
+// frame, which fights the wordmark on top of it).
 const IKB_HERO_IMAGES = [
+  'nfl-mile-high.webp',          // orange balloon release — the accent colour, airborne
+  'mlb-wrigley.webp',            // checkerboard outfield, Chicago skyline
+  'nba-msg.webp',                // warm amber ceiling, full house
+  'mlb-dodger.webp',             // World Series at dusk, hills behind
+  'nfl-lambeau.webp',            // 1920x700 — already hero-shaped
   'mlb-globe-life-field.webp',
-  'nba-fiserv.webp',
+  'nba-scotiabank.webp',         // red and orange, live action
+  'mlb-fenway.webp',             // Green Monster, CITGO, the skyline
   'nfl-gillette.webp',
-  'mlb-pnc.webp',
-  'nfl-us-bank.webp',
   'mlb-oracle.webp',
+  'nba-kaseya-center.webp',      // white-out crowd against a dark bowl
+  'mlb-rogers-centre.webp',      // the flag across the outfield
+  'nfl-us-bank.webp',
+  'mlb-pnc.webp',
+  'nfl-metlife-blue.webp',       // 2560x1440, the sharpest in the set
+  'nba-fiserv.webp',
 ].map(getBackdropUrl)
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
