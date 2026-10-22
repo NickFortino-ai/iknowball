@@ -41,7 +41,7 @@ const DIFFICULTIES = [
   // tell two player photos apart. Still listed on mobile rather than hidden,
   // disabled with the reason — a tier you can see exists is a reason to open
   // the app on a laptop.
-  { key: 'expert', label: 'Expert', pairs: 15, desktopOnly: true },
+  { key: 'expert', label: 'Expert', pairs: 20, desktopOnly: true },
 ]
 
 // Matches the `sm` breakpoint the board's column classes already switch on.
@@ -227,9 +227,9 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
   // VIEWPORT HEIGHT and that needs the row count.
   const expertBoard = round?.difficulty === 'expert'
   const wideBoard = round && round.cards.length > 16
-  // Expert is six wide from `sm`. It stays four on a phone so a forced
+  // Expert is EIGHT wide from `sm`. It stays four on a phone so a forced
   // expert round is merely long rather than unreadable.
-  const cols = expertBoard ? 'grid-cols-4 sm:grid-cols-6'
+  const cols = expertBoard ? 'grid-cols-4 sm:grid-cols-8'
     : wideBoard ? 'grid-cols-4 sm:grid-cols-5' : 'grid-cols-4 sm:grid-cols-4'
 
   // A memory board you cannot see all of is not a memory game: you cannot
@@ -244,9 +244,20 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
   // screen is wide relative to its height, which is every desktop and no
   // phone — on mobile the computed width exceeds the page, so nothing
   // changes there.
-  const boardCols = expertBoard ? 6 : wideBoard ? 5 : 4
+  const boardCols = expertBoard ? 8 : wideBoard ? 5 : 4
   const boardRows = round ? Math.ceil(round.cards.length / boardCols) : 1
-  const boardMaxWidth = `min(calc((100dvh - 15rem) / ${boardRows} * ${boardCols}), ${boardCols * 200}px)`
+  // Height decides the card size — the board has to fit one screen — so the
+  // only way to use a wide window is more COLUMNS, not bigger cards. Eight
+  // columns of the same card is a third more board than six.
+  //
+  // Expert also breaks out of the arcade's max-w-7xl: at 8 x 200px the board
+  // wants 1600px and the container would clip it to ~1216, shrinking the
+  // cards on exactly the big screens the tier exists for. 100vw - 4rem keeps
+  // a margin and never exceeds the window.
+  const widthCap = expertBoard
+    ? `min(calc(100vw - 4rem), ${boardCols * 200}px)`
+    : `${boardCols * 200}px`
+  const boardMaxWidth = `min(calc((100dvh - 15rem) / ${boardRows} * ${boardCols}), ${widthCap})`
 
   // ── Setup ─────────────────────────────────────────────────────────────
   if (!round) {
@@ -356,7 +367,12 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
         )}
       </div>
 
-      <div className={`grid ${cols} gap-2 -mx-2 sm:mx-auto`} style={{ maxWidth: boardMaxWidth }}>
+      <div
+        className={`grid ${cols} gap-2 -mx-2 sm:mx-auto`}
+        // width:100% lets the breakout cap above actually apply — without it
+        // the grid is only ever as wide as the container allows.
+        style={{ maxWidth: boardMaxWidth, width: expertBoard ? '100vw' : undefined }}
+      >
         {round.cards.map((card) => {
           const isUp = flipped.includes(card.id) || matched.has(card.id)
           const isMatched = matched.has(card.id)

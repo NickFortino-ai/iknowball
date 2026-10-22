@@ -72,12 +72,18 @@ const TRIVIA_BONUS_PER_SECOND = 0.2
 // which defeats a memory game. So difficulty adds ROWS, and past 10 pairs it
 // has to come from somewhere other than grid size (shorter peek, a single
 // sport so the images look alike).
-// `expert` is DESKTOP ONLY, enforced by the client — 15 pairs is 30 cards,
-// which needs six columns to stay inside one screen, and six columns puts a
-// card under 60px on a phone. The server still accepts it from any device:
-// device detection server-side is guesswork, and the failure mode of a
-// forced expert round on mobile is an unpleasant board, not a broken one.
-const PAIR_COUNTS = { easy: 6, medium: 8, hard: 10, expert: 15 }
+// `expert` is DESKTOP ONLY, enforced by the client — 20 pairs is 40 cards at
+// EIGHT columns, which no phone can show at a readable size. The server still
+// accepts it from any device: device detection server-side is guesswork, and
+// the failure mode of a forced expert round on mobile is an unpleasant board,
+// not a broken one.
+//
+// 40 cards over 8 columns is 5 rows — the same row count a 15-pair/6-column
+// board had. That matters because the board is sized from HEIGHT
+// ((100dvh - 15rem) / rows), so holding rows constant and adding columns
+// buys a third more cards at exactly the same card size. Widening is free;
+// deepening is what shrinks them.
+const PAIR_COUNTS = { easy: 6, medium: 8, hard: 10, expert: 20 }
 
 // Memory deals PEOPLE, not places (Nick, 2026-10-20).
 //
