@@ -62,6 +62,11 @@ function Timer({ startedAt, running }) {
 
 export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
   const [difficulty, setDifficulty] = useState('medium')
+  // Where the grid starts on screen, so the height left for it can be
+  // measured rather than assumed. Re-read on resize and whenever the round
+  // changes, since the header above it can reflow.
+  const boardRef = useRef(null)
+  const [boardTop, setBoardTop] = useState(null)
   // Tracked, not read once: a desktop user who narrows the window should see
   // Expert turn off, and someone who maximises should see it become
   // available without reloading.
@@ -229,6 +234,19 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
   const wideBoard = round && round.cards.length > 16
   // Expert is EIGHT wide from `sm`. It stays four on a phone so a forced
   // expert round is merely long rather than unreadable.
+  useEffect(() => {
+    function measure() {
+      if (!boardRef.current) return
+      // VIEWPORT-relative on purpose: this is compared against
+      // window.innerHeight to find the room left below, so adding scrollY
+      // would subtract the scroll twice and shrink the board as you scroll.
+      setBoardTop(boardRef.current.getBoundingClientRect().top)
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [round?.id, round?.cards?.length])
+
   const cols = expertBoard ? 'grid-cols-4 sm:grid-cols-8'
     : wideBoard ? 'grid-cols-4 sm:grid-cols-5' : 'grid-cols-4 sm:grid-cols-4'
 
@@ -254,10 +272,25 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
   // wants 1600px and the container would clip it to ~1216, shrinking the
   // cards on exactly the big screens the tier exists for. 100vw - 4rem keeps
   // a margin and never exceeds the window.
+  // MEASURED, not guessed. This used to reserve a flat 15rem for everything
+  // above and below the board, which is a number that was right once: the
+  // navbar, the panel padding and the Quit/score row do not actually add up
+  // to 240px, so the board came out short and left a band of dead space
+  // under it on a desktop — visible, and the whole point of the tier is the
+  // pictures being big.
+  //
+  // boardTop is where the grid actually starts, read off the DOM, so the
+  // allowance is exact and follows any chrome change for free.
+  const GUTTER_PX = 20
+  const fallbackHeight = `calc((100dvh - 15rem) / ${boardRows} * ${boardCols})`
+  const measuredHeight = boardTop != null
+    ? `${Math.max(0, (window.innerHeight - boardTop - GUTTER_PX)) / boardRows * boardCols}px`
+    : null
+  const heightCap = measuredHeight || fallbackHeight
   const widthCap = expertBoard
-    ? `min(calc(100vw - 4rem), ${boardCols * 200}px)`
+    ? `min(calc(100vw - 4rem), ${boardCols * 260}px)`
     : `${boardCols * 200}px`
-  const boardMaxWidth = `min(calc((100dvh - 15rem) / ${boardRows} * ${boardCols}), ${widthCap})`
+  const boardMaxWidth = `min(${heightCap}, ${widthCap})`
 
   // ── Setup ─────────────────────────────────────────────────────────────
   if (!round) {
@@ -368,6 +401,7 @@ export default function MemoryGame({ variant = 'all', variantCount, onExit }) {
       </div>
 
       <div
+        ref={boardRef}
         className={`grid ${cols} gap-2 -mx-2 sm:mx-auto`}
         // width:100% lets the breakout cap above actually apply — without it
         // the grid is only ever as wide as the container allows.

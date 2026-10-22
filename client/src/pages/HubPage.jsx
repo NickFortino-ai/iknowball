@@ -399,8 +399,12 @@ export default function HubPage() {
     // have no reason to be narrow — at the Hub's width the room sat in the
     // middle of the screen with a third of the page empty either side, back
     // arrow and title marooned.
+    // pb-32 on mobile clears the bottom tab bar. Desktop has no tab bar, so
+    // that 128px was a dead band under the arcade panel — and the memory
+    // board sizes itself off the room left below it, so the padding was
+    // costing card size as well as looking empty.
     return (
-      <div className="max-w-2xl lg:max-w-7xl mx-auto px-4 lg:px-8 pt-6 pb-32">
+      <div className="max-w-2xl lg:max-w-7xl mx-auto px-4 lg:px-8 pt-6 pb-32 lg:pb-6">
         <ArcadeRoom onExit={() => setHubView('feed')} />
       </div>
     )
