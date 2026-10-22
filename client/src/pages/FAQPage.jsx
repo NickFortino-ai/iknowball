@@ -79,7 +79,17 @@ The multiplier is only available on straight picks in the global competition. It
       },
       {
         q: 'What are player props?',
-        a: 'Props let you predict individual player performances instead of game outcomes. Things like \u201cWill Anthony Edwards score over 27.5 points?\u201d or \u201cWill Gerrit Cole record over 6.5 strikeouts?\u201d Props test deeper sports knowledge beyond just picking winners. I KNOW BALL features multiple player props daily. Tapping a player\u2019s name shows their recent game log and season averages.',
+        a: `Props let you predict individual player performances instead of game outcomes \u2014 things like \u201cWill Anthony Edwards score over 27.5 points?\u201d or \u201cWill Gerrit Cole record over 6.5 strikeouts?\u201d They test deeper sports knowledge than picking winners, and they have their own tab beside Straight and Parlay.
+
+On most markets you don\u2019t have to take the number the book is offering \u2014 you move it. Slide the line to where you think the player lands and the payout moves with it: the further you go from the book\u2019s number, the more it pays if you are right and the more it costs if you are wrong.
+
+A few markets stay as a straight over/under \u2014 3-pointers, blocks, steals, and anytime touchdown. At those volumes moving the line barely changes whether the thing happens, so there is nothing extra to price.
+
+You can stack several predictions on the same player at different lines. The results page groups them into one ladder so you can see where the night actually finished rather than reading five near-identical rows.
+
+Land exactly on your line and the pick pushes \u2014 your stake comes back, and it counts as neither a win nor a loss in your record. The same applies if the player doesn\u2019t play at all.
+
+Tapping a player\u2019s name shows their recent game log and season averages.`,
       },
       {
         q: 'What are futures?',

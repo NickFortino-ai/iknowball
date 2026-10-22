@@ -7,11 +7,15 @@ const ONBOARDING_STEPS = [
     position: 'center',
     buttonText: "Let's Go",
   },
+  // Navigates home rather than spotlighting the logo wherever the player
+  // happens to be standing. The step is about what home IS as much as how to
+  // get back to it, and the tutorial can start from any route — so without
+  // this, the one step naming the home page could be read on top of Picks.
   {
-    page: null,
+    page: '/',
     targetSelector: '[data-onboarding="home-logo"]',
     title: 'Home Button',
-    body: "Tap \"I KNOW BALL\" in the top left to return to your home page from anywhere in the app.",
+    body: "This is your home page \u2014 your leagues, open leagues to join, and the live scoreboard. Tap \"I KNOW BALL\" in the top left to get back here from anywhere in the app.",
     position: 'bottom',
   },
   {
