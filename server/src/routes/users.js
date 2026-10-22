@@ -13,6 +13,7 @@ import {
 import { getPublicPickHistory } from '../services/pickService.js'
 import { applyChosenLine } from '../services/propService.js'
 import { getCrowns, getRecordHolders } from '../services/leaderboardService.js'
+import { NFL_REGULAR_KEY, NFL_PRESEASON_KEY, NFL_FAMILY_KEYS } from '../utils/nflFamily.js'
 
 const router = Router()
 
@@ -177,29 +178,102 @@ router.get('/:id/profile', requireAuth, async (req, res) => {
   const rank = allUsers ? allUsers.findIndex((u) => u.id === id) + 1 : null
 
   // Get sport stats
-  const { data: sportStats } = await supabase
+  const { data: rawSportStats } = await supabase
     .from('user_sport_stats')
     .select('*, sports(key, name)')
     .eq('user_id', id)
 
+  // NFL preseason folds into NFL.
+  //
+  // They are separate rows in `sports` so that fantasy, DFS and prop code
+  // never picks up exhibition games by accident — but that is a plumbing
+  // distinction, and it was leaking into the profile as a category of its
+  // own. There is no preseason leaderboard (leaderboardService already
+  // rolls it up via rollupSportKey), so "#6/11 in NFL Preseason" ranked a
+  // user inside a board that does not exist anywhere else in the app.
+  const { data: nflRegularSport } = await supabase
+    .from('sports')
+    .select('id, key, name')
+    .eq('key', NFL_REGULAR_KEY)
+    .maybeSingle()
+
+  // Fold a list of raw rows into one row per DISPLAY sport.
+  //
+  // Counting stats add. `current_streak` does NOT: it is a live run, and
+  // summing a finished preseason streak onto an active one would invent a
+  // number neither half earned — so the regular season's is kept, and the
+  // preseason's only used when there is no regular row at all. best_streak
+  // is a high-water mark, so max is correct.
+  function foldNflFamily(rows) {
+    const out = []
+    const nflParts = []
+    for (const r of rows || []) {
+      if (NFL_FAMILY_KEYS.includes(r.sports?.key || r._key)) nflParts.push(r)
+      else out.push(r)
+    }
+    if (!nflParts.length) return out
+    const regular = nflParts.find((r) => (r.sports?.key || r._key) === NFL_REGULAR_KEY)
+    const base = regular || nflParts[0]
+    out.push({
+      ...base,
+      // A user with ONLY a preseason row still gets an NFL row — dropping
+      // to the regular-season id would otherwise erase them from the list.
+      sport_id: nflRegularSport?.id || base.sport_id,
+      sports: nflRegularSport
+        ? { key: nflRegularSport.key, name: nflRegularSport.name }
+        : base.sports,
+      total_picks: nflParts.reduce((a, r) => a + (r.total_picks || 0), 0),
+      correct_picks: nflParts.reduce((a, r) => a + (r.correct_picks || 0), 0),
+      total_points: nflParts.reduce((a, r) => a + (r.total_points || 0), 0),
+      current_streak: (regular || base).current_streak || 0,
+      best_streak: nflParts.reduce((a, r) => Math.max(a, r.best_streak || 0), 0),
+    })
+    return out
+  }
+
+  const sportStats = foldNflFamily(rawSportStats)
+
   // Compute per-sport ranks
-  const sportIds = (sportStats || []).map((s) => s.sport_id)
+  const sportIds = sportStats.map((s) => s.sport_id)
   let sportRanks = {}
   if (sportIds.length > 0) {
+    // Pull the preseason rows too, so everyone else's NFL total is folded
+    // the same way before ranking. Ranking merged points against unmerged
+    // ones would place this user against a population that does not exist.
+    const { data: nflPreseasonSport } = await supabase
+      .from('sports')
+      .select('id')
+      .eq('key', NFL_PRESEASON_KEY)
+      .maybeSingle()
+    const rankIds = [...new Set([...sportIds, nflPreseasonSport?.id].filter(Boolean))]
+
     const { data: allSportStats } = await supabase
       .from('user_sport_stats')
-      .select('user_id, sport_id, total_points')
-      .in('sport_id', sportIds)
-      .order('total_points', { ascending: false })
+      .select('user_id, sport_id, total_picks, correct_picks, total_points, current_streak, best_streak')
+      .in('sport_id', rankIds)
+
+    const keyById = new Map()
+    if (nflRegularSport) keyById.set(nflRegularSport.id, NFL_REGULAR_KEY)
+    if (nflPreseasonSport) keyById.set(nflPreseasonSport.id, NFL_PRESEASON_KEY)
+
+    const byUser = new Map()
+    for (const r of allSportStats || []) {
+      if (!byUser.has(r.user_id)) byUser.set(r.user_id, [])
+      byUser.get(r.user_id).push({ ...r, _key: keyById.get(r.sport_id) || null })
+    }
+    const folded = []
+    for (const rows of byUser.values()) folded.push(...foldNflFamily(rows))
 
     for (const sportId of sportIds) {
-      const ranked = (allSportStats || []).filter((s) => s.sport_id === sportId)
+      const ranked = folded
+        .filter((s) => s.sport_id === sportId)
+        .sort((a, b) => (b.total_points || 0) - (a.total_points || 0))
       const pos = ranked.findIndex((s) => s.user_id === id) + 1
       sportRanks[sportId] = { rank: pos, total: ranked.length }
     }
   }
 
-  const enrichedSportStats = (sportStats || []).map((s) => ({
+  const enrichedSportStats = sportStats.map((s) => ({
     ...s,
     sport_rank: sportRanks[s.sport_id]?.rank || null,
     sport_total_users: sportRanks[s.sport_id]?.total || null,
