@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { calculateRiskPoints, calculateRewardPoints } from '../../lib/scoring'
+import { useKeyboardOpen } from '../../hooks/useKeyboardOpen'
 
 function teamName(fullName) {
   if (!fullName) return ''
@@ -17,6 +18,18 @@ function isStillPickable(pick) {
 
 export default function BottomBar({ picks, games, propPicks, profile, onUpdateMultiplier }) {
   const [expanded, setExpanded] = useState(false)
+  // Hidden entirely while the user is typing.
+  //
+  // The bar is pinned to the bottom of the viewport, and with the Keyboard
+  // plugin on `resize: "native"` that bottom MOVES to just above the
+  // keyboard — so searching for a player left the summary parked on top of
+  // the results, which is both ugly and in the way of the thing being
+  // searched for. --kb-inset cannot push it back down because native resize
+  // makes that figure 0.
+  //
+  // Nothing is lost by hiding it: the bar reports a running total, and the
+  // moment the keyboard closes it is back with the same numbers.
+  const keyboardOpen = useKeyboardOpen()
   const [multiplyOn, setMultiplyOn] = useState(false)
   const [tappedGameId, setTappedGameId] = useState(null)
 
@@ -41,6 +54,10 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
   // finishes, so dropping the date filter alone resurfaced a LeBron pick
   // from February. Same guard PropsSection uses to decide what's pickable.
   const propEntries = useMemo(() => (propPicks || []).filter(isStillPickable), [propPicks])
+
+  // After every hook — an early return above useMemo would change the hook
+  // order between renders, which React treats as an error.
+  if (keyboardOpen) return null
 
   // During onboarding, show a placeholder so the tutorial can highlight this element
   if (entries.length === 0 && propEntries.length === 0) {

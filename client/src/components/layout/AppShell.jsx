@@ -38,7 +38,17 @@ export default function AppShell({ children }) {
     // and this guards correctly, and under native WKWebView scrollView zoom
     // scale stays 1 and this is a no-op. The height is re-applied on the
     // next trigger once the user returns to 1x.
-    const zoomed = () => (window.visualViewport?.scale ?? 1) !== 1
+    // Two zoom regimes, two readings.
+    //
+    // visualViewport.scale covers HTML zoom. It stays 1 under WKWebView's
+    // scroll-view zoom, which is the regime the iOS app actually uses — so
+    // on device this guard was blind, the shell re-pinned to a shrunken
+    // innerHeight mid-pinch, and the tab bar rode up with the box it lives
+    // in. MainViewController now reports the scroll view's scale on
+    // window.__nativeZoomScale (KVO, not a delegate steal).
+    const zoomed = () =>
+      (window.visualViewport?.scale ?? 1) !== 1 ||
+      (window.__nativeZoomScale ?? 1) !== 1
     const apply = () => {
       if (zoomed()) return
       if (shellRef.current) shellRef.current.style.height = `${window.innerHeight}px`
