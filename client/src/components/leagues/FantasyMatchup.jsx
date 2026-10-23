@@ -6,6 +6,7 @@ import { useFantasyMatchupLive, useFantasyMatchupWeek, useBlurbPlayerIds, usePla
 import Avatar from '../ui/Avatar'
 import { SkeletonCard } from '../ui/Skeleton'
 import PlayerDetailModal from './PlayerDetailModal'
+import UserProfileModal from '../profile/UserProfileModal'
 import PlayoffBracket from './PlayoffBracket'
 import BlurbDot, { markBlurbSeen } from './BlurbDot'
 import InjuryBadge from '../ui/InjuryBadge'
@@ -173,7 +174,27 @@ function buildStatLine(stats, position) {
   return parts.length ? parts.join(', ') : null
 }
 
-function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayerClick, blurbIds, starterSet, slotLabels, isChampionship, compact = false }) {
+
+// One manager's avatar, tappable.
+//
+// stopPropagation so a tap opens the profile instead of ALSO toggling the
+// roster underneath — the row behind it is the expand/collapse target.
+function ProfileAvatar({ user, onOpenProfile, className }) {
+  if (!user) return <Avatar user={user} size="lg" className={className} />
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onOpenProfile?.(user.id) }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation() }}
+      className="shrink-0 rounded-full hover:opacity-80 active:scale-95 transition"
+      aria-label={`View ${user.display_name || user.username || 'this manager'}'s profile`}
+    >
+      <Avatar user={user} size="lg" className={className} />
+    </button>
+  )
+}
+
+function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onOpenProfile, onPlayerClick, blurbIds, starterSet, slotLabels, isChampionship, compact = false }) {
   const isMyMatchup = matchup.home_user?.id === myId || matchup.away_user?.id === myId
   const isCompleted = matchup.status === 'completed' || weekStatus === 'past'
   const homeWinning = (matchup.home_points || 0) >= (matchup.away_points || 0)
@@ -223,7 +244,20 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
       {/* Tighter padding now that the header is one row — p-4 was sized for
           the old two-row stack and left a lot of dead space around a card
           half the height. */}
-      <button onClick={onToggle} className="w-full px-3 py-2.5 md:px-4 md:py-3 hover:bg-text-primary/5 transition-colors">
+      {/* A div with role="button", not a <button>. The avatars inside are
+          their own buttons (tap through to that manager's profile) and a
+          button inside a button is invalid HTML — browsers drop or reparent
+          the inner one. Same shape FantasyLiveView uses for its rows.
+          role/tabIndex/onKeyDown keep it operable from a keyboard. */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle?.() }
+        }}
+        className="w-full cursor-pointer px-3 py-2.5 md:px-4 md:py-3 hover:bg-text-primary/5 transition-colors text-left"
+      >
         {/* Mobile: one line per team, stacked. The side-by-side layout below
             has to fit two names, two records and two scores across a phone,
             which truncates everything to initials. Stacking gives each team a
@@ -236,7 +270,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
             { user: matchup.away_user, points: matchup.away_points, proj: isCompleted ? aPregame : aProj, winning: !homeWinning },
           ].map((side, i) => (
             <div key={i} className="flex items-center gap-2.5 text-left">
-              <Avatar user={side.user} size="lg" className="!w-9 !h-9 shrink-0" />
+              <ProfileAvatar user={side.user} onOpenProfile={onOpenProfile} className="!w-9 !h-9 shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className={`text-sm font-bold truncate ${isCompleted && side.winning ? 'text-correct' : side.user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
                   {side.user?.fantasy_team_name || side.user?.display_name || side.user?.username}
@@ -295,7 +329,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
           )}
 
           <div className="flex items-center gap-2">
-            <Avatar user={matchup.home_user} size="lg" className="!w-11 !h-11 shrink-0" />
+            <ProfileAvatar user={matchup.home_user} onOpenProfile={onOpenProfile} className="!w-11 !h-11 shrink-0" />
             {matchup.home_user?.record && (
               <span className="text-[11px] text-white shrink-0">
                 {matchup.home_user.record.wins}-{matchup.home_user.record.losses}
@@ -327,7 +361,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 {matchup.away_user.record.wins}-{matchup.away_user.record.losses}
               </span>
             )}
-            <Avatar user={matchup.away_user} size="lg" className="!w-11 !h-11 shrink-0" />
+            <ProfileAvatar user={matchup.away_user} onOpenProfile={onOpenProfile} className="!w-11 !h-11 shrink-0" />
           </div>
 
           <div className="flex items-start justify-between gap-2 mt-0.5">
@@ -357,7 +391,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
           {/* Avatars sit on the OUTSIDE edges, each team's text reading away
               from the centre — home left-aligned beside its avatar, away
               right-aligned beside its own. The scores hold the middle. */}
-          <Avatar user={matchup.home_user} size="lg" className="!w-10 !h-10 md:!w-12 md:!h-12 shrink-0" />
+          <ProfileAvatar user={matchup.home_user} onOpenProfile={onOpenProfile} className="!w-10 !h-10 md:!w-12 md:!h-12 shrink-0" />
 
           <div className="flex-1 min-w-0 text-left">
             <div className={`text-sm md:text-lg font-bold truncate ${isCompleted && homeWinning ? 'text-correct' : matchup.home_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
@@ -413,7 +447,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
             )}
           </div>
 
-          <Avatar user={matchup.away_user} size="lg" className="!w-10 !h-10 md:!w-12 md:!h-12 shrink-0" />
+          <ProfileAvatar user={matchup.away_user} onOpenProfile={onOpenProfile} className="!w-10 !h-10 md:!w-12 md:!h-12 shrink-0" />
         </div>
 
         {isCompleted && hasScores && (
@@ -472,7 +506,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
             </div>
           )
         })() : null)}
-      </button>
+      </div>
 
       {/* Expanded roster comparison */}
       {isExpanded && matchup.home_roster && (
@@ -845,6 +879,7 @@ export default function FantasyMatchup({ league, fantasySettings }) {
   const [matchupView, setMatchupView] = useState('mine') // 'mine' | 'all' | 'bracket'
   const [expandedMatchups, setExpandedMatchups] = useState(new Set())
   const [detailPlayerId, setDetailPlayerId] = useState(null)
+  const [profileUserId, setProfileUserId] = useState(null)
   const { data: blurbIdsList } = useBlurbPlayerIds(league.id)
   const blurbIds = useMemo(
     () => new Map((blurbIdsList || []).map((r) => [r.player_id, r.latest_id])),
@@ -1020,6 +1055,7 @@ export default function FantasyMatchup({ league, fantasySettings }) {
               myId={profile?.id}
               weekStatus={weekStatus}
               isExpanded={!expandedMatchups.has('my-collapsed')}
+              onOpenProfile={setProfileUserId}
               onToggle={() => setExpandedMatchups((prev) => {
                 const next = new Set(prev)
                 if (next.has('my-collapsed')) next.delete('my-collapsed')
@@ -1076,6 +1112,7 @@ export default function FantasyMatchup({ league, fantasySettings }) {
               myId={profile?.id}
               weekStatus={weekStatus}
               isExpanded={isExpanded}
+              onOpenProfile={setProfileUserId}
               onToggle={() => setExpandedMatchups((prev) => {
                 const next = new Set(prev)
                 if (next.has(matchup.id)) next.delete(matchup.id)
@@ -1095,6 +1132,10 @@ export default function FantasyMatchup({ league, fantasySettings }) {
       {/* Bracket view */}
       {matchupView === 'bracket' && (
         <PlayoffBracket leagueId={league.id} />
+      )}
+
+      {profileUserId && (
+        <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
       )}
 
       {detailPlayerId && (
