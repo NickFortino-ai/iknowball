@@ -5,6 +5,7 @@ import { useConnections } from '../hooks/useConnections'
 import { useSearchUsers } from '../hooks/useInvitations'
 import { useAuth } from '../hooks/useAuth'
 import Avatar from '../components/ui/Avatar'
+import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { timeAgo } from '../lib/time'
 
@@ -32,6 +33,7 @@ function InlineThread({ partnerId, profile }) {
   const sendMessage = useSendMessage()
   const markRead = useMarkThreadRead()
   const [input, setInput] = useState('')
+  const [profileOpen, setProfileOpen] = useState(false)
   const messagesEndRef = useRef(null)
   const didScroll = useRef(false)
 
@@ -63,12 +65,27 @@ function InlineThread({ partnerId, profile }) {
       {/* Header */}
       {partner && (
         <div className="flex items-center gap-3 px-4 py-3 border-b border-text-primary/10">
-          <Avatar user={partner} size="md" />
+          {/* The header is a plain div, so the avatar can simply BE a button —
+              no nesting problem to work around here. partnerId is used rather
+              than partner.id: it is what the thread was opened with and is
+              present even on the render before the payload lands. */}
+          <button
+            type="button"
+            onClick={() => setProfileOpen(true)}
+            className="shrink-0 rounded-full hover:opacity-80 active:scale-95 transition"
+            aria-label={`View ${partner.display_name || partner.username}'s profile`}
+          >
+            <Avatar user={partner} size="md" />
+          </button>
           <div className="min-w-0">
             <div className="text-sm font-semibold truncate">{partner.display_name || partner.username}</div>
             <div className="text-xs text-text-muted">@{partner.username}</div>
           </div>
         </div>
+      )}
+
+      {profileOpen && partnerId && (
+        <UserProfileModal userId={partnerId} onClose={() => setProfileOpen(false)} />
       )}
 
       {/* Messages */}

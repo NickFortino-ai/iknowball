@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useThread, useSendMessage, useMarkThreadRead, useRealtimeMessages } from '../hooks/useMessages'
 import { useAuth } from '../hooks/useAuth'
 import Avatar from '../components/ui/Avatar'
+import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 
 function formatTime(dateStr) {
@@ -31,6 +32,7 @@ export default function MessageThreadPage() {
   const sendMessage = useSendMessage()
   const markRead = useMarkThreadRead()
   const [input, setInput] = useState('')
+  const [profileOpen, setProfileOpen] = useState(false)
   const [isMultiline, setIsMultiline] = useState(false)
   const messagesEndRef = useRef(null)
   const scrollContainerRef = useRef(null)
@@ -120,8 +122,18 @@ export default function MessageThreadPage() {
         </button>
         {partner && (
           <div className="flex-1 flex flex-col items-center min-w-0">
-            <Avatar user={partner} size="lg" />
+            <button
+              type="button"
+              onClick={() => setProfileOpen(true)}
+              className="rounded-full hover:opacity-80 active:scale-95 transition"
+              aria-label={`View ${partner.display_name || partner.username}'s profile`}
+            >
+              <Avatar user={partner} size="lg" />
+            </button>
             <div className="text-sm font-semibold text-text-primary mt-1 truncate">{partner.display_name || partner.username}</div>
+            {profileOpen && (
+              <UserProfileModal userId={partnerId} onClose={() => setProfileOpen(false)} />
+            )}
           </div>
         )}
         {/* Spacer to balance the back button */}
