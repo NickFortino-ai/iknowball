@@ -1220,7 +1220,34 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
         if (section) statMap[`${section}.${l}`] = v
       })
       const parsed = colParser(statMap)
-      const fpts = fptsFn ? fptsFn(sport === 'baseball_mlb' ? statMap : parsed) : null
+      // Basketball needs TRANSLATING, not just passing along.
+      //
+      // NBA_GAME_COLS emits short keys (pts/reb/ast/stl/blk/to) because that
+      // is what the table renders. calculate{NBA,WNBA}FantasyPoints read long
+      // ones (points/rebounds/assists/...). Not a single name matched, so
+      // every lookup fell through to `|| 0` and the function dutifully summed
+      // nothing — FPTS was 0.0 on every basketball row ever rendered,
+      // regardless of the line beside it. An 8/3/3 night scores 16.1.
+      //
+      // `threes` is ESPN's made-attempted string ("4-9"), so the made half
+      // has to be split out; handing the whole string to a multiplication
+      // would have produced NaN rather than a wrong number, which at least
+      // would have been noticed.
+      //
+      // MLB is untouched: it passes the raw statMap, whose ESPN labels are
+      // what the MLB scorers already read.
+      const toFptsInput = (parsedRow) => ({
+        points: parsedRow.pts || 0,
+        rebounds: parsedRow.reb || 0,
+        assists: parsedRow.ast || 0,
+        steals: parsedRow.stl || 0,
+        blocks: parsedRow.blk || 0,
+        turnovers: parsedRow.to || 0,
+        three_pointers_made: parseInt(String(parsedRow.threes ?? '0').split('-')[0], 10) || 0,
+      })
+      const isBasketball = sport === 'basketball_nba' || sport === 'basketball_wnba'
+      const fptsArg = sport === 'baseball_mlb' ? statMap : isBasketball ? toFptsInput(parsed) : parsed
+      const fpts = fptsFn ? fptsFn(fptsArg) : null
       let week = null
       if (detail.week != null && Number.isFinite(Number(detail.week))) {
         // ESPN states the week outright. Prefer it: it needs no date math and
