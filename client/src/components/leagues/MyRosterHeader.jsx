@@ -13,16 +13,28 @@
 // actually under way a real 0.0 is honest — someone is playing and has not
 // scored yet — and hiding it there would be worse, because the number would
 // vanish and reappear as points landed.
-export default function MyRosterHeader({ livePoints = 0, started = false }) {
+//
+// Colour follows the convention already used on the slot borders and the
+// Live tab rows: accent while in progress, correct once everything is done.
+// Orange reads as "still moving", green as "settled" — and because the Live
+// tab outlines a final roster in correct, a header that went the other way
+// would disagree with the border drawn around the same row.
+export default function MyRosterHeader({ livePoints = 0, status }) {
+  const started = status === 'live' || status === 'final'
+  const isFinal = status === 'final'
   return (
     <div className="px-4 py-3 border-b border-text-primary/10 flex items-center justify-between gap-3">
       <h3 className="text-sm font-semibold text-text-primary">My Roster</h3>
       {started && (
         <div className="flex items-baseline gap-1.5 shrink-0">
           <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
-            Live
+            {isFinal ? 'Final' : 'Live'}
           </span>
-          <span className="font-display text-lg text-accent leading-none tabular-nums">
+          <span
+            className={`font-display text-lg leading-none tabular-nums ${
+              isFinal ? 'text-correct' : 'text-accent'
+            }`}
+          >
             {(Math.round(livePoints * 10) / 10).toFixed(1)}
           </span>
         </div>
