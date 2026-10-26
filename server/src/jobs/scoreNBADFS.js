@@ -68,7 +68,7 @@ export async function fetchCompletedGameStats(date) {
   // this sport. These jobs run on a fixed cadence year-round, so in the
   // offseason every cycle was a wasted request. See hasGamesOnDate.
   if (!(await hasGamesOnDate('basketball_nba', date))) {
-    return { playerStats: [], allFinal: true, hasGames: false }
+    return { playerStats: [], allFinal: true, hasGames: false, dnpPlayerIds: new Set() }
   }
   let events
   try {
@@ -78,13 +78,15 @@ export async function fetchCompletedGameStats(date) {
     events = data.events || []
   } catch (err) {
     logger.error({ err, date }, 'Failed to fetch ESPN NBA scoreboard for DFS scoring')
-    return { playerStats: [], allFinal: false, hasGames: false }
+    return { playerStats: [], allFinal: false, hasGames: false, dnpPlayerIds: new Set() }
   }
 
-  if (!events.length) return { playerStats: [], allFinal: true, hasGames: false }
+  if (!events.length) return { playerStats: [], allFinal: true, hasGames: false, dnpPlayerIds: new Set() }
 
   let allFinal = true
   const playerStats = []
+  // espn ids ESPN listed but who logged no minutes — see the DNP skip below.
+  const dnpPlayerIds = new Set()
 
   for (const event of events) {
     // Each game is wrapped in its own try/catch — a malformed box score for one
@@ -136,8 +138,16 @@ export async function fetchCompletedGameStats(date) {
             const mins = statMap['MIN'] || '0'
             const minsPlayed = parseInt(mins) || 0
 
-            // Skip DNPs
-            if (minsPlayed === 0 && (mins === '0' || mins === '--' || !mins)) continue
+            // Skip DNPs — they have nothing to score. Record the id, though:
+            // ESPN DOES list a player who sat, so "absent from playerStats"
+            // means one of two very different things, and only this set can
+            // tell them apart. verifyStatCoverage was reading every absence
+            // as a missing upstream row and emailing hourly about players
+            // who had simply been held out.
+            if (minsPlayed === 0 && (mins === '0' || mins === '--' || !mins)) {
+              dnpPlayerIds.add(String(espnId))
+              continue
+            }
 
             playerStats.push({
               espnPlayerId: espnId,
@@ -162,7 +172,7 @@ export async function fetchCompletedGameStats(date) {
     }
   }
 
-  return { playerStats, allFinal, hasGames: true }
+  return { playerStats, allFinal, hasGames: true, dnpPlayerIds }
 }
 
 /**

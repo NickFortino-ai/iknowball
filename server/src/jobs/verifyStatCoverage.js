@@ -72,10 +72,16 @@ async function verifyAndHealContest(contest, date) {
   // A pick with no box-score row is only evidence of a GAP once the game
   // it belongs to is over.
   let allFinal = true
+  // Players ESPN listed for a finished game who logged no minutes. The
+  // fetchers drop them from playerStats — correctly, there is nothing to
+  // score — which left this job unable to tell "sat out" from "we never got
+  // the data". Only the first is normal, and it was being emailed hourly.
+  let dnpPlayerIds = new Set()
   try {
     const result = await contest.fetchUpstream(date)
     upstream = result.playerStats || []
     allFinal = result.allFinal !== false
+    dnpPlayerIds = result.dnpPlayerIds || new Set()
   } catch (err) {
     logger.error({ err: err.message, contest: contest.label, date }, 'Upstream fetch failed during verify')
     return { picksCount: picks.length, healed: [], unfixable: [], error: err.message }
@@ -98,6 +104,8 @@ async function verifyAndHealContest(contest, date) {
   // Picks skipped because their slate is still in progress. Logged, not
   // emailed — it is the normal state of an evening, not a fault.
   let pendingGames = 0
+  // Picks on players who were listed but did not play. Logged, never emailed.
+  let dnpCount = 0
   // Dedup picks by espn_player_id so we don't fix the same player N
   // times — the stats table is keyed once per player per date.
   const seenStatsFix = new Set()
@@ -108,6 +116,14 @@ async function verifyAndHealContest(contest, date) {
     const ourVal = Number(pick[contest.pickStatColumn]) || 0
 
     if (upstreamVal == null) {
+      // A player ESPN listed but who did not play. His real stat line IS
+      // zero, so the pick is already right and there is nothing to heal or
+      // report — the only bug was calling it a gap. Counted so the log still
+      // accounts for every pick.
+      if (dnpPlayerIds.has(String(pick.espn_player_id))) {
+        dnpCount++
+        continue
+      }
       // Healing still runs below for players whose games DID finish — this
       // only withholds the alarm. On a mixed slate a genuine gap waits for
       // the last game to end and is caught on the next hourly pass, which
@@ -170,7 +186,12 @@ async function verifyAndHealContest(contest, date) {
       'Stat coverage: slate still in progress, holding gap report until every game is final')
   }
 
-  return { picksCount: picks.length, healed, unfixable, pendingGames }
+  if (dnpCount) {
+    logger.info({ contest: contest.label, date, dnpCount },
+      'Stat coverage: picks on players who did not play; already scored zero, not a gap')
+  }
+
+  return { picksCount: picks.length, healed, unfixable, pendingGames, dnpCount }
 }
 
 export async function verifyStatCoverage() {
