@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react'
-import { useNflDfsPlayers, useNflDfsRoster, useSaveNflDfsRoster, useSubmitNflDfsRoster, useFantasySettings, useFantasyWeekProjections } from '../../hooks/useLeagues'
+import { useNflDfsPlayers, useNflDfsRoster, useSaveNflDfsRoster, useSubmitNflDfsRoster, useFantasySettings, useFantasyWeekProjections, useNflDfsLive } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import PlayerHeadshot from '../ui/PlayerHeadshot'
 import InjuryBadge from '../ui/InjuryBadge'
 import PlayerDetailModal from './PlayerDetailModal'
+import MyRosterHeader from './MyRosterHeader'
 import { timeAgo } from '../../lib/time'
 
 const SLOTS = [
@@ -146,6 +147,15 @@ export default function NflSalaryCapView({ league }) {
   const remaining = salaryCap - totalSalary
   const filledCount = Object.values(lineup).filter(Boolean).length
 
+  // Live week total, read from the SAME endpoint the Live tab renders rather
+  // than summed locally off the roster rows. Those two bases disagree: the
+  // roster locks a player on kickoff time, while /dfs/live scores on ESPN
+  // game status, so a local sum would drift from the Live tab for any game
+  // where the two don't line up. One source, one number.
+  const liveQuery = useNflDfsLive(league.id, currentWeek, season)
+  const myLive = liveQuery.data?.members?.find((m) => m.user_id === profile?.id)
+  const livePoints = myLive?.total_points || 0
+
   // Filter available players. Mirrors the NBA DFS pattern: by default
   // exclude players marked Out / IR so a user can't accidentally roster
   // an inactive (whose salary still reflects healthy-FPPG pricing); the
@@ -261,9 +271,7 @@ export default function NflSalaryCapView({ league }) {
 
         {/* My Roster */}
         <div className="rounded-xl border border-text-primary/20 overflow-hidden mb-4">
-          <div className="px-4 py-3 border-b border-text-primary/10">
-            <h3 className="text-sm font-semibold text-text-primary">My Roster</h3>
-          </div>
+          <MyRosterHeader livePoints={livePoints} />
           {SLOTS.map((slot) => {
             const player = lineup[slot.key]
             const isLocked = player?.is_locked

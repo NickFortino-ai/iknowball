@@ -6,6 +6,7 @@ import InjuryBadge from '../ui/InjuryBadge'
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import MyRosterHeader from './MyRosterHeader'
 import Avatar from '../ui/Avatar'
 import UserProfileModal from '../profile/UserProfileModal'
 import { todaySportsDay, tomorrowSportsDay, addDaysSportsDay, leagueStartSportsDay, leagueEndSportsDay } from '../../lib/sportsDay'
@@ -322,6 +323,15 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
     Object.values(roster).every((p) => p && getPlayerGameState(p) !== 'upcoming')
   const isViewMode = hasSavedRoster && !editing
 
+  // Live slate total, from the same endpoint the Live tab renders — see
+  // NflSalaryCapView for why this is not summed locally off the roster rows.
+  // Worth more here than in the other three: the MLB roster rows show salary
+  // only, no per-player points, so this is the one place a score appears
+  // outside the Live tab.
+  const rosterLiveQuery = useMlbDfsLive(league.id, date)
+  const myLive = rosterLiveQuery.data?.members?.find((m) => m.user_id === profile?.id)
+  const livePoints = myLive?.total_points || 0
+
   const filteredPlayers = useMemo(() => {
     if (!players) return []
     const now = new Date()
@@ -504,9 +514,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
 
         {/* My Roster */}
         <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden mb-4">
-          <div className="px-4 py-3 border-b border-text-primary/10">
-            <h3 className="text-sm font-semibold text-text-primary">My Roster</h3>
-          </div>
+          <MyRosterHeader livePoints={livePoints} />
           {SLOTS.map((slot) => {
             const rosterPlayer = roster[slot.key]
             // Refresh injury status / headshot from latest players data, but

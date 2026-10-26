@@ -6,6 +6,7 @@ import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 import UserProfileModal from '../profile/UserProfileModal'
+import MyRosterHeader from './MyRosterHeader'
 import { todaySportsDay, tomorrowSportsDay, addDaysSportsDay, leagueStartSportsDay, leagueEndSportsDay } from '../../lib/sportsDay'
 
 // WNBA roster: 9 slots (2 G, 2 F, 1 C, 4 UTIL). Per migration 214,
@@ -593,6 +594,12 @@ export default function WnbaDfsView({ league, tab = 'roster' }) {
     Object.values(roster).every((p) => p && getPlayerGameState(p) !== 'upcoming')
   const isViewMode = hasSavedRoster && !editing
 
+  // Live slate total, from the same endpoint the Live tab renders — see
+  // NflSalaryCapView for why this is not summed locally off the roster rows.
+  const rosterLiveQuery = useWnbaDfsLive(league.id, date)
+  const myLive = rosterLiveQuery.data?.members?.find((m) => m.user_id === profile?.id)
+  const livePoints = myLive?.total_points || 0
+
   const filteredPlayers = useMemo(() => {
     if (!players) return []
     const now = new Date()
@@ -761,9 +768,7 @@ export default function WnbaDfsView({ league, tab = 'roster' }) {
 
       {/* My Roster */}
       <div className="rounded-xl border border-text-primary/20 overflow-hidden mb-4">
-        <div className="px-4 py-3 border-b border-text-primary/10">
-          <h3 className="text-sm font-semibold text-text-primary">My Roster</h3>
-        </div>
+        <MyRosterHeader livePoints={livePoints} />
         {SLOTS.map((slot) => {
           const rosterPlayer = roster[slot.key]
           // Refresh injury status from latest players data, but preserve
