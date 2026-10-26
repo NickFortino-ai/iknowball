@@ -649,10 +649,16 @@ export default function Navbar() {
                           const route = getNotificationRoute(n)
                           const isSurvivorWin = n.type === 'survivor_win'
                           const isLeagueWin = n.type === 'league_win'
-                          const isSurvivorStreakEnd = n.type === 'survivor_result' && n.metadata?.streakEnded
+                          // NOT a modal trigger any more. `streakEnded` has exactly one
+                          // producer — survivorService sets it alongside
+                          // outcome:'eliminated' — so this only ever fired on a LOSS,
+                          // and routed it into LeagueWinModal. See the note there.
+                          // Eliminations now fall through to `route`, which carries
+                          // leagueId and lands on the league page where the real
+                          // "You were eliminated in Week N" panel already is.
                           const hotTakeId = n.metadata?.hotTakeId || (n.metadata?.targetType === 'hot_take' ? n.metadata.targetId : null)
                           const isStreakMilestone = n.type === 'streak_milestone' && n.metadata?.streakId
-                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || n.metadata?.futuresPickId || hotTakeId || isSurvivorWin || (isLeagueWin && n.metadata?.leagueId) || isSurvivorStreakEnd || isStreakMilestone || route
+                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || n.metadata?.futuresPickId || hotTakeId || isSurvivorWin || (isLeagueWin && n.metadata?.leagueId) || isStreakMilestone || route
                           return (
                             <div
                               key={n.id}
@@ -684,11 +690,6 @@ export default function Navbar() {
                                 else if (isLeagueWin) {
                                   if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}?tab=Standings`)
                                   if (n.metadata?.isWinner !== false) setLeagueWinData({ mode: 'win', ...n.metadata })
-                                  setShowInvites(false)
-                                }
-                                else if (isSurvivorStreakEnd) {
-                                  if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
-                                  setLeagueWinData({ mode: 'streak_ended', ...n.metadata })
                                   setShowInvites(false)
                                 }
                                 else if (route) { navigate(route); setShowInvites(false) }
@@ -1196,10 +1197,9 @@ export default function Navbar() {
                       const route = getNotificationRoute(n)
                       const isSurvivorWin = n.type === 'survivor_win'
                       const isLeagueWin = n.type === 'league_win'
-                      const isSurvivorStreakEnd = n.type === 'survivor_result' && n.metadata?.streakEnded
                       const isStreakMilestone = n.type === 'streak_milestone' && n.metadata?.streakId
                       const hotTakeId = n.metadata?.hotTakeId || (n.metadata?.targetType === 'hot_take' ? n.metadata.targetId : null)
-                      const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || n.metadata?.futuresPickId || hotTakeId || isSurvivorWin || isLeagueWin || isSurvivorStreakEnd || isStreakMilestone || route
+                      const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || n.metadata?.futuresPickId || hotTakeId || isSurvivorWin || isLeagueWin || isStreakMilestone || route
                       return (
                         <div
                           key={n.id}
@@ -1235,11 +1235,6 @@ export default function Navbar() {
                             else if (isLeagueWin) {
                               if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}?tab=Standings`)
                               if (n.metadata?.isWinner !== false) setLeagueWinData({ mode: 'win', ...n.metadata })
-                              setShowInvites(false)
-                            }
-                            else if (isSurvivorStreakEnd) {
-                              if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
-                              setLeagueWinData({ mode: 'streak_ended', ...n.metadata })
                               setShowInvites(false)
                             }
                             else if (route) { navigate(route); setShowInvites(false) }

@@ -10,8 +10,27 @@ export default function LeagueWinModal({ data, onClose }) {
 
   if (!data) return null
 
-  // Backward compat: existing survivor_win notifications have no format in metadata
-  const format = data.format || (data.outlasted != null ? 'survivor' : 'pickem')
+  // A celebration is the FALLBACK branch of this component, which means any
+  // shape it does not recognise gets congratulated. That is how an
+  // elimination notification — routed here in error — rendered
+  // "Congratulations! You won the league!" over a page that correctly said
+  // the user had been eliminated in week 7, with "+undefined" points.
+  //
+  // The routing bug is fixed in Navbar, but the default is the real hazard:
+  // a modal whose unknown-input behaviour is to claim you won. Anything
+  // carrying no points is not a win we can describe, so show nothing rather
+  // than invent one.
+  if (data.points == null) return null
+
+  // Backward compat: existing survivor_win notifications have no format in
+  // metadata. `mode` is consulted BEFORE falling back to the outlasted
+  // sniff, because outlasted only ever appears on a WIN — so a survivor
+  // notification without it was classified as pickem, skipped every
+  // survivor branch, and landed in the generic congratulations below.
+  const format = data.format
+    || ((data.mode === 'streak_ended' || data.mode === 'settled' || data.outlasted != null)
+      ? 'survivor'
+      : 'pickem')
   const isSurvivorWin = format === 'survivor' && data.mode === 'win'
   const isSurvivorStreakEnd = format === 'survivor' && data.mode === 'streak_ended'
   const isSurvivorSettled = format === 'survivor' && data.mode === 'settled'
