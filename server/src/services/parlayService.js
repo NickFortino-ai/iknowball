@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { americanToMultiplier } from '../utils/scoring.js'
-import { BASE_RISK_POINTS } from '../config/constants.js'
+import { BASE_RISK_POINTS, MAX_PARLAY_MULTIPLIER } from '../config/constants.js'
 
 export async function createParlay(userId, legs) {
   // Validate leg count
@@ -133,6 +133,11 @@ export async function createParlay(userId, legs) {
       odds_at_submission: odds || null,
     })
   }
+
+  // Cap before the reward is derived, so the stored multiplier and the stored
+  // reward always agree. The settle path applies the same ceiling to the same
+  // product — see trySettleParlay.
+  combinedMultiplier = Math.min(combinedMultiplier, MAX_PARLAY_MULTIPLIER)
 
   const rewardPoints = Math.max(1, Math.round(BASE_RISK_POINTS * (combinedMultiplier - 1)))
 

@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { usePickStore } from '../../stores/pickStore'
 import { useCreateParlay } from '../../hooks/useParlays'
-import { americanToMultiplier, formatOdds, BASE_RISK_POINTS } from '../../lib/scoring'
+import { americanToMultiplier, formatOdds, BASE_RISK_POINTS, MAX_PARLAY_MULTIPLIER } from '../../lib/scoring'
 import { toast } from '../ui/Toast'
 import { triggerHaptic } from '../../lib/haptics'
 
@@ -22,6 +22,11 @@ export default function ParlaySlip() {
     const decimalOdds = odds ? 1 + americanToMultiplier(odds) : 2
     combinedMultiplier *= decimalOdds
   }
+  // Show the capped figure, not the raw product. The slip used to display the
+  // uncapped number right up to the moment the server rejected it — an 11-leg
+  // MLS slate advertised 9,867,763.62x and then failed to lock at all.
+  const capped = combinedMultiplier > MAX_PARLAY_MULTIPLIER
+  combinedMultiplier = Math.min(combinedMultiplier, MAX_PARLAY_MULTIPLIER)
   const reward = Math.max(1, Math.round(BASE_RISK_POINTS * (combinedMultiplier - 1)))
 
   async function handleSubmit() {
@@ -58,6 +63,11 @@ export default function ParlaySlip() {
             <span className="text-accent text-xs font-bold">
               {combinedMultiplier.toFixed(2)}x
             </span>
+            {capped && (
+              <span className="text-text-muted text-[10px] uppercase tracking-wide">
+                Max payout
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <span className="text-incorrect">-{BASE_RISK_POINTS}</span>

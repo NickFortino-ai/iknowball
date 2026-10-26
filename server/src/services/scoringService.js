@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from './notificationService.js'
 import { checkRecordAfterSettle } from './recordService.js'
-import { BASE_RISK_POINTS } from '../config/constants.js'
+import { BASE_RISK_POINTS, MAX_PARLAY_MULTIPLIER } from '../config/constants.js'
 import { americanToMultiplier } from '../utils/scoring.js'
 import { fetchAll as paginate } from '../utils/fetchAll.js'
 import { resolvePickStake } from '../utils/resolvePickStake.js'
@@ -360,6 +360,13 @@ export async function trySettleParlay(parlayId) {
     const submissionMultiplier = leg.odds_at_submission ? 1 + americanToMultiplier(leg.odds_at_submission) : (leg.multiplier_at_lock || 2)
     combinedMultiplier *= submissionMultiplier
   }
+
+  // Same ceiling as submission. Applied here too because this recomputes the
+  // product from scratch off odds_at_submission rather than reading the stored
+  // combined_multiplier — without it, the ~21 tickets locked above 1000x
+  // before the cap existed would still pay their original headline number if
+  // one ever landed.
+  combinedMultiplier = Math.min(combinedMultiplier, MAX_PARLAY_MULTIPLIER)
 
   const rewardPoints = Math.max(1, Math.round(BASE_RISK_POINTS * (combinedMultiplier - 1)))
   const pointsEarned = rewardPoints
