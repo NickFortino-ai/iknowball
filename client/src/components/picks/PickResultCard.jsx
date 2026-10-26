@@ -91,14 +91,23 @@ export default function PickResultCard({ pick, game, totalCounts }) {
             <span className="text-sm text-text-secondary">Picked</span>
             <span className="text-sm font-semibold text-text-primary truncate">{pickedTeam}</span>
           </div>
-          {pick.odds_at_pick != null && (
-            <span className="text-xs text-text-muted shrink-0">{formatOdds(pick.odds_at_pick)}</span>
-          )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {pick.odds_at_pick != null && (
+              <span className="text-xs text-text-muted">{formatOdds(pick.odds_at_pick)}</span>
+            )}
+            {/* Beside the odds rather than beside the points, because this row
+                renders in every state while the points line only appears once
+                the pick settles — a multiplied pick showed no multiplier at
+                all while its game was live, which is exactly when someone is
+                watching it. */}
+            {pick.multiplier > 1 && (
+              <span className="text-xs font-bold text-accent">{pick.multiplier}x</span>
+            )}
+          </div>
         </div>
         {isSettled && pick.points_earned != null && (
           <div className={`text-center text-lg font-display font-bold mt-2 ${ptsColor}`}>
             {pick.points_earned > 0 ? '+' : ''}{pick.points_earned} pts
-            {pick.multiplier > 1 && <span className="text-xs text-accent ml-2">({pick.multiplier}x)</span>}
           </div>
         )}
       </div>

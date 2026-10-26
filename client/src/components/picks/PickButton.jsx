@@ -25,7 +25,7 @@ function PickLogo({ team, sportKey }) {
   }} />
 }
 
-export default function PickButton({ team, odds, score, isLive, state = 'default', onClick, disabled, sportKey, rank }) {
+export default function PickButton({ team, odds, score, isLive, state = 'default', onClick, disabled, sportKey, rank, multiplier = 1 }) {
   const style = stateStyles[state] || stateStyles.default
   const hasResult = score != null
   const hasLogo = !!getTeamLogoUrl(team, sportKey)
@@ -61,7 +61,7 @@ export default function PickButton({ team, odds, score, isLive, state = 'default
           : 'text-white'
         }`}>{score}</div>
       ) : (
-        <OddsDisplay odds={odds} isSelected={state === 'selected'} small={hasLogo} />
+        <OddsDisplay odds={odds} isSelected={state === 'selected'} small={hasLogo} multiplier={multiplier} />
       )}
     </button>
   )

@@ -114,6 +114,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
             disabled={isLocked || isSubmitting}
             onClick={(e) => handleClick('away', e)}
             sportKey={sportKey}
+            multiplier={userPick?.picked_team === 'away' ? (userPick.multiplier || 1) : 1}
           />
           {isFinal && (
             <div className="text-center text-xs text-text-muted mt-1">
@@ -137,6 +138,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
             disabled={isLocked || isSubmitting}
             onClick={(e) => handleClick('home', e)}
             sportKey={sportKey}
+            multiplier={userPick?.picked_team === 'home' ? (userPick.multiplier || 1) : 1}
           />
           {isFinal && (
             <div className="text-center text-xs text-text-muted mt-1">
