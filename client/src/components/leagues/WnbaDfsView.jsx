@@ -599,6 +599,7 @@ export default function WnbaDfsView({ league, tab = 'roster' }) {
   const rosterLiveQuery = useWnbaDfsLive(league.id, date)
   const myLive = rosterLiveQuery.data?.members?.find((m) => m.user_id === profile?.id)
   const livePoints = myLive?.total_points || 0
+  const anyStarted = !!myLive && myLive.status !== 'upcoming'
 
   const filteredPlayers = useMemo(() => {
     if (!players) return []
@@ -768,7 +769,7 @@ export default function WnbaDfsView({ league, tab = 'roster' }) {
 
       {/* My Roster */}
       <div className="rounded-xl border border-text-primary/20 overflow-hidden mb-4">
-        <MyRosterHeader livePoints={livePoints} />
+        <MyRosterHeader livePoints={livePoints} started={anyStarted} />
         {SLOTS.map((slot) => {
           const rosterPlayer = roster[slot.key]
           // Refresh injury status from latest players data, but preserve

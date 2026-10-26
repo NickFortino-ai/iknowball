@@ -155,6 +155,7 @@ export default function NflSalaryCapView({ league }) {
   const liveQuery = useNflDfsLive(league.id, currentWeek, season)
   const myLive = liveQuery.data?.members?.find((m) => m.user_id === profile?.id)
   const livePoints = myLive?.total_points || 0
+  const anyStarted = !!myLive && myLive.status !== 'upcoming'
 
   // Filter available players. Mirrors the NBA DFS pattern: by default
   // exclude players marked Out / IR so a user can't accidentally roster
@@ -271,7 +272,7 @@ export default function NflSalaryCapView({ league }) {
 
         {/* My Roster */}
         <div className="rounded-xl border border-text-primary/20 overflow-hidden mb-4">
-          <MyRosterHeader livePoints={livePoints} />
+          <MyRosterHeader livePoints={livePoints} started={anyStarted} />
           {SLOTS.map((slot) => {
             const player = lineup[slot.key]
             const isLocked = player?.is_locked

@@ -331,6 +331,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
   const rosterLiveQuery = useMlbDfsLive(league.id, date)
   const myLive = rosterLiveQuery.data?.members?.find((m) => m.user_id === profile?.id)
   const livePoints = myLive?.total_points || 0
+  const anyStarted = !!myLive && myLive.status !== 'upcoming'
 
   const filteredPlayers = useMemo(() => {
     if (!players) return []
@@ -514,7 +515,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
 
         {/* My Roster */}
         <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden mb-4">
-          <MyRosterHeader livePoints={livePoints} />
+          <MyRosterHeader livePoints={livePoints} started={anyStarted} />
           {SLOTS.map((slot) => {
             const rosterPlayer = roster[slot.key]
             // Refresh injury status / headshot from latest players data, but
