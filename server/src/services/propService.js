@@ -934,8 +934,90 @@ export async function getAllFeaturedProps() {
   return data || []
 }
 
+
+/**
+ * Recompute a user's current streak for one sport, treating a swept prop
+ * ladder as a SINGLE correct pick.
+ *
+ * Why recompute rather than fix the increment: `update_sport_stats` bumps
+ * the streak once per settled row, and a ladder is many rows. Making that
+ * RPC ladder-aware means teaching it which rows belong together, which it
+ * cannot know. Recomputing from history is idempotent, self-heals if a
+ * settlement is retried or a result is later corrected, and matches
+ * calcLongestPropStreak exactly — one definition of a streak rather than
+ * two that can disagree.
+ *
+ * Nick's rule, 2026-10-26: legs fold into a unit keyed by player + game +
+ * market; the unit advances the streak only if EVERY leg won. Counts and
+ * win% are untouched — each leg still counts as its own pick there.
+ *
+ * Bounded to recent history: a streak longer than LOOKBACK is not a thing
+ * that has ever happened, and the query runs on every prop settlement.
+ */
+const STREAK_LOOKBACK = 400
+
+async function recomputeSportStreak(userId, sportId) {
+  const [straight, props] = await Promise.all([
+    supabase
+      .from('picks')
+      .select('is_correct, updated_at, games!inner(sport_id)')
+      .eq('user_id', userId).eq('status', 'settled').eq('games.sport_id', sportId)
+      .order('updated_at', { ascending: false }).limit(STREAK_LOOKBACK),
+    supabase
+      .from('prop_picks')
+      .select('is_correct, updated_at, player_props!inner(sport_id, player_name, game_id, market_key)')
+      .eq('user_id', userId).eq('status', 'settled').eq('player_props.sport_id', sportId)
+      .order('updated_at', { ascending: false }).limit(STREAK_LOOKBACK),
+  ])
+
+  const units = new Map()
+  for (const p of props.data || []) {
+    const pp = p.player_props || {}
+    const key = `${pp.player_name || '?'}|${pp.game_id || '?'}|${pp.market_key || '?'}`
+    const u = units.get(key) || { allCorrect: true, anyGraded: false, updated_at: p.updated_at }
+    // A push (is_correct null) neither breaks the unit nor grades it, the
+    // same way a push is skipped in the timeline below.
+    if (p.is_correct === false) u.allCorrect = false
+    if (p.is_correct !== null) u.anyGraded = true
+    if (new Date(p.updated_at) > new Date(u.updated_at)) u.updated_at = p.updated_at
+    units.set(key, u)
+  }
+
+  const timeline = [
+    ...(straight.data || []).map((p) => ({ is_correct: p.is_correct, updated_at: p.updated_at })),
+    ...[...units.values()]
+      .filter((u) => u.anyGraded)
+      .map((u) => ({ is_correct: u.allCorrect, updated_at: u.updated_at })),
+  ].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+
+  let streak = 0
+  for (const entry of timeline) {
+    if (entry.is_correct === true) streak++
+    else if (entry.is_correct === false) break
+    // null = push, skipped without breaking
+  }
+
+  const { data: row } = await supabase
+    .from('user_sport_stats')
+    .select('current_streak, best_streak')
+    .eq('user_id', userId).eq('sport_id', sportId)
+    .maybeSingle()
+  if (!row) return
+
+  const update = { current_streak: streak }
+  // best_streak is a high-water mark: only ever raised here. Lowering it
+  // would erase a run that genuinely happened under the old counting.
+  if (streak > (row.best_streak || 0)) update.best_streak = streak
+  if (streak === row.current_streak && update.best_streak === undefined) return
+
+  await supabase.from('user_sport_stats').update(update).eq('user_id', userId).eq('sport_id', sportId)
+}
+
 export async function settleProps(settlements) {
   const results = []
+  // (user_id, sport_id) pairs whose streak needs recomputing once the
+  // batch is done — see recomputeSportStreak.
+  const streakTargets = new Map()
 
   for (const { propId, outcome, actualValue } of settlements) {
     const updates = {
@@ -1090,6 +1172,10 @@ export async function settleProps(settlements) {
       }
 
       if (isCorrect !== null) {
+        // Counts and points still move per LEG; the streak this bumps is
+        // corrected after the batch by recomputeSportStreak, which folds a
+        // swept ladder into one.
+        streakTargets.set(`${pick.user_id}|${prop.sport_id}`, { userId: pick.user_id, sportId: prop.sport_id })
         const { error: statsError } = await supabase
           .rpc('update_sport_stats', {
             p_user_id: pick.user_id,
@@ -1131,6 +1217,23 @@ export async function settleProps(settlements) {
 
     results.push({ propId, scored: picks.length })
     logger.info({ propId, scored: picks.length, outcome }, 'Prop picks scored')
+  }
+
+  // Fold swept ladders into single streak units.
+  //
+  // Done ONCE per affected user+sport after the batch rather than inside
+  // the loop: a ladder's legs settle together, and recomputing per leg
+  // would read a half-settled unit and land on the wrong number before
+  // correcting itself on the next leg.
+  //
+  // Failures are logged, not thrown. A streak is a display figure; losing
+  // it must not roll back points and grades that are already written.
+  for (const { userId, sportId } of streakTargets.values()) {
+    try {
+      await recomputeSportStreak(userId, sportId)
+    } catch (err) {
+      logger.error({ err, userId, sportId }, 'Streak recompute after prop settle failed')
+    }
   }
 
   return results
