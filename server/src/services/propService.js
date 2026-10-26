@@ -12,7 +12,7 @@ import { fetchCompletedWNBAGameStats as fetchWnbaStatsFromEspn } from '../jobs/s
 import { normalizeName, stripAccents } from '../utils/name.js'
 import { fetchAll } from '../utils/fetchAll.js'
 import { buildPlayerIndex, resolvePlayer } from '../utils/playerResolver.js'
-import { todaySportsDay, yesterdaySportsDay, sportsDayBoundsUtc } from '../utils/sportsDay.js'
+import { todaySportsDay, yesterdaySportsDay, sportsDayBoundsUtc, addDaysSportsDay } from '../utils/sportsDay.js'
 import { getPlayerHeadshotUrl, refreshPlayerHeadshotCache } from './espnService.js'
 
 // Short-key → full Odds API sport key. Short keys are what the admin
@@ -568,13 +568,24 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey, userId =
 
   if (!sport) return []
 
-  // Window of games to fetch props for. Daily-cadence sports (NBA/WNBA/
-  // MLB/NHL) show TODAY's PT slate — anything further out isn't relevant
-  // since the next day's card fills in overnight. Football sports run
-  // weekly with Thu/Sun/Mon games; anchoring to "today" hides Sunday's
-  // slate on Wed/Fri/Sat. For football we widen the window to a rolling
-  // 7 days so users browsing the tab mid-week actually see the coming
-  // weekend's props.
+  // Window of games to fetch props for.
+  //
+  // Daily-cadence sports (NBA/WNBA/MLB/NHL) cover TODAY AND TOMORROW's PT
+  // slates. Today-only was the original rule, on the reasoning that the
+  // next day's card fills in overnight — but that leaves the tab empty
+  // from the moment the last game tips until the small hours, and gives
+  // someone looking ahead in the evening nothing to pick. Tomorrow's lines
+  // are posted well before then.
+  //
+  // Football runs weekly with Thu/Sun/Mon games; anchoring to "today"
+  // hides Sunday's slate on Wed/Fri/Sat, so it keeps a rolling 7 days.
+  //
+  // Safe to widen because the fan-out below is bounded —
+  // mapWithConcurrency at PROPS_LOAD_CONCURRENCY (4) with a request budget
+  // and a short failure TTL. That machinery exists because an unbounded
+  // per-game fan-out tripped the Odds API's per-second limit and blanked
+  // the whole market; doubling the slate rides on the same bound rather
+  // than around it.
   //
   // sportsDayBoundsUtc handles DST correctly (PDT → PST would silently
   // shift the previous `-07:00` hardcode by an hour once November hits).
@@ -587,7 +598,10 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey, userId =
   const { startUtc } = sportsDayBoundsUtc(todayPt)
   const endUtc = isFootball
     ? new Date(new Date(startUtc).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    : sportsDayBoundsUtc(todayPt).endUtc
+    // End of TOMORROW's PT day. Computed from the day string rather than
+    // by adding 48h to startUtc so a DST boundary inside the window keeps
+    // the edge on a real midnight.
+    : sportsDayBoundsUtc(addDaysSportsDay(todayPt, 1)).endUtc
 
   const { data: games } = await supabase
     .from('games')
