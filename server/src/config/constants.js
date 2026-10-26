@@ -21,24 +21,30 @@ export const PICK_STATUS = {
 
 export const BASE_RISK_POINTS = 10
 
-// Ceiling on a parlay's combined multiplier, so a 10-point risk can never pay
-// more than 9,990. Parlay odds multiply, so an 11-leg slate of MLS underdogs
-// reached 9,867,763x — a payout that would have ended the leaderboard, since
-// the all-time points leader sits at 634. Six tickets offering between 122k
-// and 8.88M points have already been locked and displayed since February;
-// every one lost, which is the only reason the number never landed.
+// Ceiling on a parlay's combined multiplier. This is NOT a balance lever —
+// it exists only to keep the value inside its column. combined_multiplier is
+// NUMERIC(10, 4): 10 digits with 4 after the point leaves just 6 in front, so
+// the column tops out at 999999.9999 and anything larger fails the insert
+// with a raw Postgres "numeric field overflow" rendered into the UI. An
+// 11-leg slate of MLS underdogs priced at 9,867,763x and did exactly that.
 //
-// Set against history, not taste: across 2,121 parlays and 497 winners, the
-// biggest ticket anyone has ever actually hit is 43.8x and the median winner
-// is 2.77x. A 1000x cap clips 21 tickets ever submitted and ZERO winners, so
-// it is invisible to real play and bites only on lottery slips.
+// Deliberately set AT that ceiling rather than below it, so moonshot parlays
+// stay worth chasing. The shape of the risk, measured off our own history:
 //
-// It also keeps combined_multiplier inside NUMERIC(10, 4) — 10 digits with 4
-// after the point leaves just 6 in front, so the column tops out at
-// 999999.9999 and anything larger fails the insert with a raw Postgres
-// "numeric field overflow" rendered into the UI. Widening the column alone
-// would silence that error and remove the accidental guardrail with it.
-export const MAX_PARLAY_MULTIPLIER = 1000
+//   tickets above   1,000x in 2026: 21  -> ~1 hit every 128 years
+//   tickets above  10,000x in 2026:  6  -> ~1 hit every 6,258 years
+//   tickets above 100,000x in 2026:  3  -> ~1 hit every 89,073 years
+//
+// (Fair-odds model, chance of landing = 1/multiplier. Trustworthy: it
+// predicts 524.6 winners/yr against 497 actual, inside 6%.)
+//
+// So the exposure is real but astronomically rare. A hit at this ceiling pays
+// ~10M points against an all-time leader of 634, which would end the
+// cumulative leaderboard permanently — accepted knowingly, because at one
+// occurrence per ~128 years even the 1000x tier was costing more fun than it
+// bought. If that trade ever needs revisiting, cap the POINTS and leave the
+// multiplier free: the biggest_parlay record already exists to carry the brag.
+export const MAX_PARLAY_MULTIPLIER = 999999
 
 export function getTier(points) {
   if (points >= TIERS.GOAT.minPoints) return TIERS.GOAT

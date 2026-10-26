@@ -1,10 +1,10 @@
 export const BASE_RISK_POINTS = 10
 
 // Mirrors MAX_PARLAY_MULTIPLIER in server/src/config/constants.js — see there
-// for why the ceiling exists and why 1000 is the number. Kept in sync by hand;
-// the server is authoritative, this copy only keeps the slip from promising a
-// payout the server will refuse.
-export const MAX_PARLAY_MULTIPLIER = 1000
+// for why the ceiling exists and why it sits where it does. Kept in sync by
+// hand; the server is authoritative, this copy only keeps the slip from
+// promising a payout the server will refuse.
+export const MAX_PARLAY_MULTIPLIER = 999999
 
 export const TIERS = {
   LOST: { name: 'Learning', minPoints: -Infinity, color: 'tier-lost' },
