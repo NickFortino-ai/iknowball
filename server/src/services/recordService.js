@@ -279,7 +279,7 @@ async function calcLongestPropStreak() {
   const picks = await fetchAll(
     supabase
       .from('prop_picks')
-      .select('id, user_id, is_correct, updated_at')
+      .select('id, user_id, is_correct, updated_at, player_props!inner(player_name, market_key, game_id)')
       .eq('status', 'settled')
       .not('is_correct', 'is', null)
       .order('id')
@@ -290,10 +290,43 @@ async function calcLongestPropStreak() {
   // Sort by updated_at in JS
   picks.sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at))
 
-  const userPicks = {}
+  // A LADDER COUNTS ONCE.
+  //
+  // A slider prop invites stacking several lines on one player in one game
+  // — eight "over N" picks on the same quarterback. That is ONE opinion
+  // expressed at eight confidence levels, not eight predictions, and
+  // counting it eight times made this record a measure of how hard someone
+  // laddered rather than how often they were right. The standing record of
+  // 130 came substantially from that; one 31-win run elsewhere was 29 legs
+  // on a SINGLE player-game.
+  //
+  // Nick's rule, 2026-10-26: sweep the ladder and it counts as one correct
+  // pick. So legs are folded into a unit keyed by player + game + market,
+  // and the unit is correct only if EVERY leg of it won — one miss and the
+  // whole thing breaks the streak, which is what "sweep" means.
+  //
+  // Ordered by the LAST leg to settle, so a unit takes its place in the
+  // timeline at the moment it actually resolved.
+  const unitsByUser = {}
   for (const p of picks) {
-    if (!userPicks[p.user_id]) userPicks[p.user_id] = []
-    userPicks[p.user_id].push(p)
+    const pp = p.player_props || {}
+    const unitKey = `${p.user_id}|${pp.player_name || '?'}|${pp.game_id || '?'}|${pp.market_key || '?'}`
+    if (!unitsByUser[unitKey]) {
+      unitsByUser[unitKey] = { user_id: p.user_id, ids: [], allCorrect: true, updated_at: p.updated_at }
+    }
+    const u = unitsByUser[unitKey]
+    u.ids.push(p.id)
+    if (p.is_correct !== true) u.allCorrect = false
+    if (new Date(p.updated_at) > new Date(u.updated_at)) u.updated_at = p.updated_at
+  }
+
+  const userPicks = {}
+  for (const u of Object.values(unitsByUser)) {
+    if (!userPicks[u.user_id]) userPicks[u.user_id] = []
+    userPicks[u.user_id].push({ id: u.ids, is_correct: u.allCorrect, updated_at: u.updated_at })
+  }
+  for (const list of Object.values(userPicks)) {
+    list.sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at))
   }
 
   let bestUserId = null
@@ -327,7 +360,9 @@ async function calcLongestPropStreak() {
   }
 
   if (!bestUserId || bestStreak === 0) return null
-  return { holderId: bestUserId, value: bestStreak, metadata: { propPickIds: bestIds } }
+  // bestIds holds one entry per UNIT, each an array of that unit's leg ids.
+  // Flattened so the stored metadata still points at real prop_picks rows.
+  return { holderId: bestUserId, value: bestStreak, metadata: { propPickIds: bestIds.flat() } }
 }
 
 async function calcHighestPropPct() {
