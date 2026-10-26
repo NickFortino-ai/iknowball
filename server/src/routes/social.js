@@ -316,6 +316,31 @@ router.get('/streaks/:streakId', requireAuth, async (req, res) => {
     if (streakPicks.length === 0 && currentRun.length >= streakEvent.streak_length) {
       streakPicks = currentRun.slice(0, streakEvent.streak_length)
     }
+    // LAST RESORT: the longest run we can actually find, even if it is
+    // shorter than the recorded streak.
+    //
+    // A streak_event is a historical fact; this reconstruction reads the
+    // CURRENT state of those picks, and the two drift. A result correction,
+    // a pick pushed after the fact, a row deleted — any of them shortens
+    // what is reconstructable. daluz's 18-win NFL streak could only be
+    // walked back to 17, so every branch above missed and the modal opened
+    // with a header and nothing under it.
+    //
+    // Showing 17 of 18 is honest and useful; showing none is neither. The
+    // header still reports the recorded length, so nothing is overstated.
+    if (streakPicks.length === 0) {
+      let best = []
+      let run = []
+      for (const p of sportPicks) {
+        if (p.is_correct === true) {
+          run.push(p)
+          if (run.length > best.length) best = [...run]
+        } else if (p.is_correct === false) {
+          run = []
+        }
+      }
+      streakPicks = best.slice(0, streakEvent.streak_length)
+    }
     // Fallback: if no exact match, take the first run >= streak_length
     if (streakPicks.length === 0) {
       currentRun = []
