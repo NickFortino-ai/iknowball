@@ -734,6 +734,14 @@ const SUB_REPLACEMENT_SPREAD = { QB: 1600, RB: 2000, WR: 2100, TE: 1800, K: 600,
 // salary cap for everyone.
 const PRICE_ANCHOR_SAMPLE = 3
 
+// Defensive projection columns on nfl_player_projections. Named here so the
+// pricing query pulls them; the weights come from the league scoring rules,
+// not from this list.
+const IDP_PROJECTION_COLUMNS = [
+  'idp_tkl_solo', 'idp_tkl_ast', 'idp_tkl_loss', 'idp_sack', 'idp_int',
+  'idp_pass_def', 'idp_qb_hit', 'idp_ff', 'idp_fum_rec', 'idp_int_ret_yd',
+]
+
 // The two-band curve above changes EVERY algo price, so it must not land on a
 // slate that is already published and already being built against. Week 2 of
 // 2026 was published with 184 hand-set prices and two rosters within $800 of
@@ -878,13 +886,39 @@ export async function generateSalaries(week, season, { force = false } = {}) {
   const projectionRows = await fetchAll(
     supabase
       .from('nfl_player_projections')
-      .select('player_id, pts_half_ppr')
+      .select(`player_id, pts_half_ppr, ${IDP_PROJECTION_COLUMNS.join(', ')}`)
       .eq('season', season)
       .eq('week', week)
       .order('player_id')
   )
+  // pts_half_ppr is OFFENSE ONLY. Verified rather than assumed: defenders
+  // projected for ~5 solo tackles carry a pts_half_ppr of 0.41-0.68, so the
+  // column plainly does not contain their defensive production.
+  //
+  // That matters because idp_* stats score for EVERYONE (see the IDP block in
+  // fantasyService — it is universal by design, not a league toggle). So a
+  // two-way player was being priced on half of what he actually scores.
+  // Travis Hunter, week 8: pts_half_ppr 3.29, IDP projected 3.91, true
+  // expectation 7.20 — and his actual 2026 average is 7.8/game, of which
+  // weeks 2-5 were almost entirely defensive. He was priced at $5,200 off the
+  // 3.29.
+  //
+  // Scored through the real rules rather than a hardcoded weight table, so
+  // pricing and scoring can never drift apart. Offensive players carry no
+  // idp_* projections, so this adds exactly zero for everyone else.
+  const { applyScoringRules: applyRules, buildScoringRulesFromPreset: buildRules } =
+    await import('./fantasyService.js')
+  const pricingRules = buildRules('half_ppr')
   const projectionMap = new Map(
-    projectionRows.map((r) => [r.player_id, Number(r.pts_half_ppr) || 0])
+    projectionRows.map((r) => {
+      const offense = Number(r.pts_half_ppr) || 0
+      // ONLY the idp_* keys — handing the whole row over would also score
+      // its punt-return columns, which pts_half_ppr may already include.
+      const idpOnly = {}
+      for (const c of IDP_PROJECTION_COLUMNS) idpOnly[c] = Number(r[c]) || 0
+      const defense = applyRules(idpOnly, pricingRules) || 0
+      return [r.player_id, offense + defense]
+    })
   )
   logger.info(
     { projections_loaded: projectionMap.size, week, season },

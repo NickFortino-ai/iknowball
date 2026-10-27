@@ -1694,7 +1694,13 @@ router.get('/dfs/salaries', async (req, res) => {
       .eq('season', season)
       .order('salary', { ascending: false })
       .order('id', { ascending: true })
-    if (position) q = q.eq('nfl_players.position', position)
+    // Position is deliberately NOT filtered here on nfl_players.position.
+    // That is Sleeper's RAW classification, so a two-way player carried
+    // outside the offensive set is dropped before the override can correct
+    // him. Travis Hunter is filed 'DB': he was priced every week, visible
+    // under ALL, and absent the moment the editor filtered to WR. Filtered
+    // in JS below against the effective position instead — same reasoning,
+    // and the same comment, as getPlayerPool in dfsService.
     if (search) q = q.ilike('nfl_players.full_name', `%${search}%`)
     return q
   }
@@ -1746,9 +1752,32 @@ router.get('/dfs/salaries', async (req, res) => {
   }
 
   // Flatten the player join for easier client consumption
-  const rows = (data || []).map((r) => {
+  // Position overrides — the same table traditional fantasy and DFS pricing
+  // both read. 'WR/DB' prices and displays off the FIRST part.
+  const { data: overrideRows } = await supabase
+    .from('player_position_overrides')
+    .select('player_name, position, team')
+    .eq('sport_key', 'americanfootball_nfl')
+  const ovrByName = {}
+  const ovrByNameTeam = {}
+  for (const o of overrideRows || []) {
+    if (!o.player_name || !o.position) continue
+    const primary = String(o.position).split('/')[0].trim().toUpperCase()
+    const nm = o.player_name.toLowerCase()
+    if (o.team) ovrByNameTeam[`${nm}|${o.team.toLowerCase()}`] = primary
+    else ovrByName[nm] = primary
+  }
+  const effectivePosition = (pl) => {
+    const nm = (pl?.full_name || '').toLowerCase()
+    const scoped = pl?.team ? ovrByNameTeam[`${nm}|${String(pl.team).toLowerCase()}`] : null
+    return scoped || ovrByName[nm] || pl?.position
+  }
+
+  const rows = (data || [])
+    .filter((r) => !position || effectivePosition(r.nfl_players) === position)
+    .map((r) => {
     const team = r.nfl_players?.team
-    const isQb = r.nfl_players?.position === 'QB'
+    const isQb = effectivePosition(r.nfl_players) === 'QB'
     const topQb = team ? topQbSalaryByTeam.get(team) : null
     return {
       id: r.id,
@@ -1760,7 +1789,8 @@ router.get('/dfs/salaries', async (req, res) => {
       published: r.published,
       updated_at: r.updated_at,
       full_name: r.nfl_players?.full_name,
-      position: r.nfl_players?.position,
+      position: effectivePosition(r.nfl_players),
+      raw_position: r.nfl_players?.position,
       team: r.nfl_players?.team,
       headshot_url: r.nfl_players?.headshot_url,
       injury_status: r.nfl_players?.injury_status,
