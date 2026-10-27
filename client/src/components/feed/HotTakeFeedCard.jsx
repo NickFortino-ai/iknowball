@@ -16,7 +16,7 @@ import PollDisplay from './PollDisplay'
 import LinkPreview from './LinkPreview'
 import PostEmbed from './PostEmbed'
 import { extractFirstUrl } from '../../lib/urlUtils'
-import { useHlsSource } from '../../lib/useHlsSource'
+import { useHlsSource, streamThumbnailUrl } from '../../lib/useHlsSource'
 import { parseEmbedSource } from '../../lib/embedParser'
 
 // Convert a Supabase storage public URL to a resized thumbnail URL.
@@ -240,6 +240,7 @@ function FeedVideo({ url }) {
         playsInline
         loop
         preload="metadata"
+        poster={streamThumbnailUrl(url) || undefined}
         className="w-full rounded-lg"
       />
       {showPlayIcon && (

@@ -14,7 +14,7 @@ import { useFeedReactionsBatch } from '../../hooks/useSocial'
 import PickComments from '../social/PickComments'
 import { timeAgo } from '../../lib/time'
 import { extractFirstUrl } from '../../lib/urlUtils'
-import { useHlsSource } from '../../lib/useHlsSource'
+import { useHlsSource, streamThumbnailUrl } from '../../lib/useHlsSource'
 import { VideoProcessingPlaceholder } from './HotTakeFeedCard'
 
 function DetailVideo({ url }) {
@@ -70,6 +70,7 @@ function DetailVideo({ url }) {
         playsInline
         loop
         preload="metadata"
+        poster={streamThumbnailUrl(url) || undefined}
         className="w-full rounded-lg"
       />
       {paused && (

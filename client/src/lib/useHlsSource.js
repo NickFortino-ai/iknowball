@@ -13,6 +13,25 @@ import Hls from 'hls.js'
  *
  * Returns nothing — the effect wires up + tears down the hls.js instance.
  */
+/**
+ * Cloudflare Stream serves a still from the same asset path as the manifest.
+ * Returns null for anything that isn't a Stream HLS URL, so legacy Supabase
+ * .mp4s just get no poster rather than a broken image.
+ *
+ * Worth having for two reasons, both seen on an iPhone against a clip that
+ * played perfectly on desktop. A <video> with no poster paints BLACK until
+ * it has decoded a frame, so a feed of unplayed videos is a column of black
+ * rectangles. And with no poster and no loaded metadata the element has no
+ * intrinsic dimensions at all — `w-full` gives it a width and the height
+ * collapses to the UA default, so the box is the wrong shape too.
+ */
+export function streamThumbnailUrl(url) {
+  if (typeof url !== 'string') return null
+  if (!url.includes('cloudflarestream.com')) return null
+  const m = url.match(/^(https:\/\/[^/]+\/[^/]+)\//)
+  return m ? `${m[1]}/thumbnails/thumbnail.jpg` : null
+}
+
 export function useHlsSource(videoRef, url) {
   useEffect(() => {
     const video = videoRef.current
