@@ -180,7 +180,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
               number makes more sense with the reason attached. Not shown on a
               push, where the stake came back and the multiplier is moot. */}
           {userPick.is_correct !== null && userPick.multiplier > 1 && (
-            <span className="ml-2 text-xs font-bold text-accent align-middle">
+            <span className="ml-2 text-base font-bold text-accent align-middle">
               {userPick.multiplier}x
             </span>
           )}
