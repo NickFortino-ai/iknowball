@@ -105,6 +105,28 @@ class MainViewController: CAPBridgeViewController {
         }
     }
 
+    // The self-heal, and the reason the rotate-and-rotate-back workaround
+    // existed. Whatever leaves the webview holding a short frame — returning
+    // from the camera, Control Center, a notification — nothing afterwards
+    // put it right, so the shell stayed half-height until the user forced a
+    // real layout pass by turning the phone sideways and back. UIKit runs
+    // layout far more often than that; it simply was not being used to
+    // correct anything. Now every pass re-asserts the frame.
+    //
+    // The inequality check is load-bearing, not an optimisation: assigning a
+    // frame inside viewDidLayoutSubviews schedules another layout, so writing
+    // unconditionally would spin. setNeedsLayout/layoutIfNeeded are
+    // deliberately NOT called here for the same reason.
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        guard let webView = self.webView else { return }
+        let target = self.view.bounds
+        guard target.width > 0, target.height > 0 else { return }
+        if webView.frame != target {
+            webView.frame = target
+        }
+    }
+
     // Deferred a turn of the run loop: at the instant didBecomeActive fires,
     // view.bounds is frequently still the pre-background geometry. This is
     // the same lesson AppShell learned on the JS side — the correct value
