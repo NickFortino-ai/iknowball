@@ -17,9 +17,27 @@ import { extractFirstUrl } from '../../lib/urlUtils'
 import { useHlsSource, streamThumbnailUrl } from '../../lib/useHlsSource'
 import { VideoProcessingPlaceholder } from './HotTakeFeedCard'
 
+// Bound the video box by its ASPECT RATIO rather than its pixel dimensions.
+//
+// Cloudflare serves adaptive bitrate, so hls.js opens on a low rendition and
+// switches up once it has measured bandwidth. Sizing from the element's
+// intrinsic videoWidth/videoHeight therefore made the box visibly GROW
+// partway through playback. Aspect is constant across renditions; resolution
+// is not.
+//
+// Capping maxWidth at (60vh * aspect) is the same constraint as a 60vh
+// height cap, expressed on the axis the container can actually control — so
+// a portrait clip lands ~405px wide on a 1200px viewport while a landscape
+// one still fills the column and comes nowhere near the cap.
+function videoBoxStyle(aspect) {
+  if (!aspect) return undefined
+  return { maxWidth: `calc(60vh * ${aspect})` }
+}
+
 function DetailVideo({ url }) {
   const videoRef = useRef(null)
   const [muted, setMuted] = useState(true)
+  const [aspect, setAspect] = useState(null)
   const [paused, setPaused] = useState(false)
   useHlsSource(videoRef, url)
 
@@ -63,7 +81,7 @@ function DetailVideo({ url }) {
   }, [])
 
   return (
-    <div className="relative mt-2 cursor-pointer w-fit max-w-full mx-auto" onClick={togglePlayPause}>
+    <div className="relative mt-2 cursor-pointer w-full mx-auto" style={videoBoxStyle(aspect)} onClick={togglePlayPause}>
       <video
         ref={videoRef}
         muted={muted}
@@ -71,7 +89,12 @@ function DetailVideo({ url }) {
         loop
         preload="metadata"
         poster={streamThumbnailUrl(url) || undefined}
-        className="block max-w-full max-h-[60vh] rounded-lg"
+        onLoadedMetadata={(e) => {
+          const { videoWidth: w, videoHeight: h } = e.currentTarget
+          if (w && h) setAspect(w / h)
+        }}
+        style={aspect ? { aspectRatio: String(aspect) } : undefined}
+        className="block w-full max-h-[60vh] rounded-lg"
       />
       {paused && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
