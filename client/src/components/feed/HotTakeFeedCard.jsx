@@ -241,7 +241,7 @@ function FeedVideo({ url }) {
         loop
         preload="metadata"
         poster={streamThumbnailUrl(url) || undefined}
-        className="block max-w-full max-h-[70vh] rounded-lg"
+        className="block max-w-full max-h-[60vh] rounded-lg"
       />
       {showPlayIcon && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
