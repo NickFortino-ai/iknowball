@@ -215,7 +215,7 @@ export default function HotTakeDetailModal({ hotTakeId, onClose, reminderContext
                 <PollDisplay hotTakeId={hotTake.id} />
               )}
               {hotTake.image_url && (
-                <img src={hotTake.image_url} alt="" className="w-full rounded-lg mt-2" />
+                <img src={hotTake.image_url} alt="" className="block max-w-full max-h-[60vh] mx-auto rounded-lg mt-2" />
               )}
               {/* Same gate the feed card uses. This modal rendered the
                   player unconditionally, so a post opened while Cloudflare

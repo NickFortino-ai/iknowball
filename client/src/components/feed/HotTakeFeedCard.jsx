@@ -907,16 +907,22 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
 
           {/* Images */}
           {allImages.length > 0 && (
-            <div className="relative mt-2">
+            <div className="relative mt-2 w-fit max-w-full mx-auto">
               <button
                 onClick={(e) => { e.stopPropagation(); setLightboxIndex(carouselIndex); setLightboxOpen(true) }}
-                className="block w-full"
+                className="block"
               >
+                {/* Capped like the video: a tall portrait photo at full
+                    column width ran past the bottom of a desktop screen.
+                    max-h bounds the height, max-w-full still bounds a wide
+                    one, and the container hugs whichever wins so the
+                    carousel arrows stay on the image rather than floating
+                    out in the margin beside it. */}
                 <img
                   src={thumbUrl(allImages[carouselIndex])}
                   alt=""
                   loading="lazy"
-                  className="w-full rounded-lg"
+                  className="block max-w-full max-h-[60vh] rounded-lg"
                 />
               </button>
               {allImages.length > 1 && (
