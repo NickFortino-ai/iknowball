@@ -956,7 +956,10 @@ export async function getAllFeaturedProps() {
  */
 const STREAK_LOOKBACK = 400
 
-async function recomputeSportStreak(userId, sportId) {
+// Exported because the STRAIGHT-pick settle path needs it too. It reads both
+// picks and prop_picks, so it is the one place that knows what a streak is;
+// leaving it private meant scoringService had to trust the stored counter.
+export async function recomputeSportStreak(userId, sportId) {
   const [straight, props] = await Promise.all([
     supabase
       .from('picks')

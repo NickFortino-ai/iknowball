@@ -127,6 +127,30 @@ export async function scoreCompletedGame(gameId, winner, sportId) {
       // Record streak events for correct picks
       if (isCorrect === true) {
         try {
+          // Normalize the counter BEFORE reading it. update_sport_stats bumps
+          // current_streak once per settled row and cannot know that several
+          // of those rows were one prop ladder — so the stored value can be
+          // inflated, and this is the read that turns it into a permanent
+          // hub post.
+          //
+          // mossyou posted a "49 Win Streak" off exactly this: a straight NFL
+          // pick settled against a counter still carrying the old ladder
+          // counting, published 49, and the prop path corrected the counter
+          // to its real value five minutes later. The number self-healed; the
+          // post did not, because a streak_event is written once and keeps
+          // whatever it was given.
+          //
+          // recomputeSportStreak reads BOTH picks and prop_picks, so running
+          // it here makes a streak mean the same thing no matter which settle
+          // path got there first. Failure is non-fatal: fall through to the
+          // stored value, which is the old behaviour.
+          try {
+            const { recomputeSportStreak } = await import('./propService.js')
+            await recomputeSportStreak(pick.user_id, sportId)
+          } catch (err) {
+            logger.warn({ err: err.message, userId: pick.user_id, sportId }, 'Streak recompute before milestone failed; using stored counter')
+          }
+
           const { data: updatedStats } = await supabase
             .from('user_sport_stats')
             .select('current_streak')
