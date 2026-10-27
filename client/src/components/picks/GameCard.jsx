@@ -170,6 +170,20 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
             // scored nothing rather than a bet that was returned.
             ? (isPostponed ? 'Push — game postponed' : 'Push')
             : `${userPick.points_earned > 0 ? '+' : ''}${userPick.points_earned} pts`}
+          {/* A multiplied pick had no marker anywhere once it settled. The
+              buttons swap odds for the final score, which takes OddsDisplay
+              and its badge off screen, and this line only ever printed the
+              points — so the one moment worth celebrating, landing a 4x, read
+              exactly like any other win.
+
+              Shown on losses too: a 4x loss costs four times as much, and the
+              number makes more sense with the reason attached. Not shown on a
+              push, where the stake came back and the multiplier is moot. */}
+          {userPick.is_correct !== null && userPick.multiplier > 1 && (
+            <span className="ml-2 text-xs font-bold text-accent align-middle">
+              {userPick.multiplier}x
+            </span>
+          )}
         </div>
       ) : isPostponed && userPick ? (
         <div className="mt-3 text-center text-sm font-semibold text-yellow-500">
