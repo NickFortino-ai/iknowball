@@ -66,27 +66,54 @@ class MainViewController: CAPBridgeViewController {
             self?.webView?.evaluateJavaScript("window.__nativeZoomScale=\(scale)", completionHandler: nil)
         }
 
-        // Reset zoom + relayout on:
-        //  - App returning from background (fixes the "half-screen render"
-        //    bug where WKWebView holds onto a smaller frame from before
-        //    the user backgrounded the app in landscape / with keyboard).
-        //  - Device rotation (fixes the "too zoomed in after rotating
-        //    landscape → portrait" symptom).
-        // Both fire didBecomeActive / orientation notifications reliably
-        // even after the iOS app is swiped away and cold-launched from
-        // recents, so this is safe as a catch-all.
+        // Relayout on returning from background — WKWebView can hold a
+        // smaller frame from before the app was backgrounded in landscape or
+        // with the keyboard up, which renders as the half-screen shell.
+        //
+        // ROTATION IS NOT HANDLED HERE ANY MORE. It used to observe
+        // UIDevice.orientationDidChangeNotification, which was wrong twice
+        // over, and is the reason the half-screen bug kept coming back after
+        // two JS-side fixes:
+        //
+        //  1. That notification fires for .faceUp and .faceDown — putting the
+        //     phone down on a table triggered a full frame reset, and took the
+        //     user's current zoom to 1x with it.
+        //  2. It fires BEFORE self.view.bounds has settled into the new
+        //     geometry, so `webView.frame = self.view.bounds` could bake in a
+        //     stale or mid-transition rectangle. After that the webview really
+        //     IS short, window.innerHeight reports the short value honestly,
+        //     and AppShell's re-measure ladder faithfully copies it. No amount
+        //     of re-measuring in JS can recover from a wrong native frame.
+        //
+        // viewWillTransition(to:with:) is the callback that carries the
+        // authoritative final size, so rotation is handled there instead.
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(resetWebViewLayout),
+            selector: #selector(handleDidBecomeActive),
             name: UIApplication.didBecomeActiveNotification,
             object: nil
         )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(resetWebViewLayout),
-            name: UIDevice.orientationDidChangeNotification,
-            object: nil
-        )
+    }
+
+    // Rotation. `size` is the post-transition size, guaranteed correct —
+    // unlike view.bounds read from an orientation notification. Applied in
+    // the coordinator's completion so it lands after the transition settles.
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        coordinator.animate(alongsideTransition: nil) { [weak self] _ in
+            self?.resetWebViewLayout(to: size)
+        }
+    }
+
+    // Deferred a turn of the run loop: at the instant didBecomeActive fires,
+    // view.bounds is frequently still the pre-background geometry. This is
+    // the same lesson AppShell learned on the JS side — the correct value
+    // arrives after the event that should have carried it.
+    @objc private func handleDidBecomeActive() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.resetWebViewLayout(to: self.view.bounds.size)
+        }
     }
 
     deinit {
@@ -94,19 +121,26 @@ class MainViewController: CAPBridgeViewController {
         NotificationCenter.default.removeObserver(self)
     }
 
-    @objc private func resetWebViewLayout() {
+    // `size` is passed in rather than read from view.bounds, so each caller
+    // supplies a value it knows to be settled.
+    private func resetWebViewLayout(to size: CGSize) {
         guard let webView = self.webView else { return }
+        // A frame of zero area means the view is not laid out yet. Writing it
+        // would be the very fault this is meant to prevent.
+        guard size.width > 0, size.height > 0 else { return }
+
         // Zoom reset is the loud symptom fix — a stuck zoomScale > 1 or
-        // < 1 leaves the content mispositioned relative to the frame.
+        // < 1 leaves the content mispositioned relative to the frame. Only
+        // the SCALE is reset; minimum/maximumZoomScale are untouched, so
+        // pinch stays available at 1x-5x immediately afterwards.
         if webView.scrollView.zoomScale != 1.0 {
             webView.scrollView.setZoomScale(1.0, animated: false)
             webView.evaluateJavaScript("window.__nativeZoomScale=1", completionHandler: nil)
         }
-        // Snap frame back to the container's current bounds. On foreground-
-        // from-landscape, WKWebView sometimes holds a stale frame that
-        // matches the old orientation — resetting to view.bounds forces
-        // the correct rectangle before layout runs.
-        webView.frame = self.view.bounds
+        // Snap the frame to the settled size. On foreground-from-landscape
+        // WKWebView sometimes holds a stale frame matching the old
+        // orientation; this forces the correct rectangle before layout runs.
+        webView.frame = CGRect(origin: .zero, size: size)
         webView.setNeedsLayout()
         webView.layoutIfNeeded()
     }
