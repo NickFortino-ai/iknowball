@@ -703,12 +703,36 @@ const SUB_REPLACEMENT_SPREAD = { QB: 1600, RB: 2000, WR: 2100, TE: 1800, K: 600,
 
 // Above replacement the slope is derived per week rather than fixed, so the
 // board always spans floor to cap instead of bunching against whichever
-// static rate was chosen. Anchored on the position's THIRD-best projection,
-// not its best: the top RB projection swung 19.7 -> 24.2 -> 23.3 across weeks
-// 1-3 while the third held at 17.1 -> 17.3 -> 17.7, so anchoring on the max
-// let one outlier reprice everyone. Players above the anchor clamp at the
-// position cap, which is the intent — the true elite are all "max price".
-const PRICE_ANCHOR_RANK = 3
+// static rate was chosen.
+//
+// The anchor is the MEAN of the top N projections, not the Nth. It used to be
+// the third-best outright, chosen because the top RB projection swung
+// 19.7 -> 24.2 -> 23.3 across weeks 1-3 while the third held at
+// 17.1 -> 17.3 -> 17.7 — anchoring on the max let one outlier reprice
+// everyone. Averaging keeps that stability (a mean of three moves less than
+// any single one of them) without inheriting the flaw: the Nth-best IS the
+// anchor, and anything at or above the anchor clamps to the position cap, so
+// whenever the top three were NOT tightly bunched the third-best got max
+// price for free.
+//
+// 2026 week 8 at TE is the case that found it. Projections ran 15.17, 13.96,
+// 9.49, 9.44 — a 32% cliff into third — so McBride, Bowers, Goedert and
+// Kelce all priced identically at $8,500 despite the top being 60% better
+// than the bottom. Nick: "we should treat a 4 point gap in projections as
+// meaningful enough to set them at different prices." On the mean, Goedert
+// prices at $7,000 against McBride's $8,500.
+//
+// Checked across every position before changing: the mean keeps the genuine
+// elite at the cap (1-2 per position rather than 3-4) and the number of
+// DISTINCT prices holds or improves — RB 37 -> 40, WR 46 -> 47. The
+// separation comes out of the clamp, not out of the rest of the board.
+//
+// NB a flat fraction of the cap was the obvious alternative and is wrong:
+// it works at TE but at QB/RB/WR the top three ARE bunched, so scaling the
+// target down means nobody reaches the cap at all (Josh Allen $10,000 ->
+// $9,500, top RB $9,600 -> $8,500), cheapening the board and loosening the
+// salary cap for everyone.
+const PRICE_ANCHOR_SAMPLE = 3
 
 // The two-band curve above changes EVERY algo price, so it must not land on a
 // slate that is already published and already being built against. Week 2 of
@@ -884,8 +908,10 @@ export async function generateSalaries(week, season, { force = false } = {}) {
     const sorted = (projByPos[pos] || []).slice().sort((a, b) => b - a)
     const rank = REPLACEMENT_RANK[pos]
     replacementByPos[pos] = sorted.length >= rank ? sorted[rank - 1] : (sorted[sorted.length - 1] || 0)
-    // Top of the curve — see PRICE_ANCHOR_RANK.
-    anchorByPos[pos] = sorted[PRICE_ANCHOR_RANK - 1] ?? sorted[0] ?? 0
+    // Top of the curve — see PRICE_ANCHOR_SAMPLE. Mean of the top N, and of
+    // however many exist when a thin position has fewer than N.
+    const top = sorted.slice(0, PRICE_ANCHOR_SAMPLE)
+    anchorByPos[pos] = top.length ? top.reduce((a, b) => a + b, 0) / top.length : 0
   }
   logger.info({ replacementByPos, anchorByPos, week, season }, 'NFL VBD replacement levels')
 
