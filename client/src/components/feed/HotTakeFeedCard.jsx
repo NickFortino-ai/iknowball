@@ -233,7 +233,7 @@ function FeedVideo({ url }) {
   }, [])
 
   return (
-    <div ref={containerRef} className="relative mt-2 cursor-pointer" onClick={togglePlayPause}>
+    <div ref={containerRef} className="relative mt-2 cursor-pointer w-fit max-w-full mx-auto" onClick={togglePlayPause}>
       <video
         ref={videoRef}
         muted={muted}
@@ -241,7 +241,7 @@ function FeedVideo({ url }) {
         loop
         preload="metadata"
         poster={streamThumbnailUrl(url) || undefined}
-        className="w-full rounded-lg"
+        className="block max-w-full max-h-[70vh] rounded-lg"
       />
       {showPlayIcon && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

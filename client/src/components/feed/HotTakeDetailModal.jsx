@@ -63,7 +63,7 @@ function DetailVideo({ url }) {
   }, [])
 
   return (
-    <div className="relative mt-2 cursor-pointer" onClick={togglePlayPause}>
+    <div className="relative mt-2 cursor-pointer w-fit max-w-full mx-auto" onClick={togglePlayPause}>
       <video
         ref={videoRef}
         muted={muted}
@@ -71,7 +71,7 @@ function DetailVideo({ url }) {
         loop
         preload="metadata"
         poster={streamThumbnailUrl(url) || undefined}
-        className="w-full rounded-lg"
+        className="block max-w-full max-h-[70vh] rounded-lg"
       />
       {paused && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
