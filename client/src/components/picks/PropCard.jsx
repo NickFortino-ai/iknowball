@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { getTeamLogoUrl } from '../../lib/teamLogos'
 import { formatOdds, calculateRiskPoints, calculateRewardPoints } from '../../lib/scoring'
+import { formatPeriod } from '../../lib/formatPeriod'
 import { useNbaDfsPlayerLookup } from '../../hooks/useLeagues'
 import { getTeamAbbr } from '../../lib/teamLogos'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
@@ -212,13 +213,7 @@ export default function PropCard({ prop, picks, pick: pickProp, onPick, onUndoPi
                   <span className="font-semibold">{awayScore}-{homeScore} </span>
                 )}
                 {prop.games.period && (
-                  <>
-                    {/* NBA/NFL/NHL send a numeric period — prefix Q. MLB sends
-                        a pre-formatted string like "Bot 4th" — pass through. */}
-                    {/^[0-9]+$/.test(String(prop.games.period))
-                      ? `Q${prop.games.period}`
-                      : prop.games.period} {prop.games.clock}
-                  </>
+                  <>{formatPeriod(sportKey, prop.games.period)} {prop.games.clock}</>
                 )}
               </div>
             )}
