@@ -90,22 +90,30 @@ export async function settleMLBProps() {
   // Role plays the part `team` plays elsewhere: it's the disambiguator for
   // two rows that share a name. Ohtani produces a batter row and a pitcher
   // row, and `strikeouts` means opposite things across them.
+  // The disambiguator carries the GAME DATE as well as the role. allStats is
+  // the union of every date in the batch, so role alone let a player who
+  // appeared on two of them collide — the same fault that settled an NBA prop
+  // against a different night's box score (Luka Doncic, 52 vs 41). Role still
+  // separates Ohtani's two rows within a date; the date separates the dates.
   const statsIndex = buildPlayerIndex(allStats, {
     getName: (s) => s.player_name,
-    getTeam: (s) => (s.is_pitcher ? 'P' : 'B'),
+    getTeam: (s) => `${s.game_date}|${s.is_pitcher ? 'P' : 'B'}`,
   })
 
   const settlements = []
   for (const prop of props) {
     const wantsPitcher = prop.market_key?.startsWith('pitcher_')
-    const role = wantsPitcher ? 'P' : 'B'
+    // Same PT derivation as gameDates above, so a prop can only match a row
+    // from its own game's date.
+    const propDate = new Date(prop.games.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+    const role = `${propDate}|${wantsPitcher ? 'P' : 'B'}`
     let stats = resolvePlayer(statsIndex, { name: prop.player_name, team: role })
     // Fall back to the opposite role only if no exact-role row exists —
     // covers legacy stat rows from before the two-way split. Asked
     // explicitly rather than by name alone, because a two-way player has two
     // rows and the resolver correctly refuses an ambiguous name-only lookup.
     if (!stats) {
-      stats = resolvePlayer(statsIndex, { name: prop.player_name, team: wantsPitcher ? 'B' : 'P' })
+      stats = resolvePlayer(statsIndex, { name: prop.player_name, team: `${propDate}|${wantsPitcher ? 'B' : 'P'}` })
     }
     if (!stats) {
       logger.info({ propId: prop.id, player: prop.player_name }, 'MLB player not in stats — settling as push')
