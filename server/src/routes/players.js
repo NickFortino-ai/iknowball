@@ -821,10 +821,20 @@ const NFL_GAME_COLS = (statMap) => ({
   rec_yds: parseInt(statMap['rec.YDS'] ?? statMap['RECYDS'] ?? statMap['Rec YDS']) || 0,
   rec_td: parseInt(statMap['rec.TD'] ?? statMap['RECTD'] ?? statMap['Rec TD']) || 0,
   // Defense (IDP). ESPN's gamelog labels use TOT/SOLO/AST for tackles, SACK
-  // for sacks, and INT/PD/FF/FR for turnovers. Reuse the offense `int`
-  // column (interceptions thrown for QBs, picked for DBs — separate stat
-  // types but same label). The client branches by position group so there's
-  // no ambiguity in display.
+  // for sacks, and INT/PD/FF/FR for turnovers.
+  //
+  // def_int is emitted even though `int` above already carries the same
+  // ESPN column. The old comment said the offense `int` key could be reused
+  // because "the client branches by position group" — but the client's IDP
+  // column config asks for def_int, which this payload never contained, so
+  // the INT column rendered BLANK for every defender including ones with
+  // interceptions. The sibling gamelog builder further down already emits
+  // def_int; these two disagreed.
+  //
+  // Added ALONGSIDE `int` rather than renaming it: the server redeploys in
+  // seconds while shipped app bundles keep asking for whichever key they
+  // were built against, so both have to keep working.
+  def_int: parseInt(statMap['INT']) || 0,
   def_tackles_solo: parseInt(statMap['SOLO']) || 0,
   def_tackles_ast: parseInt(statMap['AST']) || 0,
   def_sack: parseFloat(statMap['SACK']) || 0,
