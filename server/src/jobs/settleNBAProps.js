@@ -83,10 +83,22 @@ export async function settleNBAProps() {
 
   if (!allStats.length) return
 
-  // Index stats by normalized player name
-  const statsByName = {}
+  // Index by GAME DATE + normalized name, not name alone.
+  //
+  // allStats is the union of every date represented in this batch, so a
+  // player who appears on two of them collided on the bare name and the last
+  // row written won — silently settling a prop against a different night's
+  // box score. Luka Doncic scored 52 vs UTA on Oct 25 and 41 vs POR on Oct
+  // 27; the Oct 27 prop settled at 52 because both rows claimed the same key.
+  //
+  // The date is derived the same way gameDates above is (PT sports day), so
+  // a prop looks up only the row belonging to its own game. The other sports
+  // never had this: NFL keys by `${week}|name`, and WNBA and NCAAF fetch a
+  // box score per game inside the loop. NBA is the only one reading a shared
+  // multi-date table.
+  const statsByDateName = {}
   for (const s of allStats) {
-    statsByName[normalizePlayerName(s.player_name)] = s
+    statsByDateName[`${s.game_date}|${normalizePlayerName(s.player_name)}`] = s
   }
 
   // Build settlements
@@ -95,8 +107,9 @@ export async function settleNBAProps() {
     const statFn = MARKET_STAT_MAP[prop.market_key]
     if (!statFn) continue // unsupported market (e.g., anytime TD)
 
-    const stats = statsByName[normalizePlayerName(prop.player_name)]
-    if (!stats) continue // no stats found for this player
+    const propDate = new Date(prop.games.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+    const stats = statsByDateName[`${propDate}|${normalizePlayerName(prop.player_name)}`]
+    if (!stats) continue // no stats for this player on this game's date
 
     const actualValue = statFn(stats)
     let outcome
