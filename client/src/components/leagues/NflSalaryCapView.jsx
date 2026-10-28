@@ -170,7 +170,9 @@ export default function NflSalaryCapView({ league }) {
         return posFilter === 'All' || p.position === posFilter
       })
       .filter((p) => !searchQuery || p.full_name?.toLowerCase().includes(searchQuery.toLowerCase()))
-      .filter((p) => posFilter === 'OUT' || p.salary <= remaining)
+      // Unaffordable players stay out of the browse list but appear when
+      // searched by name, disabled — see the NBA view for the reasoning.
+      .filter((p) => posFilter === 'OUT' || searchQuery || p.salary <= remaining)
       .sort((a, b) => (b.salary || 0) - (a.salary || 0))
     // No display cap. This used to .slice(0, 100), which only ever bit on the
     // All tab — every position tab filters below 100 on its own. With ~1,100
@@ -503,20 +505,33 @@ export default function NflSalaryCapView({ league }) {
                     The server has always rejected adding one; the pool just
                     had no way to say so, so a player mid-game looked addable
                     and tapping + simply failed. */}
-                {isEditing && (
-                  <button
-                    onClick={() => !player.is_locked && addPlayer(player)}
-                    disabled={player.is_locked}
-                    title={player.is_locked ? 'Game already started' : undefined}
-                    className={`w-8 h-8 rounded-full border flex items-center justify-center shrink-0 text-lg font-bold leading-none transition-colors ${
-                      player.is_locked
-                        ? 'border-text-muted/30 text-text-muted cursor-not-allowed'
-                        : 'border-accent/40 text-accent hover:bg-accent hover:text-white'
-                    }`}
-                  >
-                    +
-                  </button>
-                )}
+                {isEditing && (() => {
+                  // Too expensive is now a second reason a row can be present
+                  // but unaddable. Those rows only appear via search — the
+                  // browse list still filters them — so reaching one means the
+                  // user asked for that player by name and deserves the price
+                  // rather than an empty result.
+                  const tooPricey = player.salary > remaining
+                  const blocked = player.is_locked || tooPricey
+                  return (
+                    <button
+                      onClick={() => !blocked && addPlayer(player)}
+                      disabled={blocked}
+                      title={
+                        player.is_locked ? 'Game already started'
+                          : tooPricey ? `$${player.salary.toLocaleString()} — you have $${Math.max(0, remaining).toLocaleString()} left`
+                            : undefined
+                      }
+                      className={`w-8 h-8 rounded-full border flex items-center justify-center shrink-0 text-lg font-bold leading-none transition-colors ${
+                        blocked
+                          ? 'border-text-muted/30 text-text-muted cursor-not-allowed'
+                          : 'border-accent/40 text-accent hover:bg-accent hover:text-white'
+                      }`}
+                    >
+                      +
+                    </button>
+                  )
+                })()}
               </div>
             ))}
           </div>

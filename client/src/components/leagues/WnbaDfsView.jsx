@@ -610,7 +610,14 @@ export default function WnbaDfsView({ league, tab = 'roster' }) {
       // Hide players whose games have started
       const gameStarted = p.game_starts_at && new Date(p.game_starts_at) <= now
       if (gameStarted && posFilter !== 'OUT') return false
-      if (!isViewMode && p.salary > remainingSalary) return false
+      // Unaffordable players are hidden from BROWSING but surface when
+      // searched by name, rendered disabled. Filtering them out entirely
+      // meant a player you could not afford simply was not there — no row,
+      // no price, no reason — so the only read available was "the data is
+      // broken". Searching is an explicit ask for one person, and the honest
+      // answer is "here he is, he costs more than you have left".
+      // (Same call 4eb268e1 made for locked players: disabled beats absent.)
+      if (!isViewMode && p.salary > remainingSalary && !search) return false
       if (!matchesPositionFilter(p.position, posFilter)) return false
       if (search) {
         const q = search.toLowerCase()
@@ -975,12 +982,26 @@ export default function WnbaDfsView({ league, tab = 'roster' }) {
                   <span className="text-base font-semibold text-accent tabular-nums shrink-0">${player.salary.toLocaleString()}</span>
                 </button>
                 {!isViewMode && (
-                  <button
-                    onClick={() => addPlayer(player)}
-                    className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none"
-                  >
-                    +
-                  </button>
+                  (() => {
+                    // Only reachable via search — the browse list filters these
+                    // out. Disabled with the price in red so the row answers
+                    // "why can't I add him" on sight.
+                    const tooPricey = player.salary > remainingSalary
+                    return (
+                      <button
+                        onClick={() => !tooPricey && addPlayer(player)}
+                        disabled={tooPricey}
+                        title={tooPricey ? `$${player.salary.toLocaleString()} — you have $${Math.max(0, remainingSalary).toLocaleString()} left` : undefined}
+                        className={`w-8 h-8 rounded-full border flex items-center justify-center shrink-0 text-lg font-bold leading-none transition-colors ${
+                          tooPricey
+                            ? 'border-text-primary/15 text-text-muted cursor-not-allowed'
+                            : 'border-accent/40 text-accent hover:bg-accent hover:text-white'
+                        }`}
+                      >
+                        +
+                      </button>
+                    )
+                  })()
                 )}
               </div>
             ))}
