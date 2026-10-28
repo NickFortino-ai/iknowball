@@ -140,6 +140,24 @@ export default function PropCard({ prop, picks, pick: pickProp, onPick, onUndoPi
     if (day === today) return null
     return new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric', ...PT })
   })()
+  // Which score column is authoritative depends on the game's STATUS, and
+  // preferring live_* blanket is wrong. live_* stops updating at the last
+  // poll before a game ends, so it is stale on finals across every sport —
+  // 108 of 560 NBA finals disagree with the real result, 211 of 1461 NCAAB,
+  // 66 of 684 NHL. A blanket `live ?? final` would have shown the Grizzlies
+  // beating the Kings 123-110 when they won 123-112.
+  //
+  // So: live games read live_*, finished games read the final columns, and
+  // each falls back to the other only when its own is missing. ?? not || —
+  // a genuine 0 is a score, not an absence.
+  const isFinalGame = prop.games?.status === 'final'
+  const awayScore = isFinalGame
+    ? (prop.games?.away_score ?? prop.games?.live_away_score)
+    : (prop.games?.live_away_score ?? prop.games?.away_score)
+  const homeScore = isFinalGame
+    ? (prop.games?.home_score ?? prop.games?.live_home_score)
+    : (prop.games?.live_home_score ?? prop.games?.home_score)
+
   const isNba = sportKey.includes('basketball_nba')
   const { data: playerLookup } = useNbaDfsPlayerLookup(showPlayerModal ? prop.player_name : null, sportKey)
 
@@ -181,18 +199,32 @@ export default function PropCard({ prop, picks, pick: pickProp, onPick, onUndoPi
             {kickoffLabel && (
               <div className="text-[10px] text-text-muted">{kickoffLabel}</div>
             )}
-            {prop.games.status === 'live' && prop.games.period && (
+            {/* Score sits on its own line under the matchup rather than
+                inline with it: the block is whitespace-nowrap and already
+                right-aligned against the prop body, so widening the matchup
+                line pushes the whole card. live_* is preferred over the
+                final columns because an in-progress game only updates the
+                live pair — but both are read, so a game that has gone final
+                still shows a score here rather than blanking. */}
+            {prop.games.status === 'live' && (
               <div className="text-[10px] text-accent">
-                {/* NBA/NFL/NHL send a numeric period — prefix Q. MLB sends
-                    a pre-formatted string like "Bot 4th" — pass through. */}
-                {/^[0-9]+$/.test(String(prop.games.period))
-                  ? `Q${prop.games.period}`
-                  : prop.games.period} {prop.games.clock}
+                {awayScore != null && homeScore != null && (
+                  <span className="font-semibold">{awayScore}-{homeScore} </span>
+                )}
+                {prop.games.period && (
+                  <>
+                    {/* NBA/NFL/NHL send a numeric period — prefix Q. MLB sends
+                        a pre-formatted string like "Bot 4th" — pass through. */}
+                    {/^[0-9]+$/.test(String(prop.games.period))
+                      ? `Q${prop.games.period}`
+                      : prop.games.period} {prop.games.clock}
+                  </>
+                )}
               </div>
             )}
             {prop.games.status === 'final' && (
               <div className="text-[10px] text-text-muted font-semibold">
-                Final
+                {awayScore != null && homeScore != null ? `${awayScore}-${homeScore} Final` : 'Final'}
               </div>
             )}
           </div>

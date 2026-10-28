@@ -2053,7 +2053,7 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
 export async function getUserPropPicks(userId, status) {
   let query = supabase
     .from('prop_picks')
-    .select('*, player_props(*, games(id, home_team, away_team, starts_at, status, period, clock, sports(key, name)))')
+    .select('*, player_props(*, games(id, home_team, away_team, starts_at, status, period, clock, live_home_score, live_away_score, home_score, away_score, sports(key, name)))')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
@@ -2163,7 +2163,7 @@ export async function voidProp(propId) {
 export async function getUserPropPickHistory(userId) {
   const { data, error } = await supabase
     .from('prop_picks')
-    .select('*, player_props(*, games(id, home_team, away_team, starts_at, status, period, clock, sports(key, name)))')
+    .select('*, player_props(*, games(id, home_team, away_team, starts_at, status, period, clock, live_home_score, live_away_score, home_score, away_score, sports(key, name)))')
     .eq('user_id', userId)
     .in('status', ['locked', 'settled'])
     .order('updated_at', { ascending: false })
