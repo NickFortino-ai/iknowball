@@ -1575,20 +1575,41 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
 
     // Build lookup maps — name maps are keyed on the NORMALIZED name so
     // "Jaime Jaquez Jr" and "Jaime Jaquez Jr." match each other.
+    //
+    // EVERY key also carries the GAME DATE. The stats above are fetched for
+    // today AND yesterday, so a player on a back-to-back has a row for each,
+    // and a map keyed on id or name alone kept whichever was written last —
+    // showing a live card the wrong night's line. NBA back-to-backs are
+    // routine, so this was not a rare case.
+    //
+    // Same fault that settled an NBA prop against a different night's box
+    // score (Luka Doncic, 52 vs 41). Settlement is a separate path and is
+    // already fixed; this is the display side of it.
+    const statKey = (date, k) => `${date}|${k}`
+    const putStat = (map, date, k, row) => { if (date && k) map[statKey(date, k)] = row }
+    const getStat = (map, date, k) => (date && k ? map[statKey(date, k)] : undefined)
+    // The PT sports day a pick's own game belongs to — the same derivation
+    // the settle jobs use, so display and settlement agree on which night a
+    // prop is about.
+    const pickDate = (pk) => {
+      const at = pk?.player_props?.games?.starts_at
+      return at ? new Date(at).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) : null
+    }
+
     const nbaById = {}
     const nbaByName = {}
-    for (const s of nbaStats) nbaById[s.espn_player_id] = s
-    for (const s of nbaStatsByName) nbaByName[normalizeName(s.player_name)] = s
+    for (const s of nbaStats) putStat(nbaById, s.game_date, s.espn_player_id, s)
+    for (const s of nbaStatsByName) putStat(nbaByName, s.game_date, normalizeName(s.player_name), s)
 
     const mlbById = {}
     const mlbByName = {}
-    for (const s of mlbStats) mlbById[s.espn_player_id] = s
-    for (const s of mlbStatsByName) mlbByName[normalizeName(s.player_name)] = s
+    for (const s of mlbStats) putStat(mlbById, s.game_date, s.espn_player_id, s)
+    for (const s of mlbStatsByName) putStat(mlbByName, s.game_date, normalizeName(s.player_name), s)
 
     const wnbaById = {}
     const wnbaByName = {}
-    for (const s of wnbaStats) wnbaById[s.espn_player_id] = s
-    for (const s of wnbaStatsByName) wnbaByName[normalizeName(s.player_name)] = s
+    for (const s of wnbaStats) putStat(wnbaById, s.game_date, s.espn_player_id, s)
+    for (const s of wnbaStatsByName) putStat(wnbaByName, s.game_date, normalizeName(s.player_name), s)
 
     // ESPN fallback — fire whenever we can't find stats for AT LEAST ONE locked
     // pick's player in the DB. We can't rely on "DB is empty" because the
@@ -1603,17 +1624,20 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
     const nbaMissing = nbaLockedPicks.some((p) => {
       const normName = normalizeName(p.player_props?.player_name)
       const espnId = idMap[p.player_props?.player_name]
-      return !((espnId && nbaById[espnId]) || nbaByName[normName])
+      const d = pickDate(p)
+      return !(getStat(nbaById, d, espnId) || getStat(nbaByName, d, normName))
     })
     const mlbMissing = mlbLockedPicks.some((p) => {
       const normName = normalizeName(p.player_props?.player_name)
       const espnId = idMap[p.player_props?.player_name]
-      return !((espnId && mlbById[espnId]) || mlbByName[normName])
+      const d = pickDate(p)
+      return !(getStat(mlbById, d, espnId) || getStat(mlbByName, d, normName))
     })
     const wnbaMissing = wnbaLockedPicks.some((p) => {
       const normName = normalizeName(p.player_props?.player_name)
       const espnId = idMap[p.player_props?.player_name]
-      return !((espnId && wnbaById[espnId]) || wnbaByName[normName])
+      const d = pickDate(p)
+      return !(getStat(wnbaById, d, espnId) || getStat(wnbaByName, d, normName))
     })
 
     if (nbaLockedPicks.length && nbaMissing) {
@@ -1624,15 +1648,21 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
           fetchNbaStatsFromEspn(today),
           fetchNbaStatsFromEspn(yesterday),
         ])
-        const allStats = [...(todayStats.playerStats || []), ...(yesterdayStats.playerStats || [])]
+        // Tagged with the date each batch was fetched FOR, so the two days
+        // stay separate in the maps instead of overwriting each other.
+        const allStats = [
+          ...(todayStats.playerStats || []).map((x) => ({ ...x, _date: today })),
+          ...(yesterdayStats.playerStats || []).map((x) => ({ ...x, _date: yesterday })),
+        ]
         for (const p of allStats) {
           const row = {
             espn_player_id: p.espnPlayerId,
             player_name: p.playerName,
+            game_date: p._date,
             ...p.stats,
           }
-          nbaById[p.espnPlayerId] = row
-          nbaByName[normalizeName(p.playerName)] = row
+          putStat(nbaById, p._date, p.espnPlayerId, row)
+          putStat(nbaByName, p._date, normalizeName(p.playerName), row)
         }
         logger.info({ count: allStats.length }, 'Live stat enrichment: ESPN NBA fallback fetched')
       } catch (err) {
@@ -1646,15 +1676,21 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
           fetchMlbStatsFromEspn(today),
           fetchMlbStatsFromEspn(yesterday),
         ])
-        const allStats = [...(todayStats.playerStats || []), ...(yesterdayStats.playerStats || [])]
+        // Tagged with the date each batch was fetched FOR, so the two days
+        // stay separate in the maps instead of overwriting each other.
+        const allStats = [
+          ...(todayStats.playerStats || []).map((x) => ({ ...x, _date: today })),
+          ...(yesterdayStats.playerStats || []).map((x) => ({ ...x, _date: yesterday })),
+        ]
         for (const p of allStats) {
           const row = {
             espn_player_id: p.espnPlayerId,
             player_name: p.playerName,
+            game_date: p._date,
             ...p.stats,
           }
-          mlbById[p.espnPlayerId] = row
-          mlbByName[normalizeName(p.playerName)] = row
+          putStat(mlbById, p._date, p.espnPlayerId, row)
+          putStat(mlbByName, p._date, normalizeName(p.playerName), row)
         }
         logger.info({ count: allStats.length }, 'Live stat enrichment: ESPN MLB fallback fetched')
       } catch (err) {
@@ -1668,15 +1704,21 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
           fetchWnbaStatsFromEspn(today),
           fetchWnbaStatsFromEspn(yesterday),
         ])
-        const allStats = [...(todayStats.playerStats || []), ...(yesterdayStats.playerStats || [])]
+        // Tagged with the date each batch was fetched FOR, so the two days
+        // stay separate in the maps instead of overwriting each other.
+        const allStats = [
+          ...(todayStats.playerStats || []).map((x) => ({ ...x, _date: today })),
+          ...(yesterdayStats.playerStats || []).map((x) => ({ ...x, _date: yesterday })),
+        ]
         for (const p of allStats) {
           const row = {
             espn_player_id: p.espnPlayerId,
             player_name: p.playerName,
+            game_date: p._date,
             ...p.stats,
           }
-          wnbaById[p.espnPlayerId] = row
-          wnbaByName[normalizeName(p.playerName)] = row
+          putStat(wnbaById, p._date, p.espnPlayerId, row)
+          putStat(wnbaByName, p._date, normalizeName(p.playerName), row)
         }
         logger.info({ count: allStats.length }, 'Live stat enrichment: ESPN WNBA fallback fetched')
       } catch (err) {
@@ -1924,9 +1966,10 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
       const marketKey = pick.player_props?.market_key
       const gameStatus = pick.player_props?.games?.status
 
-      const nba = (espnId && nbaById[espnId]) || nbaByName[normName]
-      const mlb = (espnId && mlbById[espnId]) || mlbByName[normName]
-      const wnba = (espnId && wnbaById[espnId]) || wnbaByName[normName]
+      const pDate = pickDate(pick)
+      const nba = getStat(nbaById, pDate, espnId) || getStat(nbaByName, pDate, normName)
+      const mlb = getStat(mlbById, pDate, espnId) || getStat(mlbByName, pDate, normName)
+      const wnba = getStat(wnbaById, pDate, espnId) || getStat(wnbaByName, pDate, normName)
       // A prop carries no player team, but its GAME names two — and the
       // player is on one of them. That is enough to disambiguate a shared
       // name, which matters: there are two Justin Jeffersons, a Vikings
@@ -2141,7 +2184,10 @@ export async function getUserPropPickHistory(userId) {
 export async function getUserLivePropStats(userId) {
   const { data, error } = await supabase
     .from('prop_picks')
-    .select('id, prop_id, player_props(player_name, market_key, games(sports(key)))')
+    // starts_at is REQUIRED, not decorative: enrichLockedPicksWithLiveStats
+    // keys its stat maps by the pick's own PT game date, and without this
+    // field every lookup misses and no live value renders at all.
+    .select('id, prop_id, player_props(player_name, market_key, games(starts_at, sports(key)))')
     .eq('user_id', userId)
     .eq('status', 'locked')
 
