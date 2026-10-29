@@ -1576,6 +1576,18 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
         return (
           <div>
             <label className="block text-xs text-text-muted mb-2">Champion Determined By</label>
+            {/* Say WHY it is locked. The buttons were disabled at 40% opacity
+                with a handler that returns silently, so tapping one looked
+                like it had worked — the commissioner of league 21 set this to
+                nightly wins, got no feedback, and only noticed when the
+                standings kept highlighting points. A disabled control that
+                explains itself is the difference between a rule and a bug. */}
+            {locked && (
+              <p className="text-[11px] text-text-muted/80 mb-2 -mt-1">
+                Locked now the league has started — changing this mid-season would
+                reshuffle the standings under everyone. Ask an admin if it needs changing.
+              </p>
+            )}
             <div className="flex flex-wrap gap-2">
               {opts.map((opt) => (
                 <button
