@@ -117,6 +117,24 @@ export default function HubPage() {
   // narrowing what is in it — so they are one piece of state, not a flag
   // each. Seeded from ?tab=arcade so the old deep link still lands.
   const [hubView, setHubView] = useState(() => (searchParams.get('tab') === 'arcade' ? 'arcade' : 'feed'))
+
+  // Changing rooms writes ?tab= as well as state.
+  //
+  // Without it the Arcade lived at /hub, identical to the Feed, so tapping
+  // the Hub tab from inside the Arcade navigated to the URL you were already
+  // on — React Router had nothing to react to and you stayed put. It also
+  // meant the Arcade could not be linked to or restored on refresh.
+  //
+  // replace, not push: the room is a view within the Hub, not a destination,
+  // and useBackClosable below already gives Back the job of closing it. A
+  // history entry per room would make Back step through rooms instead.
+  const goToRoom = (view) => {
+    setHubView(view)
+    const next = new URLSearchParams(searchParams)
+    if (view === 'feed') next.delete('tab')
+    else next.set('tab', view)
+    setSearchParams(next, { replace: true })
+  }
   const hasManuallyToggled = useRef(false)
   // Where the feed was when the arcade opened, so closing it puts you back
   // rather than at the top of a page you'd already scrolled through.
@@ -146,6 +164,11 @@ export default function HubPage() {
     } else if (tab && VALID_SCOPES.has(tab)) {
       hasManuallyToggled.current = true
       setFeedScope(tab)
+    } else if (!tab && hubView !== 'feed') {
+      // The param is gone and we are in a room — this is the Hub tab being
+      // tapped from inside the Arcade. Nothing used to handle it, so the
+      // room stayed open.
+      setHubView('feed')
     } else if (tab === 'team_feed') {
       // team_feed isn't a top-level scope — render via the All-of-IKB feed
       // with the sport/team filter panel activated and the requested team
@@ -171,11 +194,17 @@ export default function HubPage() {
       }, 2000)
       return () => clearTimeout(timer)
     }
-  }, [searchParams])
+    // hubView is a dependency because the reset branch above reads it. Without
+    // it the effect closes over a stale value and the "param removed while in
+    // a room" case silently stops firing.
+  }, [searchParams, hubView])
 
   // Android's Back and iOS's edge swipe must close the room, not exit the
   // Hub. The room is state rather than a route, so it has to say so.
-  useBackClosable(hubView !== 'feed', () => setHubView('feed'))
+  // goToRoom, not setHubView: closing the room has to drop ?tab= as well, or
+  // the URL keeps claiming a room that is no longer open and the next
+  // searchParams change re-opens it.
+  useBackClosable(hubView !== 'feed', () => goToRoom('feed'))
 
   useEffect(() => {
     // Only the arcade. News swaps the feed region in place, so jumping to
@@ -405,7 +434,7 @@ export default function HubPage() {
     // costing card size as well as looking empty.
     return (
       <div className="max-w-2xl lg:max-w-7xl mx-auto px-4 lg:px-8 pt-6 pb-32 lg:pb-6">
-        <ArcadeRoom onExit={() => setHubView('feed')} />
+        <ArcadeRoom onExit={() => goToRoom('feed')} />
       </div>
     )
   }
@@ -536,9 +565,9 @@ export default function HubPage() {
               the icons themselves step down a size to keep the labels from
               wrapping at 375px. */}
           <div className="grid w-full grid-cols-4 gap-0.5 lg:hidden">
-            <RoomButton icon={FeedIcon} label="Feed" iconClass="w-10 h-10" active={hubView === 'feed'} onClick={() => setHubView('feed')} />
-            <RoomButton icon={ArcadeIcon} label="Arcade" iconClass="w-12 h-12" data-onboarding="arcade" active={hubView === 'arcade'} onClick={() => setHubView('arcade')} />
-            <RoomButton icon={NewsIcon} label="News" iconClass="w-12 h-12" active={hubView === 'news'} onClick={() => setHubView('news')} />
+            <RoomButton icon={FeedIcon} label="Feed" iconClass="w-10 h-10" active={hubView === 'feed'} onClick={() => goToRoom('feed')} />
+            <RoomButton icon={ArcadeIcon} label="Arcade" iconClass="w-12 h-12" data-onboarding="arcade" active={hubView === 'arcade'} onClick={() => goToRoom('arcade')} />
+            <RoomButton icon={NewsIcon} label="News" iconClass="w-12 h-12" active={hubView === 'news'} onClick={() => goToRoom('news')} />
             <RoomButton icon={HallOfFameIcon} label="Hall of Fame" iconClass="w-12 h-12" data-onboarding="hall-of-fame" onClick={() => navigate('/hall-of-fame')} />
           </div>
           {/* No border, no fill — the cabinet IS the button. A bordered box
@@ -550,7 +579,7 @@ export default function HubPage() {
               candidates and takes the first with real dimensions, so the
               pair resolves to whichever layout the player is actually on. */}
           <button
-            onClick={() => setHubView('arcade')}
+            onClick={() => goToRoom('arcade')}
             aria-label="Arcade"
             data-onboarding="arcade"
             className="hidden lg:flex w-full lg:flex-1 flex-col items-center justify-center gap-1 min-h-0 text-accent transition-transform hover:scale-105 active:scale-95"
