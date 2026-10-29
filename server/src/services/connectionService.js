@@ -456,11 +456,22 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   // something safe — so the multiple can look impressive while the payout is
   // trivial: 3x on -370 pays +9. Gating on the multiple alone published those.
   //
-  // 20 and not 21: of the eight multiplied wins on record the best is exactly
-  // +20 (4x on -218), and that one is worth featuring — it is the kind of hit
-  // people are pleased with. A strict "greater than 20" would currently
-  // silence this branch entirely. Everything below it (+12, +9, +8) drops.
-  const MULTIPLIER_HIT_MIN_POINTS = 20
+  // 30 is not a round number picked by feel — it is the UNDERDOG card's bar
+  // expressed in points. That card needs +300 in the global feed, and +300
+  // pays exactly 30. The two cards now sit side by side at the same visual
+  // weight (logo, matchup, final score), so they should cost the same to
+  // earn; a card that shouts as loudly as UNDERDOG HIT for a +9 return is
+  // the thing being fixed.
+  //
+  // What it takes: 4x at about -133 or better, or 3x at even money or
+  // better. Both are a genuinely bolder move than multiplying a -370 lock,
+  // which is the behaviour worth featuring.
+  //
+  // Nothing on record clears it — the best multiplied win so far is +20
+  // (4x on -218). That is the intended outcome of raising the bar, not a
+  // sign it is set wrong, but it does mean this branch stays quiet until
+  // someone earns it.
+  const MULTIPLIER_HIT_MIN_POINTS = 30
 
   const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, leagueWins, h2hPicks, hotTakes, hotTakeReminders, sweatShares, viralHotTakes, futuresPicksOpen, futuresPicksSettled] = await Promise.all([
     // Source 1: Notable picks — settled WINS only, either (odds >= 250) or
