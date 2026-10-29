@@ -286,7 +286,17 @@ export default function FuturesAdminPanel() {
     if (!confirm(`Settle with winner: "${winnerInput}"?`)) return
     try {
       const result = await settleMarket.mutateAsync({ marketId, winningOutcome: winnerInput })
-      toast(`Settled — scored ${result.scored} picks`, 'success')
+      // The market is claimed by the time this resolves; the per-pick scoring
+      // runs on after it. Say so rather than reporting a count that is zero
+      // only because the work has not finished — "scored 0 picks" reads as a
+      // failure, and the old synchronous version timed out on a 16-pick
+      // market, which read as one too.
+      toast(
+        result.background
+          ? `Settled — scoring ${result.pickCount} pick${result.pickCount === 1 ? '' : 's'} now, results land shortly`
+          : `Settled — scored ${result.scored} picks`,
+        'success',
+      )
       setSettlingId(null)
       setWinnerInput('')
     } catch (err) {

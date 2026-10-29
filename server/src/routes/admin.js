@@ -1228,7 +1228,11 @@ router.post('/futures/settle', async (req, res) => {
   if (!marketId || !winningOutcome) {
     return res.status(400).json({ error: 'marketId and winningOutcome are required' })
   }
-  const result = await settleFuturesMarket(marketId, winningOutcome)
+  // background: the claim still happens synchronously, so "already settled"
+  // and a bad marketId still come back as errors. Only the per-pick scoring
+  // is detached — that is the part that ran 46s on the World Series and
+  // timed the request out on work that had actually succeeded.
+  const result = await settleFuturesMarket(marketId, winningOutcome, { background: true })
   res.json(result)
 })
 

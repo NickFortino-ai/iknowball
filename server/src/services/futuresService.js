@@ -264,7 +264,23 @@ export async function closeFuturesMarket(marketId) {
   logger.info({ marketId }, 'Futures market closed')
 }
 
-export async function settleFuturesMarket(marketId, winningOutcome) {
+// Settle a market.
+//
+// The CLAIM (flipping the market to settled) is always synchronous: it is a
+// single UPDATE guarded by `.in('status', ['active','closed'])`, it is the
+// only part that can legitimately fail, and "this market is already settled"
+// is an answer the caller needs immediately.
+//
+// The per-pick loop is the slow half — four round trips each (update, points
+// RPC, notification, record check), run serially. Settling the 2026 World
+// Series took 46 SECONDS for 16 picks and blew past the HTTP timeout, so the
+// admin saw "request timed out" for work that completed perfectly. Worse,
+// that trains a retry on an operation that looks unsafe to repeat.
+//
+// Pass { background: true } to return once the claim lands and let the loop
+// finish detached. Callers that want the scored count still get it by
+// omitting the flag.
+export async function settleFuturesMarket(marketId, winningOutcome, { background = false } = {}) {
   // Update market status
   const { data: market, error: marketError } = await supabase
     .from('futures_markets')
@@ -298,9 +314,27 @@ export async function settleFuturesMarket(marketId, winningOutcome) {
   }
 
   if (!picks?.length) {
-    return { scored: 0 }
+    return { scored: 0, pickCount: 0 }
   }
 
+  if (background) {
+    // Detached on purpose. Nothing downstream needs the count, every failure
+    // inside is already logged per-pick, and the market is claimed either
+    // way — so a crash here cannot leave the market half-claimed, only leave
+    // individual picks unsettled, which is the same exposure the synchronous
+    // path had.
+    scoreFuturesPicks(market, marketId, winningOutcome, picks).catch((err) => {
+      logger.error({ err, marketId }, 'Background futures scoring failed')
+    })
+    return { scored: 0, pickCount: picks.length, background: true }
+  }
+
+  const scored = await scoreFuturesPicks(market, marketId, winningOutcome, picks)
+  logger.info({ marketId, scored, winningOutcome }, 'Futures market settled')
+  return { scored, pickCount: picks.length }
+}
+
+async function scoreFuturesPicks(market, marketId, winningOutcome, picks) {
   let scored = 0
 
   for (const pick of picks) {
@@ -364,6 +398,6 @@ export async function settleFuturesMarket(marketId, winningOutcome) {
     scored++
   }
 
-  logger.info({ marketId, scored, winningOutcome }, 'Futures market settled')
-  return { scored }
+  logger.info({ marketId, scored, winningOutcome }, 'Futures picks scored')
+  return scored
 }
