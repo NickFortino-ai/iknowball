@@ -948,18 +948,6 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     const multi = [...correctByMarket.entries()].filter(([, picks]) => picks.length >= 2)
 
     if (multi.length) {
-      // Denominator = everyone who took a position on the market, not just
-      // those inside the feed window. Counted per market rather than inferred
-      // from the picks we happen to hold.
-      const totals = new Map()
-      await Promise.all(multi.map(async ([marketId]) => {
-        const { count } = await supabase
-          .from('futures_picks')
-          .select('id', { count: 'exact', head: true })
-          .eq('market_id', marketId)
-        totals.set(marketId, count || 0)
-      }))
-
       for (const [marketId, picks] of multi) {
         const callers = picks
           .filter((fp) => userMap[fp.user_id])
@@ -994,8 +982,12 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
             player_headshot_url: isPlayerFuturesMarket(futuresSportKey)
               ? (headshotByName[first.picked_outcome] || null)
               : null,
+            // The card reads "4 IKB'ers called it" — no denominator. It was
+            // "4 of 16", which invited the wrong comparison: the interesting
+            // fact is that four people saw it coming, not that twelve did
+            // not. Dropping it also removes a per-market COUNT query that
+            // ran on every feed build purely to produce that one number.
             correct_count: callers.length,
-            total_count: totals.get(marketId) || callers.length,
             callers: callers.map((fp) => ({
               userId: fp.user_id,
               ...buildUserFields(userMap[fp.user_id]),

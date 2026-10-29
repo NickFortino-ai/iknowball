@@ -46,7 +46,7 @@ export default function FuturesGroupFeedCard({ item, reactions, onUserTap }) {
       <div className="rounded-2xl border border-yellow-500/30 bg-gradient-to-b from-yellow-500/[0.07] to-transparent p-4">
         <div className="text-center mb-3">
           <span className="text-sm font-bold text-yellow-500">
-            {g.correct_count} of {g.total_count} IKB'ers called it
+            {g.correct_count} IKB'ers called it
           </span>
         </div>
 
