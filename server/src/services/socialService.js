@@ -145,6 +145,12 @@ async function getTargetOwner(targetType, targetId) {
     return null
   }
 
+  // A grouped futures card belongs to a MARKET, which has no single owner —
+  // every correct caller shares it. Return null so the reaction records
+  // normally but nobody gets a "someone reacted to your pick" notification
+  // that would be wrong for all but one of them.
+  if (targetType === 'futures_group') return null
+
   const table = TABLE_MAP[targetType]
   const ownerCol = OWNER_COL[targetType]
   if (!table) {

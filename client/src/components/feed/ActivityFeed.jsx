@@ -22,6 +22,7 @@ import SweatFeedCard from './SweatFeedCard'
 import SweatResultFeedCard from './SweatResultFeedCard'
 import CalledShotFeedCard from './CalledShotFeedCard'
 import FuturesFeedCard from './FuturesFeedCard'
+import FuturesGroupFeedCard from './FuturesGroupFeedCard'
 import StreakDetailModal from './StreakDetailModal'
 import RecordDetailModal from './RecordDetailModal'
 import HeadToHeadDetailModal from './HeadToHeadDetailModal'
@@ -46,6 +47,10 @@ function getFeedItemTargetKey(item) {
     return `hot_take_reminder-${item.id}`
   } else if (item.type === 'futures_pick' || item.type === 'futures_hit') {
     return `futures_pick-${item.futures.id}`
+  } else if (item.type === 'futures_hit_group') {
+    // Keyed on the market: the card IS the market, and its identity must not
+    // shift when another caller is added to the group.
+    return `futures_group-${item.futures_group?.market_id}`
   }
   return null
 }
@@ -108,6 +113,11 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', targetUserId 
       else if (item.type === 'hot_take') targets.push({ target_type: 'hot_take', target_id: item.hot_take.id })
       else if (item.type === 'futures_pick' || item.type === 'futures_hit') {
         targets.push({ target_type: 'futures_pick', target_id: item.futures.id })
+      }
+      else if (item.type === 'futures_hit_group') {
+        // Reactions belong to the MARKET, not to any one caller's pick —
+        // otherwise they would vanish the moment the group gains a member.
+        targets.push({ target_type: 'futures_group', target_id: item.futures_group?.market_id })
       }
       else if (item.type === 'head_to_head') {
         targets.push({ target_type: 'head_to_head', target_id: item.id })
@@ -343,6 +353,8 @@ function FeedCard({ item, getReactions, onUserTap, onStreakTap, onH2HTap, onReco
           onRecordTap={onRecordTap}
         />
       )
+    case 'futures_hit_group':
+      return <FuturesGroupFeedCard item={item} reactions={getReactions('futures_group', item.futures_group?.market_id)} onUserTap={onUserTap} />
     case 'futures_pick':
     case 'futures_hit':
       return <FuturesFeedCard item={item} reactions={getReactions('futures_pick', item.futures.id)} onUserTap={onUserTap} />

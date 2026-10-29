@@ -450,7 +450,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   const skipForHotTakes = (isHotTakes || isUserHotTakes || isPolls || isPredictions || isPosts) ? Promise.resolve({ data: [] }) : null
 
   // Query sources in parallel (some skipped for 'all' / 'highlights' / 'hot_takes' scope)
-  const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, leagueWins, h2hPicks, hotTakes, hotTakeReminders, sweatShares, viralHotTakes, futuresPicks] = await Promise.all([
+  const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, leagueWins, h2hPicks, hotTakes, hotTakeReminders, sweatShares, viralHotTakes, futuresPicksOpen, futuresPicksSettled] = await Promise.all([
     // Source 1: Notable picks — settled WINS only, either (odds >= 250) or
     // (multiplier >= 3). Multipliers used to post win or loss while underdogs
     // posted only on a win, so two sources with opposite rules sat side by
@@ -591,15 +591,46 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .select('hot_take_id')
       .gte('created_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()),
 
-    // Source 13: Futures picks — new submissions + settled results
+    // Source 13a: Futures picks still OPEN — windowed by when they were made,
+    // which is when a "bold call" is news.
     skipForHotTakes ||
     applyBefore(filterByUser(supabase
       .from('futures_picks')
-      .select('id, user_id, picked_outcome, odds_at_submission, risk_at_submission, reward_at_submission, status, is_correct, points_earned, created_at, updated_at, futures_markets(title, sport_key, futures_sport_key)'),
+      .select('id, user_id, picked_outcome, odds_at_submission, risk_at_submission, reward_at_submission, status, is_correct, points_earned, created_at, updated_at, market_id, futures_markets(title, sport_key, futures_sport_key)')
+      .eq('status', 'locked'),
       'user_id', connectedIds), 'created_at')
       .order('created_at', { ascending: false })
       .limit(50),
+
+    // Source 13b: Futures picks that have SETTLED — windowed by updated_at,
+    // because settling is the event. This used to share one query ordered by
+    // created_at, and that quietly made the best calls unpublishable: the
+    // window held the 50 most recently MADE picks, so a futures bet placed in
+    // August and settled tonight fell outside it no matter how good it was.
+    //
+    // The 2026 World Series is the case. Four users called the Brewers;
+    // Himmy at +800 EIGHTY-TWO DAYS out and admin three days later were both
+    // outside the window and could never appear, while userpick showed only
+    // because he landed exactly on its boundary. A 14-day rule below exists
+    // precisely to reward calling it early — and the window was excluding the
+    // earliest callers. The two rules worked against each other.
+    //
+    // Limit is deliberately generous: settlements arrive in bursts (ten NFL
+    // division markets resolve the same afternoon) and a grouped card needs
+    // EVERY correct caller on a market to report "4 of 16" honestly.
+    skipForHotTakes ||
+    applyBefore(filterByUser(supabase
+      .from('futures_picks')
+      .select('id, user_id, picked_outcome, odds_at_submission, risk_at_submission, reward_at_submission, status, is_correct, points_earned, created_at, updated_at, market_id, futures_markets(title, sport_key, futures_sport_key)')
+      .eq('status', 'settled'),
+      'user_id', connectedIds), 'updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(400),
   ])
+
+  // One list again for everything that just needs "every futures pick in
+  // scope". The split exists for WINDOWING, not for downstream handling.
+  const allFuturesPicks = [...(futuresPicksOpen.data || []), ...(futuresPicksSettled.data || [])]
 
   // For 'all' / 'hot_takes' / 'user_hot_takes' scope, batch-fetch user data from query results
   if (isAll || isHotTakes || isUserHotTakes || isPolls || isPredictions || isPosts) {
@@ -613,7 +644,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     for (const pick of h2hPicks.data || []) userIdSet.add(pick.user_id)
     for (const take of hotTakes.data || []) userIdSet.add(take.user_id)
     for (const win of leagueWins.data || []) userIdSet.add(win.user_id)
-    for (const fp of futuresPicks.data || []) userIdSet.add(fp.user_id)
+    for (const fp of allFuturesPicks) userIdSet.add(fp.user_id)
     for (const r of hotTakeReminders.data || []) userIdSet.add(r.reminder_user_id)
     // viralHotTakes user IDs are added after we fetch the actual hot takes below
     userIdSet.delete(undefined)
@@ -850,7 +881,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   // the client can render a headshot instead of a team logo. One query per
   // feed request rather than one per pick.
   const playerFuturesNames = new Set()
-  for (const fp of futuresPicks.data || []) {
+  for (const fp of allFuturesPicks) {
     if (isPlayerFuturesMarket(fp.futures_markets?.futures_sport_key) && fp.picked_outcome) {
       playerFuturesNames.add(fp.picked_outcome)
     }
@@ -864,8 +895,95 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     for (const row of nflRows || []) headshotByName[row.full_name] = row.headshot_url
   }
 
+  // Group futures HITS by market, so a result several people called becomes
+  // one card instead of N near-identical ones.
+  //
+  // Everyone correct is listed, including callers inside the 14-day window
+  // and below the odds gate. Those gates decide whether the CARD is worth
+  // publishing; they must not decide who is counted, or the headline lies —
+  // "3 of 16 called it" when four did is worse than including a late caller.
+  // The client scales each name by how early it was, which lets an 82-day
+  // call outrank a 5-day one visually without hiding the latter.
+  //
+  // A market only ONE person called stays on the individual card path below,
+  // with its existing gates. That is deliberate: a solo correct call is
+  // often the most impressive version of this, and it already renders well.
+  const groupedPickIds = new Set()
+  {
+    const correctByMarket = new Map()
+    for (const fp of futuresPicksSettled.data || []) {
+      if (!fp.is_correct || !fp.market_id) continue
+      if (!correctByMarket.has(fp.market_id)) correctByMarket.set(fp.market_id, [])
+      correctByMarket.get(fp.market_id).push(fp)
+    }
+    const multi = [...correctByMarket.entries()].filter(([, picks]) => picks.length >= 2)
+
+    if (multi.length) {
+      // Denominator = everyone who took a position on the market, not just
+      // those inside the feed window. Counted per market rather than inferred
+      // from the picks we happen to hold.
+      const totals = new Map()
+      await Promise.all(multi.map(async ([marketId]) => {
+        const { count } = await supabase
+          .from('futures_picks')
+          .select('id', { count: 'exact', head: true })
+          .eq('market_id', marketId)
+        totals.set(marketId, count || 0)
+      }))
+
+      for (const [marketId, picks] of multi) {
+        const callers = picks
+          .filter((fp) => userMap[fp.user_id])
+          .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+        if (callers.length < 2) continue
+
+        // Publish only if at least one caller would have earned a card alone:
+        // made the call 14+ days out, and in the global feed at +120 or
+        // better. Otherwise a market everybody piled onto late becomes news.
+        const worthy = callers.some((fp) => {
+          const days = (new Date(fp.updated_at) - new Date(fp.created_at)) / 86400000
+          if (days < 14) return false
+          return !isAll || (fp.odds_at_submission || 0) >= 120
+        })
+        if (!worthy) continue
+
+        const first = callers[0]
+        const futuresSportKey = first.futures_markets?.futures_sport_key
+        if (isAll && isNflDivisionFutures(futuresSportKey)) continue
+
+        callers.forEach((fp) => groupedPickIds.add(fp.id))
+        feed.push({
+          type: 'futures_hit_group',
+          id: `futures-group-${marketId}`,
+          timestamp: callers.reduce((latest, fp) => (fp.updated_at > latest ? fp.updated_at : latest), callers[0].updated_at),
+          futures_group: {
+            market_id: marketId,
+            market_title: first.futures_markets?.title,
+            sport_key: first.futures_markets?.sport_key,
+            futures_sport_key: futuresSportKey,
+            picked_outcome: first.picked_outcome,
+            player_headshot_url: isPlayerFuturesMarket(futuresSportKey)
+              ? (headshotByName[first.picked_outcome] || null)
+              : null,
+            correct_count: callers.length,
+            total_count: totals.get(marketId) || callers.length,
+            callers: callers.map((fp) => ({
+              userId: fp.user_id,
+              ...buildUserFields(userMap[fp.user_id]),
+              pick_date: fp.created_at,
+              days_before_settle: Math.round((new Date(fp.updated_at) - new Date(fp.created_at)) / 86400000),
+              odds_at_submission: fp.odds_at_submission,
+              points_earned: fp.points_earned,
+            })),
+          },
+        })
+      }
+    }
+  }
+
   // Process futures picks
-  for (const fp of futuresPicks.data || []) {
+  for (const fp of allFuturesPicks) {
+    if (groupedPickIds.has(fp.id)) continue // already on a grouped card
     const user = userMap[fp.user_id]
     if (!user) continue
 
