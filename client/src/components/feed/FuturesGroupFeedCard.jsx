@@ -90,7 +90,14 @@ export default function FuturesGroupFeedCard({ item, reactions, onUserTap }) {
                     same meaning in a third of the width, and the payout is
                     what should never be the thing that gets squeezed out. */}
                 <span className="hidden sm:inline">{formatPickDate(c.pick_date)}</span>
-                <span className="text-text-primary/60">{c.days_before_settle}d out</span>
+                {/* White, and spelled out. This is the number the whole card
+                    is arguing about — how early the call was — and it was
+                    rendering at 60% opacity next to a full-strength date,
+                    which put the emphasis on the wrong one. Room exists
+                    because the date hides below sm. */}
+                <span className="text-text-primary font-semibold">
+                  {c.days_before_settle} day{c.days_before_settle === 1 ? '' : 's'} out
+                </span>
                 {c.points_earned != null && (
                   <span className="text-correct font-bold text-xs">+{c.points_earned}</span>
                 )}
