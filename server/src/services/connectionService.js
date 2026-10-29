@@ -2043,6 +2043,30 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       case 'record':
         score = 70
         break
+      // Futures outrank same-day results, and they had NO case at all —
+      // they fell to default:15, below a plain pick, so an MLS underdog hit
+      // (65) buried a World Series call.
+      //
+      // The difference is time at risk. An underdog hit or a parlay is
+      // resolved the day it is made; a futures call is a position held for
+      // months while the holder could do nothing about it. That is the
+      // headline, and it is the same thing the self-remind CALLED IT card
+      // (100) is built to celebrate — so these sit just under it.
+      //
+      // Solo scores ABOVE the group on purpose: one person alone calling a
+      // championship is rarer than four doing it, even though four is the
+      // better story to look at. The group makes that back through callers.
+      case 'futures_hit':
+        score = 95
+        break
+      case 'futures_hit_group':
+        score = 90
+        break
+      // An OPEN futures position is a claim, not a result. Squad-only
+      // already, and it should not crowd out settled outcomes.
+      case 'futures_pick':
+        score = 40
+        break
       case 'underdog_hit':
       case 'parlay':
         score = 65
@@ -2071,6 +2095,14 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     // Grouped items get a social proof boost (+10 per extra user, capped at +30)
     if (item.grouped && item.users?.length > 1) {
       score += Math.min((item.users.length - 1) * 10, 30)
+    }
+    // Same idea for a grouped futures card, which carries its callers in its
+    // own shape rather than item.users. Capped lower (+15): more callers
+    // means the call was less lonely, so it should not overtake the solo
+    // version by sheer headcount.
+    if (item.type === 'futures_hit_group') {
+      const extra = (item.futures_group?.callers?.length || 2) - 2
+      score += Math.min(extra * 5, 15)
     }
     // Engagement boost: +5 per comment, capped at +25
     score += Math.min((item.commentCount || 0) * 5, 25)
