@@ -1071,7 +1071,19 @@ export default function CreateLeaguePage() {
       scoring_rules: format === 'fantasy' && fantasyFormat === 'traditional' && scoringRules ? scoringRules : undefined,
       salary_cap: (format === 'nba_dfs' || format === 'wnba_dfs' || format === 'mlb_dfs' || fantasyFormat === 'salary_cap') ? salaryCap : undefined,
       season_type: (format === 'nba_dfs' || format === 'wnba_dfs' || fantasyFormat === 'salary_cap') ? seasonType : undefined,
-      champion_metric: (format === 'nba_dfs' || format === 'wnba_dfs' || fantasyFormat === 'salary_cap') && seasonType === 'full_season' ? championMetric : undefined,
+      // seasonType !== 'single_week', not === 'full_season'.
+      //
+      // A custom-range league runs for weeks and has a perfectly good wins
+      // race, but the old condition dropped the value on the floor: the
+      // picker was ALSO gated to full_season, so a commissioner who chose
+      // "Most Nightly Wins" and then switched the duration to a custom range
+      // watched the control vanish while the state stayed set — and the
+      // league was created on total_points with nothing said. That is what
+      // happened to league 21.
+      //
+      // single_week stays excluded because one night has no wins race, which
+      // is the same reason the gear modal excludes it.
+      champion_metric: (format === 'nba_dfs' || format === 'wnba_dfs' || fantasyFormat === 'salary_cap') && seasonType !== 'single_week' ? championMetric : undefined,
       // Salary cap "This Week" = always the current NFL week; server fills
       // it in at creation time so the user doesn't have to pick. NBA/WNBA
       // single-night still uses the chosen game date.
@@ -1747,7 +1759,7 @@ export default function CreateLeaguePage() {
                     </div>
                   </div>
                 )}
-                {seasonType === 'full_season' && (
+                {seasonType !== 'single_week' && (
                   <div>
                     <label className="text-xs text-text-muted block mb-1">Champion Determined By</label>
                     <div className="flex gap-2">
@@ -2113,7 +2125,7 @@ export default function CreateLeaguePage() {
                     : 'Runs through end of NBA regular season.'}
               </p>
             </div>
-            {seasonType === 'full_season' && (
+            {seasonType !== 'single_week' && (
               <div>
                 <label className="text-xs text-text-muted block mb-1">Champion Determined By</label>
                 <div className="flex gap-2">
@@ -2247,7 +2259,7 @@ export default function CreateLeaguePage() {
                     : 'Runs through end of WNBA regular season.'}
               </p>
             </div>
-            {seasonType === 'full_season' && (
+            {seasonType !== 'single_week' && (
               <div>
                 <label className="text-xs text-text-muted block mb-1">Champion Determined By</label>
                 <div className="flex gap-2">
