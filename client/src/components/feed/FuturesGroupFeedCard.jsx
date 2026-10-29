@@ -31,7 +31,18 @@ export default function FuturesGroupFeedCard({ item, reactions, onUserTap }) {
   const logoUrl = isPlayerMarket ? null : getTeamLogoUrl(g.picked_outcome, g.sport_key)
 
   return (
-    <FeedCardWrapper item={item} reactions={reactions} targetType="futures_group" targetId={g.market_id}>
+    <FeedCardWrapper
+      item={item}
+      reactions={reactions}
+      targetType="futures_group"
+      targetId={g.market_id}
+      // gold, matching the "called it" treatment inside the card — every
+      // other feed card carries a colour on its left edge and this one read
+      // as unfinished without it.
+      borderColor="gold"
+      // No byline: the card belongs to the market, not to any one caller.
+      headerLayout="none"
+    >
       <div className="rounded-2xl border border-yellow-500/30 bg-gradient-to-b from-yellow-500/[0.07] to-transparent p-4">
         <div className="text-center mb-3">
           <span className="text-sm font-bold text-yellow-500">
@@ -75,8 +86,14 @@ export default function FuturesGroupFeedCard({ item, reactions, onUserTap }) {
                 {c.display_name || c.username}
               </span>
               <span className="ml-auto flex items-center gap-2 shrink-0 text-[11px] text-text-muted tabular-nums">
-                <span>{formatPickDate(c.pick_date)}</span>
+                {/* Date hides on the narrowest screens — "82d out" carries the
+                    same meaning in a third of the width, and the payout is
+                    what should never be the thing that gets squeezed out. */}
+                <span className="hidden sm:inline">{formatPickDate(c.pick_date)}</span>
                 <span className="text-text-primary/60">{c.days_before_settle}d out</span>
+                {c.points_earned != null && (
+                  <span className="text-correct font-bold text-xs">+{c.points_earned}</span>
+                )}
               </span>
             </button>
           ))}

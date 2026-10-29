@@ -42,7 +42,15 @@ export default function FeedCardWrapper({
       onClick={onCardTap}
     >
       {topBanner}
-      {headerLayout === 'centered' ? (
+      {/* 'none': the item has no single author. The grouped futures card
+          belongs to a MARKET that several people called, so there is nobody
+          to put in the byline — rendering the default header gave it a "?"
+          avatar and a bare "@". The timestamp still belongs, so it stays. */}
+      {headerLayout === 'none' ? (
+        <div className="px-4 pt-3 pb-1 flex items-center justify-end">
+          <span className="text-xs text-text-muted">{timeAgo(item.timestamp)}</span>
+        </div>
+      ) : headerLayout === 'centered' ? (
         /* Centered player-headshot style \u2014 used by hero cards like a
            broken record where the honoree is the point of the card. */
         <div className="relative px-4 pt-5 pb-2 flex flex-col items-center text-center">
