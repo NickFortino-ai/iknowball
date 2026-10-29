@@ -1,4 +1,5 @@
 import FeedCardWrapper from './FeedCardWrapper'
+import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 
 function formatOdds(odds) {
   return odds >= 0 ? `+${odds}` : `${odds}`
@@ -7,6 +8,9 @@ function formatOdds(odds) {
 export default function MultiplierFeedCard({ item, reactions, onUserTap }) {
   const { pick, game } = item
   const isHit = item.type === 'multiplier_hit'
+  const name = item.display_name || item.username
+  const logoUrl = getTeamLogoUrl(pick.picked_team_name, game.sport_key)
+  const hasScore = game.away_score != null && game.home_score != null
 
   return (
     <FeedCardWrapper
@@ -20,41 +24,53 @@ export default function MultiplierFeedCard({ item, reactions, onUserTap }) {
       streakCount={item.current_streak}
       cardClassName={`${isHit ? 'feed-victory-entrance multiplier-green-glow' : ''}`}
     >
-      {/* Multiplier pill + result */}
-      <div className="flex items-center gap-3 mb-2">
-        <span className={`text-sm font-bold px-3 py-1 rounded-full ${
-          isHit
-            ? 'text-correct'
-            : 'text-incorrect'
+      <div className="text-center">
+        {/* The multiple is the headline, so it leads. The sentence underneath
+            says what actually happened — the old card opened with a bare
+            "3x" pill and a point total, which reads as a score with no verb:
+            nothing on it said a person had chosen to raise the stake. */}
+        <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border-2 mb-2 ${
+          isHit ? 'border-correct/40 text-correct' : 'border-incorrect/40 text-incorrect'
         }`}>
-          {pick.multiplier}x
-        </span>
-        <span className={`font-bold text-lg ${isHit ? 'text-correct' : 'text-incorrect'}`}>
-          {isHit ? `+${pick.points_earned} pts` : `${'\uD83D\uDC80'} -${pick.risk_points} pts`}
-        </span>
-      </div>
-
-      {/* Sport tag */}
-      {game.sport_name && (
-        <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
-          {game.sport_name}
-        </span>
-      )}
-
-      {/* Matchup */}
-      <div className="text-sm text-text-secondary mt-0.5">
-        {game.away_team} @ {game.home_team}
-      </div>
-
-      {/* Pick details */}
-      <div className="flex items-center justify-between mt-2">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm">{pick.picked_team_name}</span>
-          <span className="text-xs text-text-muted">{formatOdds(pick.odds_at_pick)}</span>
+          <span className="font-bold text-lg tracking-wider">{pick.multiplier}x</span>
+          <span className="text-xs font-semibold opacity-80">{formatOdds(pick.odds_at_pick)}</span>
         </div>
-        <span className={`font-bold text-sm ${isHit ? 'text-correct' : 'text-incorrect'}`}>
-          {isHit ? 'W' : 'L'}
-        </span>
+
+        <div className="text-sm text-text-secondary mb-3">
+          <span className="font-semibold text-text-primary">{name}</span>
+          {isHit ? ' multiplied this pick!' : ' multiplied this one'}
+        </div>
+
+        {logoUrl && (
+          <img
+            src={logoUrl}
+            alt=""
+            className="w-20 h-20 mx-auto mb-3 object-contain"
+            onError={(e) => {
+              const fb = getTeamLogoFallbackUrl(pick.picked_team_name, game.sport_key)
+              if (fb && e.target.src !== fb) e.target.src = fb
+              else e.target.style.display = 'none'
+            }}
+          />
+        )}
+
+        <div className="font-display text-xl text-text-primary">
+          {pick.picked_team_name}
+        </div>
+        <div className="text-sm text-text-secondary mt-1">
+          {game.sport_name && <span className="uppercase tracking-wider mr-2 text-text-muted">{game.sport_name}</span>}
+          {game.away_team} @ {game.home_team}
+        </div>
+
+        {hasScore && (
+          <div className="mt-2 text-sm font-semibold text-text-primary">
+            Final: {game.away_score}–{game.home_score}
+          </div>
+        )}
+
+        <div className={`mt-3 font-display text-2xl font-bold ${isHit ? 'text-correct' : 'text-incorrect'}`}>
+          {isHit ? `W +${pick.points_earned}` : `L -${pick.risk_points}`}
+        </div>
       </div>
     </FeedCardWrapper>
   )
