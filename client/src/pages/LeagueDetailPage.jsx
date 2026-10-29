@@ -690,7 +690,15 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
       items.push({ label: 'Salary Cap', value: `$${fantasySettings.salary_cap.toLocaleString()}` })
     }
     const seasonType = fantasySettings?.season_type
-    items.push({ label: 'Type', value: seasonType === 'single_week' ? 'Single Night' : 'Full Season' })
+    // custom_range is a third option and was being labelled "Full Season",
+    // which is plainly wrong for a league that runs Oct 28 - Nov 28. The
+    // ternary only knew about single_week and everything-else.
+    items.push({
+      label: 'Type',
+      value: seasonType === 'single_week' ? 'Single Night'
+        : seasonType === 'custom_range' ? 'Custom Range'
+          : 'Full Season',
+    })
     if (fantasySettings?.champion_metric && seasonType !== 'single_week') {
       // NFL salary cap fantasy plays weekly; DFS plays nightly. Same setting
       // key, different label.
