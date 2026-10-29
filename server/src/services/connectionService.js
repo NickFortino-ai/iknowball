@@ -450,6 +450,18 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   const skipForHotTakes = (isHotTakes || isUserHotTakes || isPolls || isPredictions || isPosts) ? Promise.resolve({ data: [] }) : null
 
   // Query sources in parallel (some skipped for 'all' / 'highlights' / 'hot_takes' scope)
+  // A multiplied win needs to clear this to reach the Hub.
+  //
+  // Multipliers get used on FAVOURITES — that is the appeal, boosting
+  // something safe — so the multiple can look impressive while the payout is
+  // trivial: 3x on -370 pays +9. Gating on the multiple alone published those.
+  //
+  // 20 and not 21: of the eight multiplied wins on record the best is exactly
+  // +20 (4x on -218), and that one is worth featuring — it is the kind of hit
+  // people are pleased with. A strict "greater than 20" would currently
+  // silence this branch entirely. Everything below it (+12, +9, +8) drops.
+  const MULTIPLIER_HIT_MIN_POINTS = 20
+
   const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, leagueWins, h2hPicks, hotTakes, hotTakeReminders, sweatShares, viralHotTakes, futuresPicksOpen, futuresPicksSettled] = await Promise.all([
     // Source 1: Notable picks — settled WINS only, either (odds >= 250) or
     // (multiplier >= 3). Multipliers used to post win or loss while underdogs
@@ -463,7 +475,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .select('id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, game_id, games(home_team, away_team, home_score, away_score, sports(name, key))'),
       'user_id', connectedIds)
       .eq('status', 'settled')
-      .or('and(is_correct.eq.true,odds_at_pick.gte.250),and(is_correct.eq.true,multiplier.gte.3)'), 'updated_at')
+      .or(`and(is_correct.eq.true,odds_at_pick.gte.250),and(is_correct.eq.true,multiplier.gte.3,points_earned.gte.${MULTIPLIER_HIT_MIN_POINTS})`), 'updated_at')
       .order('updated_at', { ascending: false })
       .limit(50),
 
@@ -687,6 +699,12 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     const underdogMin = isAll ? 300 : 250
     let type = 'pick'
     if (pick.multiplier >= 3 && pick.is_correct) {
+      // A multiplier is only news if it PAID. 3x on a -370 favourite returns
+      // +9, which is a card nobody wants to read; the multiple looks big and
+      // the result is noise. Gated at the query too — enforced in both places
+      // because this branch is the one that decides the card type, and a
+      // future query change should not be able to leak a trivial hit through.
+      if ((pick.points_earned || 0) < MULTIPLIER_HIT_MIN_POINTS) continue
       type = 'multiplier_hit'
     } else if (pick.multiplier >= 3 && !pick.is_correct) {
       // Unreachable from the query above, which is now win-only. Kept as a
