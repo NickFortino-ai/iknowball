@@ -4,6 +4,7 @@ import { sendAdminEmail } from '../services/emailService.js'
 import { yesterdaySportsDay, todaySportsDay } from '../utils/sportsDay.js'
 import { fetchCompletedGameStats as fetchMlbGameStats } from './scoreMLBDFS.js'
 import { fetchCompletedGameStats as fetchNbaGameStats } from './scoreNBADFS.js'
+import { isUnavailable } from '../utils/injuryStatus.js'
 
 // Stat coverage verifier with value validation + auto-heal.
 //
@@ -29,6 +30,7 @@ const CONTESTS = [
     picksTable: 'strikeouts_picks',
     pickStatColumn: 'strikeouts',
     statsTable: 'mlb_dfs_player_stats',
+    salaryTable: 'mlb_dfs_salaries',
     upstreamStatKey: 'strikeouts',
     requiresPitcher: true,
     fetchUpstream: fetchMlbGameStats,
@@ -38,6 +40,7 @@ const CONTESTS = [
     picksTable: 'hr_derby_picks',
     pickStatColumn: 'home_runs',
     statsTable: 'mlb_dfs_player_stats',
+    salaryTable: 'mlb_dfs_salaries',
     upstreamStatKey: 'home_runs',
     requiresPitcher: false,
     fetchUpstream: fetchMlbGameStats,
@@ -47,6 +50,7 @@ const CONTESTS = [
     picksTable: 'three_point_picks',
     pickStatColumn: 'made_threes',
     statsTable: 'nba_dfs_player_stats',
+    salaryTable: 'nba_dfs_salaries',
     upstreamStatKey: 'three_pointers_made',
     requiresPitcher: false,
     fetchUpstream: fetchNbaGameStats,
@@ -77,6 +81,17 @@ async function verifyAndHealContest(contest, date) {
   // score — which left this job unable to tell "sat out" from "we never got
   // the data". Only the first is normal, and it was being emailed hourly.
   let dnpPlayerIds = new Set()
+  // espn ids we already know were unavailable — see the inactive check below.
+  const inactiveIds = new Set()
+  if (contest.salaryTable) {
+    const { data: salaryRows } = await supabase
+      .from(contest.salaryTable)
+      .select('espn_player_id, injury_status')
+      .eq('game_date', date)
+    for (const r of salaryRows || []) {
+      if (r.espn_player_id && isUnavailable(r.injury_status)) inactiveIds.add(String(r.espn_player_id))
+    }
+  }
   try {
     const result = await contest.fetchUpstream(date)
     upstream = result.playerStats || []
@@ -121,6 +136,15 @@ async function verifyAndHealContest(contest, date) {
       // report — the only bug was calling it a gap. Counted so the log still
       // accounts for every pick.
       if (dnpPlayerIds.has(String(pick.espn_player_id))) {
+        dnpCount++
+        continue
+      }
+      // Ruled OUT before the game, so ESPN never listed him at all — the DNP
+      // set above only catches players who dressed and logged no minutes.
+      // Anthony Edwards is out for months; every Minnesota game produced an
+      // "Anthony Edwards — no upstream stats row" email for a fact we had
+      // already recorded ourselves in the salary table.
+      if (inactiveIds.has(String(pick.espn_player_id))) {
         dnpCount++
         continue
       }
