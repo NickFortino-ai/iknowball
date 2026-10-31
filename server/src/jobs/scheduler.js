@@ -40,6 +40,7 @@ import { sendNflInjuryWarnings } from './nflInjuryWarnings.js'
 import { sendPickInjuryWarnings } from './pickInjuryWarnings.js'
 import { computeFantasyGlobalRankings } from './computeFantasyGlobalRankings.js'
 import { processSoloLeagues } from './processSoloLeagues.js'
+import { syncSchedule } from './syncSchedule.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
@@ -68,6 +69,24 @@ export function startScheduler() {
       try { await syncFutures() } catch (err) { logger.error({ err }, 'Futures sync job failed') }
     })
     logger.info('Futures sync scheduled: every 6 hours')
+
+    // Schedule sync — fills the CALENDAR, which the odds feed never did.
+    // syncOdds only ever returned games bookmakers were pricing, so the NBA
+    // schedule jumped Oct 31 -> Nov 13 -> Dec 25: the shape of a betting
+    // board, not a season.
+    //
+    // Daily at 5:10 AM PT, before the 6 AM salary generation so a newly
+    // added game is already on the books when prices are built. 14 days is
+    // the drill-in horizon; the landing page only needs the next day.
+    //
+    // Insert-only, and it defers to syncOdds on anything already present —
+    // same (sport, teams, +/-2h) window both jobs use, so a row seeded here
+    // gets ADOPTED and priced rather than duplicated.
+    cron.schedule('10 5 * * *', async () => {
+      try { await syncSchedule({ sportKey: 'basketball_nba', daysAhead: 14 }) }
+      catch (err) { logger.error({ err }, 'Schedule sync job failed') }
+    }, { timezone: 'America/Los_Angeles' })
+    logger.info('Schedule sync scheduled: daily 5:10 AM PT (NBA, 14 days ahead)')
 
     // Auto-resolve stat-leader + team-win-total futures whose close_at
     // has passed. Runs at 4:30 AM ET nightly — after the NFL stat sync
