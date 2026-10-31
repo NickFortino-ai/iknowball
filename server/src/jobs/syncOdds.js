@@ -240,7 +240,24 @@ async function syncSport(sportKey, { force = false } = {}) {
       .order('id')
   )
 
-  const orphans = candidates.filter((g) => !seenExternalIds.has(g.external_id))
+  // ESPN-seeded schedule rows are NOT orphans, and this exclusion is
+  // load-bearing. syncSchedule fills the calendar 14 days out, well beyond
+  // the ~1 week the Odds API prices, so those rows are absent from the feed
+  // BY DESIGN — which is exactly what this filter treats as abandoned.
+  //
+  // Without it the two jobs fight: syncSchedule seeds 93 games at 5:10 AM,
+  // syncOdds deletes every one inside its 8-day horizon on the next run, and
+  // the calendar silently collapses back to a betting board. Observed on
+  // 2026-10-30 — Nov 1-7 vanished while Nov 8+ survived, which is the
+  // horizon drawn in the data.
+  //
+  // They are left alone rather than pruned on a different rule because an
+  // extra row for a postponed game is a far smaller harm than wiping the
+  // schedule daily. If a seeded game genuinely disappears from ESPN, the
+  // place to notice is syncSchedule, which already talks to ESPN.
+  const orphans = candidates.filter(
+    (g) => !seenExternalIds.has(g.external_id) && !String(g.external_id || '').startsWith('espn:'),
+  )
   for (const orphan of orphans) {
     // Check for dependent records
     // survivor_picks MUST be in this list. Its FK is
