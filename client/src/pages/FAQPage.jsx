@@ -200,6 +200,20 @@ Tapping a player\u2019s name shows their recent game log and season averages.`,
         a: 'Your picks, leagues, and activity are visible to other users on the platform \u2014 that\u2019s the point. Your email address and personal information are never shared with third parties. See our full privacy policy at iknowball.club/privacy.',
       },
       {
+        // Lives in the FAQ rather than the tutorial or a banner, and the
+        // distinction is deliberate. The app sells through IAP while the web
+        // sells through Stripe, so anything that PUSHES a user toward the
+        // site reads as steering past Apple's payment system — and onboarding
+        // is the worst place for it, since new users are exactly the ones who
+        // have not paid yet. An FAQ answer is pulled by someone who went
+        // looking for it.
+        //
+        // Describes availability and capability, never price, never a
+        // subscribe path. Same reasoning as the home-page footer line.
+        q: 'How do I access I KNOW BALL on a computer?',
+        a: 'Everything in the app also runs in a desktop browser at <a href="https://www.iknowball.club" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">iknowball.club</a> \u2014 same account, same leagues, same picks. Sign in with the email you already use.\n\nA few things are simply better with a bigger screen: live fantasy drafts, the salary cap builder, and the Arcade \u2014 the Expert Memory board is eight columns wide and only available on desktop.',
+      },
+      {
         q: 'What if I think there\u2019s an error with my score?',
         a: 'Contact us at <a href="mailto:admin@iknowball.club" class="text-accent hover:underline">admin@iknowball.club</a>. We have admin tools to audit and recalculate scores if something looks off.',
       },
