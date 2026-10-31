@@ -13,6 +13,7 @@
 // users care about — not every ESPN category is meaningful.
 
 import { logger } from '../utils/logger.js'
+import { espnSeasonYear } from '../utils/nbaSeason.js'
 
 const CACHE_TTL_MS = 60 * 60 * 1000
 const cache = new Map() // sportKey → { categories, expiresAt }
@@ -200,7 +201,10 @@ async function fetchJson(url) {
 
 // Try current season; if the leaders array is empty (offseason /
 // preseason), fall back to the prior season.
-async function fetchCategoriesForSport(espnPath, categoryNames, typeCode = 2, season = CURRENT_YEAR, allowFallback = true) {
+async function fetchCategoriesForSport(espnPath, categoryNames, typeCode = 2, season = CURRENT_YEAR, allowFallback = true, requestedSeason = null) {
+  // The offseason fallbacks below step back one year from whatever was
+  // REQUESTED, which is no longer always CURRENT_YEAR.
+  const topSeason = requestedSeason ?? season
   // College football pulls a much deeper list because most of it gets
   // filtered out by division below — at limit=15 the FBS survivors were
   // 0-3 per category. Still ONE request either way (~150ms), and the
@@ -217,8 +221,8 @@ async function fetchCategoriesForSport(espnPath, categoryNames, typeCode = 2, se
     data = await fetchJson(url)
   } catch (err) {
     logger.warn({ err: err.message, espnPath, season, typeCode }, 'Leaders fetch failed')
-    if (allowFallback && season === CURRENT_YEAR) {
-      return fetchCategoriesForSport(espnPath, categoryNames, typeCode, season - 1, false)
+    if (allowFallback && season === topSeason) {
+      return fetchCategoriesForSport(espnPath, categoryNames, typeCode, season - 1, false, topSeason)
     }
     return { categories: [], season }
   }
@@ -236,8 +240,8 @@ async function fetchCategoriesForSport(espnPath, categoryNames, typeCode = 2, se
   }).filter(Boolean)
   // Empty-category signal (offseason). Retry with prior season.
   const anyHasLeaders = picked.some((c) => (c.leaders || []).length > 0)
-  if (!anyHasLeaders && allowFallback && season === CURRENT_YEAR) {
-    return fetchCategoriesForSport(espnPath, categoryNames, typeCode, season - 1, false)
+  if (!anyHasLeaders && allowFallback && season === topSeason) {
+    return fetchCategoriesForSport(espnPath, categoryNames, typeCode, season - 1, false, topSeason)
   }
   return { categories: picked, season }
 }
@@ -313,7 +317,18 @@ async function fetchOne(sportKey) {
   const config = SPORT_CONFIG[sportKey]
   if (!config) return { categories: [], season: null }
 
-  const { categories: rawCats, season } = await fetchCategoriesForSport(config.espnPath, config.categories, config.typeCode || 2)
+  // The season ESPN calls "current" is not the calendar year for every sport.
+  // Basketball straddles the new year and ESPN names a season by the year it
+  // ENDS, so on 2026-10-30 the NBA's current season is 2027 — asking for 2026
+  // returns the COMPLETED 2025-26 season, and ESPN answers with full-season
+  // data rather than an error. That is what put 150 / 149 / 146 steals on the
+  // leaderboard six games into a season.
+  //
+  // The per-game categories hid it: last season's PPG and RPG look entirely
+  // plausible. Only the TOTALS were obviously impossible, so the board had
+  // been wrong in every category while looking wrong in only two.
+  const seasonForSport = espnSeasonYear(sportKey)
+  const { categories: rawCats, season } = await fetchCategoriesForSport(config.espnPath, config.categories, config.typeCode || 2, seasonForSport)
   if (!rawCats.length) return { categories: [], season }
 
   // Narrow college football to FBS. Done on the raw entries, before any

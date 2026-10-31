@@ -39,6 +39,14 @@ export function lastCompletedNbaRegularSeason(now = new Date()) {
  * that needs a season param doesn't re-derive the rule and get the NBA wrong.
  */
 export function espnSeasonYear(sport, now = new Date()) {
-  if (sport === 'basketball_nba') return currentNbaSeason(now)
+  // Basketball seasons straddle the new year and ESPN names them by the year
+  // they END: 2026-27 is season 2027. College basketball follows the same
+  // convention as the NBA, so it belongs here too — the calendar year would
+  // ask for the season that just finished, and ESPN answers with completed
+  // totals rather than an error, which is the trap. Every other sport here
+  // (NFL, MLB, WNBA, MLS, college football) runs inside one calendar year.
+  if (sport === 'basketball_nba' || sport === 'basketball_ncaab' || sport === 'basketball_wncaab') {
+    return currentNbaSeason(now)
+  }
   return now.getFullYear()
 }
