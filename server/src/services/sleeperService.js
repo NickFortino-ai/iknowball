@@ -613,7 +613,24 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
         def_sack: s.sack || 0,
         def_fum_rec: s.fum_rec || 0,
         def_safety: s.safe || 0,
-        def_pts_allowed: s.pts_allow != null ? s.pts_allow : null,
+        // Sleeper OMITS zero-valued keys, so pts_allow disappears exactly
+        // when it is 0 — the one value worth +10. It ships pts_allow_0
+        // instead, and the two are mutually exclusive: of the six week-8 DEF
+        // rows with no pts_allow, all six carried pts_allow_0, while PIT had
+        // pts_allow=6 alongside its pts_allow_1_6 flag.
+        //
+        // Reading only pts_allow meant a shutout stored NULL, the
+        // points-allowed bracket never ran (it requires non-null), and the
+        // defense silently lost the bonus. Tampa Bay shut out Atlanta in
+        // week 8 and scored 8 — four interceptions and nothing else.
+        //
+        // This also produces the behaviour other platforms have: a defense
+        // sits at 0 allowed from kickoff, so it holds the +10 and sheds it as
+        // the opponent scores and Sleeper starts sending a real pts_allow.
+        // Before kickoff the same flag is set, which is correct — nobody has
+        // scored on them yet.
+        def_pts_allowed: s.pts_allow != null ? s.pts_allow
+          : (s.pts_allow_0 != null ? 0 : null),
         // Individual defensive player stats (populated on IDP rows; 0 on
         // offense/K/DEF rows where Sleeper doesn't return these keys).
         idp_sack: s.idp_sack || 0,
