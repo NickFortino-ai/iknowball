@@ -785,7 +785,7 @@ export async function loadPropsForSportMarket(shortSportKey, marketKey, userId =
   const gameIds = games.map((g) => g.id)
   const { data: allProps } = await supabase
     .from('player_props')
-    .select('*, games(id, home_team, away_team, starts_at, status, sports(key, name))')
+    .select('*, games(id, home_team, away_team, starts_at, status, period, clock, live_home_score, live_away_score, home_score, away_score, sports(key, name))')
     .in('game_id', gameIds)
     .eq('market_key', marketKey)
     .in('status', ['published', 'locked', 'settled'])
@@ -888,7 +888,7 @@ export async function getFeaturedProps(date, { fallback = false } = {}) {
   // featured_date wouldn't match and it disappeared.
   const { data, error } = await supabase
     .from('player_props')
-    .select('*, games(id, home_team, away_team, starts_at, status, sports(key, name))')
+    .select('*, games(id, home_team, away_team, starts_at, status, period, clock, live_home_score, live_away_score, home_score, away_score, sports(key, name))')
     .lte('featured_date', date)
     .in('status', ['published', 'locked', 'settled'])
 
@@ -905,7 +905,7 @@ export async function getFeaturedProps(date, { fallback = false } = {}) {
   if (fallback && !hasActive) {
     const { data: nextProps, error: nextError } = await supabase
       .from('player_props')
-      .select('*, games(id, home_team, away_team, starts_at, status, sports(key, name))')
+      .select('*, games(id, home_team, away_team, starts_at, status, period, clock, live_home_score, live_away_score, home_score, away_score, sports(key, name))')
       .gt('featured_date', date)
       .in('status', ['published', 'locked'])
       .order('featured_date', { ascending: true })
@@ -926,7 +926,7 @@ export async function getFeaturedProps(date, { fallback = false } = {}) {
 export async function getAllFeaturedProps() {
   const { data, error } = await supabase
     .from('player_props')
-    .select('*, games(id, home_team, away_team, starts_at, status, sports(key, name))')
+    .select('*, games(id, home_team, away_team, starts_at, status, period, clock, live_home_score, live_away_score, home_score, away_score, sports(key, name))')
     .not('featured_date', 'is', null)
     .order('featured_date', { ascending: true })
 
