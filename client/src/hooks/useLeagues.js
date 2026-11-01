@@ -1072,15 +1072,40 @@ export function useRealtimeDraft(leagueId, userId) {
 // NBA DFS
 // ============================================
 
+// How often a player pool re-checks itself.
+//
+// Injury news does not arrive when a game TIPS, it arrives in the hour or so
+// before it, when teams post inactives. The old rule only tightened once a
+// game was already live, so the window where availability actually changes
+// was the window polled most slowly — every 2 minutes.
+//
+// That is the delay Nick hit: Jimmy Butler sat in the available list long
+// enough to be picked, and had moved to Out by the time he looked again. The
+// server was right the whole time (refreshNBAInjuries runs every minute and
+// matched ESPN exactly); the client simply had not asked.
+//
+// 90 minutes before tip is deliberately generous — NBA inactives are usually
+// ~30-60 min out, but a 30s poll for an extra half hour costs almost nothing
+// against picking a player who is already ruled out.
+function poolRefetchInterval(query) {
+  const data = query.state.data
+  if (!Array.isArray(data) || !data.length) return 120_000
+  if (data.some((p) => p.game_status === 'live')) return 25_000
+  const now = Date.now()
+  const tipSoon = data.some((p) => {
+    if (!p.game_starts_at) return false
+    const t = new Date(p.game_starts_at).getTime()
+    return t > now && t - now < 90 * 60 * 1000
+  })
+  return tipSoon ? 30_000 : 120_000
+}
+
 export function useNbaDfsPlayers(date) {
   return useQuery({
     queryKey: ['nba-dfs', 'players', date],
     queryFn: () => api.get(`/nba-dfs/players?date=${date}`),
     enabled: !!date,
-    refetchInterval: (query) => {
-      const hasLive = query.state.data?.some((p) => p.game_status === 'live')
-      return hasLive ? 25000 : 120000
-    },
+    refetchInterval: poolRefetchInterval,
   })
 }
 
@@ -1171,10 +1196,7 @@ export function useWnbaDfsPlayers(date) {
     queryKey: ['wnba-dfs', 'players', date],
     queryFn: () => api.get(`/wnba-dfs/players?date=${date}`),
     enabled: !!date,
-    refetchInterval: (query) => {
-      const hasLive = query.state.data?.some((p) => p.game_status === 'live')
-      return hasLive ? 25000 : 120000
-    },
+    refetchInterval: poolRefetchInterval,
   })
 }
 
@@ -1231,10 +1253,7 @@ export function useMlbDfsPlayers(date) {
     queryKey: ['mlb-dfs', 'players', date],
     queryFn: () => api.get(`/mlb-dfs/players?date=${date}`),
     enabled: !!date,
-    refetchInterval: (query) => {
-      const hasLive = query.state.data?.some((p) => p.game_status === 'live')
-      return hasLive ? 25000 : 120000
-    },
+    refetchInterval: poolRefetchInterval,
   })
 }
 
@@ -1511,6 +1530,9 @@ export function useThreePointPlayers(date) {
     queryKey: ['three-point', 'players', date],
     queryFn: () => api.get(`/three-point/players?date=${date}`),
     enabled: !!date,
+    // Had no refetch at all — fetched once on mount and never asked again,
+    // so an Out designation landing mid-session was never seen.
+    refetchInterval: poolRefetchInterval,
   })
 }
 
@@ -1556,6 +1578,9 @@ export function useWnbaThreePointPlayers(date) {
     queryKey: ['wnba-three-point', 'players', date],
     queryFn: () => api.get(`/wnba-three-point/players?date=${date}`),
     enabled: !!date,
+    // Had no refetch at all — fetched once on mount and never asked again,
+    // so an Out designation landing mid-session was never seen.
+    refetchInterval: poolRefetchInterval,
   })
 }
 
