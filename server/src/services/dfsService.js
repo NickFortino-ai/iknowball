@@ -532,11 +532,36 @@ export async function getWeeklyResults(leagueId, week) {
  */
 export async function scoreNflDfsWeek(week, season) {
   // 1. All rosters for this week+season across every league
-  const { data: rosters } = await supabase
+  const { data: allRosters } = await supabase
     .from('dfs_rosters')
-    .select('id, league_id, user_id, dfs_roster_slots(player_id)')
+    .select('id, league_id, user_id, submitted_at, dfs_roster_slots(player_id)')
     .eq('nfl_week', week)
     .eq('season', season)
+
+  // A lineup only counts if it was SUBMITTED.
+  //
+  // Nothing used to require it. submitDFSRoster already refuses anything
+  // short of 9/9, but scoring never looked at submitted_at — so a partial
+  // lineup that COULD NOT be submitted scored anyway, and skipping slots
+  // became a strategy: drop FLEX and DEF, spend the $18k on stars. Week 8
+  // had two of them, both 7/9 and neither submitted, while all eleven
+  // complete rosters were submitted.
+  //
+  // Gated to a week boundary rather than applied immediately. Week 8 was
+  // mid-slate with games in progress when this was found; retroactively
+  // voiding lineups people had already built — including the two in
+  // question — would be a worse outcome than the exploit itself.
+  //
+  // DELETE the boundary once week 9 has scored; after that the rule is
+  // simply "submitted or it does not count".
+  const rosters = (allRosters || []).filter((r) => {
+    if (season < SUBMIT_REQUIRED_FROM.season) return true
+    if (season === SUBMIT_REQUIRED_FROM.season && week < SUBMIT_REQUIRED_FROM.week) return true
+    if (r.submitted_at) return true
+    logger.info({ rosterId: r.id, leagueId: r.league_id, userId: r.user_id, week, season,
+      slots: (r.dfs_roster_slots || []).length }, 'NFL DFS scoring: skipping unsubmitted roster')
+    return false
+  })
 
   if (!rosters?.length) {
     logger.info({ week, season }, 'NFL DFS scoring: no rosters for week')
@@ -751,6 +776,14 @@ const IDP_PROJECTION_COLUMNS = [
 // Weeks before this boundary keep the original pure-VBD formula. Once 2026
 // week 3 has generated, this and LEGACY_SALARY_PER_VBD can be deleted.
 const NEW_CURVE_FROM = { season: 2026, week: 3 }
+// A roster must be SUBMITTED to score, from this week onward. Submission
+// already requires a full 9/9 lineup, so this is what makes "fill every slot"
+// actually binding rather than advisory.
+//
+// Same shape as NEW_CURVE_FROM below and for the same reason: a scoring rule
+// cannot change under a slate that is already being played.
+const SUBMIT_REQUIRED_FROM = { season: 2026, week: 9 }
+
 const LEGACY_SALARY_PER_VBD = { QB: 400, RB: 650, WR: 650, TE: 700, K: 650, DEF: 650 }
 
 function usesNewCurve(season, week) {

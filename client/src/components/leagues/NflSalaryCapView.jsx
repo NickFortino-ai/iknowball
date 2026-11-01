@@ -394,7 +394,28 @@ export default function NflSalaryCapView({ league }) {
               </button>
             )
           }
-          return null
+          // An incomplete lineup used to render NOTHING here — no button, no
+          // reason, no indication the week was not entered. Saves happen
+          // automatically, so a 7/9 roster looked and felt finished.
+          //
+          // That is how a lineup with FLEX and DEF left empty got played:
+          // skipping slots frees ~$18k for stars, and nothing on screen said
+          // it would not count. From week 9 an unsubmitted roster does not
+          // score, so the silence had to go.
+          return (
+            <div className="w-full mt-3 py-3 px-4 rounded-xl border border-yellow-500/30 bg-yellow-500/[0.06] text-center">
+              <div className="text-sm font-semibold text-yellow-500">
+                {remaining < 0
+                  ? `Over the cap by $${Math.abs(remaining).toLocaleString()}`
+                  : `Lineup incomplete \u2014 ${filledCount}/${SLOTS.length} slots filled`}
+              </div>
+              <div className="text-xs text-text-primary/70 mt-1">
+                {remaining < 0
+                  ? 'Drop a player or swap in someone cheaper, then submit.'
+                  : 'Fill every slot and hit Submit Roster. An unsubmitted lineup does not count for the week.'}
+              </div>
+            </div>
+          )
         })()}
       </div>
 
