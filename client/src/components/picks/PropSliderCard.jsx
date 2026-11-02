@@ -242,8 +242,12 @@ export default function PropSliderCard({
 
                 The slider stays: it is still the fastest way to cross a
                 20-stop range, and it is what shows where you are in it.
-                Each button names the line it lands on, so the market's step
-                (0.5, 1 or 5) never has to be inferred. */}
+
+                Bare symbols, no destination line. The line you are on is
+                already the biggest thing on the card, and repeating the
+                neighbouring values put three numbers on screen competing to
+                be the readout. The aria-label carries the destination for
+                screen readers, where there is no big number to look at. */}
             <div className="mt-2 flex gap-2">
               {[-1, 1].map((delta) => {
                 const next = stops[index + delta]
@@ -252,10 +256,12 @@ export default function PropSliderCard({
                     key={delta}
                     onClick={() => stepTo(delta)}
                     disabled={isSubmitting || !next}
-                    aria-label={delta < 0 ? 'Lower the line' : 'Raise the line'}
-                    className="flex-1 min-w-0 rounded-xl py-2.5 text-sm font-semibold tabular-nums border border-text-primary/20 text-text-primary hover:bg-text-primary/5 disabled:opacity-30"
+                    aria-label={next
+                      ? `${delta < 0 ? 'Lower' : 'Raise'} the line to ${fmt(Number(next.line))}`
+                      : delta < 0 ? 'Lower the line' : 'Raise the line'}
+                    className="flex-1 min-w-0 rounded-xl py-2.5 text-lg font-semibold leading-none border border-text-primary/20 text-text-primary hover:bg-text-primary/5 disabled:opacity-30"
                   >
-                    {delta < 0 ? '−' : '+'} {next ? fmt(Number(next.line)) : ''}
+                    {delta < 0 ? '−' : '+'}
                   </button>
                 )
               })}
