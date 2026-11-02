@@ -14,8 +14,16 @@
 
 import { logger } from '../utils/logger.js'
 import { espnSeasonYear } from '../utils/nbaSeason.js'
+import { buildNflLeadersFromStats } from './nflLeadersFromStats.js'
 
 const CACHE_TTL_MS = 60 * 60 * 1000
+// NFL is served from our own nfl_player_stats, which is current within a
+// Sleeper tick. A 1h cache on top of a live source would reintroduce exactly
+// the staleness the DB-backed path exists to remove, so it gets its own TTL;
+// the underlying scans are cached separately and more cheaply inside
+// nflLeadersFromStats.
+const DB_SPORT_TTL_MS = 60 * 1000
+const DB_BACKED_SPORTS = { americanfootball_nfl: buildNflLeadersFromStats }
 const cache = new Map() // sportKey → { categories, expiresAt }
 
 // ── FBS filter for college football ──────────────────────────────────
@@ -397,6 +405,23 @@ export async function getStatLeaders(sportKey) {
   const now = Date.now()
   const cached = cache.get(sportKey)
   if (cached && cached.expiresAt > now) return cached.data
+
+  const dbBuilder = DB_BACKED_SPORTS[sportKey]
+  if (dbBuilder) {
+    // Falls through to ESPN if our own table comes back empty, so a Sleeper
+    // sync outage degrades to stale-but-present rather than to a blank card.
+    try {
+      const data = await dbBuilder()
+      if (data?.categories?.length) {
+        cache.set(sportKey, { data, expiresAt: now + DB_SPORT_TTL_MS })
+        return data
+      }
+      logger.warn({ sportKey }, 'DB-backed stat leaders empty, falling back to ESPN')
+    } catch (err) {
+      logger.error({ sportKey, err: err.message }, 'DB-backed stat leaders failed, falling back to ESPN')
+    }
+  }
+
   const data = await fetchOne(sportKey)
   cache.set(sportKey, { data, expiresAt: now + CACHE_TTL_MS })
   return data
