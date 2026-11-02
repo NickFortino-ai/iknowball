@@ -70,11 +70,23 @@ export function useSportStandings(sport) {
 
 // Categorized season stat leaders for a sport (top 10 per category).
 // Offseason sports fall back to prior season server-side.
+//
+// Polled, because the whole point of this card is that it moves on a game
+// day. A 10m staleTime with no refetchInterval meant a user who opened the
+// landing page during the Sunday slate watched a frozen list for as long as
+// they sat there — React Query only refetches a stale query on remount or
+// refocus, and neither happens while you are reading it.
+//
+// Both halves are cheap to ask: NFL leaders are served from our own
+// nfl_player_stats behind a 1m cache, and every other sport is an in-memory
+// ESPN response held for an hour. refetchIntervalInBackground defaults to
+// false, so a backgrounded tab stops asking.
 export function useSportLeaders(sport) {
   return useQuery({
     queryKey: ['sportLeaders', sport],
     queryFn: () => api.get(`/scores/leaders?sport=${sport}`),
-    staleTime: 10 * 60 * 1000,
+    staleTime: 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
     enabled: !!sport,
     retry: false,
   })
