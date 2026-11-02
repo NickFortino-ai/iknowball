@@ -247,8 +247,19 @@ export default function PropSliderCard({
                 already the biggest thing on the card, and repeating the
                 neighbouring values put three numbers on screen competing to
                 be the readout. The aria-label carries the destination for
-                screen readers, where there is no big number to look at. */}
-            <div className="mt-2 flex gap-2">
+                screen readers, where there is no big number to look at.
+
+                Two small circles rather than full-width bars: these adjust
+                the bet, they do not place it, and at half-width each they
+                read as primary actions alongside the over/under pair. 40px
+                is deliberately the floor — small enough to recede, still a
+                thumb-sized target, which is the entire reason they exist.
+
+                Pushed to the ends, minus left and plus right, so each sits
+                under the end of the track it moves toward — the same
+                low-left/high-right orientation as the slider, the endpoint
+                labels above it, and the under/over buttons. */}
+            <div className="mt-2 flex justify-between">
               {[-1, 1].map((delta) => {
                 const next = stops[index + delta]
                 return (
@@ -259,7 +270,7 @@ export default function PropSliderCard({
                     aria-label={next
                       ? `${delta < 0 ? 'Lower' : 'Raise'} the line to ${fmt(Number(next.line))}`
                       : delta < 0 ? 'Lower the line' : 'Raise the line'}
-                    className="flex-1 min-w-0 rounded-xl py-2.5 text-lg font-semibold leading-none border border-text-primary/20 text-text-primary hover:bg-text-primary/5 disabled:opacity-30"
+                    className="w-10 h-10 shrink-0 flex items-center justify-center rounded-full text-lg font-semibold leading-none border border-text-primary/20 text-text-primary hover:bg-text-primary/5 disabled:opacity-30"
                   >
                     {delta < 0 ? '−' : '+'}
                   </button>
