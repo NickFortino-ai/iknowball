@@ -105,6 +105,15 @@ export default function PropSliderCard({
     ? (settled.is_correct == null ? 'push' : settled.is_correct ? 'correct' : 'incorrect')
     : null
 
+  // Nudge one stop. The step between stops is market-dependent (0.5 for
+  // counting markets, 1 or 5 for yardage), so these move by INDEX and show
+  // the line they land on rather than claiming a fixed increment.
+  const stepTo = (delta) => {
+    const next = index + delta
+    if (next < 0 || next > stops.length - 1) return
+    setIndex(next)
+  }
+
   return (
     <div
       className={`bg-bg-primary/50 backdrop-blur-sm rounded-2xl border p-4 ${
@@ -222,6 +231,34 @@ export default function PropSliderCard({
                 </button>
               )}
               <span>{stops[stops.length - 1].line}</span>
+            </div>
+
+            {/* Stepper, under the slider. Setting a ladder means moving the
+                line and tapping a side over and over, and the knob is the
+                only part of that loop you have to re-acquire every time —
+                it moves, and a thumb on a phone does not land on it
+                reliably. These do the same job as stationary targets, so
+                the whole loop becomes taps.
+
+                The slider stays: it is still the fastest way to cross a
+                20-stop range, and it is what shows where you are in it.
+                Each button names the line it lands on, so the market's step
+                (0.5, 1 or 5) never has to be inferred. */}
+            <div className="mt-2 flex gap-2">
+              {[-1, 1].map((delta) => {
+                const next = stops[index + delta]
+                return (
+                  <button
+                    key={delta}
+                    onClick={() => stepTo(delta)}
+                    disabled={isSubmitting || !next}
+                    aria-label={delta < 0 ? 'Lower the line' : 'Raise the line'}
+                    className="flex-1 min-w-0 rounded-xl py-2.5 text-sm font-semibold tabular-nums border border-text-primary/20 text-text-primary hover:bg-text-primary/5 disabled:opacity-30"
+                  >
+                    {delta < 0 ? '−' : '+'} {next ? fmt(Number(next.line)) : ''}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>
