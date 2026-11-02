@@ -190,7 +190,15 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
         )}
 
         {/* Pick list */}
-        <div className="space-y-2 max-h-60 overflow-y-auto scrollbar-hide mb-3">
+        {/* overflow-x-hidden is load-bearing, not belt-and-braces. CSS says
+            that when one overflow axis is not `visible`, the other computes
+            to `auto` — so `overflow-y-auto` alone silently made this
+            horizontally scrollable too. The straight-pick row below bleeds
+            4px each side (`-mx-1`) to run its tap highlight to the edges,
+            and that bleed became a 4px scroll range: drag sideways and every
+            row shifted, clipping the first letter of each player's name.
+            There is nothing to the side worth reaching, so pin the axis. */}
+        <div className="space-y-2 max-h-60 overflow-y-auto overflow-x-hidden scrollbar-hide mb-3">
           {/* Straight picks */}
           {entries.map(([gameId, pick]) => {
             const game = games?.find((g) => g.id === gameId)
