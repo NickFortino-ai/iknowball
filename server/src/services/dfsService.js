@@ -552,8 +552,10 @@ export async function scoreNflDfsWeek(week, season) {
   // voiding lineups people had already built — including the two in
   // question — would be a worse outcome than the exploit itself.
   //
-  // DELETE the boundary once week 9 has scored; after that the rule is
-  // simply "submitted or it does not count".
+  // DELETE the boundary once week 10 has scored; after that the rule is
+  // simply "submitted or it does not count". (Was week 9 — moved out one
+  // week so the client that EXPLAINS the rule ships first. See
+  // SUBMIT_REQUIRED_FROM.)
   const rosters = (allRosters || []).filter((r) => {
     if (season < SUBMIT_REQUIRED_FROM.season) return true
     if (season === SUBMIT_REQUIRED_FROM.season && week < SUBMIT_REQUIRED_FROM.week) return true
@@ -782,7 +784,27 @@ const NEW_CURVE_FROM = { season: 2026, week: 3 }
 //
 // Same shape as NEW_CURVE_FROM below and for the same reason: a scoring rule
 // cannot change under a slate that is already being played.
-const SUBMIT_REQUIRED_FROM = { season: 2026, week: 9 }
+//
+// Moved 9 -> 10 on 2026-11-02. The rule itself is unchanged; what moved is
+// when it binds, and only because of a client-delivery gap.
+//
+// On the SHIPPED build (1.2.22) an incomplete lineup renders nothing in the
+// submit area — no button, no warning, no indication the week will not
+// count. Saves are automatic, so 7/9 looks finished. The Submit button is
+// gated on filledCount === SLOTS.length, so those users cannot submit even
+// if they want to, and nothing on screen tells them which slots are short.
+// Enforcing at week 9 would score them zero for failing to do something the
+// app gave them no way to do.
+//
+// 1.2.23 adds the explanation ("Lineup incomplete - 7/9 slots filled. Fill
+// every slot and hit Submit Roster."). It was cut 2026-11-02, after week 9
+// had already opened, and store review plus update adoption will not reach
+// everyone before Thursday's kickoff. Week 10 is the first week the rule can
+// land with the explanation already on people's phones.
+//
+// DELETE this once week 10 has scored; after that the rule is simply
+// "submitted or it does not count".
+const SUBMIT_REQUIRED_FROM = { season: 2026, week: 10 }
 
 const LEGACY_SALARY_PER_VBD = { QB: 400, RB: 650, WR: 650, TE: 700, K: 650, DEF: 650 }
 
