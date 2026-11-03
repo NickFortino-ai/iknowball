@@ -1081,7 +1081,7 @@ router.get('/matchup-week', async (req, res) => {
     // Try lineup history first (accurate), fall back to current roster (legacy)
     const { data: historyRows } = await supabase
       .from('fantasy_lineup_history')
-      .select('user_id, player_id, slot, nfl_players(id, full_name, position, team, headshot_url)')
+      .select('user_id, player_id, slot, nfl_players(id, full_name, position, team, headshot_url, bye_week)')
       .eq('league_id', league_id)
       .eq('week', w)
       .eq('season', s)
@@ -1090,7 +1090,7 @@ router.get('/matchup-week', async (req, res) => {
       ? historyRows
       : (await supabase
           .from('fantasy_rosters')
-          .select('user_id, player_id, slot, nfl_players(id, full_name, position, team, headshot_url)')
+          .select('user_id, player_id, slot, nfl_players(id, full_name, position, team, headshot_url, bye_week)')
           .eq('league_id', league_id)
           .in('user_id', userIds)).data
 
@@ -1127,6 +1127,19 @@ router.get('/matchup-week', async (req, res) => {
               team: p.team || '', headshot_url: p.headshot_url || null,
               points: Math.round(pts * 100) / 100, projected: Math.round(pts * 100) / 100,
               game_status: 'final',
+              // The client renders 'BYE' off this flag, and without it a
+              // player whose team was on bye fell through to the `!opponent`
+              // branch and got a BLANK sub-line — indistinguishable from
+              // missing data, when it is the opposite: the single most
+              // interesting thing about that row is that someone left a
+              // bye-week player in their lineup.
+              //
+              // The live and future branches have always sent it; only this
+              // past-week branch was missed, so BYE showed for the current
+              // week and every upcoming one and vanished the moment the week
+              // finished — exactly when people review the lineup. bye_week
+              // had to be added to both roster SELECTs above to reach here.
+              on_bye: p.bye_week === w,
               // Same stat line the live matchup renders. statsMap was already
               // being fetched with the full SCORING_STAT_COLUMNS set purely to
               // compute `points`, then thrown away — so a finished week showed
