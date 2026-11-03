@@ -577,7 +577,7 @@ export async function scoreNflDfsWeek(week, season) {
     .select('league_id, scoring_format, scoring_rules')
     .in('league_id', leagueIds)
 
-  const { applyScoringRules, buildScoringRulesFromPreset } = await import('./fantasyService.js')
+  const { applyScoringRules, buildScoringRulesFromPreset, SCORING_STAT_COLUMNS } = await import('./fantasyService.js')
   const rulesByLeague = {}
   for (const s of settingsRows || []) {
     rulesByLeague[s.league_id] = s.scoring_rules || buildScoringRulesFromPreset(s.scoring_format)
@@ -595,10 +595,26 @@ export async function scoreNflDfsWeek(week, season) {
     // a week holds, so at 33 distinct rostered players there is plenty of
     // headroom today. Paginated anyway because this is the SCORING read —
     // a truncated page here does not error, it just scores someone zero.
+    //
+    // SCORING_STAT_COLUMNS, not a hand-written list. This select used to name
+    // 21 columns while the comment above claimed it pulled "every raw stat
+    // column", and applyScoringRules silently scores a missing column as
+    // zero — so every stat the list forgot was simply never paid. Among them:
+    // kr_yd / pr_yd (return yards) and the whole idp_* family, which this
+    // league scores and which IDP leagues score universally.
+    //
+    // It only ever UNDER-paid, which is why it survived eight weeks: nobody
+    // reports a score that is too low when they have nothing to compare it
+    // to. It decided week 8 of "Salary and Peanut Butter" — Damian_11's
+    // three return-yard and tackle contributions were worth 3.68, and
+    // dropping them handed the week to Ginjaninja79 by 2.10.
+    //
+    // Use the shared constant so a new scoring column reaches salary cap and
+    // traditional H2H together. The two scorers disagreeing is the bug.
     const stats = await fetchAll(
       supabase
         .from('nfl_player_stats')
-        .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
+        .select(`player_id, ${SCORING_STAT_COLUMNS}`)
         .eq('week', week)
         .eq('season', season)
         .in('player_id', allPlayerIds)
