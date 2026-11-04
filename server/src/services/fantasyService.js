@@ -4222,11 +4222,24 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
     fetchAll(
       supabase
         .from('nfl_player_stats')
-        .select(`player_id, ${SCORING_STAT_COLUMNS}, off_snp, def_snp, tm_off_snp, tm_def_snp`)
+        .select(`player_id, week, ${SCORING_STAT_COLUMNS}, off_snp, def_snp, tm_off_snp, tm_def_snp`)
         .eq('season', statSeason)
         .order('player_id')
     )
   )
+  // For QBs only: the most recent week we hold a stat row for, and how many
+  // passes he attempted in it. Sleeper writes a zero-filled row for a player
+  // who dressed and did nothing, so the latest row is a good proxy for "the
+  // last time his team played", and 0 attempts in it means somebody else is
+  // taking the snaps. See the weekly_projection comment below for why this
+  // is the signal rather than the depth chart.
+  const qbLastGame = {}
+  for (const r of statRows || []) {
+    if (r.week == null) continue
+    const prev = qbLastGame[r.player_id]
+    if (!prev || r.week > prev.week) qbLastGame[r.player_id] = { week: r.week, pass_att: r.pass_att || 0 }
+  }
+
   // statsByPlayer[id] = { pts, pass_yd, pass_td, ... }
   const statsByPlayer = {}
   for (const r of statRows || []) {
@@ -4524,6 +4537,26 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
         // so sorting the available list by PROJ put a season-ending injury at
         // the very top — Jayden Higgins (IR) above every healthy player.
         if (isUnavailable(p.injury_status)) return 0
+        // A healthy QB who lost the job. Sleeper keeps publishing a full
+        // starter's projection for him — Jameis Winston carried 11.7 for
+        // week 9 having not attempted a pass since week 6, behind J.J.
+        // McCarthy. Tua Tagovailoa carried 17.4 on zero attempts in three
+        // straight weeks.
+        //
+        // The signal is USAGE, not depth_chart_order. Sleeper's depth chart
+        // is badly unreliable at QB: Jacoby Brissett sits at depth 2 having
+        // thrown 48 passes in week 7, and Jalen Hurts and Lamar Jackson are
+        // both listed 2 behind nobody. Zeroing on depth would have wiped the
+        // projection off active starters, which is the worse error — the
+        // same trap the salary-cap deep-bench-QB hide rule fell into.
+        //
+        // Injury already covers the Hurts/Lamar case above, so what is left
+        // is exactly the benched-but-healthy QB. One week of lookback, so it
+        // self-heals: the moment he throws a pass the projection returns.
+        if (p.position === 'QB') {
+          const last = qbLastGame[p.id]
+          if (last && last.pass_att === 0) return 0
+        }
         const computed = computeIdpAwareProjection(weeklyProjRowMap[p.id], p.position, weeklyProjCol, weeklyRules)
         return computed != null ? Math.round(computed * 10) / 10 : null
       })(),
