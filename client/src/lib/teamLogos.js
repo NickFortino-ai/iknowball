@@ -1479,6 +1479,69 @@ function normalizeName(s) {
     .join(' ')
 }
 
+// Feed spellings that no normalization rule can reach: abbreviations
+// ("CSU Fullerton", "UMKC", "GW"), parenthetical qualifiers ("Loyola (Chi)"),
+// and schools whose canonical name shares no words with the feed's
+// ("Grand Canyon Antelopes" -> "Grand Canyon Lopes", "Long Beach St 49ers"
+// -> "Long Beach State Beach", "UMKC Kangaroos" -> "Kansas City Roos").
+//
+// Deliberately an explicit table rather than fuzzy matching. Mascots repeat
+// constantly in college sport -- there are dozens of Bulldogs, Panthers and
+// Tigers -- so anything that guesses by mascot WILL eventually attach the
+// wrong school's crest, which is worse than no crest at all. Each line here
+// was checked against the canonical key by school identity, not by mascot.
+//
+// Targets are the men's programmes where the map also carries a women's
+// entry ("Grambling Tigers", not "Grambling Lady Tigers").
+const NCAA_NAME_ALIASES = {
+  'Albany Great Danes': 'UAlbany Great Danes',
+  'American Eagles': 'American University Eagles',
+  'Arkansas-Little Rock Trojans': 'Little Rock Trojans',
+  'Army Knights': 'Army Black Knights',
+  'Boston Univ. Terriers': 'Boston University Terriers',
+  'CSU Bakersfield Roadrunners': 'Cal State Bakersfield Roadrunners',
+  'CSU Fullerton Titans': 'Cal State Fullerton Titans',
+  'CSU Northridge Matadors': 'Cal State Northridge Matadors',
+  'Cal Baptist Lancers': 'California Baptist Lancers',
+  'Central Connecticut St Blue Devils': 'Central Connecticut Blue Devils',
+  "Florida Int'l Golden Panthers": 'Florida International Panthers',
+  'Fort Wayne Mastodons': 'Purdue Fort Wayne Mastodons',
+  'GW Revolutionaries': 'George Washington Revolutionaries',
+  'Gardner-Webb Bulldogs': "Gardner-Webb Runnin' Bulldogs",
+  'Grambling St Tigers': 'Grambling Tigers',
+  'Grand Canyon Antelopes': 'Grand Canyon Lopes',
+  'IUPUI Jaguars': 'IU Indianapolis Jaguars',
+  'Long Beach St 49ers': 'Long Beach State Beach',
+  'Loyola (Chi) Ramblers': 'Loyola Chicago Ramblers',
+  'Loyola (MD) Greyhounds': 'Loyola Maryland Greyhounds',
+  'Maryland-Eastern Shore Hawks': 'Maryland Eastern Shore Hawks',
+  'Miss Valley St Delta Devils': 'Mississippi Valley State Delta Devils',
+  "Mt. St. Mary's Mountaineers": "Mount St. Mary's Mountaineers",
+  'N Colorado Bears': 'Northern Colorado Bears',
+  'New Orleans Privateers': 'LSU New Orleans Privateers',
+  'Prairie View Panthers': 'Prairie View A&M Panthers',
+  'SE Missouri St Redhawks': 'Southeast Missouri State Redhawks',
+  'SIU-Edwardsville Cougars': 'SIU Edwardsville Cougars',
+  'Seattle Redhawks': 'Seattle U Redhawks',
+  'St. Francis (PA) Red Flash': 'Saint Francis Red Flash',
+  'St. Thomas (MN) Tommies': 'St. Thomas Tommies',
+  'Tenn-Martin Skyhawks': 'UT Martin Skyhawks',
+  'Texas A&M-CC Islanders': 'Texas A&M-Corpus Christi Islanders',
+  'UMKC Kangaroos': 'Kansas City Roos',
+  'UT-Arlington Mavericks': 'UT Arlington Mavericks',
+}
+
+let _aliasByNorm = null
+function aliasFor(teamName) {
+  if (!_aliasByNorm) {
+    _aliasByNorm = {}
+    for (const [feed, canon] of Object.entries(NCAA_NAME_ALIASES)) {
+      _aliasByNorm[normalizeName(feed)] = canon
+    }
+  }
+  return _aliasByNorm[normalizeName(teamName)] || null
+}
+
 // Lazy per-map cache of { normalizedKey -> originalValue } so a
 // normalize-fallback lookup doesn't rebuild the reverse map every call.
 const _normCache = new WeakMap()
@@ -1492,7 +1555,12 @@ function normalizedLookup(map, teamName) {
     for (const k of Object.keys(map)) cached[normalizeName(k)] = map[k]
     _normCache.set(map, cached)
   }
-  return cached[normalizeName(teamName)] ?? null
+  const hit = cached[normalizeName(teamName)]
+  if (hit != null) return hit
+  // Last resort: an explicit feed-spelling alias. Runs after normalization
+  // so a rule-reachable name never pays for the lookup.
+  const alias = aliasFor(teamName)
+  return alias ? (cached[normalizeName(alias)] ?? null) : null
 }
 
 export function getTeamAbbr(teamName) {
