@@ -856,6 +856,8 @@ export async function syncInjuries() {
       let cleared = 0
       let blurbsWritten = 0
       let clearedBlurbs = 0
+      // Counts what the old absence-based clearing WOULD have wiped.
+      let skippedClears = 0
       // The duplicate-name guard that used to live here is gone: resolvePlayer
       // returns null for a shared name with no team match, by design. That is
       // the rule that kept a Browns linebacker's "Out" off the Vikings' Justin
@@ -885,32 +887,42 @@ export async function syncInjuries() {
             if (res.action === 'inserted') blurbsWritten++
           }
         } else if (p.injury_status && activeNamesNorm.has(norm) && !isLongTermStatus(p.injury_status)) {
-          // Cleared-to-play: was injured, no longer in ESPN injuries,
-          // still on the depth chart. Safe to clear and announce.
+          // ABSENCE FROM THE INJURY REPORT IS NOT RECOVERY. This branch used
+          // to clear the status here and publish "Cleared to play."
           //
-          // EXCEPT for long-term designations. ESPN's injury report covers
-          // week-to-week availability; a player on IR or PUP simply falls off
-          // it, because there is no weekly call to make. Absence there is not
-          // evidence of recovery.
+          // It said Lamar Jackson was cleared to play on 2026-11-04, two days
+          // after a thumb injury his own coach called potentially
+          // season-ending. Every input looked fine in isolation:
           //
-          // Sleeper does track those, and it is the source for them. Treating
-          // an ESPN omission as "cleared" wiped 63 real designations — 50 IR,
-          // 6 PUP — the first time this branch ran against real data, putting
-          // Jayden Higgins and Ricky Pearsall back in the player pool with a
-          // full projection and no badge while both were out for the season.
-          await supabase
-            .from('nfl_players')
-            .update({ injury_status: null, injury_body_part: null })
-            .eq('id', p.id)
-          cleared++
-          const res = await writeEspnBlurb({
-            playerId: p.id,
-            sport: 'nfl',
-            content: 'Cleared to play.',
-            season: blurbSeason,
-            week: blurbWeek,
-          })
-          if (res.action === 'inserted') clearedBlurbs++
+          //   - he had dropped off ESPN's team injury report (a player with no
+          //     weekly call to make simply stops appearing on it)
+          //   - his name was still in activeNamesNorm, because depth charts
+          //     are cached here and Baltimore's live one is now EMPTY
+          //   - 'Out' is not a long-term designation, so the IR/PUP guard
+          //     below did not apply
+          //
+          // Meanwhile ESPN's own roster entry for him still read
+          // `injuries: [{ status: 'Out' }]`. The data contradicting us was
+          // right there; this branch just was not looking at it.
+          //
+          // There is no need to infer. A genuinely recovered player appears
+          // in ESPN's report WITH status 'Active' — Roquan Smith and Justice
+          // Hill both did, as "full participant at practice Tuesday" — and
+          // normalizeStatus maps 'active' to null, so the `if (espn)` branch
+          // above already clears them, and publishes the real prose instead
+          // of a synthetic three-word blurb. Positive evidence exists, so use
+          // it and nothing else.
+          //
+          // This is the second time inferring recovery from absence has gone
+          // wrong. The first wiped 63 designations — 50 IR, 6 PUP — putting
+          // Jayden Higgins and Ricky Pearsall back in the pool with full
+          // projections while both were out for the season. That produced the
+          // isLongTermStatus guard, which treated the symptom; 'Out' walks
+          // straight past it.
+          //
+          // Left as a counted no-op rather than deleted so the log still
+          // shows how often the old rule WOULD have fired.
+          skippedClears++
         }
       }
       logger.info(
@@ -919,6 +931,7 @@ export async function syncInjuries() {
           cleared,
           blurbsWritten,
           clearedBlurbs,
+          skippedClears,
           espnCount: espnByPlayerId.size,
           activeDepthChartCount: activeNamesNorm.size,
           nflPlayersCount: nflPlayers?.length || 0,
