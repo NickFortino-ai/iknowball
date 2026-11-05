@@ -34,6 +34,29 @@ class MainViewController: CAPBridgeViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        // NOTE: none of this works without `ios.zoomEnabled: true` in
+        // capacitor.config.json, which was missing until 2026-11-05.
+        //
+        // Capacitor defaults it to NO (`_zoomingEnabled = NO` in
+        // CAPInstanceDescriptor.m), and when it is off CAPBridgeViewController
+        // installs its own scroll-view delegate:
+        //
+        //     if !configuration.zoomingEnabled {
+        //         aWebView.scrollView.delegate = delegationHandler
+        //     }
+        //
+        // whose scrollViewWillBeginZooming does
+        // `scrollView.pinchGestureRecognizer?.isEnabled = false`. The gesture
+        // is switched off the instant a zoom starts, so the viewport meta and
+        // the bounds below were both correct and both irrelevant — pinch had
+        // never worked in the app, in any build.
+        //
+        // That also explains the history in the comments around here: the old
+        // native delegate steal "worked" because it REPLACED Capacitor's
+        // delegate. Removing it was right on its own terms and handed the
+        // delegate back, which re-killed zoom. The config flag is the
+        // supported fix; with it set, Capacitor leaves the delegate alone.
+        //
         // Zoom BOUNDS are set here; the delegate is not.
         //
         // 8e6c02a7 removed the delegate steal (right — WKWebView needs its

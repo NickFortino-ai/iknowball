@@ -2,6 +2,9 @@
   "appId": "com.iknowball.app",
   "appName": "I KNOW BALL",
   "webDir": "dist",
+  "ios": {
+    "zoomEnabled": true
+  },
   "plugins": {
     "SplashScreen": {
       "launchAutoHide": true,
