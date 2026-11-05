@@ -187,10 +187,32 @@ export default function HubPage() {
     if (user) {
       setInitialFeedUserId(user)
     }
-    // Clear query params after consumption
-    if (tab || scrollTo || team || user) {
+    // Clear query params after consumption — but NOT a room tab.
+    //
+    // This timer predates rooms owning the URL. It existed to tidy one-shot
+    // deep-link params (scrollTo, team, user, a legacy tab=) two seconds
+    // after they were read, and blanket-wiping everything was fine while
+    // ?tab= was only ever an inbound link.
+    //
+    // It is not fine now. goToRoom writes ?tab=arcade to KEEP the room open,
+    // so the wipe pulled the param out from under it, the branch above read
+    // the absence as "the Hub tab was tapped", and the Arcade closed by
+    // itself two seconds after opening. Tapping Memory or Trivia just made
+    // it obvious: the game appeared, then the room underneath shut and took
+    // the whole view back to the feed.
+    //
+    // So delete only the one-shot keys and leave a room tab alone. Tapping
+    // the Hub tab still clears it — that goes through navigation to /hub,
+    // which has no params at all — so the close-the-room branch is intact.
+    const isRoomTab = tab === 'arcade' || tab === 'news'
+    if (scrollTo || team || user || (tab && !isRoomTab)) {
       const timer = setTimeout(() => {
-        setSearchParams({}, { replace: true })
+        const next = new URLSearchParams(searchParams)
+        next.delete('scrollTo')
+        next.delete('team')
+        next.delete('user')
+        if (!isRoomTab) next.delete('tab')
+        setSearchParams(next, { replace: true })
       }, 2000)
       return () => clearTimeout(timer)
     }
