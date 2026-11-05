@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { settleProps } from '../services/propService.js'
-import { fetchESPNScoreboard, matchESPNToGame, fetchFootballPlayerBoxStats } from '../services/espnService.js'
+import { fetchESPNScoreboard, matchESPNToGame, fetchFootballBoxAndParticipants } from '../services/espnService.js'
 import { stripAccents } from '../utils/name.js'
 
 // Map prop market_key → actual value from a parsed ESPN football box line.
@@ -56,6 +56,17 @@ function normalizePlayerName(name) {
  * rather than settled at zero: ESPN can publish a summary before the player
  * grids are populated, and a wrong settlement is far worse than a late one.
  */
+// ESPN's play-by-play names players as "#8 N.Harbor", so participation is
+// keyed on first initial + surname rather than a full name. Collisions are
+// possible in principle (two N.Harbors in one game); the fallback when a key
+// does not match is a void, which is the safe direction.
+function pbpKey(fullName) {
+  const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length < 2) return ''
+  const last = parts[parts.length - 1]
+  return `${parts[0][0]}.${last}`.toLowerCase().replace(/['\u2019]/g, '')
+}
+
 export async function settleNCAAFProps() {
   const { data: sport } = await supabase
     .from('sports')
@@ -155,13 +166,16 @@ export async function settleNCAAFProps() {
 
   for (const { game, props: gameProps } of slice) {
     let statsByName = {}
+    let participants = new Set()
     try {
       const espnEventId = eventIdByGame.get(game.id)
       if (!espnEventId) {
         noBoxScore++
         continue
       }
-      statsByName = await fetchFootballPlayerBoxStats('americanfootball_ncaaf', espnEventId)
+      const box = await fetchFootballBoxAndParticipants('americanfootball_ncaaf', espnEventId)
+      statsByName = box.stats
+      participants = box.participants
     } catch (err) {
       logger.warn({ err: err.message, gameId: game.id }, 'NCAAF box score fetch failed')
       continue
@@ -177,7 +191,7 @@ export async function settleNCAAFProps() {
       const statFn = MARKET_STAT_MAP[prop.market_key]
       if (!statFn) continue
 
-      const s = statsByName[normalizePlayerName(prop.player_name)]
+      let s = statsByName[normalizePlayerName(prop.player_name)]
       if (!s) {
         // Player has no box line. Common and legitimate: a backup listed in
         // the props who never took a snap has no ESPN row at all. Recorded
@@ -202,10 +216,34 @@ export async function settleNCAAFProps() {
         // first place. The yards and receptions markets are low volume and
         // draining fine, so their long-standing "leave it alone" behaviour is
         // left exactly as it was rather than quietly re-graded tonight.
-        if (prop.market_key === 'player_anytime_td') {
+        // Absent from the box score means one of two things that settle in
+        // OPPOSITE directions, and a football box score cannot tell them
+        // apart: it only lists players who recorded a counting stat, so a
+        // receiver who played and caught nothing has no row either.
+        //
+        //   played, recorded nothing -> 0, which grades UNDER
+        //   never dressed            -> void
+        //
+        // The play-by-play separates them. Nyck Harbor had no row in
+        // Tennessee at South Carolina on 2026-10-24 yet was targeted on an
+        // incomplete deep pass and drew a holding penalty — he played, so his
+        // reception_yds 43.5 and receptions 2.5/3.5 are all unders, and
+        // pushing them would have handed back three stakes that were won.
+        //
+        // This used to push ONLY anytime_td and abandon every other market,
+        // which left 165 yards/receptions props locked forever, 8 of them
+        // carrying user picks.
+        //
+        // Absence from the play-by-play is treated as not having played. A
+        // player can take the field without ever being named (a blocking TE
+        // with no targets), so that direction errs toward a void — the
+        // book convention, and the conservative mistake of the two.
+        if (participants.has(pbpKey(prop.player_name))) {
+          s = {} // played; nothing in this category is a genuine zero
+        } else {
           settlements.push({ propId: prop.id, outcome: 'push', actualValue: null })
+          continue
         }
-        continue
       }
 
       const actualValue = statFn(s) || 0

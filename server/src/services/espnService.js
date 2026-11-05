@@ -631,16 +631,27 @@ export async function fetchPlayerBoxStats(sportKey, espnEventId) {
 //
 // Used by NCAAF prop settlement, which has no player-stats table of its
 // own the way the NFL has nfl_player_stats from Sleeper.
-export async function fetchFootballPlayerBoxStats(sportKey, espnEventId) {
+// Box score PLUS the set of players ESPN's play-by-play actually names.
+//
+// A football box score only lists players who recorded a counting stat, so a
+// receiver who played and caught nothing has NO row — indistinguishable from
+// one who never dressed. The two want opposite settlements: 0 yards grades
+// UNDER, a DNP is voided. The play-by-play separates them, and it is in the
+// same summary payload we already fetch, so it costs nothing extra.
+//
+// Names there are abbreviated with a jersey number ("#8 N.Harbor"), hence the
+// initial-plus-surname key rather than a full name.
+export async function fetchFootballBoxAndParticipants(sportKey, espnEventId) {
+  const EMPTY = { stats: {}, participants: new Set() }
   const sport = SPORT_TO_ESPN[sportKey]
-  if (!sport || !espnEventId) return {}
+  if (!sport || !espnEventId) return EMPTY
 
   const url = `${ESPN_BASE}/${sport.path}/summary?event=${espnEventId}`
   try {
     const res = await fetch(url)
-    if (!res.ok) return {}
+    if (!res.ok) return EMPTY
     const data = await res.json()
-    if (!data.boxscore?.players) return {}
+    if (!data.boxscore?.players) return EMPTY
 
     const num = (v) => {
       const n = parseInt(String(v ?? '0').replace(/,/g, ''), 10)
@@ -660,7 +671,19 @@ export async function fetchFootballPlayerBoxStats(sportKey, espnEventId) {
           return_td: 0,
         }
       }
-      return result[key]
+      const participants = new Set()
+    const driveSets = [data.drives?.previous, data.drives?.current ? [data.drives.current] : null]
+    for (const list of driveSets) {
+      for (const drive of list || []) {
+        for (const play of drive.plays || []) {
+          for (const m of String(play.text || '').matchAll(/#\d+\s+([A-Za-z]\.[A-Za-z'\u2019-]+)/g)) {
+            participants.add(m[1].toLowerCase().replace(/['\u2019]/g, ''))
+          }
+        }
+      }
+    }
+
+    return { stats: result, participants }[key]
     }
 
     for (const teamBox of data.boxscore.players) {
@@ -717,9 +740,27 @@ export async function fetchFootballPlayerBoxStats(sportKey, espnEventId) {
         result[key].return_td += Math.max(defensiveTd[key] || 0, interceptionTd[key] || 0)
       }
     }
-    return result
+    const participants = new Set()
+    const driveSets = [data.drives?.previous, data.drives?.current ? [data.drives.current] : null]
+    for (const list of driveSets) {
+      for (const drive of list || []) {
+        for (const play of drive.plays || []) {
+          for (const m of String(play.text || '').matchAll(/#\d+\s+([A-Za-z]\.[A-Za-z'\u2019-]+)/g)) {
+            participants.add(m[1].toLowerCase().replace(/['\u2019]/g, ''))
+          }
+        }
+      }
+    }
+
+    return { stats: result, participants }
   } catch (err) {
     logger.warn({ err: err.message, espnEventId, sportKey }, 'Failed to fetch ESPN football box stats')
-    return {}
+    return EMPTY
   }
+}
+
+// Back-compat wrapper: callers that only need the stats map.
+export async function fetchFootballPlayerBoxStats(sportKey, espnEventId) {
+  const { stats } = await fetchFootballBoxAndParticipants(sportKey, espnEventId)
+  return stats
 }
