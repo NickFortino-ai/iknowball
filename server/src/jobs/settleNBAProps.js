@@ -101,6 +101,11 @@ export async function settleNBAProps() {
     statsByDateName[`${s.game_date}|${normalizePlayerName(s.player_name)}`] = s
   }
 
+  // Which dates we actually hold a box score for. A player missing from a
+  // date we HAVE is evidence he did not play; a player missing from a date we
+  // do not have is evidence of nothing. See the DNP branch below.
+  const datesWithStats = new Set(allStats.map((s) => s.game_date))
+
   // Build settlements
   const settlements = []
   for (const prop of props) {
@@ -109,7 +114,28 @@ export async function settleNBAProps() {
 
     const propDate = new Date(prop.games.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
     const stats = statsByDateName[`${propDate}|${normalizePlayerName(prop.player_name)}`]
-    if (!stats) continue // no stats for this player on this game's date
+    if (!stats) {
+      // DNP — void the prop instead of abandoning it.
+      //
+      // This used to `continue`, which left the prop LOCKED forever: the
+      // game is final (the query above requires it) so nothing would ever
+      // revisit it, and every pick on it stayed at is_correct null with the
+      // user's risk in limbo. Jayson Tatum sat out Milwaukee at Boston on
+      // 2026-11-04 and three picks hung there with nothing to resolve them.
+      //
+      // settleProps already understands this exact case — outcome 'push'
+      // with actualValue null returns the stake and fires the DNP
+      // notification. The settler simply never called it.
+      //
+      // GUARD: only when we actually hold that date's box score. A player
+      // absent from a date we HAVE did not play; a player absent from a date
+      // we do not have tells us only that the stats sync has not landed, and
+      // voiding on that would refund real results. Tatum's night had 316
+      // rows with four Celtics in them, so his absence was conclusive.
+      if (!datesWithStats.has(propDate)) continue
+      settlements.push({ propId: prop.id, outcome: 'push', actualValue: null })
+      continue
+    }
 
     const actualValue = statFn(stats)
     let outcome
