@@ -87,18 +87,25 @@ export default function HallOfFamePage() {
             links in from a record notification has no history to pop.
 
             Deliberately quiet: the hero is the point of this page, and a
-            solid button in the corner would compete with it. Sits above the
-            backdrop on z-20 and inside the safe area, since the hero runs to
-            the top of the screen on a phone.
+            solid button in the corner would compete with it.
+
+            NO safe-area inset. It carried
+            mt-[calc(0.75rem+env(safe-area-inset-top))] on the reasoning that
+            the hero runs to the top of the screen — it does not. The app
+            shell's own header sits above it, and that header already clears
+            the notch, so the inset was counted twice and left the pill
+            hanging well down into the photo. A plain margin tucks it into
+            the corner it was always meant to sit in.
 
             It carries its own dark pill rather than relying on a drop
             shadow. First pass was white/70 text on the bare hero, which is a
             bright sports photo under only a 40% gradient — legible on the
             dark frames of the cycle and effectively invisible on the rest.
-            Subtle should mean quiet, not missing. */}
+            Subtle should mean quiet, not missing — so the pill stays, just
+            dimmer, and brightens on hover for anyone who goes looking. */}
         <Link
           to="/hub"
-          className="absolute top-0 left-0 z-20 m-3 mt-[calc(0.75rem+env(safe-area-inset-top))] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/45 backdrop-blur-sm text-xs font-semibold text-white/90 hover:bg-black/70 hover:text-white transition-colors"
+          className="absolute top-0 left-0 z-20 m-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/30 backdrop-blur-sm text-xs font-medium text-white/70 hover:bg-black/60 hover:text-white transition-colors"
         >
           <span aria-hidden="true" className="text-sm leading-none">&larr;</span>
           Hub
