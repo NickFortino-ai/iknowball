@@ -208,6 +208,29 @@ function MLBGameLog({ games, showFantasyPoints }) {
   ]} />
 }
 
+// IDPs — every raw code that means "this player plays defence", grouped into
+// one 'idp' bucket for stat display.
+//
+// A Set rather than three includes() calls because the fallback for anything
+// unlisted is 'skill', i.e. OFFENSIVE columns, and a defender who lands there
+// renders RUYD/REYD/REC/TD with a dash in every cell. Colin Simmons — Texas
+// EDGE, top of the NCAAF sack leaders — did exactly that: EDGE matched none of
+// the old lists.
+//
+// College is where this bites. ESPN uses codes the NFL never does (EDGE, and
+// nickel variants), and the stat-leaders board makes every one of them one tap
+// from a modal. His gamelog is unambiguously defensive — ESPN returns
+// TOT/SOLO/AST/SACK/FF/FR/INT/PD for him — so the data was always right and
+// only the column choice was wrong.
+const DEFENSIVE_POS = new Set([
+  // Line, including the college-favoured EDGE and the LEO hybrid
+  'DL', 'DE', 'DT', 'NT', 'EDGE', 'LEO',
+  // Linebackers, incl. the side-specific codes ESPN emits on depth charts
+  'LB', 'ILB', 'OLB', 'MLB', 'WLB', 'SLB', 'LILB', 'RILB',
+  // Secondary, incl. nickel
+  'DB', 'CB', 'S', 'FS', 'SS', 'NB',
+])
+
 function getNFLPositionGroup(position) {
   if (!position) return 'skill'
   const pos = position.toUpperCase()
@@ -216,10 +239,7 @@ function getNFLPositionGroup(position) {
   if (pos === 'WR' || pos === 'TE') return 'rec'
   if (pos === 'K') return 'k'
   if (pos === 'DEF') return 'def'
-  // IDPs — group raw ESPN codes into a single 'idp' bucket for stat display.
-  if (['DL', 'DE', 'DT', 'NT'].includes(pos)) return 'idp'
-  if (['LB', 'ILB', 'OLB', 'MLB'].includes(pos)) return 'idp'
-  if (['DB', 'CB', 'S', 'FS', 'SS'].includes(pos)) return 'idp'
+  if (DEFENSIVE_POS.has(pos)) return 'idp'
   return 'skill'
 }
 
