@@ -907,7 +907,21 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
 
           {/* Images */}
           {allImages.length > 0 && (
-            <div className="relative mt-2 w-fit max-w-full mx-auto">
+            <div className="mt-2 flex justify-center">
+            {/* The arrow anchor must be the IMAGE's box, not the column's.
+                w-fit sizes from the image's INTRINSIC width, which a
+                height-capped portrait no longer renders at — so on a 1200x1600
+                photo under max-h-[60vh] the container stayed as wide as the
+                landscape shot before it, and the back arrow at left-2 landed
+                in the empty margin beside the picture. A black/50 circle on a
+                near-black page is invisible, so the arrow read as missing
+                rather than misplaced. Reported on a two-image post where only
+                the second, portrait, image was affected.
+
+                inline-block shrink-wraps the replaced child at its USED width
+                (the height cap included), and the flex parent does the
+                centring w-fit+mx-auto used to. */}
+            <div className="relative inline-block max-w-full">
               <button
                 onClick={(e) => { e.stopPropagation(); setLightboxIndex(carouselIndex); setLightboxOpen(true) }}
                 className="block"
@@ -953,6 +967,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
                   </div>
                 </>
               )}
+            </div>
             </div>
           )}
 
