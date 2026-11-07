@@ -96,7 +96,7 @@ export default function HotTakeReminderFeedCard({ item, reactions, onUserTap }) 
                   {carouselIndex > 0 && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setCarouselIndex((i) => i - 1) }}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/70 ring-1 ring-white/30 shadow-lg backdrop-blur-sm flex items-center justify-center text-white text-lg leading-none hover:bg-black/90 transition-colors"
                     >
                       &#8249;
                     </button>
@@ -104,7 +104,7 @@ export default function HotTakeReminderFeedCard({ item, reactions, onUserTap }) 
                   {carouselIndex < allImages.length - 1 && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setCarouselIndex((i) => i + 1) }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/70 ring-1 ring-white/30 shadow-lg backdrop-blur-sm flex items-center justify-center text-white text-lg leading-none hover:bg-black/90 transition-colors"
                     >
                       &#8250;
                     </button>
