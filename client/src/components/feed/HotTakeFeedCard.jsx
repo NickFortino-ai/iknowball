@@ -905,38 +905,32 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
             <PollDisplay hotTakeId={hot_take.id} />
           )}
 
-          {/* Images */}
-          {allImages.length > 0 && (
-            <div className="mt-2 flex justify-center">
-            {/* The arrow anchor must be the IMAGE's box, not the column's.
-                w-fit sizes from the image's INTRINSIC width, which a
-                height-capped portrait no longer renders at — so on a 1200x1600
-                photo under max-h-[60vh] the container stayed as wide as the
-                landscape shot before it, and the back arrow at left-2 landed
-                in the empty margin beside the picture. A black/50 circle on a
-                near-black page is invisible, so the arrow read as missing
-                rather than misplaced. Reported on a two-image post where only
-                the second, portrait, image was affected.
+          {/* Images.
 
-                inline-block shrink-wraps the replaced child at its USED width
-                (the height cap included), and the flex parent does the
-                centring w-fit+mx-auto used to. */}
-            <div className="relative inline-block max-w-full">
+              Arrows anchor to the CARD, not the image. Nick's call
+              2026-11-06: they sit at the left and right edge of the frame, so
+              they stay in one place whatever shape the photo is. A portrait
+              image is far narrower than the column, and hugging it meant the
+              controls jumped inward on every slide. The contrast treatment on
+              the buttons is what makes this work — they carry a ring and a
+              shadow, so they read against the page background as well as
+              against a photo. */}
+          {allImages.length > 0 && (
+            <div className="relative mt-2">
               <button
                 onClick={(e) => { e.stopPropagation(); setLightboxIndex(carouselIndex); setLightboxOpen(true) }}
-                className="block"
+                className="block w-full"
               >
                 {/* Capped like the video: a tall portrait photo at full
                     column width ran past the bottom of a desktop screen.
-                    max-h bounds the height, max-w-full still bounds a wide
-                    one, and the container hugs whichever wins so the
-                    carousel arrows stay on the image rather than floating
-                    out in the margin beside it. */}
+                    max-h bounds the height, max-w-full the width, and mx-auto
+                    centres whatever is left inside the full-width frame the
+                    arrows are pinned to. */}
                 <img
                   src={thumbUrl(allImages[carouselIndex])}
                   alt=""
                   loading="lazy"
-                  className="block max-w-full max-h-[60vh] rounded-lg"
+                  className="block mx-auto max-w-full max-h-[60vh] rounded-lg"
                 />
               </button>
               {allImages.length > 1 && (
@@ -967,7 +961,6 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
                   </div>
                 </>
               )}
-            </div>
             </div>
           )}
 
