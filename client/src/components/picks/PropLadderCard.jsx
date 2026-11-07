@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { getTeamAbbr } from '../../lib/teamLogos'
+import { formatPeriod } from '../../lib/formatPeriod'
 
 /**
  * Several bets on one player, shown as a ladder.
@@ -85,8 +86,20 @@ export default function PropLadderCard({ picks }) {
         {actual != null && (
           <div className="text-right shrink-0">
             <div className="font-display text-3xl tabular-nums text-text-primary leading-none">{fmt(actual)}</div>
+            {/* The clock, not just the word "live". PropCard has carried
+                period + clock since the props tab shipped; this card — the
+                one the Results page actually shows — only ever said "live",
+                so a user watching a ladder could not tell a 1st-quarter 8
+                from a 4th-quarter 8. formatPeriod handles each sport's own
+                counting (Q/OT for basketball, H for soccer, innings for
+                baseball), and period arrives as a STRING from the feed,
+                which it already tolerates. */}
             <div className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">
-              {isFinal ? 'final' : 'live'}
+              {isFinal
+                ? 'final'
+                : game.period
+                  ? <>{formatPeriod(game.sports?.key, game.period)}{game.clock ? ` ${game.clock}` : ''}</>
+                  : 'live'}
             </div>
           </div>
         )}

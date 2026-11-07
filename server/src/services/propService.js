@@ -1371,7 +1371,7 @@ export async function deletePropPick(userId, propId, pickId = null) {
 export async function getPropPickById(propPickId) {
   const { data, error } = await supabase
     .from('prop_picks')
-    .select('*, player_props(*, games(id, home_team, away_team, starts_at, status, home_score, away_score, sports(key, name)))')
+    .select('*, player_props(*, games(id, home_team, away_team, starts_at, status, period, clock, live_home_score, live_away_score, home_score, away_score, sports(key, name)))')
     .eq('id', propPickId)
     .single()
 
