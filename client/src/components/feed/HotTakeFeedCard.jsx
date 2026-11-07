@@ -643,7 +643,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
               />
               <button
                 onClick={handleRemoveImage}
-                className="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center text-white text-xs hover:bg-black/90 transition-colors"
+                className="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center text-white text-xs hover:bg-black/60 transition-colors"
               >
                 ×
               </button>
@@ -660,7 +660,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
               />
               <button
                 onClick={handleRemoveVideo}
-                className="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center text-white text-xs hover:bg-black/90 transition-colors"
+                className="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center text-white text-xs hover:bg-black/60 transition-colors"
               >
                 ×
               </button>
@@ -938,7 +938,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
                   {carouselIndex > 0 && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setCarouselIndex((i) => i - 1) }}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/70 ring-1 ring-white/30 shadow-lg backdrop-blur-sm flex items-center justify-center text-white text-lg leading-none hover:bg-black/90 transition-colors"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/35 ring-1 ring-white/25 shadow-md backdrop-blur-[2px] flex items-center justify-center text-white text-lg leading-none hover:bg-black/60 transition-colors"
                     >
                       &#8249;
                     </button>
@@ -946,7 +946,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
                   {carouselIndex < allImages.length - 1 && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setCarouselIndex((i) => i + 1) }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/70 ring-1 ring-white/30 shadow-lg backdrop-blur-sm flex items-center justify-center text-white text-lg leading-none hover:bg-black/90 transition-colors"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/35 ring-1 ring-white/25 shadow-md backdrop-blur-[2px] flex items-center justify-center text-white text-lg leading-none hover:bg-black/60 transition-colors"
                     >
                       &#8250;
                     </button>
