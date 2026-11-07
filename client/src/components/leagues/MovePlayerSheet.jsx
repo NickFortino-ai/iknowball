@@ -35,13 +35,31 @@ function Line({ name, sub, headshot, injury, right }) {
   )
 }
 
+// Returns JSX, not a string, so BYE can carry its own colour.
+//
+// This sheet is where a bye-week player is most likely to be started by
+// accident: the whole point of opening it is to move somebody INTO a slot,
+// and the bench candidates sit in a list where "PIT BYE" read in the same
+// muted grey as "CLE @ NO". Yellow is the colour a bye already uses
+// everywhere else in the app, so matching it here costs a reader nothing to
+// learn. Nick's call 2026-11-06.
 function playerSub(p) {
   const pos = p?.nfl_players?.position
   const team = p?.nfl_players?.team || 'FA'
+  const onBye = !p?.current_week_opponent
+    && 'current_week_opponent' in (p || {})
+    && !!p?.nfl_players?.team
   const opp = p?.current_week_opponent
     ? `${p.current_week_is_home ? 'vs' : '@'} ${p.current_week_opponent}`
-    : ('current_week_opponent' in (p || {}) && p?.nfl_players?.team) ? 'BYE' : ''
-  return [pos && `${pos} · ${team}`, opp].filter(Boolean).join('  ')
+    : ''
+  if (!pos && !opp && !onBye) return null
+  return (
+    <>
+      {pos && `${pos} · ${team}`}
+      {opp && <>{pos ? '  ' : ''}{opp}</>}
+      {onBye && <>{pos ? ' ' : ''}<span className="text-yellow-500 font-semibold">BYE</span></>}
+    </>
+  )
 }
 
 function proj(p) {
