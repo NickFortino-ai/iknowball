@@ -13,6 +13,16 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false)
   const navigate = useNavigate()
 
+  // Reads the fragment DIRECTLY, which is only correct because lib/supabase.js
+  // sets flowType: 'implicit' and detectSessionInUrl: false. See the comment
+  // there before changing either.
+  //
+  // Short version: this is the AUTHENTICATION path, not a diagnostic one.
+  // Under PKCE the link carries `?code=` in the query string and the session
+  // comes from exchangeCodeForSession — so this cannot be fixed by also
+  // checking another location, it would need a different exchange. And with
+  // URL detection enabled the library strips the fragment during init, so
+  // this synchronous read could find nothing on a valid link.
   useEffect(() => {
     const hash = window.location.hash.substring(1)
     const params = new URLSearchParams(hash)
