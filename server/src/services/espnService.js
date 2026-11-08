@@ -671,19 +671,7 @@ export async function fetchFootballBoxAndParticipants(sportKey, espnEventId) {
           return_td: 0,
         }
       }
-      const participants = new Set()
-    const driveSets = [data.drives?.previous, data.drives?.current ? [data.drives.current] : null]
-    for (const list of driveSets) {
-      for (const drive of list || []) {
-        for (const play of drive.plays || []) {
-          for (const m of String(play.text || '').matchAll(/#\d+\s+([A-Za-z]\.[A-Za-z'\u2019-]+)/g)) {
-            participants.add(m[1].toLowerCase().replace(/['\u2019]/g, ''))
-          }
-        }
-      }
-    }
-
-    return { stats: result, participants }[key]
+      return result[key]
     }
 
     for (const teamBox of data.boxscore.players) {
