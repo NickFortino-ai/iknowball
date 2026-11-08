@@ -11,6 +11,7 @@ import { autoEliminateMissedPicks, backfillStuckSurvivorPicks } from '../service
 import { sendSurvivorPickReminders } from './sendSurvivorPickReminders.js'
 import { sendRosterReminders } from './sendRosterReminders.js'
 import { verifyStatCoverage } from './verifyStatCoverage.js'
+import { verifySettlementSanity } from './verifySettlementSanity.js'
 import { sendSurveyInviteNudges } from './sendSurveyInviteNudges.js'
 import { snapshotCrowns } from './snapshotCrowns.js'
 import { snapshotRanks } from './snapshotRanks.js'
@@ -548,6 +549,24 @@ export function startScheduler() {
       try { await verifyStatCoverage() } catch (err) { logger.error({ err }, 'Stat coverage verification (morning) failed') }
     }, { timezone: 'America/Los_Angeles' })
     logger.info('Stat coverage verification scheduled: hourly 10am-2am PT + 4am safety')
+
+    // Settlement sanity — does what we just wrote look like real stats?
+    //
+    // verifyStatCoverage above asks "is a stat MISSING". This asks the
+    // question that went unasked on 2026-11-07: "is the stat we recorded
+    // plausible at all". A corrupted box-score parser returned all-zero rows
+    // and NCAAF settled against nothing for two days, 985 of 1,000 props at
+    // exactly 0, until a user noticed his 380-yard quarterback had scored
+    // zero. Nothing in the system had an opinion about it.
+    //
+    // Hourly, on the half hour so it lands after the settlers rather than
+    // against them. Cheap — one query over a 6h window, no external calls —
+    // and it carries its own 12h per-market cooldown so a live fault pages
+    // once, not twenty times.
+    cron.schedule('40 * * * *', async () => {
+      try { await verifySettlementSanity() } catch (err) { logger.error({ err }, 'Settlement sanity check failed') }
+    }, { timezone: 'America/Los_Angeles' })
+    logger.info('Settlement sanity check scheduled: hourly at :40')
 
     cron.schedule('30 * * * *', async () => {
       try { await sendSurveyInviteNudges() } catch (err) { logger.error({ err }, 'Survey invite nudge job failed') }
