@@ -212,7 +212,22 @@ export default function TacklesView({ league, tab = 'picks' }) {
                                   <PlayerHeadshot name={pick.player_name} url={pick.headshot_url} size="sm" className="lg:w-10 lg:h-10" />
                                   <div className="flex-1 min-w-0">
                                     <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
-                                    <div className="text-[10px] lg:text-xs text-text-muted truncate">{pick.position} · {pick.team}</div>
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <span className="text-[10px] lg:text-xs text-text-muted truncate">{pick.position} · {pick.team}</span>
+                                      {/* Standings is the live view. Without this a stat has
+                                          nothing to date it — a 1 in the first quarter reads the
+                                          same as a 1 at the final whistle. Server sends game
+                                          state for the CURRENT week only, and the badge renders
+                                          null without it, so last week's block is unaffected. */}
+                                      <GameStatusBadge
+                                        gameStartsAt={pick.game_starts_at}
+                                        gameStatus={pick.game_status}
+                                        teamScore={pick.team_score}
+                                        oppScore={pick.opp_score}
+                                        period={pick.period}
+                                        clock={pick.clock}
+                                      />
+                                    </div>
                                   </div>
                                   <span className={`font-display text-sm lg:text-base shrink-0 ${pick.tackles > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.tackles} {tackleLabel(pick.tackles)}</span>
                                 </div>

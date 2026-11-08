@@ -462,6 +462,10 @@ router.get('/standings', async (req, res) => {
 
   const { week: currentWeek } = await getCurrentNflWeek()
   const lockedTeams = await getLockedTeamSet()
+  // Same per-team game state the pool and /picks already carry. Standings is
+  // the LIVE view people sit on while games run, and it was the one surface
+  // showing a stat with nothing to date it.
+  const matchupByTeam = await getCurrentWeekMatchups()
 
   const userMap = {}
   for (const uid of allMemberIds) userMap[uid] = { totalInts: 0, picks: [] }
@@ -479,6 +483,21 @@ router.get('/standings', async (req, res) => {
       headshot_url: hideFromOpponent ? null : p.headshot_url,
       ints: Number(p.ints) || 0,
       hidden: hideFromOpponent,
+      // Only for the week in play. matchupByTeam holds THIS week's games, so
+      // attaching it to an older pick would date last week's number with a
+      // live clock from a different game entirely.
+      //
+      // Withheld along with everything else when the pick is hidden —
+      // leaking the game state would tell an opponent which team was picked
+      // before kickoff, which is the whole thing `hidden` exists to prevent.
+      ...((!hideFromOpponent && p.week === currentWeek && matchupByTeam[p.team]) ? {
+        game_starts_at: matchupByTeam[p.team].starts_at || null,
+        game_status: matchupByTeam[p.team].game_status || null,
+        team_score: matchupByTeam[p.team].team_score ?? null,
+        opp_score: matchupByTeam[p.team].opp_score ?? null,
+        period: matchupByTeam[p.team].period ?? null,
+        clock: matchupByTeam[p.team].clock ?? null,
+      } : {}),
     })
   }
 
