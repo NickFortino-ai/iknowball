@@ -15,6 +15,12 @@ import { applyChosenLine } from '../services/propService.js'
 import { getCrowns, getRecordHolders } from '../services/leaderboardService.js'
 import { NFL_REGULAR_KEY, NFL_PRESEASON_KEY, NFL_FAMILY_KEYS } from '../utils/nflFamily.js'
 
+// Free trial granted at signup. Seven days is Nick's call and matches the
+// introductory offer configured on the Apple subscription, so an iOS user who
+// reaches the paywall on day 8 is offered a further free week rather than a
+// charge — the ask becomes "keep going" instead of "pay now".
+const TRIAL_DAYS = 7
+
 const router = Router()
 
 const registerSchema = z.object({
@@ -112,12 +118,38 @@ router.post('/register', requireAuth, validate(registerSchema), async (req, res)
     return res.status(409).json({ error: 'Username already taken' })
   }
 
+  // Seven free days, starting now.
+  //
+  // The paywall used to be the FIRST screen after signup, and it was not a
+  // step in the funnel so much as the whole funnel: of 88 accounts that never
+  // paid, zero set an avatar and zero picked a sport. They did not evaluate
+  // the product and decline it — ProtectedRoute sent them to /payment before
+  // they saw a screen of it.
+  //
+  // No new expiry machinery. hasAccess() in ProtectedRoute has always granted
+  // access while subscription_expires_at is in the future, and that is the
+  // same path that has already correctly expired six real Apple accounts. It
+  // also means this works on EVERY installed build, including ones shipped
+  // long before today — the client half was already there.
+  //
+  // is_paid MUST stay false. hasAccess() returns true on is_paid alone, one
+  // line above the expiry check, so setting it here would make the trial
+  // never end. Expiry-only is what makes this a trial rather than a giveaway.
+  //
+  // payment_source 'trial' so reporting can still separate them. The is_paid
+  // count already overstates paying customers roughly 3x because promo and
+  // grandfathered accounts set it; a trial cohort folded into that number
+  // would make it useless.
+  const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString()
+
   const { data, error } = await supabase
     .from('users')
     .insert({
       id: req.user.id,
       username,
       display_name: username,
+      subscription_expires_at: trialEndsAt,
+      payment_source: 'trial',
     })
     .select()
     .single()
