@@ -352,7 +352,7 @@ router.get('/live', async (req, res) => {
   if (allEspnIds.length) {
     const { data: salaries } = await supabase
       .from('nba_dfs_salaries')
-      .select('espn_player_id, game_starts_at, headshot_url, team, opponent')
+      .select('espn_player_id, game_starts_at, headshot_url, team, opponent, position')
       .eq('game_date', date)
       .in('espn_player_id', [...new Set(allEspnIds)])
 
@@ -370,6 +370,7 @@ router.get('/live', async (req, res) => {
       gameStateMap[sal.espn_player_id] = {
         gameStartsAt: sal.game_starts_at, status,
         headshot_url: sal.headshot_url, team: sal.team, opponent: sal.opponent,
+        position: sal.position,
         homeAbbrev: teamAbbrev && oppAbbrev ? (isHome ? teamAbbrev : oppAbbrev) : null,
         awayAbbrev: teamAbbrev && oppAbbrev ? (isHome ? oppAbbrev : teamAbbrev) : null,
       }
@@ -565,6 +566,12 @@ router.get('/live', async (req, res) => {
         player_name: visible ? slot.player_name : '????',
         espn_player_id: visible ? slot.espn_player_id : null,
         headshot_url: visible ? (gs.headshot_url || null) : null,
+        // Carried so the live view can open the player modal straight from a
+        // roster row. It reads team for the header colour and position for the
+        // subtitle; espn_player_id above is the lookup key. Gated on `visible`
+        // like everything else — a hidden slot must not leak who is in it.
+        team: visible ? (gs.team || null) : null,
+        position: visible ? (gs.position || null) : null,
         salary: visible ? slot.salary : null,
         points_earned: gs.status === 'live' || gs.status === 'final' ? Number(slot.points_earned) || 0 : 0,
         game_status: gs.status,
