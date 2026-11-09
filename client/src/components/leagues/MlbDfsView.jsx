@@ -200,12 +200,23 @@ function MlbLiveView({ league, date: leagueDate }) {
                             <span className="flex-1 text-base text-text-muted font-mono">????</span>
                           ) : (
                             <>
-                              <HeadshotWithFallback
-                                url={slot.headshot_url}
-                                position={slot.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || '?'}
-                                className="w-11 h-11"
-                                textClassName="text-sm"
-                              />
+                              {/* Tap for the player modal, matching the pool.
+                                  Only in the non-hidden branch: a concealed
+                                  slot's player_name is the literal '????' and
+                                  the modal calls .toLowerCase() on it. */}
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setModalCanAdd(false); setSelectedPlayer(slot) }}
+                                className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-accent/60 hover:opacity-80 transition-opacity"
+                                aria-label={`View ${slot.player_name}`}
+                              >
+                                <HeadshotWithFallback
+                                  url={slot.headshot_url}
+                                  position={slot.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || '?'}
+                                  className="w-11 h-11"
+                                  textClassName="text-sm"
+                                />
+                              </button>
                               <div className="flex-1 min-w-0 lg:flex lg:items-center lg:gap-6">
                                 <div className="lg:w-44 lg:shrink-0 flex items-center gap-1.5">
                                   <span className="text-base font-bold text-text-primary truncate">{slot.player_name}</span>
@@ -284,6 +295,9 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
   const [initialized, setInitialized] = useState(false)
   const [initDate, setInitDate] = useState(null)
   const [selectedPlayer, setSelectedPlayer] = useState(null)
+  // The modal doubles as the pool's add affordance; opened from the LIVE view
+  // it must not, since that player is already rostered, often on another team.
+  const [modalCanAdd, setModalCanAdd] = useState(true)
   const [standingsUserId, setStandingsUserId] = useState(null)
   const [editing, setEditing] = useState(false)
 
@@ -540,7 +554,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                 {player ? (
                   <>
                     <button
-                      onClick={(e) => { e.stopPropagation(); setSelectedPlayer(player) }}
+                      onClick={(e) => { e.stopPropagation(); setModalCanAdd(true); setSelectedPlayer(player) }}
                       className="flex items-center gap-3 flex-1 min-w-0 text-left hover:bg-text-primary/5 transition-colors -mx-1 px-1 rounded-lg"
                     >
                       <HeadshotWithFallback
@@ -670,7 +684,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                 className="flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 bg-bg-primary"
               >
                 <button
-                  onClick={() => setSelectedPlayer(player)}
+                  onClick={() => { setModalCanAdd(true); setSelectedPlayer(player) }}
                   className="flex items-center gap-3 flex-1 min-w-0 text-left hover:bg-text-primary/5 transition-colors -mx-1 px-1 rounded-lg"
                 >
                   <HeadshotWithFallback
@@ -723,7 +737,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
         <PlayerDetailModal
           player={selectedPlayer}
           onClose={() => setSelectedPlayer(null)}
-          onAdd={!isViewMode ? addPlayer : null}
+          onAdd={modalCanAdd && !isViewMode ? addPlayer : null}
           sport="baseball_mlb"
           showFantasyPoints
         />

@@ -248,14 +248,25 @@ function LiveView({ league, date: leagueDate }) {
                         <span className="flex-1 text-base text-text-muted font-mono">????</span>
                       ) : (
                         <>
-                          {slot.headshot_url ? (
-                            <img src={slot.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0" loading="eager" decoding="async"
-                              onError={(e) => { e.target.style.display = 'none' }} />
-                          ) : (
-                            <div className="w-11 h-11 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-sm text-text-muted font-bold">
-                              {slot.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                            </div>
-                          )}
+                          {/* Tap for the player modal, matching the pool. Only
+                              in the non-hidden branch: a concealed slot's
+                              player_name is the literal '????' and the modal
+                              calls .toLowerCase() on it unguarded. */}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setModalCanAdd(false); setSelectedPlayer(slot) }}
+                            className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-accent/60"
+                            aria-label={`View ${slot.player_name}`}
+                          >
+                            {slot.headshot_url ? (
+                              <img src={slot.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0 hover:opacity-80 transition-opacity" loading="eager" decoding="async"
+                                onError={(e) => { e.target.style.display = 'none' }} />
+                            ) : (
+                              <div className="w-11 h-11 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-sm text-text-muted font-bold hover:opacity-80 transition-opacity">
+                                {slot.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                              </div>
+                            )}
+                          </button>
                           <div className="flex-1 min-w-0 lg:flex lg:items-center lg:gap-6">
                             <div className="flex items-center gap-2 lg:w-44 lg:shrink-0">
                               <span className="text-base font-bold text-text-primary truncate">{slot.player_name}</span>
@@ -368,6 +379,9 @@ export default function WnbaDfsView({ league, tab = 'roster' }) {
   const [initialized, setInitialized] = useState(false)
   const [initDate, setInitDate] = useState(null)
   const [selectedPlayer, setSelectedPlayer] = useState(null)
+  // The modal doubles as the pool's add affordance; opened from the LIVE view
+  // it must not, since that player is already rostered, often on another team.
+  const [modalCanAdd, setModalCanAdd] = useState(true)
   const [standingsUserId, setStandingsUserId] = useState(null)
   const [editing, setEditing] = useState(false)
 
@@ -820,6 +834,7 @@ export default function WnbaDfsView({ league, tab = 'roster' }) {
                     onClick={(e) => {
                       e.stopPropagation()
                       if (Date.now() - dragJustEndedAt.current < 300) return
+                      setModalCanAdd(true)
                       setSelectedPlayer(player)
                     }}
                     className="flex items-center gap-3 flex-1 min-w-0 text-left hover:bg-text-primary/5 transition-colors -mx-1 px-1 rounded-lg"
@@ -957,7 +972,7 @@ export default function WnbaDfsView({ league, tab = 'roster' }) {
                 className="flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 bg-bg-primary"
               >
                 <button
-                  onClick={() => setSelectedPlayer(player)}
+                  onClick={() => { setModalCanAdd(true); setSelectedPlayer(player) }}
                   className="flex items-center gap-3 flex-1 min-w-0 text-left hover:bg-text-primary/5 transition-colors -mx-1 px-1 rounded-lg"
                 >
                   {player.headshot_url ? (
@@ -1013,7 +1028,7 @@ export default function WnbaDfsView({ league, tab = 'roster' }) {
         <PlayerDetailModal
           player={selectedPlayer}
           onClose={() => setSelectedPlayer(null)}
-          onAdd={posFilter !== 'OUT' ? addPlayer : null}
+          onAdd={modalCanAdd && posFilter !== 'OUT' ? addPlayer : null}
           sport="basketball_wnba"
           showFantasyPoints
         />

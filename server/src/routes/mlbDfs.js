@@ -227,7 +227,7 @@ router.get('/live', async (req, res) => {
   if (allEspnIds.length) {
     const { data: salaries } = await supabase
       .from('mlb_dfs_salaries')
-      .select('espn_player_id, game_starts_at, headshot_url, team, opponent')
+      .select('espn_player_id, game_starts_at, headshot_url, team, opponent, position')
       .eq('game_date', date)
       .in('espn_player_id', [...new Set(allEspnIds)])
 
@@ -255,6 +255,7 @@ router.get('/live', async (req, res) => {
       gameStateMap[sal.espn_player_id] = {
         gameStartsAt: sal.game_starts_at, status, headshot_url: sal.headshot_url,
         team: sal.team, opponent: sal.opponent,
+        position: sal.position,
         homeAbbrev: teamAbbrev && oppAbbrev ? (isHome ? teamAbbrev : oppAbbrev) : null,
         awayAbbrev: teamAbbrev && oppAbbrev ? (isHome ? oppAbbrev : teamAbbrev) : null,
       }
@@ -389,6 +390,10 @@ router.get('/live', async (req, res) => {
         player_name: hidden ? '????' : slot.player_name,
         espn_player_id: hidden ? null : slot.espn_player_id,
         headshot_url: hidden ? null : (gs.headshot_url || null),
+        // For the player modal, opened by tapping a roster headshot. Hidden
+        // rows withhold them with everything else.
+        team: hidden ? null : (gs.team || null),
+        position: hidden ? null : (gs.position || null),
         points_earned: pts,
         game_status: gs.status || 'upcoming',
         home_team: gs.homeAbbrev || null,

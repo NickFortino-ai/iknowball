@@ -158,7 +158,7 @@ router.get('/live', async (req, res) => {
   if (allEspnIds.length) {
     const { data: salaries } = await supabase
       .from('wnba_dfs_salaries')
-      .select('espn_player_id, game_starts_at, headshot_url, team, opponent')
+      .select('espn_player_id, game_starts_at, headshot_url, team, opponent, position')
       .eq('game_date', date)
       .in('espn_player_id', [...new Set(allEspnIds)])
 
@@ -177,6 +177,7 @@ router.get('/live', async (req, res) => {
       gameStateMap[sal.espn_player_id] = {
         gameStartsAt: sal.game_starts_at, status,
         headshot_url: sal.headshot_url, team: sal.team, opponent: sal.opponent,
+        position: sal.position,
         homeAbbrev: teamAbbrev && oppAbbrev ? (isHome ? teamAbbrev : oppAbbrev) : null,
         awayAbbrev: teamAbbrev && oppAbbrev ? (isHome ? oppAbbrev : teamAbbrev) : null,
       }
@@ -342,6 +343,10 @@ router.get('/live', async (req, res) => {
         game_period: gs.period || null,
         game_clock: gs.clock || null,
         team: visible ? (gs.team || null) : null,
+        // For the player modal, opened by tapping a roster headshot. Gated on
+        // `visible` like the rest of the slot — a hidden row must not leak who
+        // is in it.
+        position: visible ? (gs.position || null) : null,
         opponent: visible ? (gs.opponent || null) : null,
         home_team: gs.homeAbbrev || null,
         away_team: gs.awayAbbrev || null,
