@@ -6,6 +6,7 @@ import { useNbaDfsPlayerLookup } from '../../hooks/useLeagues'
 import { getTeamAbbr } from '../../lib/teamLogos'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
 import PropSliderCard from './PropSliderCard'
+import { kickoffLabel } from '../../lib/kickoffLabel'
 
 const sideStyles = {
   default: 'bg-bg-primary hover:bg-bg-card-hover border-border hover:border-border-hover',
@@ -131,16 +132,9 @@ export default function PropCard({ prop, picks, pick: pickProp, onPick, onUndoPi
     ? getTeamLogoUrl(String(prop.player_name).replace(/ D\/ST$/, ''), sportKey)
     : null
 
-  // "Thu 9/3" when the game is on a later day, otherwise null.
-  const kickoffLabel = (() => {
-    const iso = prop.games?.starts_at
-    if (!iso) return null
-    const PT = { timeZone: 'America/Los_Angeles' }
-    const day = new Date(iso).toLocaleDateString('en-CA', PT)
-    const today = new Date().toLocaleDateString('en-CA', PT)
-    if (day === today) return null
-    return new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric', ...PT })
-  })()
+  // "8:15 PM" today, "Mon 8:15 PM" later in the week. Shared with
+  // PropSliderCard — see lib/kickoffLabel.
+  const kickoff = kickoffLabel(prop.games?.starts_at, prop.games?.status)
   // Which score column is authoritative depends on the game's STATUS, and
   // preferring live_* blanket is wrong. live_* stops updating at the last
   // poll before a game ends, so it is stale on finals across every sport —
@@ -194,11 +188,10 @@ export default function PropCard({ prop, picks, pick: pickProp, onPick, onUndoPi
               {abbreviateTeam(prop.games.away_team)} @ {abbreviateTeam(prop.games.home_team)}
             </div>
             {/* Football props publish days ahead, so the matchup alone leaves
-                you guessing when it is. Shown only when the game ISN'T today —
-                on a same-day slate the date is noise. PT-anchored to match
-                the rest of the app. */}
-            {kickoffLabel && (
-              <div className="text-[10px] text-text-muted">{kickoffLabel}</div>
+                you guessing when it is. PT-anchored to match the rest of the
+                app. */}
+            {kickoff && (
+              <div className="text-[10px] text-text-muted">{kickoff}</div>
             )}
             {/* Score sits on its own line under the matchup rather than
                 inline with it: the block is whitespace-nowrap and already

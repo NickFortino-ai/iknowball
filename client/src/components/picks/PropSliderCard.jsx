@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useNbaDfsPlayerLookup } from '../../hooks/useLeagues'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
 import { getTeamAbbr } from '../../lib/teamLogos'
+import { kickoffLabel } from '../../lib/kickoffLabel'
 
 /**
  * A prop you set the line on.
@@ -82,15 +83,11 @@ export default function PropSliderCard({
   // Has the player moved off the book's number?
   const movedOffDefault = slider && index !== slider.defaultIndex
 
-  const kickoffLabel = useMemo(() => {
-    const iso = prop.games?.starts_at
-    if (!iso) return null
-    const PT = { timeZone: 'America/Los_Angeles' }
-    const day = new Date(iso).toLocaleDateString('en-CA', PT)
-    const today = new Date().toLocaleDateString('en-CA', PT)
-    if (day === today) return null
-    return new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric', ...PT })
-  }, [prop.games?.starts_at])
+  // Shared with PropCard — see lib/kickoffLabel.
+  const kickoff = useMemo(
+    () => kickoffLabel(prop.games?.starts_at, prop.games?.status),
+    [prop.games?.starts_at, prop.games?.status],
+  )
 
   if (!current) return null
 
@@ -130,7 +127,7 @@ export default function PropSliderCard({
             <div className="text-xs text-text-muted">
               {abbreviateTeam(prop.games.away_team)} @ {abbreviateTeam(prop.games.home_team)}
             </div>
-            {kickoffLabel && <div className="text-[10px] text-text-muted">{kickoffLabel}</div>}
+            {kickoff && <div className="text-[10px] text-text-muted">{kickoff}</div>}
             {prop.games.status === 'final' && (
               <div className="text-[10px] text-text-muted font-semibold">Final</div>
             )}
