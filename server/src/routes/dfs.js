@@ -45,6 +45,26 @@ function normalizeTeamAbbrev(abbr) {
   if (!abbr) return abbr
   return ESPN_TO_SLEEPER_TEAM[abbr] || abbr
 }
+
+// Same failure shape as the WSH/WAS alias above, with a cause no alias can
+// reach: the player has no team AT ALL.
+//
+// nfl_players.team goes NULL the moment Sleeper drops a released player, and a
+// released player keeps sitting in whatever roster already held him — Kendre
+// Miller was still Casey's RB2 in Salary and Peanut Butter after New Orleans
+// cut him. `team` then resolved to '', `gameStatuses['']` missed, and the
+// lookup fell back to 'pre', so the slot read 'upcoming' permanently: "1 yet
+// to play" with every game of the week final, a matchup that never reached
+// 'final', and a live team projection still crediting him the unplayed share
+// of his week.
+//
+// A teamless player has no game, so there is nothing to wait for — 'post' is
+// the honest answer. It also lands him on the existing `didNotPlay` path
+// below (final, no stat line), which zeroes his projection.
+function teamGameState(team, gameStatuses) {
+  if (!team) return 'post'
+  return gameStatuses[team] || 'pre'
+}
 router.use(requireAuth)
 
 // Get player pool with salaries
@@ -438,9 +458,13 @@ router.get('/live', async (req, res) => {
       const player = playerMap[slot.player_id] || {}
       const team = player.team || ''
       const gs = gameScores[team] || {}
-      const teamState = gameStatuses[team] || 'pre'
+      const teamState = teamGameState(team, gameStatuses)
       const status = teamState === 'in' ? 'live' : teamState === 'post' ? 'final' : 'upcoming'
-      const visible = isMe || allFinal || status === 'live' || status === 'final'
+      // Opponent rosters unmask slot by slot as each game kicks off. A
+      // teamless player is 'final' from the moment he's rostered, which would
+      // unmask that one slot before the slate starts and leak a pick, so he
+      // stays hidden until the rest of the week catches up.
+      const visible = isMe || allFinal || ((status === 'live' || status === 'final') && !!team)
       const stat = statsMap[slot.player_id] || null
       const hasStats = stat && (status === 'live' || status === 'final')
 
@@ -779,7 +803,7 @@ router.get('/matchup-live', async (req, res) => {
     if (!userRosters[r.user_id]) userRosters[r.user_id] = []
     const player = r.nfl_players || {}
     const team = player.team || ''
-    const teamState = gameStatuses[team] || 'pre'
+    const teamState = teamGameState(team, gameStatuses)
     const status = teamState === 'in' ? 'live' : teamState === 'post' ? 'final' : 'upcoming'
     const stat = statsMap[r.player_id] || null
     const pts = applyRulesH2H(stat, leagueRules)
