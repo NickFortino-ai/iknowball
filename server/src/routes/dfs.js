@@ -245,10 +245,38 @@ router.get('/playoff-bracket', async (req, res) => {
   const teamNameMap = {}
   for (const m of members || []) teamNameMap[m.user_id] = m.fantasy_team_name
 
+  // W-L records, same shape /matchup-live already sends.
+  //
+  // The all-matchups list has rendered user.record since it was built, but
+  // only matchup-live populated it — so the record appeared on the current
+  // week and vanished the moment you looked at any other one, which reads as
+  // a bug rather than as a missing field.
+  //
+  // week <= w, not every completed matchup. On a finished week the record
+  // then includes the result shown beside it, and on a week still in play
+  // nothing is completed yet so it is the record each side brought in. Both
+  // are what you would expect from the row you are looking at.
+  //
+  // round IS NULL keeps the playoff bracket out of a regular-season record.
+  const { data: completed } = await supabase
+    .from('fantasy_matchups')
+    .select('home_user_id, away_user_id, home_points, away_points')
+    .eq('league_id', league_id)
+    .eq('status', 'completed')
+    .is('round', null)
+    .lte('week', w)
+  const recordMap = {}
+  for (const cm of completed || []) {
+    if (!recordMap[cm.home_user_id]) recordMap[cm.home_user_id] = { wins: 0, losses: 0 }
+    if (!recordMap[cm.away_user_id]) recordMap[cm.away_user_id] = { wins: 0, losses: 0 }
+    if (cm.home_points > cm.away_points) { recordMap[cm.home_user_id].wins++; recordMap[cm.away_user_id].losses++ }
+    else if (cm.away_points > cm.home_points) { recordMap[cm.away_user_id].wins++; recordMap[cm.home_user_id].losses++ }
+  }
+
   const enriched = matchups.map(m => ({
     ...m,
-    home_user: m.home_user_id ? { ...userMap[m.home_user_id], fantasy_team_name: teamNameMap[m.home_user_id] } : null,
-    away_user: m.away_user_id ? { ...userMap[m.away_user_id], fantasy_team_name: teamNameMap[m.away_user_id] } : null,
+    home_user: m.home_user_id ? { ...userMap[m.home_user_id], fantasy_team_name: teamNameMap[m.home_user_id], record: recordMap[m.home_user_id] || { wins: 0, losses: 0 } } : null,
+    away_user: m.away_user_id ? { ...userMap[m.away_user_id], fantasy_team_name: teamNameMap[m.away_user_id], record: recordMap[m.away_user_id] || { wins: 0, losses: 0 } } : null,
   }))
 
   const settings = await getFantasySettings(league_id)
