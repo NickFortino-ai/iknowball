@@ -44,13 +44,60 @@ async function fetchDepthChart(sportPath, espnTeamId) {
 // written note. They are now kept apart: `bodyPart` for the designation,
 // `detail` for prose only. Prefer longComment — it is the fuller write-up, and
 // shortComment is frequently just the status word repeated.
+//
+// shortComment and longComment are NOT a short and long version of one note.
+// They are the two halves of a wire report — shortComment is the NEWS,
+// longComment is the ANALYSIS, and the analysis is written as a continuation
+// of a news sentence the reader is assumed to have just read:
+//
+//   short: Froholdt is in league concussion protocol Monday, Darren Urban of
+//          the Cardinals' official site reports.
+//   long : Froholdt played all 51 of the Cardinals' offensive snaps during
+//          Sunday's game at Seattle, but he may have suffered a concussion...
+//
+// Publishing longComment alone therefore starts the blurb mid-thought. Deebo
+// Samuel's opened "That's a positive development for Samuel who logged a trio
+// of 'DNPs' last week" — positive compared to WHAT was in the dropped
+// sentence. 527 of ESPN's 800 current NFL entries carry a distinct
+// shortComment, so this was most of them, not an edge case.
+//
+// Joined with a blank line: ui/PlayerDetailModal renders blurbs
+// `whitespace-pre-wrap`, so it gets two clean paragraphs, and the three
+// draft/league modals that don't collapse it to a single space — still
+// correct, just not split.
+const STATUS_NOISE = new Set([
+  'out', 'active', 'inactive', 'questionable', 'doubtful', 'probable',
+  'day-to-day', 'day to day', 'injured reserve', 'ir', 'pup', 'na',
+  'suspension', 'suspended', 'unknown', 'healthy',
+])
+
+// ESPN sometimes sets a comment to the bare status ("questionable", "out"),
+// which is not a note and reads as noise wherever it surfaces. Matching only
+// against THIS entry's own status missed the mismatched pairs — Deebo carried
+// status 'Out' with a comment of "inactive", and that one-word blurb was
+// published under his name on 2026-11-08.
+function proseOrEmpty(raw, status) {
+  const text = String(raw || '').trim()
+  if (!text) return ''
+  const key = text.toLowerCase().replace(/[.!]+$/, '')
+  if (key === String(status || '').trim().toLowerCase()) return ''
+  if (STATUS_NOISE.has(key)) return ''
+  return text
+}
+
 function espnInjuryText(i) {
   const bodyPart = i.details?.type || ''
-  const prose = i.longComment || i.shortComment || ''
-  // ESPN sometimes sets the comment to the bare status ("questionable"),
-  // which is not a note and reads as noise wherever it surfaces.
-  const isStatusEcho = prose && prose.trim().toLowerCase() === String(i.status || '').trim().toLowerCase()
-  return { bodyPart, detail: isStatusEcho ? '' : prose }
+  const news = proseOrEmpty(i.shortComment, i.status)
+  const analysis = proseOrEmpty(i.longComment, i.status)
+
+  let detail
+  if (!news || !analysis) detail = analysis || news
+  // Identical halves, or an analysis that already restates its own lead —
+  // either way the news adds nothing and would read as a stutter.
+  else if (analysis === news || analysis.startsWith(news)) detail = analysis
+  else detail = `${news}\n\n${analysis}`
+
+  return { bodyPart, detail }
 }
 
 // Reading an intel row back out. Rows stored BEFORE the bodyPart/detail split
