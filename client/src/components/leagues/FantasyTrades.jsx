@@ -23,19 +23,36 @@ function pastTense(action) {
   }[action] || `${action}d`
 }
 
-function PlayerChip({ player }) {
-  return (
-    <div className="flex flex-col items-center rounded-lg bg-bg-primary/60 border border-text-primary/10 px-2 py-3 text-center">
+// The WHOLE chip is the tap target, not just the headshot. Judging a trade is
+// exactly when you want the player's notes and game log, and a 56px circle is
+// a small thing to hit on a phone — the name and position line sit right
+// there and read as part of the same object. It also keeps the player
+// reachable when he has no headshot, which the circle alone would not.
+function PlayerChip({ player, playerId, onTap }) {
+  const inner = (
+    <>
       {player?.headshot_url && (
         <img src={player.headshot_url} alt="" className="w-14 h-14 rounded-full object-cover bg-bg-secondary mb-1.5" onError={(e) => { e.target.style.display = 'none' }} />
       )}
       <div className="text-sm font-bold text-text-primary leading-tight">{player?.full_name}</div>
       <div className="text-[11px] text-text-muted mt-0.5">{player?.position} · {player?.team}</div>
-    </div>
+    </>
+  )
+  const base = 'w-full flex flex-col items-center rounded-lg bg-bg-primary/60 border border-text-primary/10 px-2 py-3 text-center'
+
+  if (!onTap || !playerId) return <div className={base}>{inner}</div>
+  return (
+    <button
+      type="button"
+      onClick={() => onTap(playerId)}
+      className={`${base} hover:border-accent/40 hover:bg-bg-card-hover transition-colors`}
+    >
+      {inner}
+    </button>
   )
 }
 
-function TradeCard({ trade, currentUserId, isCommissioner, onAccept, onDecline, onCancel, onCounter, onApprove, onVeto }) {
+function TradeCard({ trade, currentUserId, isCommissioner, onAccept, onDecline, onCancel, onCounter, onApprove, onVeto, onTapPlayer }) {
   const isReceiver = trade.receiver_user_id === currentUserId
   const isProposer = trade.proposer_user_id === currentUserId
   const isPending = trade.status === 'pending'
@@ -86,11 +103,11 @@ function TradeCard({ trade, currentUserId, isCommissioner, onAccept, onDecline, 
       <div className="grid grid-cols-2 gap-3">
         <div>
           <div className="text-sm font-semibold text-text-primary mb-1.5">{trade.proposer?.display_name || 'Proposer'} sends</div>
-          <div className="space-y-1">{proposerItems.map((i) => <PlayerChip key={i.player_id} player={i.nfl_players} />)}</div>
+          <div className="space-y-1">{proposerItems.map((i) => <PlayerChip key={i.player_id} player={i.nfl_players} playerId={i.player_id} onTap={onTapPlayer} />)}</div>
         </div>
         <div>
           <div className="text-sm font-semibold text-text-primary mb-1.5">{trade.receiver?.display_name || 'Receiver'} sends</div>
-          <div className="space-y-1">{receiverItems.map((i) => <PlayerChip key={i.player_id} player={i.nfl_players} />)}</div>
+          <div className="space-y-1">{receiverItems.map((i) => <PlayerChip key={i.player_id} player={i.nfl_players} playerId={i.player_id} onTap={onTapPlayer} />)}</div>
         </div>
       </div>
 
@@ -642,6 +659,10 @@ export default function FantasyTrades({ league, fantasySettings }) {
     const isDropType = txnType === 'drop' || txnType === 'waiver_drop'
     setDetailPlayer({ playerId, ctx: isDropType ? 'free_agent' : null })
   }
+  // Always info-only. Everyone named in a trade is on somebody's roster, so
+  // an Add button would be offering something that cannot happen — and on a
+  // PENDING trade it would sit inches from Accept/Decline.
+  const handleTradePlayerTap = (playerId) => setDetailPlayer({ playerId, ctx: null })
   const subtab = new URLSearchParams(window.location.search).get('subtab')
   const [activeView, setActiveView] = useState(subtab === 'trades' ? 'trades' : 'activity') // 'activity' | 'trades'
 
@@ -754,6 +775,7 @@ export default function FantasyTrades({ league, fantasySettings }) {
                     onCancel={(id) => handleAction(id, 'cancel')}
                     onCounter={(trade) => setCounterTrade(trade)}
                     onApprove={(id) => handleAction(id, 'approve')}
+                    onTapPlayer={handleTradePlayerTap}
                     onVeto={(id) => setVetoModal({ tradeId: id })} />
                 ))}
               </div>
@@ -764,7 +786,7 @@ export default function FantasyTrades({ league, fantasySettings }) {
               <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">History</h3>
               <div className="space-y-3">
                 {(trades || []).filter((t) => t.status !== 'pending' && t.status !== 'pending_review').map((t) => (
-                  <TradeCard key={t.id} trade={t} currentUserId={profile?.id} isCommissioner={isCommissioner} onAccept={() => {}} onDecline={() => {}} onCancel={() => {}} />
+                  <TradeCard key={t.id} trade={t} currentUserId={profile?.id} isCommissioner={isCommissioner} onAccept={() => {}} onDecline={() => {}} onCancel={() => {}} onTapPlayer={handleTradePlayerTap} />
                 ))}
               </div>
             </div>
