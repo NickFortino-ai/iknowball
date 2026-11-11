@@ -4227,18 +4227,8 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
         .order('player_id')
     )
   )
-  // For QBs only: the most recent week we hold a stat row for, and how many
-  // passes he attempted in it. Sleeper writes a zero-filled row for a player
-  // who dressed and did nothing, so the latest row is a good proxy for "the
-  // last time his team played", and 0 attempts in it means somebody else is
-  // taking the snaps. See the weekly_projection comment below for why this
-  // is the signal rather than the depth chart.
-  const qbLastGame = {}
-  for (const r of statRows || []) {
-    if (r.week == null) continue
-    const prev = qbLastGame[r.player_id]
-    if (!prev || r.week > prev.week) qbLastGame[r.player_id] = { week: r.week, pass_att: r.pass_att || 0 }
-  }
+  // (The qbLastGame "0 pass attempts last game = benched" index that used to
+  // be built here is gone with the heuristic it fed — see weekly_projection.)
 
   // statsByPlayer[id] = { pts, pass_yd, pass_td, ... }
   const statsByPlayer = {}
@@ -4537,26 +4527,29 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
         // so sorting the available list by PROJ put a season-ending injury at
         // the very top — Jayden Higgins (IR) above every healthy player.
         if (isUnavailable(p.injury_status)) return 0
-        // A healthy QB who lost the job. Sleeper keeps publishing a full
-        // starter's projection for him — Jameis Winston carried 11.7 for
-        // week 9 having not attempted a pass since week 6, behind J.J.
-        // McCarthy. Tua Tagovailoa carried 17.4 on zero attempts in three
-        // straight weeks.
+        // REMOVED: a usage heuristic that zeroed any QB whose most recent
+        // stat row had 0 pass attempts.
         //
-        // The signal is USAGE, not depth_chart_order. Sleeper's depth chart
-        // is badly unreliable at QB: Jacoby Brissett sits at depth 2 having
-        // thrown 48 passes in week 7, and Jalen Hurts and Lamar Jackson are
-        // both listed 2 behind nobody. Zeroing on depth would have wiped the
-        // projection off active starters, which is the worse error — the
-        // same trap the salary-cap deep-bench-QB hide rule fell into.
+        // Its premise was that "Sleeper keeps publishing a full starter's
+        // projection for a benched QB — Winston carried 11.7 for week 9
+        // having not attempted a pass since week 6." That was wrong, and the
+        // number it blamed Sleeper for was OURS. Sleeper had withdrawn the
+        // points; our sync skipped rows with no points, so the figure we were
+        // showing was a stale row set on October 22. Checked against the live
+        // feed 2026-11-10 for weeks 8, 9 and 10: Sleeper ships NO point
+        // projection for Winston in any of them.
         //
-        // Injury already covers the Hurts/Lamar case above, so what is left
-        // is exactly the benched-but-healthy QB. One week of lookback, so it
-        // self-heals: the moment he throws a pass the projection returns.
-        if (p.position === 'QB') {
-          const last = qbLastGame[p.id]
-          if (last && last.pass_att === 0) return 0
-        }
+        // With syncWeeklyProjections now writing the withdrawal through as a
+        // 0, the authoritative signal does this job — and the heuristic was
+        // actively wrong in the other direction. A QB promoted to starter has
+        // 0 attempts in his last game BY DEFINITION, so it zeroed exactly the
+        // player it should not: Kyle McCord was named Miami's starter for
+        // week 10 and Sleeper projects him 12.64, while we showed 0 because
+        // he threw no passes in week 9. Nick spotted that side of it.
+        //
+        // Do not reintroduce a usage or depth-chart rule here. Promotion and
+        // benching are the same shape from the box score; only the feed knows
+        // which one happened.
         const computed = computeIdpAwareProjection(weeklyProjRowMap[p.id], p.position, weeklyProjCol, weeklyRules)
         return computed != null ? Math.round(computed * 10) / 10 : null
       })(),

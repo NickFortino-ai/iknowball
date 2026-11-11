@@ -857,6 +857,37 @@ export async function syncWeeklyProjections(season, week) {
     pageStart += PAGE
   }
 
+  // A WITHDRAWN projection is a fact, and we were throwing it away.
+  //
+  // Sleeper does not keep publishing a starter's number for a player who has
+  // lost the job or been ruled out. It keeps his row in the feed and strips
+  // the point fields off it. Those rows fail the filter below, so they were
+  // never upserted — and because an upsert can only overwrite, the last
+  // number we ever stored for him stayed on his card forever.
+  //
+  // Measured 2026-11-10: 228 of our week 10 rows showed a projection Sleeper
+  // had already withdrawn. Jameis Winston read 15.83, set October 22. Lamar
+  // Jackson read 23.01 while out for the season. Jaxson Dart read 19.97 from
+  // September 24.
+  //
+  // Scoped to players we ALREADY hold a row for. Sleeper returns ~7,600 rows
+  // a week against the ~1,400 we store, and the rest are players nobody has
+  // ever been shown a number for — writing zeros for them would quintuple the
+  // table to correct nothing. A player who genuinely gains a projection still
+  // arrives through the normal path below.
+  const existingIds = new Set(
+    (await fetchAll(
+      supabase
+        .from('nfl_player_projections')
+        .select('player_id')
+        .eq('season', season)
+        .eq('week', week)
+        .order('player_id')
+    )).map((r) => r.player_id)
+  )
+
+  const hasPoints = (stats) => stats.pts_half_ppr != null || stats.pts_ppr != null || stats.pts_std != null
+
   // Build upsert rows
   const rows = data
     .filter((proj) => {
@@ -867,23 +898,24 @@ export async function syncWeeklyProjections(season, week) {
       // players — IDP defenders come through with only idp_* stat projections.
       // Accept either shape so IDP rows aren't silently dropped, which was
       // leaving IDP defenders with NULL weekly_projection in the player list.
-      const hasOffensePts = proj.stats.pts_half_ppr != null
-        || proj.stats.pts_ppr != null
-        || proj.stats.pts_std != null
+      const hasOffensePts = hasPoints(proj.stats)
       const hasIdpStats = (proj.stats.idp_tkl_solo || 0) > 0
         || (proj.stats.idp_tkl_ast || 0) > 0
         || (proj.stats.idp_sack || 0) > 0
         || (proj.stats.idp_int || 0) > 0
         || (proj.stats.idp_pass_def || 0) > 0
-      return hasOffensePts || hasIdpStats
+      return hasOffensePts || hasIdpStats || existingIds.has(String(proj.player_id))
     })
     .map((proj) => ({
       player_id: String(proj.player_id),
       season,
       week,
-      pts_ppr: proj.stats.pts_ppr ?? null,
-      pts_half_ppr: proj.stats.pts_half_ppr ?? null,
-      pts_std: proj.stats.pts_std ?? null,
+      // 0, not null, when Sleeper has withdrawn the points. Downstream the
+      // two are interchangeable (`Number(null) || 0`), but only a 0 OVERWRITES
+      // the stale number — which is the entire point of including the row.
+      pts_ppr: proj.stats.pts_ppr ?? (hasPoints(proj.stats) ? null : 0),
+      pts_half_ppr: proj.stats.pts_half_ppr ?? (hasPoints(proj.stats) ? null : 0),
+      pts_std: proj.stats.pts_std ?? (hasPoints(proj.stats) ? null : 0),
       // IDP raw stat projections — Sleeper exposes these on every
       // projection payload, including for offense players where they
       // sit at 0. Stored as 0 fallback to keep downstream
