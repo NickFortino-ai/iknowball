@@ -79,19 +79,31 @@ export default function LeaderboardSearch({ onSelect }) {
   const showNoResults = debounced.length >= 3 && !isFetching && suggestions?.length === 0
 
   return (
-    <div ref={containerRef} className="relative flex-1 max-w-md">
+    // min-w-0 is load-bearing. `flex-1` sets flex-basis to 0 but leaves
+    // min-width at `auto`, so the item still cannot shrink below its
+    // min-content — and this one sits in a row with a 128px un-breakable
+    // "Leaderboard" heading on a 358px phone viewport.
+    <div ref={containerRef} className="relative flex-1 min-w-0 max-w-md">
       <div className="flex items-center gap-2 bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-1.5">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted shrink-0">
           <circle cx="11" cy="11" r="7" />
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
+        {/* size={1} plus w-0 is what actually lets this shrink. An <input>
+            defaults to size=20, which gives it an intrinsic width of roughly
+            twenty characters, and that width is its min-content floor —
+            `min-w-0` alone does not reliably beat it in WebKit. On a phone
+            the row ran out of space, the spacer collapsed to zero, and the
+            box carried on past the right edge of the screen with the close
+            button off-screen. flex-1 still gives it every spare pixel. */}
         <input
           ref={inputRef}
           type="text"
+          size={1}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name…"
-          className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none min-w-0"
+          className="flex-1 w-0 min-w-0 bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
         />
         <button
           onClick={() => setExpanded(false)}
