@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { api } from '../../lib/api'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
@@ -465,7 +466,20 @@ export default function UserProfileModal({ userId, onClose }) {
 
   if (!userId) return null
 
-  return (
+  // Portalled to <body>, like every other modal here.
+  //
+  // Rendered in place, `fixed inset-0` is NOT necessarily the viewport: any
+  // ancestor with a transform, filter or BACKDROP-filter becomes the
+  // containing block for fixed descendants. MessageThreadPage mounts this
+  // inside its `backdrop-blur-md` header, so the overlay resolved to the
+  // header's box — Nick tapped his chat partner's avatar and got a grey band
+  // across the top of the thread with the card collapsed to a single line.
+  //
+  // It has 28 call sites, several of them inside scroll containers and
+  // overflow-hidden cards, so the same trap was reachable from more than
+  // this one. Portalling fixes all of them, and the nested avatar / H2H /
+  // report overlays ride along inside it.
+  return createPortal(
     <>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-4 md:py-6"
@@ -844,6 +858,7 @@ export default function UserProfileModal({ userId, onClose }) {
         onClose={() => setShowReportModal(false)}
       />
     )}
-    </>
+    </>,
+    document.body,
   )
 }
