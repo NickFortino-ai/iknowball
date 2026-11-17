@@ -66,8 +66,15 @@ export function useUpdateHotTake() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, content, team_tags, image_url, video_url, user_tags, embed_source }) =>
-      api.patch(`/hot-takes/${id}`, { content, team_tags, image_url, video_url, user_tags, ...(embed_source !== undefined ? { embed_source } : {}) }),
+    // image_urls is why a multi-image post lost a picture on every edit.
+    // HotTakeFeedCard computes the full array and passes it to mutate() —
+    // this body simply never forwarded it, so the server saw only the
+    // singular image_url and rebuilt image_urls as [image_url], collapsing
+    // two pictures to one and orphaning the rest in storage. The card even
+    // carries a comment about preserving the array; the fix had been made
+    // there and never reached the wire.
+    mutationFn: ({ id, content, team_tags, image_url, image_urls, video_url, user_tags, embed_source }) =>
+      api.patch(`/hot-takes/${id}`, { content, team_tags, image_url, image_urls, video_url, user_tags, ...(embed_source !== undefined ? { embed_source } : {}) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
     },

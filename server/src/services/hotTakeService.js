@@ -267,12 +267,25 @@ export async function updateHotTake(userId, hotTakeId, content, teamTags, sportK
     embed_url: embed?.url || null,
   }
 
+  // Same rule for the sport tag, and for the same reason. The edit form has
+  // no sport control at all — its sport chips only filter the TEAM picker —
+  // so the PATCH never carries sport_key, and writing `sportKey || null`
+  // unconditionally silently cleared the tag off any post the author edited.
+  // 56 posts currently carry one.
+  //
+  // Done here rather than in the client because already-shipped bundles keep
+  // sending the same body for weeks; a server guard fixes every one of them
+  // on deploy. (image_urls can't be rescued this way — an old client sends
+  // the field as undefined BOTH when it's unchanged and when the user
+  // removed the images, so there is nothing for the server to tell apart.)
+  const sportPatch = sportKey === undefined ? {} : { sport_key: sportKey || null }
+
   const { data, error } = await supabase
     .from('hot_takes')
     .update({
       content,
       team_tags: teamTags?.length ? teamTags : null,
-      sport_key: sportKey || null,
+      ...sportPatch,
       image_url: (imageUrls?.length ? imageUrls[0] : imageUrl) || null,
       image_urls: imageUrls?.length ? imageUrls : imageUrl ? [imageUrl] : null,
       user_tags: userTags?.length ? userTags : null,
