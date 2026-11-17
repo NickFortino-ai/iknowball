@@ -401,6 +401,24 @@ const STANDINGS_CONFIG = {
       { tab: 'NL', prefix: 'National League', divisions: ['East', 'Central', 'West'] },
     ],
   },
+  // NBA: conference only, no divisions and no All tab.
+  //
+  // Divisions exist but nobody reads NBA standings by them — seeding,
+  // play-in and every broadcast graphic are conference 1-15. Grouping into
+  // Atlantic/Central/Southeast would bury the thing you actually want to
+  // know, which is who is 6th in the East. Nick's call: "possibly ONLY have
+  // Western and Eastern Conference standings."
+  //
+  // `prefix` is matched against the row's `conference`, not `group` — see
+  // flatRows. ESPN's own strings, so no translation layer to drift.
+  nba: {
+    defaultTab: 'East',
+    showAllTab: false,
+    conferences: [
+      { tab: 'East', prefix: 'Eastern Conference', divisions: [] },
+      { tab: 'West', prefix: 'Western Conference', divisions: [] },
+    ],
+  },
   // NCAAF is flat inside each conference (no divisions for most —
   // Sun Belt is the exception with East/West). 'All' tab omitted
   // since browsing all 130 FBS teams isn't useful. Default is SEC.
@@ -448,12 +466,17 @@ function GroupedStandings({ standings, config }) {
     })).filter((s) => s.rows.length)
   }, [standings, activeConf, isFlatConf])
 
-  // Flat conferences (most CFB conferences) — single sorted table of
-  // every team under that conference's group prefix.
+  // Flat conferences (most CFB conferences, and the NBA) — single sorted
+  // table of every team in that conference.
+  //
+  // Matches on EITHER field. CFB rows carry the conference name in `group`
+  // because ESPN has no division layer under most of them. The NBA has one,
+  // so its `group` is the division ("Pacific") and the conference lives in
+  // its own field. One matcher covers both rather than a config flag.
   const flatRows = useMemo(() => {
     if (!activeConf || !isFlatConf) return []
     return standings
-      .filter((r) => r.group === activeConf.prefix)
+      .filter((r) => r.group === activeConf.prefix || r.conference === activeConf.prefix)
       .sort((a, b) => {
         if (b.win_pct !== a.win_pct) return b.win_pct - a.win_pct
         if (b.wins !== a.wins) return b.wins - a.wins

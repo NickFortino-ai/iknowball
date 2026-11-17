@@ -117,7 +117,20 @@ const SPORT_CONFIG = {
       { name: 'pointsPerGame', label: 'PPG' },
       { name: 'reboundsPerGame', label: 'RPG' },
       { name: 'assistsPerGame', label: 'APG' },
-      { name: 'threePointFieldGoalsMade', label: '3PM' },
+      // ESPN's basketball leaders payloads have NO `threePointFieldGoalsMade`
+      // CATEGORY — this asked for a key that does not exist, `allCats.find`
+      // returned undefined, and the tab was silently dropped from the board.
+      // It had been configured for all three basketball leagues and had never
+      // once rendered. Verified against the live feed 2026-11-16: NBA, WNBA
+      // and NCAAB all expose `3PointPct` and `3PointsMadePerGame`, nothing else.
+      //
+      // The wrong key looked plausible because `threePointFieldGoalsMade` IS
+      // real — inside the ATHLETE statistics payload, just not as a leader
+      // category. Which is why it needs both names here: rank off ESPN's
+      // per-game list, then dereference each athlete's season statistics and
+      // re-rank on the raw total, the same route steals and blocks take.
+      // Nick asked for the season total, not the per-game average.
+      { name: 'threePointFieldGoalsMade', label: '3PM', totalFromPerGame: { source: '3PointsMadePerGame', statName: 'threePointFieldGoalsMade' } },
       // Same story as WNBA: ESPN only ranks per-game for NBA steals /
       // blocks, so we fetch the per-game list, dereference each
       // athlete's season statistics for the raw total, and re-rank.
@@ -141,7 +154,20 @@ const SPORT_CONFIG = {
       { name: 'pointsPerGame', label: 'PPG' },
       { name: 'reboundsPerGame', label: 'RPG' },
       { name: 'assistsPerGame', label: 'APG' },
-      { name: 'threePointFieldGoalsMade', label: '3PM' },
+      // ESPN's basketball leaders payloads have NO `threePointFieldGoalsMade`
+      // CATEGORY — this asked for a key that does not exist, `allCats.find`
+      // returned undefined, and the tab was silently dropped from the board.
+      // It had been configured for all three basketball leagues and had never
+      // once rendered. Verified against the live feed 2026-11-16: NBA, WNBA
+      // and NCAAB all expose `3PointPct` and `3PointsMadePerGame`, nothing else.
+      //
+      // The wrong key looked plausible because `threePointFieldGoalsMade` IS
+      // real — inside the ATHLETE statistics payload, just not as a leader
+      // category. Which is why it needs both names here: rank off ESPN's
+      // per-game list, then dereference each athlete's season statistics and
+      // re-rank on the raw total, the same route steals and blocks take.
+      // Nick asked for the season total, not the per-game average.
+      { name: 'threePointFieldGoalsMade', label: '3PM', totalFromPerGame: { source: '3PointsMadePerGame', statName: 'threePointFieldGoalsMade' } },
       // ESPN only ranks steals/blocks per-game for WNBA. For each of
       // these we fetch the per-game leader list, dereference each
       // athlete's season statistics for the raw total, and re-rank by
@@ -192,7 +218,20 @@ const SPORT_CONFIG = {
       { name: 'pointsPerGame', label: 'PPG' },
       { name: 'reboundsPerGame', label: 'RPG' },
       { name: 'assistsPerGame', label: 'APG' },
-      { name: 'threePointFieldGoalsMade', label: '3PM' },
+      // ESPN's basketball leaders payloads have NO `threePointFieldGoalsMade`
+      // CATEGORY — this asked for a key that does not exist, `allCats.find`
+      // returned undefined, and the tab was silently dropped from the board.
+      // It had been configured for all three basketball leagues and had never
+      // once rendered. Verified against the live feed 2026-11-16: NBA, WNBA
+      // and NCAAB all expose `3PointPct` and `3PointsMadePerGame`, nothing else.
+      //
+      // The wrong key looked plausible because `threePointFieldGoalsMade` IS
+      // real — inside the ATHLETE statistics payload, just not as a leader
+      // category. Which is why it needs both names here: rank off ESPN's
+      // per-game list, then dereference each athlete's season statistics and
+      // re-rank on the raw total, the same route steals and blocks take.
+      // Nick asked for the season total, not the per-game average.
+      { name: 'threePointFieldGoalsMade', label: '3PM', totalFromPerGame: { source: '3PointsMadePerGame', statName: 'threePointFieldGoalsMade' } },
       { name: 'steals', label: 'STL', totalFromPerGame: { source: 'stealsPerGame', statName: 'steals' } },
       { name: 'blocks', label: 'BLK', totalFromPerGame: { source: 'blocksPerGame', statName: 'blocks' } },
     ],

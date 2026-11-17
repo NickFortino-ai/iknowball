@@ -56,7 +56,15 @@ async function fetchOne(sportKey) {
     const data = await res.json()
     const map = {}
     const standingsRows = []
-    const walk = (node, groupName = null) => {
+    // conferenceName is tracked SEPARATELY from groupName because they are
+    // different depths and NBA needs the shallower one. ESPN nests
+    // Conference -> Division -> entries, and groupName keeps the deepest
+    // named node, so an NBA row came back grouped as "Atlantic" / "Pacific"
+    // with nothing saying which conference that is. NFL and MLB got away
+    // with it because ESPN names their division nodes "AFC East" and
+    // "American League East" — the conference is baked into the string.
+    // NBA's are bare, so the client had no way to build East/West tabs.
+    const walk = (node, groupName = null, conferenceName = null) => {
       const entries = node?.standings?.entries
       if (Array.isArray(entries)) {
         for (const e of entries) {
@@ -115,13 +123,18 @@ async function fetchOne(sportKey) {
             wins: w, losses: l, ties: t,
             win_pct: winPct,
             group: groupName,
+            conference: conferenceName,
           })
         }
       }
       // For MLB / NFL / NBA, standings nest under conferences → divisions.
       // Track the deepest named group we can, since 'AL East' is what
       // users actually want as the DIV grouping.
-      for (const child of node?.children || []) walk(child, child?.name || groupName)
+      // First named level under the root IS the conference; everything below
+      // inherits it (?? keeps the shallower value once it is set).
+      for (const child of node?.children || []) {
+        walk(child, child?.name || groupName, conferenceName ?? child?.name ?? null)
+      }
     }
     walk(data)
     // Sort by wins desc, losses asc, win_pct desc (fallback for ties).
