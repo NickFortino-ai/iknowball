@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js'
+import { logger } from '../utils/logger.js'
 import { assertConnected } from './socialService.js'
 import { createNotification } from './notificationService.js'
 import { fetchAll } from '../utils/fetchAll.js'
@@ -135,7 +136,16 @@ export async function createFlex(userId, { content, pickId, parlayId, propPickId
       err.status = 409
       throw err
     }
-    throw error
+    // Anything else reached the user VERBATIM, because the route returns
+    // `err.message` with a 500. A flex posted without commentary showed them
+    // `new row for relation "hot_takes" violates check constraint
+    // "hot_takes_content_check"` — a Postgres string, in a toast, as the
+    // entire explanation. Log the real error, hand back something a person
+    // can act on.
+    logger.error({ error, userId, pickId, parlayId, propPickId }, 'Flex insert failed')
+    const err = new Error('Could not post your flex. Please try again.')
+    err.status = 500
+    throw err
   }
 
   return data
