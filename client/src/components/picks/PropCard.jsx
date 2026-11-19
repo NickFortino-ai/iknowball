@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { getTeamLogoUrl } from '../../lib/teamLogos'
 import { formatOdds, calculateRiskPoints, calculateRewardPoints } from '../../lib/scoring'
 import { formatPeriod } from '../../lib/formatPeriod'
+import { playerInitials } from '../../lib/playerInitials'
 import { useNbaDfsPlayerLookup } from '../../hooks/useLeagues'
 import { getTeamAbbr } from '../../lib/teamLogos'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
@@ -254,13 +255,7 @@ export default function PropCard({ prop, picks, pick: pickProp, onPick, onUndoPi
           // table). Blank circle looks broken; initials at least anchor
           // the card visually.
           <div className="shrink-0 w-20 h-20 rounded-full bg-bg-secondary flex items-center justify-center text-text-muted font-bold text-lg">
-            {(prop.player_name || '')
-              .split(/\s+/)
-              .filter(Boolean)
-              .slice(0, 2)
-              .map((n) => n[0])
-              .join('')
-              .toUpperCase()}
+            {playerInitials(prop.player_name)}
           </div>
         )}
         <div className="flex gap-2 flex-1">

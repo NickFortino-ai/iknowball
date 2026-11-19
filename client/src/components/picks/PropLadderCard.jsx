@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { getTeamAbbr } from '../../lib/teamLogos'
 import { formatPeriod } from '../../lib/formatPeriod'
+import { playerInitials } from '../../lib/playerInitials'
 
 /**
  * Several bets on one player, shown as a ladder.
@@ -72,7 +73,13 @@ export default function PropLadderCard({ picks }) {
         {isNcaaf ? null : prop.player_headshot_url ? (
           <img src={prop.player_headshot_url} alt="" className="w-14 h-14 rounded-full object-cover bg-bg-secondary shrink-0" />
         ) : (
-          <div className="w-14 h-14 rounded-full bg-bg-secondary shrink-0" />
+          // Initials, not an empty disc. NCAAB props never carry a headshot
+          // — player_headshot_url is NULL for every one of them — so this
+          // branch IS the college basketball card, and a bare grey circle
+          // reads as a broken image rather than as "no photo".
+          <div className="w-14 h-14 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-text-muted font-bold">
+            {playerInitials(prop.player_name)}
+          </div>
         )}
         <div className="min-w-0 flex-1">
           <div className="font-semibold text-text-primary truncate">{prop.player_name}</div>

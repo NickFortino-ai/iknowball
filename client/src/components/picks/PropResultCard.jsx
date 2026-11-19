@@ -1,4 +1,5 @@
 import { formatOdds } from '../../lib/scoring'
+import { playerInitials } from '../../lib/playerInitials'
 
 // Reusable prop-pick result display: matchup + headshot + live progress + consensus.
 // Used in PropDetailModal (and any future feed cards). Mirrors PickResultCard.
@@ -117,7 +118,11 @@ export default function PropResultCard({ pick }) {
             className="w-16 h-16 rounded-full object-cover bg-bg-secondary shrink-0"
           />
         ) : (
-          <div className="w-16 h-16 rounded-full bg-bg-secondary shrink-0" />
+          // Same reason as PropLadderCard — an empty disc looks like a
+          // failed image load, and for NCAAB it is the only state there is.
+          <div className="w-16 h-16 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-text-muted font-bold text-lg">
+            {playerInitials(prop.player_name)}
+          </div>
         )}
         <div className="min-w-0 flex-1">
           <div className="text-base font-semibold text-text-primary truncate">{prop.player_name}</div>
