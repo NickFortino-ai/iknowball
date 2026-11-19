@@ -30,6 +30,7 @@ import { scoreAllWnbaThreePointPicks, tightenWnbaThreePointJoinLocks } from '../
 import { settleMLBProps } from './settleMLBProps.js'
 import { settleNFLProps } from './settleNFLProps.js'
 import { settleNCAAFProps } from './settleNCAAFProps.js'
+import { settleNCAABProps, settleWNCAABProps } from './settleCollegeBasketballProps.js'
 import { scoreSquares } from './scoreSquares.js'
 import { syncMLBLineups } from './syncMLBLineups.js'
 import { sendScheduledEmails } from './sendScheduledEmails.js'
@@ -506,6 +507,20 @@ export function startScheduler() {
       try { await settleNCAAFProps() } catch (err) { logger.error({ err }, 'NCAAF prop auto-settlement failed') }
     })
     logger.info('NCAAF prop auto-settlement scheduled: every 5 minutes')
+
+    // College basketball, same 5-minute cadence and for the same reason as
+    // NCAAF: no stats table, so every game costs a scoreboard lookup plus a
+    // summary fetch, and ESPN has per-host blocked this server before over
+    // call volume.
+    //
+    // Offset by a minute from the NCAAF slot so the two college settlers
+    // don't fire into ESPN simultaneously on a Saturday when both sports
+    // have a backlog.
+    cron.schedule('1-59/5 * * * *', async () => {
+      try { await settleNCAABProps() } catch (err) { logger.error({ err }, 'NCAAB prop auto-settlement failed') }
+      try { await settleWNCAABProps() } catch (err) { logger.error({ err }, 'WNCAAB prop auto-settlement failed') }
+    })
+    logger.info('College basketball prop auto-settlement scheduled: every 5 minutes')
   }
 
   // League completion runs alongside game scoring — checks for ended pickem/bracket leagues
