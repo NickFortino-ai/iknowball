@@ -36,6 +36,45 @@ const sportTabs = [
   { label: 'NCAAF', key: 'americanfootball_ncaaf' },
 ]
 
+// Tab order, highest priority first. The row used to render in the order
+// sportTabs happens to be declared in — which is accretion order, not intent,
+// and left NFL sixth from the left on a Sunday.
+//
+// Two keys sort the row, in this order:
+//   1. does this sport have a game on TODAY's slate
+//   2. this list
+//
+// Today-first is what makes the row read correctly without ever naming a day
+// of the week: NFL leads the moment there is NFL football today, NCAAB and
+// NBA lead on a Tuesday when the NFL's next game is Thursday, NCAAF leads on
+// a Saturday. The priority list only breaks ties between sports that are all
+// playing today.
+const SPORT_PRIORITY = [
+  'americanfootball_nfl',
+  'basketball_nba',
+  'americanfootball_ncaaf',
+  'basketball_ncaab',
+  'baseball_mlb',
+  'basketball_wnba',
+  'americanfootball_ufl',
+  'basketball_wncaab',
+  'soccer_usa_mls',
+  'soccer_world_cup',
+  'icehockey_nhl',
+]
+
+function priorityRank(key) {
+  const i = SPORT_PRIORITY.indexOf(key)
+  // Anything not listed sorts after everything listed rather than at 0,
+  // which is where indexOf's -1 would put a newly added sport.
+  return i === -1 ? SPORT_PRIORITY.length : i
+}
+
+// /games returns preseason under its own sport key, but the NFL tab covers
+// both (the server's expandSportFamily does the same rollup). Without this a
+// preseason Saturday would not count as "NFL plays today".
+const SPORT_KEY_ROLLUP = { americanfootball_nfl_preseason: 'americanfootball_nfl' }
+
 const INTEL_SPORTS = new Set(['basketball_nba', 'basketball_wnba', 'americanfootball_nfl', 'icehockey_nhl'])
 
 function getDateOffset(offset) {
@@ -86,31 +125,56 @@ export default function PicksPage() {
   const userChangedDay = useRef(false)
 
   const { data: activeSportsData } = useActiveSports()
+  // Hoisted above the tab sort: this is also what tells us which sports have
+  // a game on today's slate, so the row can't be ordered without it.
+  const { data: allGames } = useGames(null, 'upcoming')
 
   const activeKeys = useMemo(() => {
     if (!activeSportsData) return new Set()
     return new Set(activeSportsData.map((s) => s.key))
   }, [activeSportsData])
 
+  // Deliberately TODAY, not the selected day. The day picker sits below this
+  // row, so keying the order off dayOffset would shuffle the tabs out from
+  // under the thumb that just moved the date.
+  //
+  // Local calendar day rather than the PT sports day, because this has to
+  // agree with the day picker on the same screen — isSameDay against the
+  // browser's clock is what decides which games land under "Today" down
+  // there, and a tab order computed on a different anchor would promote a
+  // sport whose Today tab is empty.
+  const sportsPlayingToday = useMemo(() => {
+    if (!allGames) return null
+    const today = new Date()
+    const keys = new Set()
+    for (const game of allGames) {
+      const raw = game.sports?.key
+      if (!raw) continue
+      if (isSameDay(new Date(game.starts_at), today)) keys.add(SPORT_KEY_ROLLUP[raw] || raw)
+    }
+    return keys
+  }, [allGames])
+
   const sortedTabs = useMemo(() => {
-    return [...sportTabs].sort((a, b) => {
-      const aActive = activeKeys.has(a.key) ? 0 : 1
-      const bActive = activeKeys.has(b.key) ? 0 : 1
-      return aActive - bActive
-    })
-  }, [activeKeys])
+    // Additive scoring: priorityRank maxes out below 100, so each key stays
+    // strictly more significant than the one below it.
+    const score = (t) =>
+      (activeKeys.has(t.key) ? 0 : 200) +
+      (sportsPlayingToday?.has(t.key) ? 0 : 100) +
+      priorityRank(t.key)
+    return [...sportTabs].sort((a, b) => score(a) - score(b))
+  }, [activeKeys, sportsPlayingToday])
 
-  useEffect(() => {
-    if (activeSport !== null) return
-    if (!activeSportsData) return
-    const firstActive = sortedTabs.find((t) => activeKeys.has(t.key))
-    setActiveSport(firstActive ? firstActive.key : sortedTabs[0].key)
-  }, [activeSportsData, sortedTabs, activeKeys, activeSport])
-
-  const sportKey = activeSport || sortedTabs[0].key
+  // Derived rather than pushed into state by an effect. The old version set
+  // activeSport as soon as active-sports resolved, which raced the games
+  // payload the order now depends on: pick NFL from the un-boosted order on a
+  // Tuesday, then watch the row reshuffle NBA to the left while the board
+  // stayed on NFL. Deriving it means the default simply IS the leftmost tab,
+  // whenever that settles, and a tap still wins.
+  const sportKey =
+    activeSport || sortedTabs.find((t) => activeKeys.has(t.key))?.key || sortedTabs[0].key
 
   const { data: games, isLoading: gamesLoading } = useGames(sportKey, 'upcoming')
-  const { data: allGames } = useGames(null, 'upcoming')
   const { data: myPicks, isLoading: picksLoading } = useMyPicks()
   const submitPick = useSubmitPick()
   const deletePick = useDeletePick()
@@ -158,7 +222,7 @@ export default function PicksPage() {
     // NCAAF: re-order so marquee matchups float to the top of each day.
     // Combined AP Top 25 rank (lower = better), prestige tier as
     // tiebreaker. Kickoff time is the final tiebreak.
-    if (activeSport === 'americanfootball_ncaaf') {
+    if (sportKey === 'americanfootball_ncaaf') {
       return [...dayGames].sort((a, b) => {
         const s = getNcaafMatchupScore(a) - getNcaafMatchupScore(b)
         if (s !== 0) return s
@@ -166,12 +230,12 @@ export default function PicksPage() {
       })
     }
     return dayGames
-  }, [games, selectedDate, activeSport])
+  }, [games, selectedDate, sportKey])
 
   useEffect(() => {
     userChangedDay.current = false
     setDayOffset(0)
-  }, [activeSport])
+  }, [sportKey])
 
   useEffect(() => {
     if (userChangedDay.current) return
@@ -301,7 +365,7 @@ export default function PicksPage() {
           question asked twice. Every other mode shares this row. */}
       <div className={`flex overflow-x-auto gap-2 pb-2 mb-4 scrollbar-hide -mx-4 px-4 ${isPropsMode ? 'hidden' : ''}`}>
         {sortedTabs.filter((t) => activeKeys.has(t.key)).map((tab) => {
-          const isActive = activeSport === tab.key && !isFuturesMode && !isPropsMode
+          const isActive = sportKey === tab.key && !isFuturesMode && !isPropsMode
           return (
             <button
               key={tab.key}
@@ -329,7 +393,7 @@ export default function PicksPage() {
         </button>
         {/* Inactive (out-of-season) sports follow, grayed out */}
         {sortedTabs.filter((t) => !activeKeys.has(t.key)).map((tab) => {
-          const isActive = activeSport === tab.key && !isFuturesMode && !isPropsMode
+          const isActive = sportKey === tab.key && !isFuturesMode && !isPropsMode
           return (
             <button
               key={tab.key}
