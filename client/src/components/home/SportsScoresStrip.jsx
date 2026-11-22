@@ -48,13 +48,17 @@ function labelForPTDate(dateStr) {
 // stat leaders land in follow-up sessions; the sport-column shell here
 // is the surface those will slot into.
 
+// Declaration order IS the priority order — it sets the column order on
+// desktop, the tab order on mobile, and breaks ties for which sport opens by
+// default. Was nfl/ncaaf/mlb/wnba/nba/ncaab/mls, which is the order the
+// sports were added rather than the order they matter in.
 const SPORTS = [
   { key: 'nfl', label: 'NFL', fullKey: 'americanfootball_nfl' },
+  { key: 'nba', label: 'NBA', fullKey: 'basketball_nba' },
   { key: 'ncaaf', label: 'NCAAF', fullKey: 'americanfootball_ncaaf' },
+  { key: 'ncaab', label: 'NCAAB', fullKey: 'basketball_ncaab' },
   { key: 'mlb', label: 'MLB', fullKey: 'baseball_mlb' },
   { key: 'wnba', label: 'WNBA', fullKey: 'basketball_wnba' },
-  { key: 'nba', label: 'NBA', fullKey: 'basketball_nba' },
-  { key: 'ncaab', label: 'NCAAB', fullKey: 'basketball_ncaab' },
   { key: 'mls', label: 'MLS', fullKey: 'soccer_usa_mls' },
 ]
 
@@ -118,6 +122,35 @@ export default function SportsScoresStrip() {
     })
   }, [data])
 
+  // Which sport mobile opens on. Previously activeSports[0] — always NFL in
+  // season, because the strip's upcoming window runs 30 days out, so the NFL
+  // column exists on a Tuesday in February. A user opening the Scoreboard
+  // during a Tuesday NBA slate got a list of Sunday kickoffs and had to tap
+  // across to find a game that was actually happening.
+  //
+  // Ranked by how live the sport is right now, priority order breaking ties:
+  //   0  a game in progress
+  //   1  a game that finished today
+  //   2  a game still to start today
+  //   3  nothing today — next game is tomorrow or later
+  //
+  // Finals rank above not-yet-started so Sunday evening lands on the NFL
+  // results rather than on the Sunday-nighter alone, and tier 2 is what makes
+  // Saturday morning open on NCAAF before any ball is kicked.
+  const defaultMobileSport = useMemo(() => {
+    if (!activeSports.length) return null
+    const todayStr = todayPT()
+    const tier = (sport) => {
+      const col = data?.[sport.key] || {}
+      if (col.live?.length) return 0
+      if ((col.recent || []).some((g) => sportsDayOf(g.starts_at) === todayStr)) return 1
+      if ((col.upcoming || []).some((g) => sportsDayOf(g.starts_at) === todayStr)) return 2
+      return 3
+    }
+    // Array.prototype.sort is stable, so an equal tier keeps SPORTS order.
+    return [...activeSports].sort((a, b) => tier(a) - tier(b))[0].key
+  }, [activeSports, data])
+
   if (isLoading) return null
   if (error) return null
   if (!activeSports.length) return null
@@ -140,7 +173,7 @@ export default function SportsScoresStrip() {
       {activeSports.length > 1 && (
         <div className="sm:hidden flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
           {activeSports.map((sport) => {
-            const isActive = (selectedMobileSport || activeSports[0].key) === sport.key
+            const isActive = (selectedMobileSport || defaultMobileSport) === sport.key
             return (
               <button
                 key={sport.key}
@@ -184,7 +217,7 @@ export default function SportsScoresStrip() {
 
       <div className={`grid gap-4 ${gridClass}`}>
         {activeSports.map((sport) => {
-          const effectiveMobileSport = selectedMobileSport || activeSports[0].key
+          const effectiveMobileSport = selectedMobileSport || defaultMobileSport
           const showOnMobile = sport.key === effectiveMobileSport
           return (
             <div key={sport.key} className={showOnMobile ? '' : 'hidden sm:block'}>
