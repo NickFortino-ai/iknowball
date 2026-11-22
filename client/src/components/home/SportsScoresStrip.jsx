@@ -52,10 +52,11 @@ function labelForPTDate(dateStr) {
 // desktop, the tab order on mobile, and breaks ties for which sport opens by
 // default. Was nfl/ncaaf/mlb/wnba/nba/ncaab/mls, which is the order the
 // sports were added rather than the order they matter in.
+// NCAAF above NBA deliberately — see the same note in PicksPage.
 const SPORTS = [
   { key: 'nfl', label: 'NFL', fullKey: 'americanfootball_nfl' },
-  { key: 'nba', label: 'NBA', fullKey: 'basketball_nba' },
   { key: 'ncaaf', label: 'NCAAF', fullKey: 'americanfootball_ncaaf' },
+  { key: 'nba', label: 'NBA', fullKey: 'basketball_nba' },
   { key: 'ncaab', label: 'NCAAB', fullKey: 'basketball_ncaab' },
   { key: 'mlb', label: 'MLB', fullKey: 'baseball_mlb' },
   { key: 'wnba', label: 'WNBA', fullKey: 'basketball_wnba' },

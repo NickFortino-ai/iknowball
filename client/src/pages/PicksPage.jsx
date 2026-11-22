@@ -49,10 +49,14 @@ const sportTabs = [
 // NBA lead on a Tuesday when the NFL's next game is Thursday, NCAAF leads on
 // a Saturday. The priority list only breaks ties between sports that are all
 // playing today.
+// NCAAF above NBA deliberately: a Saturday afternoon of college football is
+// the main event in a way a midweek NBA slate isn't. The two only ever meet
+// here when both are playing the same day, so this decides Saturdays (and
+// midweek MACtion, where it also hands NCAAF the lead).
 const SPORT_PRIORITY = [
   'americanfootball_nfl',
-  'basketball_nba',
   'americanfootball_ncaaf',
+  'basketball_nba',
   'basketball_ncaab',
   'baseball_mlb',
   'basketball_wnba',
