@@ -296,9 +296,20 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
                           boxShadow: winCount >= 2 ? 'inset 0 0 0 2px #FFD700' : 'none',
                         } : { border: '1px solid var(--color-border)' }}
                       >
-                        <div className="w-full h-full flex items-center justify-center">
+                        {/* The avatar fills the square minus a small inset
+                            rather than being sized in absolute pixels. It was
+                            a 20px xs avatar in a 40px cell (36 in 72 on
+                            desktop) — dead on half the square, which read as
+                            a small face floating in a big empty box.
+
+                            Inset instead of a bigger fixed size so it tracks
+                            the cell at both breakpoints, and so the gutter
+                            survives: the win state paints a 2px gold border
+                            on the td (double for a 2+ quarter square) and
+                            needs clear space inside it to stay legible. */}
+                        <div className="w-full h-full flex items-center justify-center p-[3px] lg:p-1.5">
                           {cell ? (
-                            <Avatar user={cell.users} size="xs" className="lg:!w-9 lg:!h-9 lg:!text-sm" />
+                            <Avatar user={cell.users} size="xs" className="!w-full !h-full !text-base lg:!text-2xl" />
                           ) : null}
                         </div>
                       </td>
