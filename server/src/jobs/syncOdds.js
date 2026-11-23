@@ -277,16 +277,45 @@ async function syncSport(sportKey, { force = false } = {}) {
     //
     // Worth stating plainly: every table with an ON DELETE CASCADE to
     // games(id) has to be counted here, or pruning silently destroys user
-    // data. picks / parlay_legs / league_picks / survivor_picks are the set
-    // today — check again before adding any new table that references a game.
-    const [picksRes, legsRes, leaguePicksRes, survivorRes] = await Promise.all([
+    // data. Check again before adding any new table that references a game.
+    //
+    // 2026-11-23: the list was four tables and it was not the whole list.
+    // "The GOAT Square Battle" (league ac4f4c3c) was built on Heat @ Knicks
+    // Nov 27 and 8 people filled in squares over three days. On Nov 20 the
+    // Odds API re-issued that game under a new event id with a start time 10
+    // minutes earlier, the old row went orphan, this check counted ZERO
+    // dependencies because it never looked at squares_boards, and the delete
+    // cascaded through squares_boards -> squares_claims. Every claim on that
+    // board is gone and unrecoverable; the league still points at a
+    // settings.game_id that no longer exists and renders "Board not
+    // available". Three tables were missing:
+    //
+    //   squares_boards     — count the BOARD, not the claims. A board with
+    //                        zero claims is still a league that bricks when
+    //                        the game row goes, and boards are rare enough
+    //                        (one per squares league) that this never blocks
+    //                        a real prune.
+    //   pickem_selections  — user picks, same as the four above.
+    //   prop_picks         — reached through player_props. Count the PICKS,
+    //                        not the props: props exist for almost every
+    //                        game, so counting those would pin every orphan
+    //                        in place forever and phantom rows would never
+    //                        be cleaned up at all.
+    //
+    // game_top_scorers also cascades and is deliberately NOT counted — it is
+    // derived from the box score and regenerates.
+    const [picksRes, legsRes, leaguePicksRes, survivorRes, pickemRes, squaresRes, propPicksRes] = await Promise.all([
       supabase.from('picks').select('id', { count: 'exact', head: true }).eq('game_id', orphan.id),
       supabase.from('parlay_legs').select('id', { count: 'exact', head: true }).eq('game_id', orphan.id),
       supabase.from('league_picks').select('id', { count: 'exact', head: true }).eq('game_id', orphan.id),
       supabase.from('survivor_picks').select('id', { count: 'exact', head: true }).eq('game_id', orphan.id),
+      supabase.from('pickem_selections').select('id', { count: 'exact', head: true }).eq('game_id', orphan.id),
+      supabase.from('squares_boards').select('id', { count: 'exact', head: true }).eq('game_id', orphan.id),
+      supabase.from('prop_picks').select('id, player_props!inner(game_id)', { count: 'exact', head: true }).eq('player_props.game_id', orphan.id),
     ])
     const totalDeps = (picksRes.count || 0) + (legsRes.count || 0)
       + (leaguePicksRes.count || 0) + (survivorRes.count || 0)
+      + (pickemRes.count || 0) + (squaresRes.count || 0) + (propPicksRes.count || 0)
 
     if (totalDeps > 0) {
       logger.warn({
@@ -298,6 +327,9 @@ async function syncSport(sportKey, { force = false } = {}) {
         parlayLegs: legsRes.count,
         leaguePicks: leaguePicksRes.count,
         survivorPicks: survivorRes.count,
+        pickemSelections: pickemRes.count,
+        squaresBoards: squaresRes.count,
+        propPicks: propPicksRes.count,
       }, 'Orphaned game has picks — admin must resolve manually')
       // A warn log is not enough: this row can never settle (no Odds API
       // event to finalize it, no ESPN event to match it) and it keeps
@@ -314,6 +346,9 @@ async function syncSport(sportKey, { force = false } = {}) {
         parlayLegs: legsRes.count || 0,
         leaguePicks: leaguePicksRes.count || 0,
         survivorPicks: survivorRes.count || 0,
+        pickemSelections: pickemRes.count || 0,
+        squaresBoards: squaresRes.count || 0,
+        propPicks: propPicksRes.count || 0,
       })
       continue
     }
@@ -368,6 +403,11 @@ async function reportStrandedOrphans() {
       o.parlayLegs ? `${o.parlayLegs} parlay leg(s)` : null,
       o.leaguePicks ? `${o.leaguePicks} league pick(s)` : null,
       o.survivorPicks ? `${o.survivorPicks} survivor pick(s)` : null,
+      o.pickemSelections ? `${o.pickemSelections} pick'em selection(s)` : null,
+      // Flagged loudly: a squares board is a whole league's worth of state,
+      // not one pick, and moving it means repointing the league too.
+      o.squaresBoards ? `${o.squaresBoards} SQUARES BOARD(S)` : null,
+      o.propPicks ? `${o.propPicks} prop pick(s)` : null,
     ].filter(Boolean).join(', ')
     return `${o.sportKey} — ${o.matchup}\n  starts ${o.startsAt}\n  game_id ${o.gameId}\n  blocked by ${deps}`
   })

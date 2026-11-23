@@ -484,14 +484,29 @@ export async function createLeague(userId, data) {
   // Generate weeks
   await generateLeagueWeeks(league)
 
-  // Create squares board if format is squares
+  // Create squares board if format is squares.
+  //
+  // The result is checked now. It wasn't, and a squares league whose board
+  // insert failed came out looking completely normal — members could join,
+  // the lobby rendered, and only the Board tab gave anything away, with
+  // "Board not available" and no error anywhere. There is no code path that
+  // creates the board later, so that league is permanently unplayable.
+  // Failing the creation outright is the honest outcome: squares without a
+  // board is not a league.
   if (league.format === 'squares' && league.settings?.game_id) {
-    await supabase.from('squares_boards').insert({
+    const { error: boardErr } = await supabase.from('squares_boards').insert({
       league_id: league.id,
       game_id: league.settings.game_id,
       row_team_name: league.settings.row_team_name || 'Away',
       col_team_name: league.settings.col_team_name || 'Home',
     })
+    if (boardErr) {
+      logger.error({ error: boardErr, leagueId: league.id, gameId: league.settings.game_id }, 'Squares board insert failed — rolling back league')
+      await supabase.from('leagues').delete().eq('id', league.id)
+      const err = new Error('Could not set up the squares board for that game. Please pick a different game.')
+      err.status = 400
+      throw err
+    }
   }
 
   // Create bracket tournament if format is bracket
