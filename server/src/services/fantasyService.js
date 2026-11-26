@@ -399,7 +399,7 @@ function derivePlayoffStartWeek(playoffTeams, championshipWeek) {
 /**
  * Create fantasy league settings after the league is created.
  */
-export async function createFantasySettings(leagueId, settings = {}) {
+export async function createFantasySettings(leagueId, settings = {}, leagueFormat = null) {
   const {
     scoring_format = 'half_ppr',
     num_teams = 10,
@@ -422,6 +422,28 @@ export async function createFantasySettings(leagueId, settings = {}) {
     scoring_rules,
     pick_reuse,
   } = settings
+
+  // NFL salary cap specifically: leagues.format 'fantasy' + this format
+  // 'salary_cap'. NBA/WNBA/MLB DFS leagues ALSO store fantasy_settings
+  // .format = 'salary_cap' and are told apart only by leagues.format, so
+  // checking dfsFormat alone would hand a basketball league NFL weeks.
+  const isNflSalaryCap = leagueFormat === 'fantasy' && dfsFormat === 'salary_cap'
+
+  // The NFL week this league is being created in, resolved ONCE so the
+  // three fields that depend on it can't disagree. Falls back to 1 (the
+  // preseason answer, and the fallback every reader already uses).
+  const needsNflWeek = isNflSalaryCap
+    || (season_type === 'single_week' && dfsFormat !== 'nba_dfs' && dfsFormat !== 'wnba_dfs')
+  let nflWeekNow = null
+  if (needsNflWeek) {
+    try {
+      const { getCurrentNflWeek } = await import('./tdPassService.js')
+      const { week } = await getCurrentNflWeek()
+      nflWeekNow = week || null
+    } catch {
+      nflWeekNow = null
+    }
+  }
 
   const { data, error } = await supabase
     .from('fantasy_settings')
@@ -462,14 +484,24 @@ export async function createFantasySettings(leagueId, settings = {}) {
       ...(single_week
         ? { single_week }
         : (season_type === 'single_week' && dfsFormat !== 'nba_dfs' && dfsFormat !== 'wnba_dfs')
-          ? { single_week: (await (async () => {
-              try {
-                const { getCurrentNflWeek } = await import('./tdPassService.js')
-                const { week } = await getCurrentNflWeek()
-                return week
-              } catch { return 1 }
-            })()) }
+          ? { single_week: nflWeekNow || 1 }
           : {}),
+      // A salary cap league runs from the week it was CREATED, not from
+      // Week 1. Nothing recorded that, so a full-season league started in
+      // Week 12 to play out the season inherited Week 1 everywhere: the
+      // join gate closed it to new members the moment it existed ("Week 1
+      // is over"), its card advertised the September opener as its start
+      // date, and completeLeagues thought it had been live since Week 1.
+      //
+      // current_week was never set here either — it sat at the DB default
+      // of 1 until the 3 AM rollover job, so for its first hours the league
+      // showed "Week 1" and served Week 1's roster pool, in which every
+      // player is long since locked.
+      //
+      // Preseason creates resolve to Week 1, which is what they already got.
+      ...(isNflSalaryCap && nflWeekNow
+        ? { start_week: nflWeekNow, current_week: nflWeekNow }
+        : {}),
       ...(pick_reuse && { pick_reuse }),
     })
     .select()

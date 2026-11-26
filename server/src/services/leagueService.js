@@ -3,7 +3,7 @@ import { logger } from '../utils/logger.js'
 import { createTournament, getBracketStandings } from './bracketService.js'
 import { getLeaguePickStandings } from './leaguePickService.js'
 import { toSportsDay } from '../utils/sportsDay.js'
-import { salaryCapEffectiveStart } from '../utils/salaryCapStart.js'
+import { salaryCapEffectiveStart, salaryCapTargetWeek } from '../utils/salaryCapStart.js'
 import { throwIfInfra } from '../utils/dbError.js'
 import { getProrationFraction } from './prorationService.js'
 
@@ -56,7 +56,7 @@ export async function assertLeagueJoinable(league) {
   if (league.format === 'fantasy') {
     const { data: fs } = await supabase
       .from('fantasy_settings')
-      .select('draft_status, format, season, single_week')
+      .select('draft_status, format, season, single_week, start_week')
       .eq('league_id', league.id)
       .maybeSingle()
 
@@ -66,11 +66,16 @@ export async function assertLeagueJoinable(league) {
       // past — so falling through to the generic starts_at gate would reject
       // every join with "already started."
       //
-      // Joins stay open through the whole of the target week (full-season →
-      // Week 1, this-week → single_week) and close when the NEXT week starts.
-      // This used to close at the target week's FIRST kickoff, which shut the
-      // door Thursday night and made "join late in week 1" impossible.
-      const targetWeek = fs.single_week || 1
+      // Joins stay open through the whole of the target week and close when
+      // the NEXT week starts. This used to close at the target week's FIRST
+      // kickoff, which shut the door Thursday night and made "join late in
+      // the starting week" impossible.
+      //
+      // The target week is the league's OWN starting week, not the season's
+      // — a full-season league created in Week 12 to run out the year is
+      // joinable through Week 12. Deriving it as `single_week || 1` meant
+      // every mid-season league was born already closed.
+      const targetWeek = salaryCapTargetWeek(fs)
       if (!(await isSalaryCapJoinOpen(targetWeek))) {
         const err = new Error(`This league is no longer accepting new members — Week ${targetWeek} is over`)
         err.status = 400
@@ -520,7 +525,10 @@ export async function createLeague(userId, data) {
   const NEEDS_FANTASY_SETTINGS = ['fantasy', 'nba_dfs', 'mlb_dfs', 'wnba_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions']
   if (NEEDS_FANTASY_SETTINGS.includes(league.format)) {
     const { createFantasySettings } = await import('./fantasyService.js')
-    await createFantasySettings(league.id, data.fantasy_settings || {})
+    // league.format is passed so createFantasySettings can tell NFL salary
+    // cap ('fantasy') from NBA/WNBA/MLB DFS, which store the same
+    // fantasy_settings.format = 'salary_cap' but don't run on NFL weeks.
+    await createFantasySettings(league.id, data.fantasy_settings || {}, league.format)
   }
 
   // Guard: traditional fantasy is only creatable BEFORE the season opener

@@ -6,7 +6,7 @@ import { validate } from '../middleware/validate.js'
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { fetchAll } from '../utils/fetchAll.js'
-import { salaryCapStartsForPairs } from '../utils/salaryCapStart.js'
+import { salaryCapStartsForPairs, salaryCapTargetWeek } from '../utils/salaryCapStart.js'
 import {
   createLeague,
   joinLeague,
@@ -278,7 +278,7 @@ router.get('/open', requireAuth, async (req, res) => {
   if (fantasyIds.length) {
     const { data: settings } = await supabase
       .from('fantasy_settings')
-      .select('league_id, draft_status, format, single_week')
+      .select('league_id, draft_status, format, single_week, start_week')
       .in('league_id', fantasyIds)
     for (const s of settings || []) fantasyStatusForFilter[s.league_id] = s
   }
@@ -292,7 +292,7 @@ router.get('/open', requireAuth, async (req, res) => {
   if (salaryCapIds.length) {
     for (const id of salaryCapIds) {
       const fs = fantasyStatusForFilter[id]
-      salaryCapOpen[id] = await isSalaryCapJoinOpen(fs.single_week || 1)
+      salaryCapOpen[id] = await isSalaryCapJoinOpen(salaryCapTargetWeek(fs))
     }
   }
 
@@ -418,10 +418,10 @@ router.get('/open', requireAuth, async (req, res) => {
   // format/season/single_week for salary-cap cards so we can:
   //   - render 'Salary Cap Fantasy Football' vs 'Fantasy Football' on
   //     the card (users can't tell them apart otherwise), and
-  //   - rewrite starts_at to the real Week 1 kickoff instead of the
-  //     createLeague-time `new Date()` default that would otherwise say
-  //     'Runs Aug 3 – End of season' for a league that doesn't actually
-  //     start until Sep 9.
+  //   - rewrite starts_at to the real kickoff of the league's starting
+  //     week (salaryCapTargetWeek) instead of the createLeague-time
+  //     `new Date()` default that would otherwise say 'Runs Aug 3 – End
+  //     of season' for a league that doesn't actually start until Sep 9.
   const fantasyLeagueIds = (leagues || [])
     .filter((l) => l.format === 'fantasy')
     .map((l) => l.id)
@@ -432,7 +432,7 @@ router.get('/open', requireAuth, async (req, res) => {
   if (fantasyLeagueIds.length) {
     const { data: fs } = await supabase
       .from('fantasy_settings')
-      .select('league_id, draft_date, draft_status, format, season, single_week')
+      .select('league_id, draft_date, draft_status, format, season, single_week, start_week')
       .in('league_id', fantasyLeagueIds)
     for (const row of fs || []) {
       draftDateByLeague[row.league_id] = row.draft_date
@@ -441,7 +441,7 @@ router.get('/open', requireAuth, async (req, res) => {
       if (row.format === 'salary_cap' && row.season) {
         salaryCapSeasonByLeague[row.league_id] = {
           season: row.season,
-          week: row.single_week || 1,
+          week: salaryCapTargetWeek(row),
         }
       }
     }

@@ -7,10 +7,10 @@ import { supabase } from '../config/supabase.js'
 // clicked create, not when play starts. "Salary and Peanut Butter" was
 // created 2026-08-03 for a season kicking off 2026-09-09.
 //
-// The real signal is the first kickoff of the league's target NFL week:
-// `single_week` for single-week leagues, Week 1 for full-season. Three
-// call sites derived that independently before this file existed — the
-// Open Leagues payload, getLeagueDetails, and the activation gate in
+// The real signal is the first kickoff of the league's target NFL week —
+// see salaryCapTargetWeek() below for which week that is. Three call
+// sites derived it independently before this file existed — the Open
+// Leagues payload, getLeagueDetails, and the activation gate in
 // completeLeagues — and a fourth consumer forgetting to compensate is
 // exactly how the pre-start info box silently never rendered.
 //
@@ -58,6 +58,25 @@ export async function salaryCapStartsForPairs(pairs) {
 }
 
 /**
+ * The NFL week a salary cap league is pegged to. Its join window, its
+ * effective start date, and the week completeLeagues activates it on all
+ * key off this one number, so they can't disagree about it.
+ *
+ * `single_week` for a "This Week" league. Otherwise `start_week`, the week
+ * the league was created in: a full-season league started in Week 12 to run
+ * out the season begins at Week 12, not at a Week 1 two months gone. Before
+ * start_week existed, five call sites derived this as `single_week || 1`,
+ * which gave a full-season league no way to say anything but Week 1 — so a
+ * mid-season one was born already past its own join deadline.
+ *
+ * NULL start_week means the league predates the column, i.e. was created in
+ * the preseason, and Week 1 is the right answer for it.
+ */
+export function salaryCapTargetWeek(fs) {
+  return fs?.single_week || fs?.start_week || 1
+}
+
+/**
  * Effective start for a single league row. Returns null for anything
  * that isn't salary cap fantasy, so callers can `?? league.starts_at`.
  */
@@ -65,9 +84,9 @@ export async function salaryCapEffectiveStart(league) {
   if (league?.format !== 'fantasy' || !league?.id) return null
   const { data: fs } = await supabase
     .from('fantasy_settings')
-    .select('format, season, single_week')
+    .select('format, season, single_week, start_week')
     .eq('league_id', league.id)
     .maybeSingle()
   if (fs?.format !== 'salary_cap') return null
-  return salaryCapWeekStart(fs.season, fs.single_week || 1)
+  return salaryCapWeekStart(fs.season, salaryCapTargetWeek(fs))
 }

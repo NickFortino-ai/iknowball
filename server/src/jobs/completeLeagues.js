@@ -4,7 +4,7 @@ import { getLeaguePickStandings } from '../services/leaguePickService.js'
 import { getBracketStandings } from '../services/bracketService.js'
 import { createNotification } from '../services/notificationService.js'
 import { fetchAll } from '../utils/fetchAll.js'
-import { salaryCapWeekStart } from '../utils/salaryCapStart.js'
+import { salaryCapWeekStart, salaryCapTargetWeek } from '../utils/salaryCapStart.js'
 import { connectAutoConnectMembers } from '../services/connectionService.js'
 import { generateLeagueReport } from '../services/leagueReportService.js'
 import { getContestBonusFn } from '../services/prorationService.js'
@@ -930,7 +930,7 @@ export async function completeLeagues() {
       if (league.format === 'fantasy') {
         const { data: fs } = await supabase
           .from('fantasy_settings')
-          .select('format, num_teams, season, single_week, season_type')
+          .select('format, num_teams, season, single_week, start_week, season_type')
           .eq('league_id', league.id)
           .maybeSingle()
         if (fs && fs.format !== 'salary_cap') {
@@ -944,10 +944,11 @@ export async function completeLeagues() {
         // Salary cap fantasy: gate on the target NFL week's first game
         // rather than the league's synthetic starts_at (which defaults
         // to createLeague's `new Date()` and would flip the league to
-        // 'active' immediately). Single-week leagues use their chosen
-        // week; full-season salary cap starts at Week 1. Missing
-        // schedule rows fall through (rare pre-schedule edge) so a
-        // stalled ingest can't strand the league in 'open' forever.
+        // 'active' immediately). salaryCapTargetWeek picks that week:
+        // a single-week league's chosen week, otherwise the week the
+        // league was created in. Missing schedule rows fall through
+        // (rare pre-schedule edge) so a stalled ingest can't strand the
+        // league in 'open' forever.
         if (fs && fs.format === 'salary_cap') {
           // salaryCapWeekStart applies the same 10:00 UTC (~6 AM ET)
           // anchor this block used inline, so a Thursday-night opener
@@ -955,7 +956,7 @@ export async function completeLeagues() {
           // week. It returns null both when season is unset and when the
           // schedule row is missing — the two cases that already fell
           // through here — so this guard is behaviour-identical.
-          const startIso = await salaryCapWeekStart(fs.season, fs.single_week || 1)
+          const startIso = await salaryCapWeekStart(fs.season, salaryCapTargetWeek(fs))
           if (startIso && new Date(startIso).getTime() > nowMs) continue
         }
       }
