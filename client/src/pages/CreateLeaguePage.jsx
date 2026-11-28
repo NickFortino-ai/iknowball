@@ -1156,8 +1156,13 @@ export default function CreateLeaguePage() {
           formData.append('league_id', league.id)
           await api.postForm('/backdrops/submit', formData)
           toast('League created! Backdrop submitted for review.', 'success')
-        } catch {
-          toast('League created! Backdrop upload failed — you can try again later.', 'success')
+        } catch (err) {
+          // Surface the reason. The server is specific ("Only JPG, PNG, and
+          // WebP images are allowed", "File too large"), and a local read
+          // failure names itself — swallowing all of it left the only
+          // possible next step as "try again", which doesn't help when the
+          // cause is the file itself.
+          toast(`League created, but the backdrop didn't upload — ${err.message || 'try again from the league page'}`, 'error')
         }
       } else {
         toast('League created!', 'success')
@@ -3048,12 +3053,29 @@ export default function CreateLeaguePage() {
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 className="hidden"
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files?.[0]
                   if (!file) return
                   if (file.size > 5 * 1024 * 1024) { toast('Image must be under 5MB', 'error'); return }
-                  setCustomBackdropFile(file)
-                  setCustomBackdropPreview(URL.createObjectURL(file))
+                  // Snapshot the BYTES now rather than keeping the File. A File
+                  // is a live handle to a path on disk and isn't read until the
+                  // body is streamed — which on this page is at Create, often
+                  // minutes later once the rest of the form is filled in. Delete
+                  // or move the file in that window and the upload dies with a
+                  // read error and nothing reaches the server.
+                  //
+                  // The other two submit sites (SettingsPage, LeagueDetailPage)
+                  // POST on pick and never have the gap. This one can't: the
+                  // league the backdrop attaches to doesn't exist yet.
+                  let snapshot
+                  try {
+                    snapshot = new File([await file.arrayBuffer()], file.name, { type: file.type })
+                  } catch (err) {
+                    toast(err.message || 'Could not read that image — try choosing it again', 'error')
+                    return
+                  }
+                  setCustomBackdropFile(snapshot)
+                  setCustomBackdropPreview(URL.createObjectURL(snapshot))
                   setBackdropImage('')
                 }}
               />
